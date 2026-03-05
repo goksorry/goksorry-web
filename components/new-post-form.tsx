@@ -1,0 +1,94 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+
+export function NewPostForm({ boardSlug }: { boardSlug: string }) {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        setError("Login required: please sign in with Google first.");
+        return;
+      }
+
+      const response = await fetch("/api/community/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          board_slug: boardSlug,
+          title,
+          content
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(payload.error ?? "Failed to create post");
+        return;
+      }
+
+      setTitle("");
+      setContent("");
+      router.push(`/community/${boardSlug}/${payload.id}`);
+      router.refresh();
+    } catch (submitError) {
+      setError(String(submitError));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="grid">
+      <label className="form-row">
+        <span>Title</span>
+        <input
+          name="title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          maxLength={200}
+          placeholder="Write a plain-text title"
+          required
+        />
+      </label>
+
+      <label className="form-row">
+        <span>Content</span>
+        <textarea
+          name="content"
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+          maxLength={5000}
+          placeholder="Write plain-text content"
+          required
+        />
+      </label>
+
+      {error ? <p className="error">{error}</p> : null}
+
+      <div className="actions">
+        <button type="submit" disabled={loading}>
+          {loading ? "Submitting..." : "Submit"}
+        </button>
+      </div>
+    </form>
+  );
+}
