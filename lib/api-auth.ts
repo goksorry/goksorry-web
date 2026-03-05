@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
+import { hashApiToken } from "@/lib/api-tokens";
 import { getServerEnv } from "@/lib/env";
+import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type ApiErrorCode =
   | "INVALID_QUERY"
@@ -38,7 +40,7 @@ const parseBearer = (request: Request): string | null => {
   return token || null;
 };
 
-const requestIdFrom = (request: Request): string => {
+export const getRequestId = (request: Request): string => {
   const header = request.headers.get("x-request-id");
   if (header && header.trim()) {
     return header.trim();
@@ -49,10 +51,10 @@ const requestIdFrom = (request: Request): string => {
 export const requireDetectorWriteAuth = (
   request: Request
 ): { ok: true; requestId: string } | { ok: false; response: NextResponse } => {
-  const requestId = requestIdFrom(request);
+  const requestId = getRequestId(request);
   const token = parseBearer(request);
   const env = getServerEnv();
-  if (!token || token !== env.INGEST_TOKEN) {
+  if (!token || token !== env.DETECTOR_WRITE_TOKEN) {
     return {
       ok: false,
       response: jsonError(requestId, 401, "UNAUTHORIZED", "invalid detector token")
@@ -62,20 +64,19 @@ export const requireDetectorWriteAuth = (
   return { ok: true, requestId };
 };
 
-export const requireTradingBotReadAuth = (
+export const requireTradingBotReadAuth = async (
   request: Request
-):
-  | { ok: true; requestId: string; clientId: string }
-  | { ok: false; response: NextResponse } => {
-  const requestId = requestIdFrom(request);
+): Promise<
+  | { ok: true; requestId: string; clientId: string; tokenId: string; tokenOwnerUserId: string }
+  | { ok: false; response: NextResponse }
+> => {
+  const requestId = getRequestId(request);
   const token = parseBearer(request);
-  const env = getServerEnv();
-  const expectedToken = env.TRADINGBOT_API_TOKEN || env.INGEST_TOKEN;
 
-  if (!token || token !== expectedToken) {
+  if (!token) {
     return {
       ok: false,
-      response: jsonError(requestId, 401, "UNAUTHORIZED", "invalid trading bot token")
+      response: jsonError(requestId, 401, "UNAUTHORIZED", "missing trading bot token")
     };
   }
 
@@ -94,9 +95,64 @@ export const requireTradingBotReadAuth = (
     };
   }
 
+  const tokenHash = hashApiToken(token);
+  const service = getServiceSupabaseClient();
+  const { data, error } = await service
+    .from("api_access_tokens")
+    .select("id,user_id,scope,revoked_at,expires_at")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      response: jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error.message)
+    };
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      response: jsonError(requestId, 401, "UNAUTHORIZED", "invalid trading bot token")
+    };
+  }
+
+  if (data.revoked_at) {
+    return {
+      ok: false,
+      response: jsonError(requestId, 403, "FORBIDDEN", "token revoked")
+    };
+  }
+
+  if (data.expires_at) {
+    const expiresAtMs = new Date(String(data.expires_at)).getTime();
+    if (!Number.isNaN(expiresAtMs) && Date.now() >= expiresAtMs) {
+      return {
+        ok: false,
+        response: jsonError(requestId, 403, "FORBIDDEN", "token expired")
+      };
+    }
+  }
+
+  if (String(data.scope) !== "tradingbot.read") {
+    return {
+      ok: false,
+      response: jsonError(requestId, 403, "FORBIDDEN", "token scope forbidden")
+    };
+  }
+
+  await service
+    .from("api_access_tokens")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", data.id)
+    .then(() => undefined)
+    .catch(() => undefined);
+
   return {
     ok: true,
     requestId,
-    clientId
+    clientId,
+    tokenId: String(data.id),
+    tokenOwnerUserId: String(data.user_id)
   };
 };

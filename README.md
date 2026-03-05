@@ -10,23 +10,24 @@
 
 - `web/` Next.js service (API provider)
 - `worker/` standalone Python worker (API client)
-- `db/migrations/` Supabase SQL
+- `db/` schema definitions
 
-## DB migrations
+## DB schema (no migrations for now)
 
-1. `db/migrations/001_init.sql`
-2. `db/migrations/002_detector_api.sql`
+- Canonical schema file: `db/schema.sql`
+- Keep schema evolving in this single file until service launch.
 
 ## API summary
 
 ### Detector write APIs (worker -> web)
 
 - `POST /api/ingest`
+- `POST /api/sentiment/exists`
 - `POST /api/v1/detector/register`
 
 Auth:
 
-- `Authorization: Bearer <INGEST_TOKEN>`
+- `Authorization: Bearer <DETECTOR_WRITE_TOKEN>`
 
 ### TradingBot read APIs (bot -> web)
 
@@ -38,9 +39,19 @@ Auth:
 
 Read auth headers:
 
-- `Authorization: Bearer <TRADINGBOT_API_TOKEN>` (fallback to `INGEST_TOKEN` if unset)
+- `Authorization: Bearer <member-issued trading bot token>`
 - `X-Client-Id: trading-bot-{name}`
 - `X-Request-Id: <uuid>`
+
+### TradingBot token issuance API (member -> web)
+
+- `GET /api/v1/tokens` (list own tokens)
+- `POST /api/v1/tokens` (issue new token)
+- `POST /api/v1/tokens/{id}/revoke` (revoke)
+
+Auth for token issuance endpoints:
+
+- Supabase user access token (`Authorization: Bearer <user_access_token>`)
 
 ## Required env
 
@@ -50,8 +61,7 @@ Read auth headers:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-INGEST_TOKEN=
-TRADINGBOT_API_TOKEN=
+DETECTOR_WRITE_TOKEN=
 ADMIN_EMAIL=
 APP_VERSION=1.0.0
 DEFAULT_TIMEZONE=Asia/Seoul
@@ -62,7 +72,7 @@ DEFAULT_TIMEZONE=Asia/Seoul
 ```bash
 GEMINI_BACKEND=developer
 GEMINI_API_KEY=
-INGEST_TOKEN=
+DETECTOR_WRITE_TOKEN=
 GOKSORRY_BASE_URL=http://localhost:3000
 DEFAULT_TIMEZONE=Asia/Seoul
 ```
@@ -93,7 +103,7 @@ python -m pierrot_detector run_once
 
 ## Security tip
 
-Generate token:
+Generate detector write token:
 
 ```bash
 openssl rand -hex 32
@@ -104,3 +114,4 @@ openssl rand -hex 32
 - LLM model is fixed to `gemini-2.5-flash-lite`.
 - Dedupe is done before LLM call via `/api/sentiment/exists`.
 - Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.
+- TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).

@@ -58,7 +58,7 @@ const freshnessSec = (asof: string, nowMs: number): number => {
 };
 
 export async function GET(request: Request) {
-  const auth = requireTradingBotReadAuth(request);
+  const auth = await requireTradingBotReadAuth(request);
   if (!auth.ok) {
     return auth.response;
   }

@@ -3,7 +3,7 @@ import { jsonError, requireTradingBotReadAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function GET(request: Request) {
-  const auth = requireTradingBotReadAuth(request);
+  const auth = await requireTradingBotReadAuth(request);
   if (!auth.ok) {
     return auth.response;
   }

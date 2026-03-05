@@ -14,7 +14,7 @@ const parseMarket = (value: string | null): "kr" | "us" | "all" | null => {
 };
 
 export async function GET(request: Request) {
-  const auth = requireTradingBotReadAuth(request);
+  const auth = await requireTradingBotReadAuth(request);
   if (!auth.ok) {
     return auth.response;
   }

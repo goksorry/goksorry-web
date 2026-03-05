@@ -5,7 +5,7 @@ import { getServiceSupabaseClient } from "@/lib/supabase/service";
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
 
 export async function GET(request: Request, { params }: { params: { symbol: string } }) {
-  const auth = requireTradingBotReadAuth(request);
+  const auth = await requireTradingBotReadAuth(request);
   if (!auth.ok) {
     return auth.response;
   }

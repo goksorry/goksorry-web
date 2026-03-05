@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const env = getServerEnv();
   const token = parseBearer(request);
 
-  if (!token || token !== env.INGEST_TOKEN) {
+  if (!token || token !== env.DETECTOR_WRITE_TOKEN) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
