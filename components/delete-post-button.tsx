@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function DeletePostButton({ postId, boardSlug }: { postId: string; boardSlug: string }) {
   const router = useRouter();
@@ -19,19 +18,8 @@ export function DeletePostButton({ postId, boardSlug }: { postId: string; boardS
     setLoading(true);
 
     try {
-      const supabase = getBrowserSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) {
-        setError("Login required");
-        return;
-      }
-
       const response = await fetch(`/api/community/posts/${postId}/delete`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        method: "POST"
       });
 
       const payload = await response.json().catch(() => ({}));

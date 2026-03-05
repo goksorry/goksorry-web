@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function CommentForm({ postId }: { postId: string }) {
   const router = useRouter();
@@ -16,20 +15,10 @@ export function CommentForm({ postId }: { postId: string }) {
     setLoading(true);
 
     try {
-      const supabase = getBrowserSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        setError("Login required: please sign in first.");
-        return;
-      }
-
       const response = await fetch("/api/community/comments", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           post_id: postId,

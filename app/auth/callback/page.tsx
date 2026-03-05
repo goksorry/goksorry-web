@@ -35,14 +35,29 @@ export default function AuthCallbackPage() {
 
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (token) {
-        await fetch("/api/auth/sync-profile", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }).catch(() => undefined);
+      if (!token) {
+        setStatus("OAuth completed, but session token is missing.");
+        return;
       }
+
+      const cookieResponse = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!cookieResponse.ok) {
+        const payload = await cookieResponse.json().catch(() => ({}));
+        setStatus(`Session finalize failed: ${String((payload as any)?.error ?? cookieResponse.status)}`);
+        return;
+      }
+
+      await fetch("/api/auth/sync-profile", {
+        method: "POST"
+      }).catch(() => undefined);
+
+      await supabase.auth.signOut().catch(() => undefined);
 
       if (!active) {
         return;

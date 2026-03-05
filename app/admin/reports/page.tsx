@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 type ReportRow = {
   id: string;
@@ -27,20 +26,8 @@ export default function AdminReportsPage() {
       setLoading(true);
       setError(null);
 
-      const supabase = getBrowserSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        setError("Login required.");
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch("/api/admin/reports", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        cache: "no-store"
       });
 
       const payload = await response.json().catch(() => ({}));

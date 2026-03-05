@@ -52,6 +52,14 @@ Read auth headers:
 Auth for token issuance endpoints:
 
 - Supabase user access token (`Authorization: Bearer <user_access_token>`)
+- Same-origin browser request required (`Origin` / `Sec-Fetch-Site` validation)
+- Responses use `Cache-Control: no-store`
+- Issue/revoke are rate-limited per user
+
+Auth session model:
+
+- Browser APIs use server-issued `HttpOnly` session cookie (`gks_session`).
+- Client-side components no longer attach bearer access tokens for normal community/admin writes.
 
 ## Required env
 
@@ -115,3 +123,4 @@ openssl rand -hex 32
 - Dedupe is done before LLM call via `/api/sentiment/exists`.
 - Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.
 - TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).
+- Security headers and CSP are applied via `web/middleware.ts`.

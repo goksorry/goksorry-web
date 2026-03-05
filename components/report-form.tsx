@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function ReportForm({
   targetType,
@@ -22,20 +21,10 @@ export function ReportForm({
     setMessage(null);
 
     try {
-      const supabase = getBrowserSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        setMessage("Login required");
-        return;
-      }
-
       const response = await fetch("/api/community/reports", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           target_type: targetType,

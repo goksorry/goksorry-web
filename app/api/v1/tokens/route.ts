@@ -2,10 +2,42 @@ import { NextResponse } from "next/server";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { generateTradingBotApiToken } from "@/lib/api-tokens";
 import { getRequestId, jsonError } from "@/lib/api-auth";
+import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const MAX_ACTIVE_TOKENS_PER_USER = 20;
+
+const requireSameOrigin = (request: Request, requestId: string): NextResponse | null => {
+  const origin = (request.headers.get("origin") ?? "").trim();
+  if (!origin) {
+    return jsonError(requestId, 403, "FORBIDDEN", "origin header required");
+  }
+
+  let expectedOrigin = "";
+  try {
+    expectedOrigin = new URL(request.url).origin;
+  } catch {
+    return jsonError(requestId, 400, "INVALID_QUERY", "invalid request url");
+  }
+
+  if (origin !== expectedOrigin) {
+    return jsonError(requestId, 403, "FORBIDDEN", "cross-origin token issuance is blocked");
+  }
+
+  const secFetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
+  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "same-site" && secFetchSite !== "none") {
+    return jsonError(requestId, 403, "FORBIDDEN", "untrusted fetch site");
+  }
+
+  return null;
+};
+
+const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextResponse => {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+};
 
 const asIsoOrNull = (value: unknown): string | null => {
   if (value === undefined || value === null || value === "") {
@@ -40,7 +72,7 @@ export async function GET(request: Request) {
     return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error.message);
   }
 
-  return NextResponse.json({
+  return jsonNoStore({
     status: "ok",
     tokens: data ?? []
   });
@@ -48,9 +80,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
+  const sameOriginError = requireSameOrigin(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
   const user = await getUserFromAuthorization(request);
   if (!user) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
+  }
+
+  if (!allowRateLimit(`token-issue:${user.id}`, 2)) {
+    return jsonError(requestId, 429, "RATE_LIMITED", "too many token creations. try again in a minute");
   }
 
   await ensureProfileForUser(user);
@@ -114,7 +155,7 @@ export async function POST(request: Request) {
     return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error?.message ?? "failed to create token");
   }
 
-  return NextResponse.json({
+  return jsonNoStore({
     status: "ok",
     token: {
       id: data.id,

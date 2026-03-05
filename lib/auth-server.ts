@@ -5,8 +5,9 @@ import { getPublicEnv, getServerEnv } from "@/lib/env";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const MIN_ACCOUNT_AGE_MINUTES = 15;
+export const SESSION_COOKIE_NAME = "gks_session";
 
-const getBearerToken = (request: Request): string | null => {
+const parseBearerToken = (request: Request): string | null => {
   const authHeader = request.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return null;
@@ -15,8 +16,37 @@ const getBearerToken = (request: Request): string | null => {
   return token || null;
 };
 
-export const getUserFromAuthorization = async (request: Request): Promise<User | null> => {
-  const token = getBearerToken(request);
+const parseCookieToken = (request: Request): string | null => {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookies = cookieHeader.split(";");
+  for (const part of cookies) {
+    const [rawName, ...rest] = part.trim().split("=");
+    if (!rawName || rest.length === 0) {
+      continue;
+    }
+
+    if (rawName !== SESSION_COOKIE_NAME) {
+      continue;
+    }
+
+    const rawValue = rest.join("=");
+    try {
+      const decoded = decodeURIComponent(rawValue);
+      return decoded || null;
+    } catch {
+      return rawValue || null;
+    }
+  }
+
+  return null;
+};
+
+export const getUserFromAccessToken = async (accessToken: string): Promise<User | null> => {
+  const token = accessToken.trim();
   if (!token) {
     return null;
   }
@@ -35,6 +65,15 @@ export const getUserFromAuthorization = async (request: Request): Promise<User |
   }
 
   return data.user;
+};
+
+export const getUserFromAuthorization = async (request: Request): Promise<User | null> => {
+  const token = parseBearerToken(request) ?? parseCookieToken(request);
+  if (!token) {
+    return null;
+  }
+
+  return getUserFromAccessToken(token);
 };
 
 export const isAdminEmail = (email?: string | null): boolean => {
