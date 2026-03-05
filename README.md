@@ -1,37 +1,106 @@
-# goksorry-web
+# goksorry.com MVP + pierrotDetector
 
-Next.js web service for goksorry.com.
+## 방향 (부담 낮은 구조)
 
-## Features
+- `web`이 단독 서비스로 동작하며 DB와 API를 제공한다.
+- `worker`는 별도 시스템에서 실행되고, web API만 호출해 데이터 등록한다.
+- TradingBot도 web API만 호출해 신호/시장 상태를 읽는다.
 
-- External sentiment feed (`/`)
-- Ingest API (`POST /api/ingest`)
-- Dedupe API for worker (`POST /api/sentiment/exists`)
-- Google OAuth community (boards/posts/comments/reports)
-- Admin reports (`/admin/reports`)
+## Repo structure
 
-## Environment
+- `web/` Next.js service (API provider)
+- `worker/` standalone Python worker (API client)
+- `db/migrations/` Supabase SQL
 
-Copy `.env.example` values into your deployment env.
+## DB migrations
 
-Required:
+1. `db/migrations/001_init.sql`
+2. `db/migrations/002_detector_api.sql`
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `INGEST_TOKEN`
-- `ADMIN_EMAIL`
-- `DEFAULT_TIMEZONE` (optional, default `Asia/Seoul`)
+## API summary
 
-## Local run
+### Detector write APIs (worker -> web)
+
+- `POST /api/ingest`
+- `POST /api/v1/detector/register`
+
+Auth:
+
+- `Authorization: Bearer <INGEST_TOKEN>`
+
+### TradingBot read APIs (bot -> web)
+
+- `GET /api/v1/health`
+- `GET /api/v1/signals/latest?market=kr|us|all&symbols=...&max_age_sec=...`
+- `GET /api/v1/signals/{symbol}`
+- `GET /api/v1/market/latest?market=kr|us|all`
+- `GET /api/v1/status`
+
+Read auth headers:
+
+- `Authorization: Bearer <TRADINGBOT_API_TOKEN>` (fallback to `INGEST_TOKEN` if unset)
+- `X-Client-Id: trading-bot-{name}`
+- `X-Request-Id: <uuid>`
+
+## Required env
+
+### web (`web/.env.local`)
 
 ```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+INGEST_TOKEN=
+TRADINGBOT_API_TOKEN=
+ADMIN_EMAIL=
+APP_VERSION=1.0.0
+DEFAULT_TIMEZONE=Asia/Seoul
+```
+
+### worker (`worker/.env`)
+
+```bash
+GEMINI_BACKEND=developer
+GEMINI_API_KEY=
+INGEST_TOKEN=
+GOKSORRY_BASE_URL=http://localhost:3000
+DEFAULT_TIMEZONE=Asia/Seoul
+```
+
+## Run web
+
+```bash
+cd web
 pnpm i
 pnpm dev
 ```
 
-## DB migration
+## Run worker
 
-Apply SQL in:
+```bash
+cd worker
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m pierrot_detector run_once
+```
 
-- `db/migrations/001_init.sql`
+## Cron (every 5 minutes)
+
+```cron
+*/5 * * * * cd /home/jujin/workspace/projects/goksorry/worker && . .venv/bin/activate && python -m pierrot_detector run_once >> /home/jujin/workspace/projects/goksorry/worker/worker.log 2>&1
+```
+
+## Security tip
+
+Generate token:
+
+```bash
+openssl rand -hex 32
+```
+
+## Notes
+
+- LLM model is fixed to `gemini-2.5-flash-lite`.
+- Dedupe is done before LLM call via `/api/sentiment/exists`.
+- Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.

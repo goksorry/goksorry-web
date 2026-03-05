@@ -19,6 +19,8 @@ export const getServerEnv = () => {
     SUPABASE_SERVICE_ROLE_KEY: required("SUPABASE_SERVICE_ROLE_KEY"),
     INGEST_TOKEN: required("INGEST_TOKEN"),
     ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
+    TRADINGBOT_API_TOKEN: process.env.TRADINGBOT_API_TOKEN ?? process.env.INGEST_TOKEN ?? "",
+    APP_VERSION: process.env.APP_VERSION ?? "1.0.0",
     DEFAULT_TIMEZONE: process.env.DEFAULT_TIMEZONE ?? "Asia/Seoul"
   };
 };
