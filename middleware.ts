@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+const CANONICAL_HOST = "goksorry.com";
+const LEGACY_HOSTS = new Set(["www.goksorry.com"]);
+
 const buildCsp = (nonce: string): string => {
   const isDev = process.env.NODE_ENV !== "production";
   const scriptDirectives = isDev
@@ -22,6 +25,15 @@ const buildCsp = (nonce: string): string => {
 };
 
 export function middleware(request: NextRequest) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const requestHost = (forwardedHost ?? request.nextUrl.host).toLowerCase();
+
+  if (LEGACY_HOSTS.has(requestHost)) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.hostname = CANONICAL_HOST;
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   const nonce = crypto.randomUUID().replace(/-/g, "");
   const csp = buildCsp(nonce);
 

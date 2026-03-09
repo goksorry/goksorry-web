@@ -76,6 +76,8 @@ DEFAULT_TIMEZONE=Asia/Seoul
 
 Local Next.js app origin is `http://localhost:3000`.
 No separate app base URL env is used by the current code.
+Production canonical domain is `https://goksorry.com`.
+Set the Vercel primary domain to the apex host, not `www.goksorry.com`, so detector API clients do not lose `Authorization` on cross-host redirects.
 
 ### worker (`worker/.env`)
 
@@ -126,3 +128,4 @@ openssl rand -hex 32
 - Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.
 - TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).
 - Security headers and CSP are applied via `web/middleware.ts`.
+- The app redirects `www.goksorry.com` to `goksorry.com` at the edge to keep a single canonical host.
