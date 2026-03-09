@@ -27,6 +27,20 @@ type FeedRow = {
   analyzed_at: string;
 };
 
+type SentimentRow = {
+  post_key: string;
+  label: "bullish" | "bearish" | "neutral";
+  confidence: number;
+  analyzed_at: string;
+};
+
+type ExternalPostRow = {
+  post_key: string;
+  source: string;
+  title: string;
+  url: string;
+};
+
 const toLocalTime = (iso: string, timezone: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
@@ -56,32 +70,62 @@ export default async function Home({
   const rangeHours = rangeHoursMap[selectedRange] ?? 24;
 
   const service = getServiceSupabaseClient();
-  const { data, error } = await service
+  const { data: sentimentData, error: sentimentError } = await service
     .from("sentiment_results")
-    .select("post_key,label,confidence,analyzed_at,external_posts(source,title,url)")
+    .select("post_key,label,confidence,analyzed_at")
     .order("analyzed_at", { ascending: false })
     .limit(500);
 
   const timezone = getTimezone();
+  const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => ({
+    post_key: String(item.post_key),
+    label: String(item.label) as SentimentRow["label"],
+    confidence: Number(item.confidence ?? 0),
+    analyzed_at: String(item.analyzed_at)
+  }));
 
-  const rows: FeedRow[] = (data ?? []).flatMap((item: any) => {
-    const ext = Array.isArray(item.external_posts) ? item.external_posts[0] : item.external_posts;
+  const postKeys = sentimentRows.map((row) => row.post_key);
+  let externalErrorMessage = "";
+  let externalRows: ExternalPostRow[] = [];
+
+  if (postKeys.length > 0) {
+    const { data: externalData, error: externalError } = await service
+      .from("external_posts")
+      .select("post_key,source,title,url")
+      .in("post_key", postKeys);
+
+    if (externalError) {
+      externalErrorMessage = externalError.message;
+    } else {
+      externalRows = (externalData ?? []).map((item: any) => ({
+        post_key: String(item.post_key),
+        source: String(item.source),
+        title: String(item.title),
+        url: String(item.url)
+      }));
+    }
+  }
+
+  const externalByPostKey = new Map(externalRows.map((row) => [row.post_key, row]));
+  const rows: FeedRow[] = sentimentRows.flatMap((item) => {
+    const ext = externalByPostKey.get(item.post_key);
     if (!ext) {
       return [];
     }
 
     return [
       {
-        post_key: String(item.post_key),
-        source: String(ext.source),
-        title: String(ext.title),
-        url: String(ext.url),
-        label: String(item.label) as FeedRow["label"],
-        confidence: Number(item.confidence ?? 0),
-        analyzed_at: String(item.analyzed_at)
+        post_key: item.post_key,
+        source: ext.source,
+        title: ext.title,
+        url: ext.url,
+        label: item.label,
+        confidence: item.confidence,
+        analyzed_at: item.analyzed_at
       }
     ];
   });
+  const errorMessage = sentimentError?.message || externalErrorMessage;
 
   const sourceOptions = [...new Set(rows.map((row) => row.source))].sort();
   const nowMs = Date.now();
@@ -162,15 +206,15 @@ export default async function Home({
               </tr>
             </thead>
             <tbody>
-              {error ? (
+              {errorMessage ? (
                 <tr>
                   <td colSpan={5} className="error">
-                    Failed to load feed: {error.message}
+                    Failed to load feed: {errorMessage}
                   </td>
                 </tr>
               ) : null}
 
-              {!error && filteredRows.length === 0 ? (
+              {!errorMessage && filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="muted">
                     No rows for current filters.
