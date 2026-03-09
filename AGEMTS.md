@@ -17,7 +17,6 @@
 - Public sentiment feed (`/`)
 - Community MVP (Google OAuth only)
 - Worker integration APIs:
-  - `POST /api/sentiment/exists` (dedupe lookup)
   - `POST /api/ingest` (idempotent upsert)
   - `POST /api/v1/detector/register` (aggregated snapshot)
 - TradingBot read APIs (`/api/v1/*`)

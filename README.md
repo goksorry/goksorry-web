@@ -22,7 +22,6 @@
 ### Detector write APIs (worker -> web)
 
 - `POST /api/ingest`
-- `POST /api/sentiment/exists`
 - `POST /api/v1/detector/register`
 
 Auth:
@@ -66,14 +65,17 @@ Auth session model:
 ### web (`web/.env.local`)
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-DETECTOR_WRITE_TOKEN=
-ADMIN_EMAIL=
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=local-dev-anon-key
+SUPABASE_SERVICE_ROLE_KEY=local-dev-service-role-key
+DETECTOR_WRITE_TOKEN=local-dev-detector-token
+ADMIN_EMAIL=admin@example.com
 APP_VERSION=1.0.0
 DEFAULT_TIMEZONE=Asia/Seoul
 ```
+
+Local Next.js app origin is `http://localhost:3000`.
+No separate app base URL env is used by the current code.
 
 ### worker (`worker/.env`)
 
@@ -81,7 +83,7 @@ DEFAULT_TIMEZONE=Asia/Seoul
 GEMINI_BACKEND=developer
 GEMINI_API_KEY=
 DETECTOR_WRITE_TOKEN=
-GOKSORRY_BASE_URL=http://localhost:3000
+GOKSORRY_BASE_URL=https://goksorry.com
 DEFAULT_TIMEZONE=Asia/Seoul
 ```
 
@@ -120,7 +122,7 @@ openssl rand -hex 32
 ## Notes
 
 - LLM model is fixed to `gemini-2.5-flash-lite`.
-- Dedupe is done before LLM call via `/api/sentiment/exists`.
+- Dedupe is done locally before LLM calls via `.queue/processed_post_keys.txt` to reduce worker -> web traffic.
 - Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.
 - TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).
 - Security headers and CSP are applied via `web/middleware.ts`.
