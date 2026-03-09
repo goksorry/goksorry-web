@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/admin/reports">Admin Reports</Link>
             </nav>
             <div className="auth">
-              <AuthControls />
+              <Suspense fallback={<button type="button" disabled>Google Login</button>}>
+                <AuthControls />
+              </Suspense>
             </div>
           </header>
           <main className="main">{children}</main>

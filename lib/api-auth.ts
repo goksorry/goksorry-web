@@ -141,12 +141,14 @@ export const requireTradingBotReadAuth = async (
     };
   }
 
-  await service
-    .from("api_access_tokens")
-    .update({ last_used_at: new Date().toISOString() })
-    .eq("id", data.id)
-    .then(() => undefined)
-    .catch(() => undefined);
+  try {
+    await service
+      .from("api_access_tokens")
+      .update({ last_used_at: new Date().toISOString() })
+      .eq("id", data.id);
+  } catch {
+    // last_used_at is best-effort metadata and should not block auth success
+  }
 
   return {
     ok: true,

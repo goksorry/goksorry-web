@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
@@ -11,7 +11,7 @@ const normalizeNext = (value: string | null): string => {
   return value.startsWith("/") ? value : "/";
 };
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Completing OAuth sign-in...");
@@ -80,5 +80,20 @@ export default function AuthCallbackPage() {
       <h1>OAuth Callback</h1>
       <p className="muted">{status}</p>
     </section>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="panel">
+          <h1>OAuth Callback</h1>
+          <p className="muted">Completing OAuth sign-in...</p>
+        </section>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
