@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { fetchRecentFeedRows, filterRowsBySourceGroup, getFeedExactSourceOptions } from "@/lib/feed-data";
+import { SOURCE_GROUPS, isSourceGroupId, type SourceGroupId } from "@/lib/feed-source-groups";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { getTimezone } from "@/lib/env";
 
@@ -15,30 +17,6 @@ const rangeHoursMap: Record<string, number> = {
   "1h": 1,
   "6h": 6,
   "24h": 24
-};
-
-type FeedRow = {
-  post_key: string;
-  source: string;
-  title: string;
-  url: string;
-  label: "bullish" | "bearish" | "neutral";
-  confidence: number;
-  analyzed_at: string;
-};
-
-type SentimentRow = {
-  post_key: string;
-  label: "bullish" | "bearish" | "neutral";
-  confidence: number;
-  analyzed_at: string;
-};
-
-type ExternalPostRow = {
-  post_key: string;
-  source: string;
-  title: string;
-  url: string;
 };
 
 const toLocalTime = (iso: string, timezone: string): string => {
@@ -65,72 +43,22 @@ export default async function Home({
   searchParams?: Record<string, QueryValue>;
 }) {
   const selectedSource = pickFirst(searchParams?.source);
+  const selectedChannelRaw = pickFirst(searchParams?.channel);
+  const selectedChannel: SourceGroupId | "" = isSourceGroupId(selectedChannelRaw) ? selectedChannelRaw : "";
   const selectedLabel = pickFirst(searchParams?.label) as "bullish" | "bearish" | "neutral" | "";
   const selectedRange = pickFirst(searchParams?.range) || "24h";
   const rangeHours = rangeHoursMap[selectedRange] ?? 24;
 
   const service = getServiceSupabaseClient();
-  const { data: sentimentData, error: sentimentError } = await service
-    .from("sentiment_results")
-    .select("post_key,label,confidence,analyzed_at")
-    .order("analyzed_at", { ascending: false })
-    .limit(500);
+  const { rows, errorMessage } = await fetchRecentFeedRows(service, { hours: rangeHours, limit: 500 });
 
   const timezone = getTimezone();
-  const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => ({
-    post_key: String(item.post_key),
-    label: String(item.label) as SentimentRow["label"],
-    confidence: Number(item.confidence ?? 0),
-    analyzed_at: String(item.analyzed_at)
-  }));
-
-  const postKeys = sentimentRows.map((row) => row.post_key);
-  let externalErrorMessage = "";
-  let externalRows: ExternalPostRow[] = [];
-
-  if (postKeys.length > 0) {
-    const { data: externalData, error: externalError } = await service
-      .from("external_posts")
-      .select("post_key,source,title,url")
-      .in("post_key", postKeys);
-
-    if (externalError) {
-      externalErrorMessage = externalError.message;
-    } else {
-      externalRows = (externalData ?? []).map((item: any) => ({
-        post_key: String(item.post_key),
-        source: String(item.source),
-        title: String(item.title),
-        url: String(item.url)
-      }));
-    }
-  }
-
-  const externalByPostKey = new Map(externalRows.map((row) => [row.post_key, row]));
-  const rows: FeedRow[] = sentimentRows.flatMap((item) => {
-    const ext = externalByPostKey.get(item.post_key);
-    if (!ext) {
-      return [];
-    }
-
-    return [
-      {
-        post_key: item.post_key,
-        source: ext.source,
-        title: ext.title,
-        url: ext.url,
-        label: item.label,
-        confidence: item.confidence,
-        analyzed_at: item.analyzed_at
-      }
-    ];
-  });
-  const errorMessage = sentimentError?.message || externalErrorMessage;
-
-  const sourceOptions = [...new Set(rows.map((row) => row.source))].sort();
+  const channelFilteredRows = filterRowsBySourceGroup(rows, selectedChannel);
+  const sourceOptions = getFeedExactSourceOptions(channelFilteredRows);
+  const normalizedSelectedSource = sourceOptions.includes(selectedSource) ? selectedSource : "";
   const nowMs = Date.now();
-  const filteredRows = rows.filter((row) => {
-    if (selectedSource && row.source !== selectedSource) {
+  const filteredRows = channelFilteredRows.filter((row) => {
+    if (normalizedSelectedSource && row.source !== normalizedSelectedSource) {
       return false;
     }
     if (selectedLabel && row.label !== selectedLabel) {
@@ -156,8 +84,20 @@ export default async function Home({
 
         <form className="actions" method="get">
           <label className="inline">
+            <span>Channel</span>
+            <select name="channel" defaultValue={selectedChannel}>
+              <option value="">All Communities</option>
+              {SOURCE_GROUPS.map((group) => (
+                <option value={group.id} key={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="inline">
             <span>Source</span>
-            <select name="source" defaultValue={selectedSource}>
+            <select name="source" defaultValue={normalizedSelectedSource}>
               <option value="">All</option>
               {sourceOptions.map((source) => (
                 <option value={source} key={source}>
