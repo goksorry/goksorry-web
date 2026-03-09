@@ -62,6 +62,10 @@ const stripTags = (html: string): string => {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 };
 
+const compactInlineNumber = (html: string): string => {
+  return stripTags(html).replace(/\s+/g, "");
+};
+
 const parseNumber = (value: string): number | null => {
   const normalized = value.replace(/[^0-9+.,-]/g, "").replace(/,/g, "");
   if (!normalized) {
@@ -119,9 +123,9 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
     const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
     const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
     const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
-    const value = stripTags(todayBlock);
-    const delta = stripTags(exdayEmMatches[0]?.[1] ?? "");
-    const percent = stripTags(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, "");
+    const value = compactInlineNumber(todayBlock);
+    const delta = compactInlineNumber(exdayEmMatches[0]?.[1] ?? "");
+    const percent = compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, "");
     const tone: IndicatorTone =
       exdayBlock.includes("ico minus") || exdayBlock.includes("no_down")
         ? "down"
@@ -227,4 +231,3 @@ export const buildOverviewData = async (): Promise<OverviewPayload> => {
     community_indicators: communityIndicators
   };
 };
-
