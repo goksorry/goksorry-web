@@ -14,7 +14,7 @@ const normalizeNext = (value: string | null): string => {
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState("Completing OAuth sign-in...");
+  const [status, setStatus] = useState("구글 로그인 처리를 마무리하는 중입니다...");
 
   const code = useMemo(() => searchParams.get("code"), [searchParams]);
   const nextPath = useMemo(() => normalizeNext(searchParams.get("next")), [searchParams]);
@@ -28,7 +28,7 @@ function AuthCallbackContent() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          setStatus(`OAuth error: ${error.message}`);
+          setStatus(`OAuth 오류: ${error.message}`);
           return;
         }
       }
@@ -36,7 +36,7 @@ function AuthCallbackContent() {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) {
-        setStatus("OAuth completed, but session token is missing.");
+        setStatus("OAuth는 끝났지만 세션 토큰을 받지 못했습니다.");
         return;
       }
 
@@ -49,7 +49,7 @@ function AuthCallbackContent() {
 
       if (!cookieResponse.ok) {
         const payload = await cookieResponse.json().catch(() => ({}));
-        setStatus(`Session finalize failed: ${String((payload as any)?.error ?? cookieResponse.status)}`);
+        setStatus(`세션 마무리에 실패했습니다: ${String((payload as any)?.error ?? cookieResponse.status)}`);
         return;
       }
 
@@ -67,7 +67,7 @@ function AuthCallbackContent() {
     };
 
     run().catch((error) => {
-      setStatus(`Callback failed: ${String(error)}`);
+      setStatus(`콜백 처리 실패: ${String(error)}`);
     });
 
     return () => {
@@ -77,7 +77,7 @@ function AuthCallbackContent() {
 
   return (
     <section className="panel">
-      <h1>OAuth Callback</h1>
+      <h1>구글 로그인 콜백</h1>
       <p className="muted">{status}</p>
     </section>
   );
@@ -88,8 +88,8 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <section className="panel">
-          <h1>OAuth Callback</h1>
-          <p className="muted">Completing OAuth sign-in...</p>
+          <h1>구글 로그인 콜백</h1>
+          <p className="muted">구글 로그인 처리를 마무리하는 중입니다...</p>
         </section>
       }
     >

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { buildSourceGroupSummaries, fetchRecentFeedRows, type SourceGroupSummary } from "@/lib/feed-data";
 
@@ -15,6 +16,11 @@ export type MarketIndicator = {
 export type OverviewPayload = {
   generated_at: string;
   market_indicators: MarketIndicator[];
+  community_indicators: SourceGroupSummary[];
+};
+
+export type CommunityIndicatorsPayload = {
+  generated_at: string;
   community_indicators: SourceGroupSummary[];
 };
 
@@ -82,11 +88,28 @@ const formatNumber = (value: number, digits = 2): string => {
   }).format(value);
 };
 
+const formatRegime = (value: string): string => {
+  switch (value.toLowerCase()) {
+    case "bullish":
+    case "bull_run":
+    case "risk_on":
+      return "희망 우세";
+    case "bearish":
+    case "bear_risk":
+    case "risk_off":
+      return "공포 우세";
+    case "neutral":
+      return "중립";
+    default:
+      return value.replace(/_/g, " ");
+  }
+};
+
 const fallbackIndicator = (id: string, label: string, note: string): MarketIndicator => ({
   id,
   label,
   value_text: "--",
-  delta_text: "unavailable",
+  delta_text: "데이터 없음",
   tone: "flat",
   note
 });
@@ -97,7 +120,7 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
     const payload = JSON.parse(raw) as NaverServiceIndexResponse;
     const item = payload.result?.areas?.find((area) => area.name === "SERVICE_INDEX")?.datas?.[0];
     if (!item || typeof item.nv !== "number" || typeof item.cv !== "number" || typeof item.cr !== "number") {
-      return fallbackIndicator(code.toLowerCase(), label, "feed pending");
+      return fallbackIndicator(code.toLowerCase(), label, "지수 대기 중");
     }
 
     const value = item.nv / 100;
@@ -110,10 +133,10 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
       value_text: formatNumber(value, 2),
       delta_text: `${change >= 0 ? "+" : ""}${formatNumber(change, 2)} (${item.cr >= 0 ? "+" : ""}${item.cr.toFixed(2)}%)`,
       tone,
-      note: item.ms === "CLOSE" ? "장마감 기준" : "실시간"
+      note: item.ms === "CLOSE" ? "장 마감 기준" : "5분 캐시"
     };
   } catch {
-    return fallbackIndicator(code.toLowerCase(), label, "naver index timeout");
+    return fallbackIndicator(code.toLowerCase(), label, "네이버 지수 응답 지연");
   }
 };
 
@@ -134,7 +157,7 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
           : "flat";
 
     if (!value) {
-      return fallbackIndicator("nasdaq", "NASDAQ", "world quote pending");
+      return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 대기 중");
     }
 
     return {
@@ -143,10 +166,10 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       value_text: value,
       delta_text: [delta, percent].filter(Boolean).join(" "),
       tone,
-      note: "네이버 해외지수"
+      note: "네이버 해외지수 · 5분 캐시"
     };
   } catch {
-    return fallbackIndicator("nasdaq", "NASDAQ", "world quote timeout");
+    return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 응답 지연");
   }
 };
 
@@ -164,7 +187,7 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
 
     const valueText = stripTags(value);
     if (!valueText) {
-      return fallbackIndicator("usdkrw", "원/달러 환율", "fx pending");
+      return fallbackIndicator("usdkrw", "원/달러 환율", "환율 데이터 대기 중");
     }
 
     const changeNumber = parseNumber(stripTags(change));
@@ -174,10 +197,10 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
       value_text: valueText,
       delta_text: changeNumber === null ? "변동 정보 없음" : `${changeNumber >= 0 ? "+" : ""}${formatNumber(changeNumber, 2)} KRW`,
       tone,
-      note: "네이버 환율"
+      note: "네이버 환율 · 5분 캐시"
     };
   } catch {
-    return fallbackIndicator("usdkrw", "원/달러 환율", "fx timeout");
+    return fallbackIndicator("usdkrw", "원/달러 환율", "환율 응답 지연");
   }
 };
 
@@ -191,7 +214,7 @@ const fetchFearGreedIndicator = async (): Promise<MarketIndicator> => {
       .maybeSingle();
 
     if (error || !data) {
-      return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "detector pending");
+      return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "미국장 스냅샷 대기 중");
     }
 
     const fearIndex = Number(data.fear_index ?? 50);
@@ -203,20 +226,16 @@ const fetchFearGreedIndicator = async (): Promise<MarketIndicator> => {
       id: "fear-greed",
       label: "미장 공포탐욕지수",
       value_text: `${fearIndex.toFixed(1)} / 100`,
-      delta_text: regime.replace(/_/g, " "),
+      delta_text: formatRegime(regime),
       tone,
-      note: symbolCount > 0 ? `감지 심볼 ${symbolCount}개` : "detector snapshot"
+      note: symbolCount > 0 ? `감지 종목 ${symbolCount}개` : "스냅샷 대기 중"
     };
   } catch {
-    return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "detector timeout");
+    return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "미국장 스냅샷 지연");
   }
 };
 
-export const buildOverviewData = async (): Promise<OverviewPayload> => {
-  const service = getServiceSupabaseClient();
-  const { rows } = await fetchRecentFeedRows(service, { hours: 24, limit: 600 });
-  const communityIndicators = buildSourceGroupSummaries(rows);
-
+const buildMarketOverview = async (): Promise<Pick<OverviewPayload, "generated_at" | "market_indicators">> => {
   const marketIndicators = await Promise.all([
     fetchServiceIndex("KOSPI", "KOSPI"),
     fetchServiceIndex("KOSDAQ", "KOSDAQ"),
@@ -227,7 +246,34 @@ export const buildOverviewData = async (): Promise<OverviewPayload> => {
 
   return {
     generated_at: new Date().toISOString(),
-    market_indicators: marketIndicators,
+    market_indicators: marketIndicators
+  };
+};
+
+export const getCachedMarketOverview = unstable_cache(buildMarketOverview, ["market-overview"], {
+  revalidate: MARKET_TTL_SEC
+});
+
+export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
+  const service = getServiceSupabaseClient();
+  const { rows } = await fetchRecentFeedRows(service, { hours: 24, limit: 600 });
+  const communityIndicators = buildSourceGroupSummaries(rows);
+
+  return {
+    generated_at: new Date().toISOString(),
     community_indicators: communityIndicators
+  };
+};
+
+export const buildOverviewData = async (): Promise<OverviewPayload> => {
+  const [marketOverview, communityOverview] = await Promise.all([
+    getCachedMarketOverview(),
+    buildCommunityIndicatorsData()
+  ]);
+
+  return {
+    generated_at: marketOverview.generated_at,
+    market_indicators: marketOverview.market_indicators,
+    community_indicators: communityOverview.community_indicators
   };
 };

@@ -36,7 +36,7 @@ export default function AdminReportsPage() {
       }
 
       if (!response.ok) {
-        setError(payload.error ?? "Failed to load reports");
+        setError(payload.error ?? "신고 목록을 불러오지 못했습니다.");
         setReports([]);
       } else {
         setReports(Array.isArray(payload.reports) ? payload.reports : []);
@@ -59,10 +59,12 @@ export default function AdminReportsPage() {
 
   return (
     <section className="panel">
-      <h1>Admin Reports</h1>
-      <p className="muted">Only ADMIN_EMAIL users can load this page.</p>
+      <h1>신고 관리</h1>
+      <p className="muted">
+        <code>ADMIN_EMAIL</code>에 등록된 계정만 이 화면을 볼 수 있습니다.
+      </p>
 
-      {loading ? <p className="muted">Loading...</p> : null}
+      {loading ? <p className="muted">불러오는 중...</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       {!loading && !error ? (
@@ -70,31 +72,31 @@ export default function AdminReportsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Created</th>
-                <th>Target</th>
-                <th>Reason</th>
-                <th>Reporter</th>
-                <th>Status</th>
+                <th>접수 시각</th>
+                <th>대상</th>
+                <th>사유</th>
+                <th>신고자</th>
+                <th>상태</th>
               </tr>
             </thead>
             <tbody>
               {reports.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="muted">
-                    No reports.
+                    접수된 신고가 없습니다.
                   </td>
                 </tr>
               ) : null}
 
               {reports.map((row) => (
                 <tr key={row.id}>
-                  <td>{new Date(row.created_at).toLocaleString()}</td>
+                  <td>{new Date(row.created_at).toLocaleString("ko-KR")}</td>
                   <td>
                     {row.target_type} / {row.target_id}
                   </td>
                   <td>{row.reason}</td>
                   <td>
-                    {row.reporter_nickname ?? "unknown"}
+                    {row.reporter_nickname ?? "알 수 없음"}
                     <br />
                     <span className="muted">{row.reporter_email ?? row.reporter_id}</span>
                   </td>

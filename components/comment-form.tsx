@@ -28,7 +28,7 @@ export function CommentForm({ postId }: { postId: string }) {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(payload.error ?? "Failed to add comment");
+        setError(payload.error ?? "댓글 등록에 실패했습니다.");
         return;
       }
 
@@ -44,13 +44,13 @@ export function CommentForm({ postId }: { postId: string }) {
   return (
     <form onSubmit={onSubmit} className="grid" style={{ marginTop: "1rem" }}>
       <label className="form-row">
-        <span>Add comment</span>
+        <span>댓글 작성</span>
         <textarea
           name="content"
           value={content}
           onChange={(event) => setContent(event.target.value)}
           maxLength={3000}
-          placeholder="Plain text only"
+          placeholder="평문만 입력할 수 있습니다"
           required
         />
       </label>
@@ -59,7 +59,7 @@ export function CommentForm({ postId }: { postId: string }) {
 
       <div className="actions">
         <button type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Add Comment"}
+          {loading ? "등록 중..." : "댓글 등록"}
         </button>
       </div>
     </form>

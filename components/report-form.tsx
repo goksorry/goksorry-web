@@ -35,12 +35,12 @@ export function ReportForm({
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage(payload.error ?? "Report failed");
+        setMessage(payload.error ?? "신고에 실패했습니다.");
         return;
       }
 
       setReason("");
-      setMessage("Reported");
+      setMessage("신고되었습니다.");
     } finally {
       setLoading(false);
     }
@@ -53,11 +53,11 @@ export function ReportForm({
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           maxLength={300}
-          placeholder="reason (optional)"
+          placeholder="신고 사유 (선택)"
         />
       ) : null}
       <button type="submit" className="btn-secondary" disabled={loading}>
-        {loading ? "..." : "Report"}
+        {loading ? "..." : "신고"}
       </button>
       {message ? <span className="muted">{message}</span> : null}
     </form>

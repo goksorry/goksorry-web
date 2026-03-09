@@ -9,7 +9,7 @@ export function DeletePostButton({ postId, boardSlug }: { postId: string; boardS
   const [error, setError] = useState<string | null>(null);
 
   const onDelete = async () => {
-    const confirmed = window.confirm("Soft delete this post? (author/admin only)");
+    const confirmed = window.confirm("이 글을 삭제 처리할까요? 작성자 또는 관리자만 가능합니다.");
     if (!confirmed) {
       return;
     }
@@ -24,7 +24,7 @@ export function DeletePostButton({ postId, boardSlug }: { postId: string; boardS
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(payload.error ?? "Delete failed");
+        setError(payload.error ?? "삭제에 실패했습니다.");
         return;
       }
 
@@ -38,7 +38,7 @@ export function DeletePostButton({ postId, boardSlug }: { postId: string; boardS
   return (
     <div className="inline">
       <button type="button" className="btn-danger" onClick={onDelete} disabled={loading}>
-        {loading ? "Deleting..." : "Delete post"}
+        {loading ? "삭제 중..." : "글 삭제"}
       </button>
       {error ? <span className="error">{error}</span> : null}
     </div>

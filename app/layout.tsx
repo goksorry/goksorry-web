@@ -3,29 +3,29 @@ import { Suspense } from "react";
 import Link from "next/link";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
-import { MarketOverview } from "@/components/market-overview";
+import { MarketOverviewShell } from "@/components/market-overview-shell";
 
 export const metadata: Metadata = {
-  title: "goksorry.com MVP",
-  description: "Sentiment feed + community MVP"
+  title: "곡소리닷컴",
+  description: "외부 종목 커뮤니티 감성 피드와 커뮤니티"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <body>
         <div className="layout">
           <header className="header">
             <nav className="nav">
               <Link className="brand" href="/">
-                goksorry.com
+                곡소리닷컴
               </Link>
-              <Link href="/">Feed</Link>
-              <Link href="/community">Community</Link>
-              <Link href="/admin/reports">Admin Reports</Link>
+              <Link href="/">피드</Link>
+              <Link href="/community">커뮤니티</Link>
+              <Link href="/admin/reports">신고 관리</Link>
             </nav>
             <div className="auth">
-              <Suspense fallback={<button type="button" disabled>Google Login</button>}>
+              <Suspense fallback={<button type="button" disabled>구글 로그인</button>}>
                 <AuthControls />
               </Suspense>
             </div>
@@ -36,15 +36,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <section className="overview-panel">
                   <div className="overview-heading">
                     <div>
-                      <p className="overview-kicker">Market & Community Pulse</p>
+                      <p className="overview-kicker">시장 · 커뮤니티 체감</p>
                       <h2>실시간 체감 지수</h2>
                     </div>
-                    <p className="muted">상단 지수를 불러오는 중</p>
+                    <p className="muted">캐시 지수 준비 중</p>
                   </div>
                 </section>
               }
             >
-              <MarketOverview />
+              <MarketOverviewShell />
             </Suspense>
             {children}
           </main>

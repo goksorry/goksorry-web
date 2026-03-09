@@ -47,7 +47,8 @@ export default async function PostDetailPage({
       <section className="panel">
         <h1>{post.title}</h1>
         <p className="muted">
-          board: /{board.slug} | author: {author?.nickname ?? "unknown"} | {new Date(post.created_at).toLocaleString()}
+          게시판: /{board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
+          {new Date(post.created_at).toLocaleString("ko-KR")}
         </p>
         <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
 
@@ -57,13 +58,13 @@ export default async function PostDetailPage({
         </div>
 
         <p>
-          <Link href={`/community/${board.slug}`}>Back to board</Link>
+          <Link href={`/community/${board.slug}`}>게시판으로 돌아가기</Link>
         </p>
       </section>
 
       <section className="panel">
-        <h2>Comments</h2>
-        {commentsError ? <p className="error">Comment query failed: {commentsError.message}</p> : null}
+        <h2>댓글</h2>
+        {commentsError ? <p className="error">댓글 조회 실패: {commentsError.message}</p> : null}
 
         <div className="list">
           {(comments ?? []).map((comment: any) => {
@@ -72,13 +73,13 @@ export default async function PostDetailPage({
               <article key={comment.id} className="card">
                 <p style={{ whiteSpace: "pre-wrap" }}>{comment.content}</p>
                 <p className="muted">
-                  by {commentAuthor?.nickname ?? "unknown"} at {new Date(comment.created_at).toLocaleString()}
+                  작성자 {commentAuthor?.nickname ?? "알 수 없음"} · {new Date(comment.created_at).toLocaleString("ko-KR")}
                 </p>
                 <ReportForm targetType="comment" targetId={comment.id} compact />
               </article>
             );
           })}
-          {(comments ?? []).length === 0 ? <p className="muted">No comments yet.</p> : null}
+          {(comments ?? []).length === 0 ? <p className="muted">아직 댓글이 없습니다.</p> : null}
         </div>
 
         <CommentForm postId={post.id} />

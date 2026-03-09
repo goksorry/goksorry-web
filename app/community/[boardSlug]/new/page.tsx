@@ -17,11 +17,11 @@ export default async function NewPostPage({ params }: { params: { boardSlug: str
 
   return (
     <section className="panel">
-      <h1>Write post in {board.name}</h1>
-      <p className="muted">Google login is required. Plain text only.</p>
+      <h1>{board.name}에 글쓰기</h1>
+      <p className="muted">구글 로그인이 필요하며, 입력은 평문만 허용됩니다.</p>
       <NewPostForm boardSlug={board.slug} />
       <p>
-        <Link href={`/community/${board.slug}`}>Back to board</Link>
+        <Link href={`/community/${board.slug}`}>게시판으로 돌아가기</Link>
       </p>
     </section>
   );

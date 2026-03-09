@@ -100,16 +100,16 @@ export function AuthControls() {
   if (!snapshot.authenticated) {
     return (
       <button type="button" onClick={signInWithGoogle} disabled={loading}>
-        {loading ? "Signing in..." : "Google Login"}
+        {loading ? "로그인 중..." : "구글 로그인"}
       </button>
     );
   }
 
   return (
     <div className="inline">
-      <span className="muted">{snapshot.email ?? "Logged in"}</span>
+      <span className="muted">{snapshot.email ?? "로그인됨"}</span>
       <button type="button" className="btn-secondary" onClick={signOut} disabled={loading}>
-        Logout
+        로그아웃
       </button>
     </div>
   );

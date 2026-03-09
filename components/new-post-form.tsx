@@ -30,7 +30,7 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(payload.error ?? "Failed to create post");
+        setError(payload.error ?? "글 작성에 실패했습니다.");
         return;
       }
 
@@ -48,25 +48,25 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
   return (
     <form onSubmit={onSubmit} className="grid">
       <label className="form-row">
-        <span>Title</span>
+        <span>제목</span>
         <input
           name="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={200}
-          placeholder="Write a plain-text title"
+          placeholder="평문 제목을 입력하세요"
           required
         />
       </label>
 
       <label className="form-row">
-        <span>Content</span>
+        <span>내용</span>
         <textarea
           name="content"
           value={content}
           onChange={(event) => setContent(event.target.value)}
           maxLength={5000}
-          placeholder="Write plain-text content"
+          placeholder="평문 내용을 입력하세요"
           required
         />
       </label>
@@ -75,7 +75,7 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
 
       <div className="actions">
         <button type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Submit"}
+          {loading ? "등록 중..." : "등록"}
         </button>
       </div>
     </form>

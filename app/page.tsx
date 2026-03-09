@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchRecentFeedRows, filterRowsBySourceGroup, getFeedExactSourceOptions } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, type SourceGroupId } from "@/lib/feed-source-groups";
+import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { getTimezone } from "@/lib/env";
 
@@ -25,7 +26,7 @@ const toLocalTime = (iso: string, timezone: string): string => {
     return iso;
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -45,7 +46,6 @@ export default async function Home({
   const selectedSource = pickFirst(searchParams?.source);
   const selectedChannelRaw = pickFirst(searchParams?.channel);
   const selectedChannel: SourceGroupId | "" = isSourceGroupId(selectedChannelRaw) ? selectedChannelRaw : "";
-  const selectedLabel = pickFirst(searchParams?.label) as "bullish" | "bearish" | "neutral" | "";
   const selectedRange = pickFirst(searchParams?.range) || "24h";
   const rangeHours = rangeHoursMap[selectedRange] ?? 24;
 
@@ -61,9 +61,6 @@ export default async function Home({
     if (normalizedSelectedSource && row.source !== normalizedSelectedSource) {
       return false;
     }
-    if (selectedLabel && row.label !== selectedLabel) {
-      return false;
-    }
 
     const analyzedAtMs = new Date(row.analyzed_at).getTime();
     if (Number.isNaN(analyzedAtMs)) {
@@ -72,21 +69,23 @@ export default async function Home({
 
     return nowMs - analyzedAtMs <= rangeHours * 60 * 60 * 1000;
   });
+  const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
+  const fearRows = actionableRows.filter((row) => row.label === "bearish");
+  const hopeRows = actionableRows.filter((row) => row.label === "bullish");
 
   return (
     <>
       <section className="panel">
-        <h1>External Sentiment Feed</h1>
+        <h1>외부 감성 피드</h1>
         <p className="muted">
-          Pulls external community posts, classifies sentiment (bullish/bearish/neutral), and displays latest
-          results.
+          외부 커뮤니티에서 감지한 글 중 공포와 희망 흐름만 분리해서 보여줍니다. 중립 글은 기본적으로 숨깁니다.
         </p>
 
         <form className="actions" method="get">
           <label className="inline">
-            <span>Channel</span>
+            <span>커뮤니티 묶음</span>
             <select name="channel" defaultValue={selectedChannel}>
-              <option value="">All Communities</option>
+              <option value="">전체</option>
               {SOURCE_GROUPS.map((group) => (
                 <option value={group.id} key={group.id}>
                   {group.label}
@@ -96,9 +95,9 @@ export default async function Home({
           </label>
 
           <label className="inline">
-            <span>Source</span>
+            <span>세부 소스</span>
             <select name="source" defaultValue={normalizedSelectedSource}>
-              <option value="">All</option>
+              <option value="">전체</option>
               {sourceOptions.map((source) => (
                 <option value={source} key={source}>
                   {source}
@@ -108,17 +107,7 @@ export default async function Home({
           </label>
 
           <label className="inline">
-            <span>Label</span>
-            <select name="label" defaultValue={selectedLabel}>
-              <option value="">All</option>
-              <option value="bullish">bullish</option>
-              <option value="bearish">bearish</option>
-              <option value="neutral">neutral</option>
-            </select>
-          </label>
-
-          <label className="inline">
-            <span>Range</span>
+            <span>범위</span>
             <select name="range" defaultValue={selectedRange}>
               <option value="1h">1h</option>
               <option value="6h">6h</option>
@@ -126,59 +115,80 @@ export default async function Home({
             </select>
           </label>
 
-          <button type="submit">Apply</button>
+          <button type="submit">적용</button>
           <Link className="btn btn-secondary" href="/">
-            Reset
+            초기화
           </Link>
         </form>
       </section>
 
       <section className="panel">
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Source</th>
-                <th>Title</th>
-                <th>Label</th>
-                <th>Confidence</th>
-                <th>Time ({timezone})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {errorMessage ? (
-                <tr>
-                  <td colSpan={5} className="error">
-                    Failed to load feed: {errorMessage}
-                  </td>
-                </tr>
-              ) : null}
+        <div className="sentiment-columns">
+          <section className="sentiment-lane sentiment-lane-fear">
+            <div className="sentiment-lane-head">
+              <div>
+                <p className="overview-kicker">공포 흐름</p>
+                <h2>
+                  {SENTIMENT_DISPLAY.bearish.emoji} 공포
+                </h2>
+              </div>
+              <span className="tag">{fearRows.length}건</span>
+            </div>
 
-              {!errorMessage && filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="muted">
-                    No rows for current filters.
-                  </td>
-                </tr>
-              ) : null}
+            {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
+            {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
 
-              {filteredRows.map((row) => (
-                <tr key={row.post_key}>
-                  <td>
+            <div className="sentiment-list">
+              {fearRows.map((row) => (
+                <article key={row.post_key} className="sentiment-card sentiment-card-fear">
+                  <div className="sentiment-card-head">
+                    <span className="sentiment-emoji">{SENTIMENT_DISPLAY.bearish.emoji}</span>
                     <span className="tag">{row.source}</span>
-                  </td>
-                  <td>
-                    <a href={row.url} target="_blank" rel="noreferrer">
-                      {row.title}
-                    </a>
-                  </td>
-                  <td>{row.label}</td>
-                  <td>{row.confidence.toFixed(2)}</td>
-                  <td>{toLocalTime(row.analyzed_at, timezone)}</td>
-                </tr>
+                  </div>
+                  <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
+                    {row.title}
+                  </a>
+                  <p className="sentiment-meta">
+                    <span>신뢰도 {row.confidence.toFixed(2)}</span>
+                    <span>{toLocalTime(row.analyzed_at, timezone)}</span>
+                  </p>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </section>
+
+          <section className="sentiment-lane sentiment-lane-hope">
+            <div className="sentiment-lane-head">
+              <div>
+                <p className="overview-kicker">희망 흐름</p>
+                <h2>
+                  {SENTIMENT_DISPLAY.bullish.emoji} 희망
+                </h2>
+              </div>
+              <span className="tag">{hopeRows.length}건</span>
+            </div>
+
+            {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
+            {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
+
+            <div className="sentiment-list">
+              {hopeRows.map((row) => (
+                <article key={row.post_key} className="sentiment-card sentiment-card-hope">
+                  <div className="sentiment-card-head">
+                    <span className="sentiment-emoji">{SENTIMENT_DISPLAY.bullish.emoji}</span>
+                    <span className="tag">{row.source}</span>
+                  </div>
+                  <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
+                    {row.title}
+                  </a>
+                  <p className="sentiment-meta">
+                    <span>신뢰도 {row.confidence.toFixed(2)}</span>
+                    <span>{toLocalTime(row.analyzed_at, timezone)}</span>
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
       </section>
     </>

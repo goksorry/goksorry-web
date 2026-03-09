@@ -3,8 +3,10 @@
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { OverviewPayload } from "@/lib/overview-data";
+import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
+import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
+import { SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
 
 const toLocalTime = (iso: string): string => {
   const date = new Date(iso);
@@ -21,11 +23,28 @@ const toLocalTime = (iso: string): string => {
   }).format(date);
 };
 
-export function MarketOverview() {
+type MarketOverviewProps = {
+  marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
+};
+
+const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) => ({
+  id: group.id,
+  label: group.label,
+  shortLabel: group.shortLabel,
+  mentions: 0,
+  bullish: 0,
+  bearish: 0,
+  neutral: 0,
+  score: 50,
+  tone: "mixed",
+  rows: []
+}));
+
+export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [payload, setPayload] = useState<OverviewPayload | null>(null);
+  const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(null);
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
 
@@ -34,32 +53,28 @@ export function MarketOverview() {
 
     const load = async () => {
       try {
-        const response = await fetch("/api/overview", {
+        const response = await fetch("/api/community-indicators", {
           signal: controller.signal,
-          cache: "no-store"
+          cache: "default"
         });
         if (!response.ok) {
-          throw new Error(`overview ${response.status}`);
+          throw new Error(`community indicators ${response.status}`);
         }
-        const data = (await response.json()) as OverviewPayload;
+        const data = (await response.json()) as CommunityIndicatorsPayload;
         setPayload(data);
         setError("");
-      } catch (loadError) {
+      } catch {
         if (controller.signal.aborted) {
           return;
         }
-        setError(loadError instanceof Error ? loadError.message : "overview fetch failed");
+        setError("지수 불러오기에 실패했습니다.");
       }
     };
 
     void load();
-    const timer = window.setInterval(() => {
-      void load();
-    }, 60000);
 
     return () => {
       controller.abort();
-      window.clearInterval(timer);
     };
   }, []);
 
@@ -110,59 +125,61 @@ export function MarketOverview() {
   };
 
   const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId) ?? null;
+  const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
 
   return (
     <>
       <section className="overview-panel">
         <div className="overview-heading">
           <div>
-            <p className="overview-kicker">Market & Community Pulse</p>
+            <p className="overview-kicker">시장 · 커뮤니티 체감</p>
             <h2>실시간 체감 지수</h2>
           </div>
           <p className="muted">
-            {payload?.generated_at ? `업데이트 ${toLocalTime(payload.generated_at)}` : "상단 지수를 불러오는 중"}
+            {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
           </p>
         </div>
 
-        {error ? <p className="error">Overview load failed: {error}</p> : null}
+        {error ? <p className="error">커뮤니티 지수 로드 실패: {error}</p> : null}
 
         <div className="overview-top-row">
-          {(payload?.market_indicators ?? Array.from({ length: 5 })).map((indicator: any, index) => (
+          {marketOverview.market_indicators.map((indicator) => (
             <article
-              key={indicator?.id ?? `market-skeleton-${index}`}
-              className={`overview-card overview-card-market overview-tone-${indicator?.tone ?? "flat"}`}
+              key={indicator.id}
+              className={`overview-card overview-card-market overview-tone-${indicator.tone ?? "flat"}`}
             >
-              <p className="overview-label">{indicator?.label ?? "Loading"}</p>
-              <strong className="overview-value">{indicator?.value_text ?? "--"}</strong>
-              <p className="overview-delta">{indicator?.delta_text ?? "loading..."}</p>
-              <p className="overview-note">{indicator?.note ?? "지표 준비 중"}</p>
+              <p className="overview-label">{indicator.label}</p>
+              <strong className="overview-value">{indicator.value_text}</strong>
+              <p className="overview-delta">{indicator.delta_text}</p>
+              <p className="overview-note">{indicator.note}</p>
             </article>
           ))}
         </div>
 
         <div className="overview-bottom-row">
-          {(payload?.community_indicators ?? SOURCE_GROUPS.map((group) => ({ ...group, score: 50, mentions: 0, tone: "mixed" })) as any[]).map(
-            (group: any) => (
-              <button
-                key={group.id}
-                type="button"
-                className={`overview-card overview-card-community overview-tone-${group.tone ?? "mixed"}`}
-                onClick={() => onCommunityIndicatorClick(group.id)}
-              >
-                <div className="overview-community-head">
-                  <p className="overview-label">{group.label}</p>
-                  <span className="overview-score-badge">{group.score}</span>
-                </div>
-                <strong className="overview-value">{group.shortLabel}</strong>
-                <p className="overview-delta">
-                  mentions {group.mentions} · bull {group.bullish ?? 0} · bear {group.bearish ?? 0}
-                </p>
-                <p className="overview-note">
-                  {pathname === "/" ? "클릭 시 Feed 필터 적용" : pathname.startsWith("/community") ? "클릭 시 팝업 미리보기" : "클릭 시 Feed 이동"}
-                </p>
-              </button>
-            )
-          )}
+          {communityGroups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              className={`overview-card overview-card-community overview-tone-${group.tone}`}
+              onClick={() => onCommunityIndicatorClick(group.id)}
+            >
+              <div className="overview-community-head">
+                <p className="overview-label">{group.label}</p>
+                <span className="overview-score-badge">
+                  <span>{TONE_EMOJI[group.tone]}</span>
+                  <span>{group.score}</span>
+                </span>
+              </div>
+              <strong className="overview-value">{group.shortLabel}</strong>
+              <p className="overview-delta">
+                언급 {group.mentions} · 희망 {group.bullish} · 공포 {group.bearish}
+              </p>
+              <p className="overview-note">
+                {pathname === "/" ? "클릭 시 피드 필터 적용" : pathname.startsWith("/community") ? "클릭 시 팝업 미리보기" : "클릭 시 피드 이동"}
+              </p>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -171,11 +188,11 @@ export function MarketOverview() {
           <div className="overview-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="overview-modal-head">
               <div>
-                <p className="overview-kicker">Community Feed Preview</p>
+                <p className="overview-kicker">커뮤니티 피드 미리보기</p>
                 <h3>{activeGroup.label}</h3>
               </div>
               <button type="button" className="btn btn-secondary" onClick={() => setActiveGroupId(null)}>
-                Close
+                닫기
               </button>
             </div>
 
@@ -184,7 +201,9 @@ export function MarketOverview() {
                 <article key={row.post_key} className="overview-modal-item">
                   <div className="overview-modal-meta">
                     <span className="tag">{row.source}</span>
-                    <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>{row.label}</span>
+                    <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
+                      {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
+                    </span>
                     <span className="muted">{row.confidence.toFixed(2)}</span>
                     <span className="muted">{toLocalTime(row.analyzed_at)}</span>
                   </div>
@@ -199,7 +218,7 @@ export function MarketOverview() {
 
             <div className="overview-modal-actions">
               <Link className="btn" href={`/?channel=${activeGroup.id}`} onClick={() => setActiveGroupId(null)}>
-                Feed에서 열기
+                피드에서 열기
               </Link>
             </div>
           </div>

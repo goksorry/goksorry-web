@@ -32,14 +32,14 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
 
       <div className="actions" style={{ marginBottom: "0.9rem" }}>
         <Link className="btn" href={`/community/${board.slug}/new`}>
-          Write Post
+          글쓰기
         </Link>
         <Link className="btn btn-secondary" href="/community">
-          Back to boards
+          게시판 목록
         </Link>
       </div>
 
-      {postsError ? <p className="error">Post query failed: {postsError.message}</p> : null}
+      {postsError ? <p className="error">글 목록 조회 실패: {postsError.message}</p> : null}
 
       <div className="list">
         {(posts ?? []).map((post: any) => {
@@ -50,13 +50,13 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
                 <Link href={`/community/${board.slug}/${post.id}`}>{post.title}</Link>
               </h3>
               <p className="muted">
-                by {author?.nickname ?? "unknown"} at {new Date(post.created_at).toLocaleString()}
+                작성자 {author?.nickname ?? "알 수 없음"} · {new Date(post.created_at).toLocaleString("ko-KR")}
               </p>
             </article>
           );
         })}
 
-        {(posts ?? []).length === 0 ? <p className="muted">No posts in this board.</p> : null}
+        {(posts ?? []).length === 0 ? <p className="muted">이 게시판에는 아직 글이 없습니다.</p> : null}
       </div>
     </section>
   );

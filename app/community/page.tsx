@@ -19,10 +19,10 @@ export default async function CommunityHomePage() {
   return (
     <>
       <section className="panel">
-        <h1>Community Boards</h1>
-        <p className="muted">Google login users can write posts/comments. Input is plain text only.</p>
+        <h1>커뮤니티 게시판</h1>
+        <p className="muted">구글 로그인 사용자는 글과 댓글을 작성할 수 있습니다. 입력은 평문만 허용됩니다.</p>
 
-        {boardsError ? <p className="error">Board query failed: {boardsError.message}</p> : null}
+        {boardsError ? <p className="error">게시판 조회 실패: {boardsError.message}</p> : null}
 
         <div className="list">
           {(boards ?? []).map((board: any) => (
@@ -38,8 +38,8 @@ export default async function CommunityHomePage() {
       </section>
 
       <section className="panel">
-        <h2>Recent posts</h2>
-        {postsError ? <p className="error">Recent post query failed: {postsError.message}</p> : null}
+        <h2>최근 글</h2>
+        {postsError ? <p className="error">최근 글 조회 실패: {postsError.message}</p> : null}
 
         <div className="list">
           {(recentPosts ?? []).map((post: any) => {
@@ -55,13 +55,14 @@ export default async function CommunityHomePage() {
                   <Link href={`/community/${board.slug}/${post.id}`}>{post.title}</Link>
                 </h4>
                 <p className="muted">
-                  board: {board.slug} | author: {author?.nickname ?? "unknown"} | {new Date(post.created_at).toLocaleString()}
+                  게시판: {board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
+                  {new Date(post.created_at).toLocaleString("ko-KR")}
                 </p>
               </article>
             );
           })}
 
-          {(recentPosts ?? []).length === 0 ? <p className="muted">No posts yet.</p> : null}
+          {(recentPosts ?? []).length === 0 ? <p className="muted">아직 글이 없습니다.</p> : null}
         </div>
       </section>
     </>
