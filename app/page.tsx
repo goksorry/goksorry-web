@@ -130,7 +130,7 @@ export default async function Home({
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel feed-lanes-panel">
         <div className="sentiment-columns">
           <section id="fear-lane" className="sentiment-lane sentiment-lane-fear scroll-anchor">
             <div className="sentiment-lane-head">
