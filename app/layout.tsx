@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import { getServerSession } from "next-auth";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
@@ -13,18 +14,21 @@ import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { authOptions } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
   description: "외부 종목 커뮤니티 감성 피드와 커뮤니티"
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <body>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
-        <AuthSessionProvider>
+        <AuthSessionProvider session={session}>
           <CleanFilterProvider>
             <CleanFilterOverlay />
             <CleanFilterFirstVisit />
