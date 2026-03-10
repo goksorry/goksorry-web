@@ -11,7 +11,7 @@ type CleanFilterContextValue = {
 const CleanFilterContext = createContext<CleanFilterContextValue | null>(null);
 
 export function CleanFilterProvider({ children }: { children: ReactNode }) {
-  const [cleanFilterEnabled, setCleanFilterEnabled] = useState(false);
+  const [cleanFilterEnabled, setCleanFilterEnabled] = useState(true);
 
   useEffect(() => {
     setCleanFilterEnabled(readCleanFilterFromDocument());

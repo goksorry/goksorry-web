@@ -524,6 +524,11 @@ a:hover {
   margin-bottom: 0.3rem;
 }
 
+.sentiment-title-fallback,
+.fallback-clean-title {
+  color: var(--ink-soft);
+}
+
 .sentiment-title:hover {
   text-decoration: none;
 }
@@ -633,6 +638,10 @@ a:hover {
 .overview-modal-item a {
   color: var(--ink);
   font-weight: 600;
+}
+
+.overview-modal-item a.fallback-clean-title {
+  color: var(--ink-soft);
 }
 
 .overview-modal-meta {

@@ -4,7 +4,7 @@ import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
-import { pickDisplayTitle } from "@/lib/clean-filter";
+import { resolveDisplayTitle } from "@/lib/clean-filter";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -206,25 +206,34 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             </div>
 
             <div className="overview-modal-list">
-              {actionableActiveRows.map((row) => (
-                <article key={row.post_key} className="overview-modal-item">
-                  <div className="overview-modal-meta">
-                    <span className="tag">{row.source}</span>
-                    <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
-                      {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
-                    </span>
-                    <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
-                    <span className="muted">{toLocalTime(row.analyzed_at)}</span>
-                  </div>
-                  <a href={row.url} target="_blank" rel="noreferrer">
-                    {pickDisplayTitle({
-                      title: row.title,
-                      cleanTitle: row.clean_title,
-                      cleanFilterEnabled
-                    })}
-                  </a>
-                </article>
-              ))}
+              {actionableActiveRows.map((row) => {
+                const displayTitle = resolveDisplayTitle({
+                  title: row.title,
+                  cleanTitle: row.clean_title,
+                  cleanFilterEnabled
+                });
+
+                return (
+                  <article key={row.post_key} className="overview-modal-item">
+                    <div className="overview-modal-meta">
+                      <span className="tag">{row.source}</span>
+                      <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
+                        {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
+                      </span>
+                      <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
+                      <span className="muted">{toLocalTime(row.analyzed_at)}</span>
+                    </div>
+                    <a
+                      className={displayTitle.usedFallbackFilter ? "fallback-clean-title" : ""}
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {displayTitle.text}
+                    </a>
+                  </article>
+                );
+              })}
 
               {actionableActiveRows.length === 0 ? <p className="muted">최근 24시간 기준 공포/희망 감지 글이 없습니다.</p> : null}
             </div>

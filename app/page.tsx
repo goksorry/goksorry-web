@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { FeedFilterControls } from "@/components/feed-filter-controls";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
-import { CLEAN_FILTER_COOKIE, isCleanFilterEnabled, pickDisplayTitle } from "@/lib/clean-filter";
+import { CLEAN_FILTER_COOKIE, isCleanFilterEnabled, resolveDisplayTitle } from "@/lib/clean-filter";
 import { fetchRecentFeedRows, filterRowsBySourceGroups } from "@/lib/feed-data";
 import {
   getSourceGroupShortLabel,
@@ -140,25 +140,34 @@ export default async function Home({
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
 
             <div className="sentiment-list">
-              {fearRows.map((row) => (
-                <article key={row.post_key} className="sentiment-card sentiment-card-fear">
-                  <div className="sentiment-card-head">
-                    <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                    {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
-                  </div>
-                  <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
-                    {pickDisplayTitle({
-                      title: row.title,
-                      cleanTitle: row.clean_title,
-                      cleanFilterEnabled
-                    })}
-                  </a>
-                  <p className="sentiment-meta">
-                    <span>확신도 {row.confidence.toFixed(2)}</span>
-                    <span>{toLocalTime(row.analyzed_at, timezone)}</span>
-                  </p>
-                </article>
-              ))}
+              {fearRows.map((row) => {
+                const displayTitle = resolveDisplayTitle({
+                  title: row.title,
+                  cleanTitle: row.clean_title,
+                  cleanFilterEnabled
+                });
+
+                return (
+                  <article key={row.post_key} className="sentiment-card sentiment-card-fear">
+                    <div className="sentiment-card-head">
+                      <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                      {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                    </div>
+                    <a
+                      className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {displayTitle.text}
+                    </a>
+                    <p className="sentiment-meta">
+                      <span>확신도 {row.confidence.toFixed(2)}</span>
+                      <span>{toLocalTime(row.analyzed_at, timezone)}</span>
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </section>
 
@@ -184,25 +193,34 @@ export default async function Home({
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
 
             <div className="sentiment-list">
-              {hopeRows.map((row) => (
-                <article key={row.post_key} className="sentiment-card sentiment-card-hope">
-                  <div className="sentiment-card-head">
-                    <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                    {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
-                  </div>
-                  <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
-                    {pickDisplayTitle({
-                      title: row.title,
-                      cleanTitle: row.clean_title,
-                      cleanFilterEnabled
-                    })}
-                  </a>
-                  <p className="sentiment-meta">
-                    <span>확신도 {row.confidence.toFixed(2)}</span>
-                    <span>{toLocalTime(row.analyzed_at, timezone)}</span>
-                  </p>
-                </article>
-              ))}
+              {hopeRows.map((row) => {
+                const displayTitle = resolveDisplayTitle({
+                  title: row.title,
+                  cleanTitle: row.clean_title,
+                  cleanFilterEnabled
+                });
+
+                return (
+                  <article key={row.post_key} className="sentiment-card sentiment-card-hope">
+                    <div className="sentiment-card-head">
+                      <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                      {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                    </div>
+                    <a
+                      className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {displayTitle.text}
+                    </a>
+                    <p className="sentiment-meta">
+                      <span>확신도 {row.confidence.toFixed(2)}</span>
+                      <span>{toLocalTime(row.analyzed_at, timezone)}</span>
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </section>
         </div>
