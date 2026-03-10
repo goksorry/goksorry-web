@@ -209,7 +209,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
                     <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
                       {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
                     </span>
-                    <span className="muted">{row.confidence.toFixed(2)}</span>
+                    <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
                     <span className="muted">{toLocalTime(row.analyzed_at)}</span>
                   </div>
                   <a href={row.url} target="_blank" rel="noreferrer">

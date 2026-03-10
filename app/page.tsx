@@ -146,7 +146,7 @@ export default async function Home({
                     {row.title}
                   </a>
                   <p className="sentiment-meta">
-                    <span>신뢰도 {row.confidence.toFixed(2)}</span>
+                    <span>확신도 {row.confidence.toFixed(2)}</span>
                     <span>{toLocalTime(row.analyzed_at, timezone)}</span>
                   </p>
                 </article>
@@ -186,7 +186,7 @@ export default async function Home({
                     {row.title}
                   </a>
                   <p className="sentiment-meta">
-                    <span>신뢰도 {row.confidence.toFixed(2)}</span>
+                    <span>확신도 {row.confidence.toFixed(2)}</span>
                     <span>{toLocalTime(row.analyzed_at, timezone)}</span>
                   </p>
                 </article>
