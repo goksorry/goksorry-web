@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { sanitizePlainText } from "@/lib/plain-text";
-import { getNicknamePolicy } from "@/lib/profile-sync";
+import { getNicknamePolicy, withdrawAccount } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function PATCH(request: Request) {
@@ -90,5 +90,38 @@ export async function PATCH(request: Request) {
     ok: true,
     nickname,
     nickname_needs_setup: false
+  });
+}
+
+export async function DELETE(request: Request) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
+  const user = await getUserFromAuthorization(request);
+  if (!user || !user.email) {
+    return jsonMessage(requestId, 401, "Unauthorized");
+  }
+
+  try {
+    await withdrawAccount({
+      id: user.id,
+      email: user.email,
+      reason: "user_requested"
+    });
+  } catch (error) {
+    logApiError("profile withdrawal failed", requestId, error);
+    return jsonMessage(requestId, 500, "회원 탈퇴를 처리하지 못했습니다.");
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/");
+  revalidatePath("/community");
+
+  return NextResponse.json({
+    ok: true,
+    withdrawn: true
   });
 }

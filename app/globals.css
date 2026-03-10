@@ -1147,6 +1147,14 @@ button:disabled {
   gap: 0.5rem;
 }
 
+.profile-danger-zone {
+  margin-top: 0.5rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 0.6rem;
+}
+
 .scroll-anchor {
   scroll-margin-top: 7rem;
 }

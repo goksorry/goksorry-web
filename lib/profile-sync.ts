@@ -24,7 +24,62 @@ export type NicknamePolicy = {
   available_at: string | null;
 };
 
+export class WithdrawnAccountError extends Error {
+  constructor() {
+    super("withdrawn_account");
+    this.name = "WithdrawnAccountError";
+  }
+}
+
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
+
+export const isWithdrawnEmail = async (email: string): Promise<boolean> => {
+  const service = getServiceSupabaseClient();
+  const normalizedEmail = normalizeEmail(email);
+
+  const { data, error } = await service
+    .from("withdrawn_accounts")
+    .select("email")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data?.email);
+};
+
+export const withdrawAccount = async ({
+  id,
+  email,
+  reason
+}: {
+  id: string;
+  email: string;
+  reason?: string | null;
+}): Promise<void> => {
+  const service = getServiceSupabaseClient();
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedReason = String(reason ?? "").replace(/[<>]/g, "").trim() || null;
+
+  const { error: tombstoneError } = await service.from("withdrawn_accounts").upsert(
+    {
+      email: normalizedEmail,
+      reason: normalizedReason
+    },
+    { onConflict: "email" }
+  );
+
+  if (tombstoneError) {
+    throw new Error(tombstoneError.message);
+  }
+
+  const { error: deleteError } = await service.from("profiles").delete().eq("id", id);
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+};
 
 export const isAdminEmail = (email?: string | null): boolean => {
   if (!email) {
@@ -123,6 +178,9 @@ export const syncProfile = async ({
 }): Promise<SyncedProfile> => {
   const service = getServiceSupabaseClient();
   const normalizedEmail = normalizeEmail(email);
+  if (await isWithdrawnEmail(normalizedEmail)) {
+    throw new WithdrawnAccountError();
+  }
   const desiredRole: AppRole = isAdminEmail(normalizedEmail) ? "admin" : "user";
   const nickname = buildNickname(normalizedEmail, preferredName);
 

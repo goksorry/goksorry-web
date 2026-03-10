@@ -9,10 +9,12 @@ import {
   buildStableProfileId,
   findProfileByIdentity,
   getNicknamePolicy,
+  isWithdrawnEmail,
   isAdminEmail,
   normalizeEmail,
   type SyncedProfile,
-  syncProfile
+  syncProfile,
+  WithdrawnAccountError
 } from "@/lib/profile-sync";
 
 const syncTokenProfile = async (
@@ -114,7 +116,21 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user }) {
-      return Boolean(user.email);
+      const email = String(user.email ?? "").trim().toLowerCase();
+      if (!email) {
+        return false;
+      }
+
+      try {
+        if (await isWithdrawnEmail(email)) {
+          return "/auth/login?error=withdrawn";
+        }
+      } catch (error) {
+        console.error("withdrawn account lookup failed during sign-in", error);
+        return "/auth/login?error=unavailable";
+      }
+
+      return true;
     },
     async jwt({ token, user }) {
       const seededToken = seedTokenIdentity(token, user);
@@ -132,6 +148,9 @@ export const authOptions: NextAuthOptions = {
         try {
           return await syncTokenProfile(seededToken, user);
         } catch (error) {
+          if (error instanceof WithdrawnAccountError) {
+            return seededToken;
+          }
           console.error("profile sync failed during jwt callback", error);
           return seededToken;
         }

@@ -12,6 +12,14 @@ create table if not exists public.profiles (
   constraint profiles_nickname_plain_text check (nickname !~ '[<>]')
 );
 
+create table if not exists public.withdrawn_accounts (
+  email text primary key,
+  withdrawn_at timestamptz not null default now(),
+  reason text,
+  constraint withdrawn_accounts_email_lowercase check (email = lower(email)),
+  constraint withdrawn_accounts_reason_plain_text check (reason is null or reason !~ '[<>]')
+);
+
 create table if not exists public.external_posts (
   id uuid primary key default gen_random_uuid(),
   source text not null,
@@ -96,6 +104,7 @@ create table if not exists public.reports (
 create index if not exists external_posts_source_fetched_at_idx on public.external_posts(source, fetched_at desc);
 create index if not exists sentiment_results_analyzed_at_idx on public.sentiment_results(analyzed_at desc);
 create unique index if not exists profiles_nickname_unique_ci_idx on public.profiles(lower(nickname));
+create index if not exists withdrawn_accounts_withdrawn_at_idx on public.withdrawn_accounts(withdrawn_at desc);
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
 create index if not exists community_comments_post_created_idx on public.community_comments(post_id, created_at asc);
 create index if not exists reports_status_created_idx on public.reports(status, created_at desc);
@@ -158,6 +167,7 @@ alter table public.external_posts enable row level security;
 alter table public.sentiment_results enable row level security;
 alter table public.boards enable row level security;
 alter table public.profiles enable row level security;
+alter table public.withdrawn_accounts enable row level security;
 alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.votes enable row level security;
