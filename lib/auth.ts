@@ -5,11 +5,12 @@ import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
 import { getServerEnv } from "@/lib/env";
 import {
+  ACCOUNT_REJOIN_COOLDOWN_DAYS,
   buildNickname,
   buildStableProfileId,
   findProfileByIdentity,
+  getWithdrawalHoldUntil,
   getNicknamePolicy,
-  isWithdrawnEmail,
   isAdminEmail,
   normalizeEmail,
   type SyncedProfile,
@@ -122,8 +123,9 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
-        if (await isWithdrawnEmail(email)) {
-          return "/auth/login?error=withdrawn";
+        const holdUntil = await getWithdrawalHoldUntil(email);
+        if (holdUntil) {
+          return `/auth/login?error=withdrawn&days=${ACCOUNT_REJOIN_COOLDOWN_DAYS}&until=${encodeURIComponent(holdUntil)}`;
         }
       } catch (error) {
         console.error("withdrawn account lookup failed during sign-in", error);

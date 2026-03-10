@@ -7,6 +7,7 @@ import { getServiceSupabaseClient } from "@/lib/supabase/service";
 export type AppRole = "admin" | "user";
 export const NICKNAME_MAX_LENGTH = 30;
 export const NICKNAME_CHANGE_COOLDOWN_DAYS = 7;
+export const ACCOUNT_REJOIN_COOLDOWN_DAYS = 7;
 
 export type SyncedProfile = {
   id: string;
@@ -25,21 +26,24 @@ export type NicknamePolicy = {
 };
 
 export class WithdrawnAccountError extends Error {
-  constructor() {
+  availableAt: string | null;
+
+  constructor(availableAt: string | null = null) {
     super("withdrawn_account");
     this.name = "WithdrawnAccountError";
+    this.availableAt = availableAt;
   }
 }
 
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
 
-export const isWithdrawnEmail = async (email: string): Promise<boolean> => {
+export const getWithdrawalHoldUntil = async (email: string): Promise<string | null> => {
   const service = getServiceSupabaseClient();
   const normalizedEmail = normalizeEmail(email);
 
   const { data, error } = await service
     .from("withdrawn_accounts")
-    .select("email")
+    .select("withdrawn_at")
     .eq("email", normalizedEmail)
     .maybeSingle();
 
@@ -47,7 +51,21 @@ export const isWithdrawnEmail = async (email: string): Promise<boolean> => {
     throw new Error(error.message);
   }
 
-  return Boolean(data?.email);
+  if (!data?.withdrawn_at) {
+    return null;
+  }
+
+  const withdrawnAtMs = new Date(data.withdrawn_at).getTime();
+  if (Number.isNaN(withdrawnAtMs)) {
+    return null;
+  }
+
+  const availableAtMs = withdrawnAtMs + ACCOUNT_REJOIN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  if (Date.now() >= availableAtMs) {
+    return null;
+  }
+
+  return new Date(availableAtMs).toISOString();
 };
 
 export const withdrawAccount = async ({
@@ -178,8 +196,9 @@ export const syncProfile = async ({
 }): Promise<SyncedProfile> => {
   const service = getServiceSupabaseClient();
   const normalizedEmail = normalizeEmail(email);
-  if (await isWithdrawnEmail(normalizedEmail)) {
-    throw new WithdrawnAccountError();
+  const holdUntil = await getWithdrawalHoldUntil(normalizedEmail);
+  if (holdUntil) {
+    throw new WithdrawnAccountError(holdUntil);
   }
   const desiredRole: AppRole = isAdminEmail(normalizedEmail) ? "admin" : "user";
   const nickname = buildNickname(normalizedEmail, preferredName);

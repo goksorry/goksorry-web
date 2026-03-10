@@ -1,14 +1,22 @@
 import Link from "next/link";
+import { formatKstDateTime } from "@/lib/date-time";
 
 export default function LoginPage({
   searchParams
 }: {
-  searchParams?: { error?: string };
+  searchParams?: { error?: string; days?: string; until?: string };
 }) {
   const errorCode = typeof searchParams?.error === "string" ? searchParams.error : "";
+  const holdDays = Number.parseInt(String(searchParams?.days ?? ""), 10);
+  const holdUntil =
+    typeof searchParams?.until === "string" && searchParams.until.trim()
+      ? formatKstDateTime(searchParams.until)
+      : null;
   const errorMessage =
     errorCode === "withdrawn"
-      ? "탈퇴 처리된 계정입니다. 같은 이메일로는 다시 가입할 수 없습니다."
+      ? `탈퇴 처리된 계정입니다. 같은 이메일은 탈퇴 후 ${Number.isFinite(holdDays) ? holdDays : 7}일이 지나야 다시 가입할 수 있습니다.${
+          holdUntil ? ` 다시 가입 가능한 시각: ${holdUntil}` : ""
+        }`
       : errorCode === "unavailable"
         ? "로그인 확인 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
         : null;
