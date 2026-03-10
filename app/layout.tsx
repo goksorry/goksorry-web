@@ -4,6 +4,7 @@ import Link from "next/link";
 import Script from "next/script";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
+import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthSessionProvider>
           <CleanFilterProvider>
             <CleanFilterOverlay />
+            <CleanFilterFirstVisit />
             <div id="page-top" className="layout">
               <header className="header">
                 <nav className="nav">

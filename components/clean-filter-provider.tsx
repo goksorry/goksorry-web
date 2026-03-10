@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { readCleanFilterFromDocument } from "@/lib/clean-filter";
+import { hasCleanFilterCookieInDocument, readCleanFilterFromDocument } from "@/lib/clean-filter";
 
 type CleanFilterAnimationMode = "pretty" | "grim" | null;
 
@@ -10,8 +10,10 @@ type CleanFilterContextValue = {
   setCleanFilterEnabled: (enabled: boolean) => void;
   isApplying: boolean;
   animationMode: CleanFilterAnimationMode;
+  showFirstVisitPrompt: boolean;
   beginApply: (nextEnabled: boolean) => void;
   finishApply: () => void;
+  dismissFirstVisitPrompt: () => void;
 };
 
 const CleanFilterContext = createContext<CleanFilterContextValue | null>(null);
@@ -20,9 +22,15 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
   const [cleanFilterEnabled, setCleanFilterEnabled] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [animationMode, setAnimationMode] = useState<CleanFilterAnimationMode>(null);
+  const [showFirstVisitPrompt, setShowFirstVisitPrompt] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!hasCleanFilterCookieInDocument()) {
+      setShowFirstVisitPrompt(true);
+      return;
+    }
+
     setCleanFilterEnabled(readCleanFilterFromDocument());
   }, []);
 
@@ -58,6 +66,10 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
     }, 1000);
   };
 
+  const dismissFirstVisitPrompt = () => {
+    setShowFirstVisitPrompt(false);
+  };
+
   return (
     <CleanFilterContext.Provider
       value={{
@@ -65,8 +77,10 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
         setCleanFilterEnabled,
         isApplying,
         animationMode,
+        showFirstVisitPrompt,
         beginApply,
-        finishApply
+        finishApply,
+        dismissFirstVisitPrompt
       }}
     >
       {children}

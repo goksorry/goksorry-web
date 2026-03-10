@@ -8,15 +8,29 @@ export const buildCleanFilterCookie = (enabled: boolean): string => {
   return `${CLEAN_FILTER_COOKIE}=${enabled ? "on" : "off"}; Path=/; Max-Age=31536000; SameSite=Lax`;
 };
 
+const findCleanFilterCookie = (): string | null => {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return (
+    document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${CLEAN_FILTER_COOKIE}=`)) ?? null
+  );
+};
+
+export const hasCleanFilterCookieInDocument = (): boolean => {
+  return findCleanFilterCookie() !== null;
+};
+
 export const readCleanFilterFromDocument = (): boolean => {
   if (typeof document === "undefined") {
     return true;
   }
 
-  const cookie = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${CLEAN_FILTER_COOKIE}=`));
+  const cookie = findCleanFilterCookie();
 
   if (!cookie) {
     return true;
