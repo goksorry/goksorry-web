@@ -22,9 +22,50 @@ export const SOURCE_GROUPS = [
 ] as const;
 
 export type SourceGroupId = (typeof SOURCE_GROUPS)[number]["id"];
+export const SOURCE_GROUP_IDS: SourceGroupId[] = SOURCE_GROUPS.map((group) => group.id);
 
 export const isSourceGroupId = (value: string): value is SourceGroupId => {
   return SOURCE_GROUPS.some((group) => group.id === value);
+};
+
+export const normalizeSourceGroupIds = (values: Iterable<string>): SourceGroupId[] => {
+  const wanted = new Set<string>();
+
+  for (const value of values) {
+    if (isSourceGroupId(value)) {
+      wanted.add(value);
+    }
+  }
+
+  return SOURCE_GROUP_IDS.filter((groupId) => wanted.has(groupId));
+};
+
+export const parseSourceGroupSelection = (raw: string): SourceGroupId[] => {
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) {
+    return [...SOURCE_GROUP_IDS];
+  }
+
+  if (normalized === "none") {
+    return [];
+  }
+
+  return normalizeSourceGroupIds(normalized.split(",").map((value) => value.trim()));
+};
+
+export const serializeSourceGroupSelection = (groupIds: SourceGroupId[]): string => {
+  const normalized = normalizeSourceGroupIds(groupIds);
+  if (normalized.length === 0) {
+    return "none";
+  }
+  if (normalized.length === SOURCE_GROUP_IDS.length) {
+    return "";
+  }
+  return normalized.join(",");
+};
+
+export const getSourceGroupById = (groupId: SourceGroupId): (typeof SOURCE_GROUPS)[number] => {
+  return SOURCE_GROUPS.find((group) => group.id === groupId) ?? SOURCE_GROUPS[0];
 };
 
 export const matchesSourceGroup = (source: string, groupId: SourceGroupId): boolean => {
@@ -49,3 +90,10 @@ export const getSourceGroupId = (source: string): SourceGroupId | null => {
   return null;
 };
 
+export const getSourceGroupShortLabel = (source: string): string => {
+  const groupId = getSourceGroupId(source);
+  if (!groupId) {
+    return source;
+  }
+  return getSourceGroupById(groupId).shortLabel;
+};

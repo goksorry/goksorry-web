@@ -1,6 +1,11 @@
-import Link from "next/link";
-import { fetchRecentFeedRows, filterRowsBySourceGroup } from "@/lib/feed-data";
-import { SOURCE_GROUPS, isSourceGroupId, type SourceGroupId } from "@/lib/feed-source-groups";
+import { FeedFilterControls } from "@/components/feed-filter-controls";
+import { fetchRecentFeedRows, filterRowsBySourceGroups } from "@/lib/feed-data";
+import {
+  getSourceGroupShortLabel,
+  isSourceGroupId,
+  parseSourceGroupSelection,
+  type SourceGroupId
+} from "@/lib/feed-source-groups";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { getTimezone } from "@/lib/env";
@@ -38,31 +43,19 @@ const toLocalTime = (iso: string, timezone: string): string => {
   }).format(date);
 };
 
-const buildFeedHref = ({
-  channel,
-  range
-}: {
-  channel: SourceGroupId | "";
-  range: string;
-}): string => {
-  const params = new URLSearchParams();
-  if (channel) {
-    params.set("channel", channel);
-  }
-  if (range && range !== "24h") {
-    params.set("range", range);
-  }
-  const query = params.toString();
-  return query ? `/?${query}` : "/";
-};
-
 export default async function Home({
   searchParams
 }: {
   searchParams?: Record<string, QueryValue>;
 }) {
-  const selectedChannelRaw = pickFirst(searchParams?.channel);
-  const selectedChannel: SourceGroupId | "" = isSourceGroupId(selectedChannelRaw) ? selectedChannelRaw : "";
+  const selectedChannelsRaw = pickFirst(searchParams?.channels);
+  const legacyChannelRaw = pickFirst(searchParams?.channel);
+  const selectedGroupIds =
+    selectedChannelsRaw.length > 0
+      ? parseSourceGroupSelection(selectedChannelsRaw)
+      : isSourceGroupId(legacyChannelRaw)
+        ? [legacyChannelRaw]
+        : parseSourceGroupSelection("");
   const selectedRange = pickFirst(searchParams?.range) || "24h";
   const rangeHours = rangeHoursMap[selectedRange] ?? 24;
 
@@ -70,7 +63,7 @@ export default async function Home({
   const { rows, errorMessage } = await fetchRecentFeedRows(service, { hours: rangeHours, limit: 500 });
 
   const timezone = getTimezone();
-  const channelFilteredRows = filterRowsBySourceGroup(rows, selectedChannel);
+  const channelFilteredRows = filterRowsBySourceGroups(rows, selectedGroupIds);
   const nowMs = Date.now();
   const filteredRows = channelFilteredRows.filter((row) => {
     const analyzedAtMs = new Date(row.analyzed_at).getTime();
@@ -83,6 +76,24 @@ export default async function Home({
   const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
   const fearRows = actionableRows.filter((row) => row.label === "bearish");
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
+  const symbolCounts = actionableRows.reduce(
+    (acc, row) => {
+      if (!row.symbol_name) {
+        return acc;
+      }
+
+      const nextCount = (acc.get(row.symbol_name) ?? 0) + 1;
+      acc.set(row.symbol_name, nextCount);
+      return acc;
+    },
+    new Map<string, number>()
+  );
+  const symbolBadges = [...symbolCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ko-KR"))
+    .map(([name, count]) => ({
+      name,
+      count
+    }));
 
   return (
     <>
@@ -91,55 +102,26 @@ export default async function Home({
         <p className="muted">
           외부 커뮤니티에서 감지한 글 중 공포와 희망 흐름만 분리해서 보여줍니다. 중립 글은 기본적으로 숨깁니다.
         </p>
-
-        <div className="feed-filter-toolbar">
-          <div className="feed-channel-buttons" aria-label="커뮤니티 묶음">
-            <Link
-              className={`filter-chip ${selectedChannel === "" ? "filter-chip-active" : ""}`}
-              href={buildFeedHref({ channel: "", range: selectedRange })}
-            >
-              전체
-            </Link>
-            {SOURCE_GROUPS.map((group) => (
-              <Link
-                key={group.id}
-                className={`filter-chip ${selectedChannel === group.id ? "filter-chip-active" : ""}`}
-                href={buildFeedHref({ channel: group.id, range: selectedRange })}
-              >
-                {group.shortLabel}
-              </Link>
+        <FeedFilterControls selectedGroupIds={selectedGroupIds} selectedRange={selectedRange} />
+        {symbolBadges.length > 0 ? (
+          <div className="feed-symbol-badges" aria-label="등장 종목">
+            {symbolBadges.map((badge) => (
+              <span key={badge.name} className="feed-symbol-badge">
+                {badge.name}
+                {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
+              </span>
             ))}
           </div>
-
-          <form className="actions feed-range-actions" method="get">
-            {selectedChannel ? <input type="hidden" name="channel" value={selectedChannel} /> : null}
-            <label className="inline">
-              <span>범위</span>
-              <select name="range" defaultValue={selectedRange}>
-                <option value="1h">1h</option>
-                <option value="6h">6h</option>
-                <option value="24h">24h</option>
-              </select>
-            </label>
-
-            <button type="submit">적용</button>
-            <Link className="btn btn-secondary" href="/">
-              초기화
-            </Link>
-          </form>
-        </div>
+        ) : null}
       </section>
 
       <section className="panel feed-lanes-panel">
         <div className="sentiment-columns">
           <section id="fear-lane" className="sentiment-lane sentiment-lane-fear scroll-anchor">
             <div className="sentiment-lane-head">
-              <div>
-                <p className="overview-kicker">공포 흐름</p>
-                <h2>
-                  {SENTIMENT_DISPLAY.bearish.emoji} 공포
-                </h2>
-              </div>
+              <h2>
+                {SENTIMENT_DISPLAY.bearish.emoji} 공포
+              </h2>
               <span className="tag">{fearRows.length}건</span>
             </div>
 
@@ -150,7 +132,8 @@ export default async function Home({
               {fearRows.map((row) => (
                 <article key={row.post_key} className="sentiment-card sentiment-card-fear">
                   <div className="sentiment-card-head">
-                    <span className="tag">{row.source}</span>
+                    <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                    {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
                     {row.title}
@@ -166,12 +149,9 @@ export default async function Home({
 
           <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
             <div className="sentiment-lane-head">
-              <div>
-                <p className="overview-kicker">희망 흐름</p>
-                <h2>
-                  {SENTIMENT_DISPLAY.bullish.emoji} 희망
-                </h2>
-              </div>
+              <h2>
+                {SENTIMENT_DISPLAY.bullish.emoji} 희망
+              </h2>
               <span className="tag">{hopeRows.length}건</span>
             </div>
 
@@ -182,7 +162,8 @@ export default async function Home({
               {hopeRows.map((row) => (
                 <article key={row.post_key} className="sentiment-card sentiment-card-hope">
                   <div className="sentiment-card-head">
-                    <span className="tag">{row.source}</span>
+                    <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                    {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
                     {row.title}

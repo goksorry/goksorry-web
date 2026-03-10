@@ -106,7 +106,8 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const onCommunityIndicatorClick = (groupId: SourceGroupId) => {
     if (pathname === "/") {
       const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set("channel", groupId);
+      nextParams.set("channels", groupId);
+      nextParams.delete("channel");
       nextParams.delete("source");
       startTransition(() => {
         router.push(`/?${nextParams.toString()}`);
@@ -120,7 +121,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
     }
 
     startTransition(() => {
-      router.push(`/?channel=${groupId}`);
+      router.push(`/?channels=${groupId}`);
     });
   };
 
@@ -215,7 +216,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             </div>
 
             <div className="overview-modal-actions">
-              <Link className="btn" href={`/?channel=${activeGroup.id}`} onClick={() => setActiveGroupId(null)}>
+              <Link className="btn" href={`/?channels=${activeGroup.id}`} onClick={() => setActiveGroupId(null)}>
                 피드에서 열기
               </Link>
             </div>
