@@ -171,7 +171,6 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
                   <span>{group.score}</span>
                 </span>
               </div>
-              <strong className="overview-value">{group.shortLabel}</strong>
               <p className="overview-delta">
                 언급 {group.mentions} · 희망 {group.bullish} · 공포 {group.bearish}
               </p>

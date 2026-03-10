@@ -60,6 +60,7 @@ a:hover {
 .brand {
   font-weight: 700;
   color: #0a263f;
+  font-size: 1rem;
 }
 
 .auth {
@@ -71,16 +72,32 @@ a:hover {
 .main {
   width: min(1100px, 100%);
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0.9rem;
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 0.9rem;
+}
+
+.panel h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.panel h2 {
+  font-size: 1.14rem;
+  line-height: 1.25;
+}
+
+.panel h3 {
+  font-size: 1rem;
+  line-height: 1.3;
 }
 
 .overview-panel {
@@ -89,9 +106,9 @@ a:hover {
     linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(242, 247, 255, 0.96));
   border: 1px solid rgba(15, 76, 129, 0.12);
   border-radius: 18px;
-  padding: 1rem;
+  padding: 0.9rem;
   display: grid;
-  gap: 0.9rem;
+  gap: 0.8rem;
   box-shadow: 0 14px 34px rgba(15, 76, 129, 0.08);
 }
 
@@ -104,7 +121,7 @@ a:hover {
 
 .overview-heading h2 {
   margin: 0.15rem 0 0;
-  font-size: 1.2rem;
+  font-size: 1.08rem;
 }
 
 .overview-kicker {
@@ -130,13 +147,13 @@ a:hover {
   border: 1px solid rgba(15, 76, 129, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.92);
-  padding: 0.9rem;
+  padding: 0.78rem 0.82rem;
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .overview-card-market {
-  min-height: 142px;
+  min-height: 112px;
 }
 
 .overview-card-community {
@@ -144,6 +161,8 @@ a:hover {
   color: inherit;
   border: 1px solid rgba(15, 76, 129, 0.12);
   cursor: pointer;
+  display: grid;
+  gap: 0.35rem;
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
@@ -159,9 +178,20 @@ a:hover {
   color: var(--muted);
 }
 
+.overview-card-market .overview-label {
+  font-size: 0.62rem;
+}
+
+.overview-card-community .overview-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.28;
+  color: #08243d;
+}
+
 .overview-value {
   display: block;
-  margin-top: 0.45rem;
+  margin-top: 0.32rem;
   font-size: 1.08rem;
   line-height: 1.1;
   color: #09233b;
@@ -169,12 +199,17 @@ a:hover {
 
 .overview-delta,
 .overview-note {
-  margin: 0.45rem 0 0;
+  margin: 0.32rem 0 0;
   font-size: 0.74rem;
 }
 
 .overview-note {
   color: var(--muted);
+}
+
+.overview-card-community .overview-delta {
+  margin-top: 0;
+  font-size: 0.72rem;
 }
 
 .overview-community-head {
@@ -208,7 +243,7 @@ a:hover {
 .sentiment-lane {
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 1rem;
+  padding: 0.9rem;
   display: grid;
   gap: 0.85rem;
 }
@@ -236,6 +271,7 @@ a:hover {
 
 .sentiment-lane-head h2 {
   margin: 0.2rem 0 0;
+  font-size: 1.16rem;
 }
 
 .sentiment-list {
@@ -378,6 +414,7 @@ a:hover {
 
 .overview-modal-head h3 {
   margin: 0.15rem 0 0;
+  font-size: 1.02rem;
 }
 
 .overview-modal-list {
@@ -543,6 +580,37 @@ button:disabled {
   .header {
     flex-wrap: wrap;
     align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.72rem 0.8rem;
+  }
+
+  .nav {
+    gap: 0.7rem;
+    font-size: 0.94rem;
+  }
+
+  .main {
+    padding: 0.72rem;
+    gap: 0.72rem;
+  }
+
+  .panel,
+  .overview-panel,
+  .sentiment-lane {
+    padding: 0.8rem;
+  }
+
+  .panel h1 {
+    font-size: 1.28rem;
+  }
+
+  .panel h2,
+  .sentiment-lane-head h2 {
+    font-size: 1.06rem;
+  }
+
+  .overview-heading h2 {
+    font-size: 1rem;
   }
 
   .auth {
@@ -557,27 +625,29 @@ button:disabled {
   .overview-top-row {
     display: flex;
     overflow-x: auto;
-    gap: 0.75rem;
+    gap: 0.6rem;
     padding-bottom: 0.2rem;
     scroll-snap-type: x mandatory;
   }
 
   .overview-top-row .overview-card {
-    min-width: 76%;
+    min-width: 74%;
     scroll-snap-align: start;
   }
 
   .overview-bottom-row {
     grid-template-columns: 1fr;
+    gap: 0.55rem;
   }
 
   .sentiment-columns {
     grid-template-columns: 1fr;
+    gap: 0.72rem;
   }
 
   .overview-modal {
     max-height: min(84vh, 900px);
-    padding: 0.9rem;
+    padding: 0.82rem;
   }
 
   .overview-modal-head,
