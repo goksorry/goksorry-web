@@ -847,12 +847,12 @@ button:disabled {
 
 .clean-filter-overlay-burst-pretty {
   filter: blur(1px) saturate(1.1);
-  animation: clean-filter-random-burst 0.65s ease-out forwards;
+  animation: clean-filter-random-burst 1s ease-out forwards;
 }
 
 .clean-filter-overlay-burst-grim {
   filter: blur(1px) saturate(1.08);
-  animation: clean-filter-random-burst 0.65s ease-out forwards;
+  animation: clean-filter-random-burst 1s ease-out forwards;
 }
 
 .clean-filter-overlay-loader {

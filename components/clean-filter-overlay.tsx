@@ -13,8 +13,8 @@ type OverlayBurst = {
   expiresAt: number;
 };
 
-const FLASH_INTERVAL_MS = 250;
-const FLASH_DURATION_MS = 650;
+const FLASH_INTERVAL_MS = 300;
+const FLASH_DURATION_MS = 1000;
 
 const PRETTY_COLORS = [
   "rgba(255, 210, 236, 0.42)",
@@ -44,8 +44,7 @@ export function CleanFilterOverlay() {
   const burstIdRef = useRef(0);
 
   useEffect(() => {
-    if (!animationMode) {
-      setBursts([]);
+    if (!isApplying || !animationMode) {
       return;
     }
 
@@ -56,7 +55,7 @@ export function CleanFilterOverlay() {
         id: burstIdRef.current++,
         x: `${randomBetween(8, 92).toFixed(2)}%`,
         y: `${randomBetween(10, 90).toFixed(2)}%`,
-        size: `${Math.round(randomBetween(160, 360))}px`,
+        size: `${Math.round(randomBetween(320, 720))}px`,
         color: pickRandom(palette),
         mode: animationMode,
         expiresAt: now + FLASH_DURATION_MS
@@ -70,11 +69,25 @@ export function CleanFilterOverlay() {
 
     return () => {
       window.clearInterval(interval);
-      setBursts([]);
     };
-  }, [animationMode]);
+  }, [animationMode, isApplying]);
 
-  if (!isApplying && !animationMode) {
+  useEffect(() => {
+    if (bursts.length === 0) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      setBursts((current) => current.filter((item) => item.expiresAt > now));
+    }, 120);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [bursts.length]);
+
+  if (!isApplying && bursts.length === 0) {
     return null;
   }
 
