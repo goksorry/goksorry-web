@@ -786,8 +786,23 @@ button:disabled {
   }
 
   .sentiment-columns {
-    grid-template-columns: 1fr;
-    gap: 0.72rem;
+    display: flex;
+    overflow-x: auto;
+    gap: 0.6rem;
+    padding-bottom: 0.2rem;
+    scroll-snap-type: x mandatory;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .sentiment-columns::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sentiment-columns .sentiment-lane {
+    min-width: 100%;
+    flex: 0 0 100%;
+    scroll-snap-align: start;
   }
 
   .mobile-feed-fabs {
