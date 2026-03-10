@@ -1,36 +1,11 @@
 import { NextResponse } from "next/server";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
-import { getRequestId, jsonError } from "@/lib/api-auth";
+import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const requireSameOrigin = (request: Request, requestId: string): NextResponse | null => {
-  const origin = (request.headers.get("origin") ?? "").trim();
-  if (!origin) {
-    return jsonError(requestId, 403, "FORBIDDEN", "origin header required");
-  }
-
-  let expectedOrigin = "";
-  try {
-    expectedOrigin = new URL(request.url).origin;
-  } catch {
-    return jsonError(requestId, 400, "INVALID_QUERY", "invalid request url");
-  }
-
-  if (origin !== expectedOrigin) {
-    return jsonError(requestId, 403, "FORBIDDEN", "cross-origin revoke is blocked");
-  }
-
-  const secFetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
-  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "same-site" && secFetchSite !== "none") {
-    return jsonError(requestId, 403, "FORBIDDEN", "untrusted fetch site");
-  }
-
-  return null;
-};
 
 const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextResponse => {
   const response = NextResponse.json(body, { status });
@@ -40,7 +15,7 @@ const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextR
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const requestId = getRequestId(request);
-  const sameOriginError = requireSameOrigin(request, requestId);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
   if (sameOriginError) {
     return sameOriginError;
   }
@@ -70,7 +45,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .maybeSingle();
 
   if (error) {
-    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("token revoke lookup failed", requestId, error);
+    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token lookup failed");
   }
 
   if (!data) {
@@ -92,7 +68,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .eq("user_id", user.id);
 
   if (updateError) {
-    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", updateError.message);
+    logApiError("token revoke update failed", requestId, updateError);
+    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token revoke failed");
   }
 
   return jsonNoStore({

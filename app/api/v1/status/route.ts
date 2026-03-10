@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireTradingBotReadAuth } from "@/lib/api-auth";
+import { jsonError, logApiError, requireTradingBotReadAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function GET(request: Request) {
@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (error) {
-    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("status lookup failed", auth.requestId, error);
+    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "status lookup failed");
   }
 
   const statusRow = data ?? {

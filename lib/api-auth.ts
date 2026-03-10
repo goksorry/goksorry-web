@@ -31,6 +31,30 @@ export const jsonError = (
   );
 };
 
+export const jsonMessage = (requestId: string, status: number, message: string) => {
+  return NextResponse.json(
+    {
+      error: message,
+      request_id: requestId
+    },
+    { status }
+  );
+};
+
+export const logApiError = (scope: string, requestId: string, error: unknown) => {
+  const details =
+    error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message
+        }
+      : {
+          message: String(error)
+        };
+
+  console.error(`${scope} [${requestId}]`, details);
+};
+
 const parseBearer = (request: Request): string | null => {
   const authHeader = request.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
@@ -46,6 +70,31 @@ export const getRequestId = (request: Request): string => {
     return header.trim();
   }
   return randomUUID();
+};
+
+export const requireSameOriginMutation = (request: Request, requestId: string): NextResponse | null => {
+  const origin = (request.headers.get("origin") ?? "").trim();
+  if (!origin) {
+    return jsonMessage(requestId, 403, "origin header required");
+  }
+
+  let expectedOrigin = "";
+  try {
+    expectedOrigin = new URL(request.url).origin;
+  } catch {
+    return jsonMessage(requestId, 400, "invalid request url");
+  }
+
+  if (origin !== expectedOrigin) {
+    return jsonMessage(requestId, 403, "cross-origin request is blocked");
+  }
+
+  const secFetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
+  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "same-site" && secFetchSite !== "none") {
+    return jsonMessage(requestId, 403, "untrusted fetch site");
+  }
+
+  return null;
 };
 
 export const requireDetectorWriteAuth = (
@@ -104,9 +153,10 @@ export const requireTradingBotReadAuth = async (
     .maybeSingle();
 
   if (error) {
+    logApiError("trading bot auth lookup failed", requestId, error);
     return {
       ok: false,
-      response: jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error.message)
+      response: jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token lookup failed")
     };
   }
 

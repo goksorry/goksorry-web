@@ -1,16 +1,38 @@
 import { NextResponse } from "next/server";
+import { getRequestId, jsonMessage, logApiError } from "@/lib/api-auth";
 import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
+const maskEmail = (value: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  const atIndex = normalized.indexOf("@");
+  if (atIndex <= 0 || atIndex === normalized.length - 1) {
+    return null;
+  }
+
+  const local = normalized.slice(0, atIndex);
+  const domain = normalized.slice(atIndex + 1);
+  const visibleLocal = local.slice(0, Math.min(2, local.length));
+  const visibleDomain = domain.slice(0, Math.min(2, domain.length));
+  return `${visibleLocal}${"*".repeat(Math.max(1, local.length - visibleLocal.length))}@${visibleDomain}${"*".repeat(
+    Math.max(1, domain.length - visibleDomain.length)
+  )}`;
+};
+
 export async function GET(request: Request) {
+  const requestId = getRequestId(request);
   const user = await getUserFromAuthorization(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonMessage(requestId, 401, "Unauthorized");
   }
 
   const role = await ensureProfileForUser(user);
   if (role !== "admin" && !isAdminEmail(user.email)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return jsonMessage(requestId, 403, "Forbidden");
   }
 
   const service = getServiceSupabaseClient();
@@ -21,7 +43,8 @@ export async function GET(request: Request) {
     .limit(300);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logApiError("admin reports lookup failed", requestId, error);
+    return jsonMessage(requestId, 500, "신고 목록을 불러오지 못했습니다.");
   }
 
   const reporterIds = [...new Set((reports ?? []).map((report) => report.reporter_id).filter(Boolean))];
@@ -55,7 +78,7 @@ export async function GET(request: Request) {
       created_at: report.created_at,
       reporter_id: report.reporter_id,
       reporter_nickname: profile?.nickname ?? null,
-      reporter_email: profile?.email ?? null
+      reporter_email: maskEmail(profile?.email ?? null)
     };
   });
 

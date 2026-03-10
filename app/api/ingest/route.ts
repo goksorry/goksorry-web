@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/lib/env";
+import { jsonMessage, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -27,28 +27,17 @@ const chunk = <T,>(items: T[], size: number): T[][] => {
   return out;
 };
 
-const parseBearer = (request: Request): string | null => {
-  const value = request.headers.get("authorization") ?? "";
-  if (!value.startsWith("Bearer ")) {
-    return null;
-  }
-  const token = value.slice(7).trim();
-  return token || null;
-};
-
 export async function POST(request: Request) {
-  const env = getServerEnv();
-  const token = parseBearer(request);
-
-  if (!token || token !== env.DETECTOR_WRITE_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = requireDetectorWriteAuth(request);
+  if (!auth.ok) {
+    return auth.response;
   }
 
   let body: { items?: IngestPayloadItem[] };
   try {
     body = (await request.json()) as { items?: IngestPayloadItem[] };
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonMessage(auth.requestId, 400, "Invalid JSON body");
   }
 
   const incomingItems = Array.isArray(body.items) ? body.items : [];
@@ -118,14 +107,16 @@ export async function POST(request: Request) {
   for (const part of chunk(externalRows, 200)) {
     const { error } = await service.from("external_posts").upsert(part, { onConflict: "post_key" });
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logApiError("external posts upsert failed", auth.requestId, error);
+      return jsonMessage(auth.requestId, 500, "external post upsert failed");
     }
   }
 
   for (const part of chunk(sentimentRows, 200)) {
     const { error } = await service.from("sentiment_results").upsert(part, { onConflict: "post_key" });
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logApiError("sentiment results upsert failed", auth.requestId, error);
+      return jsonMessage(auth.requestId, 500, "sentiment upsert failed");
     }
   }
 

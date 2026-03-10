@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
@@ -11,28 +12,31 @@ import {
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
   const user = await getUserFromAuthorization(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonMessage(requestId, 401, "Unauthorized");
   }
 
   if (!allowRateLimit(`post:${user.id}`, 3)) {
-    return NextResponse.json({ error: "Too many posts. Try again in a minute." }, { status: 429 });
+    return jsonMessage(requestId, 429, "Too many posts. Try again in a minute.");
   }
 
   const ageCheck = checkAccountAge(user, MIN_ACCOUNT_AGE_MINUTES);
   if (!ageCheck.ok) {
-    return NextResponse.json(
-      { error: `Posting is blocked for new users. Try again in ${ageCheck.waitMinutes} minute(s).` },
-      { status: 403 }
-    );
+    return jsonMessage(requestId, 403, `Posting is blocked for new users. Try again in ${ageCheck.waitMinutes} minute(s).`);
   }
 
   let body: { board_slug?: unknown; title?: unknown; content?: unknown };
   try {
     body = (await request.json()) as { board_slug?: unknown; title?: unknown; content?: unknown };
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonMessage(requestId, 400, "Invalid JSON body");
   }
 
   let boardSlug: string;
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
     title = sanitizePlainText(body.title, "title", 200);
     content = sanitizePlainText(body.content, "content", 5000);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 });
+    return jsonMessage(requestId, 400, String(error));
   }
 
   await ensureProfileForUser(user);
@@ -51,11 +55,11 @@ export async function POST(request: Request) {
   const service = getServiceSupabaseClient();
   const { data: board } = await service.from("boards").select("id,slug").eq("slug", boardSlug).maybeSingle();
   if (!board) {
-    return NextResponse.json({ error: "Board not found" }, { status: 404 });
+    return jsonMessage(requestId, 404, "Board not found");
   }
 
   if (board.slug === "notice" && user.role !== "admin") {
-    return NextResponse.json({ error: "공지 작성 권한이 없습니다." }, { status: 403 });
+    return jsonMessage(requestId, 403, "공지 작성 권한이 없습니다.");
   }
 
   const { data, error } = await service
@@ -70,7 +74,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
+    logApiError("community post insert failed", requestId, error ?? "insert failed");
+    return jsonMessage(requestId, 500, "글을 저장하지 못했습니다.");
   }
 
   revalidatePath("/community");

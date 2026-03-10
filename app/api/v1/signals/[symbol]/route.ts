@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireTradingBotReadAuth } from "@/lib/api-auth";
+import { jsonError, logApiError, requireTradingBotReadAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
@@ -25,7 +25,8 @@ export async function GET(request: Request, { params }: { params: { symbol: stri
     .maybeSingle();
 
   if (error) {
-    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("symbol lookup failed", auth.requestId, error);
+    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "symbol lookup failed");
   }
 
   if (!data) {

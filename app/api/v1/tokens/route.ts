@@ -1,37 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { generateTradingBotApiToken } from "@/lib/api-tokens";
-import { getRequestId, jsonError } from "@/lib/api-auth";
+import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const MAX_ACTIVE_TOKENS_PER_USER = 20;
-
-const requireSameOrigin = (request: Request, requestId: string): NextResponse | null => {
-  const origin = (request.headers.get("origin") ?? "").trim();
-  if (!origin) {
-    return jsonError(requestId, 403, "FORBIDDEN", "origin header required");
-  }
-
-  let expectedOrigin = "";
-  try {
-    expectedOrigin = new URL(request.url).origin;
-  } catch {
-    return jsonError(requestId, 400, "INVALID_QUERY", "invalid request url");
-  }
-
-  if (origin !== expectedOrigin) {
-    return jsonError(requestId, 403, "FORBIDDEN", "cross-origin token issuance is blocked");
-  }
-
-  const secFetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
-  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "same-site" && secFetchSite !== "none") {
-    return jsonError(requestId, 403, "FORBIDDEN", "untrusted fetch site");
-  }
-
-  return null;
-};
 
 const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextResponse => {
   const response = NextResponse.json(body, { status });
@@ -69,7 +44,8 @@ export async function GET(request: Request) {
     .limit(100);
 
   if (error) {
-    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("token list lookup failed", requestId, error);
+    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token list lookup failed");
   }
 
   return jsonNoStore({
@@ -80,7 +56,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
-  const sameOriginError = requireSameOrigin(request, requestId);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
   if (sameOriginError) {
     return sameOriginError;
   }
@@ -129,7 +105,8 @@ export async function POST(request: Request) {
     .is("revoked_at", null);
 
   if (countError) {
-    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", countError.message);
+    logApiError("token count lookup failed", requestId, countError);
+    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token count lookup failed");
   }
 
   if ((count ?? 0) >= MAX_ACTIVE_TOKENS_PER_USER) {
@@ -152,7 +129,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", error?.message ?? "failed to create token");
+    logApiError("token create failed", requestId, error ?? "failed to create token");
+    return jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token creation failed");
   }
 
   return jsonNoStore({

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
@@ -14,20 +15,27 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
   const user = await getUserFromAuthorization(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonMessage(requestId, 401, "Unauthorized");
   }
 
   if (!allowRateLimit(`comment:${user.id}`, 8)) {
-    return NextResponse.json({ error: "Too many comments. Try again in a minute." }, { status: 429 });
+    return jsonMessage(requestId, 429, "Too many comments. Try again in a minute.");
   }
 
   const ageCheck = checkAccountAge(user, MIN_ACCOUNT_AGE_MINUTES);
   if (!ageCheck.ok) {
-    return NextResponse.json(
-      { error: `Commenting is blocked for new users. Try again in ${ageCheck.waitMinutes} minute(s).` },
-      { status: 403 }
+    return jsonMessage(
+      requestId,
+      403,
+      `Commenting is blocked for new users. Try again in ${ageCheck.waitMinutes} minute(s).`
     );
   }
 
@@ -35,19 +43,19 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as { post_id?: unknown; content?: unknown };
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonMessage(requestId, 400, "Invalid JSON body");
   }
 
   const postId = String(body.post_id ?? "").trim();
   if (!UUID_PATTERN.test(postId)) {
-    return NextResponse.json({ error: "Invalid post_id" }, { status: 400 });
+    return jsonMessage(requestId, 400, "Invalid post_id");
   }
 
   let content: string;
   try {
     content = sanitizePlainText(body.content, "content", 3000);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 });
+    return jsonMessage(requestId, 400, String(error));
   }
 
   await ensureProfileForUser(user);
@@ -60,7 +68,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!post || post.is_deleted) {
-    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    return jsonMessage(requestId, 404, "Post not found");
   }
 
   const { data, error } = await service
@@ -74,7 +82,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
+    logApiError("community comment insert failed", requestId, error ?? "insert failed");
+    return jsonMessage(requestId, 500, "댓글을 저장하지 못했습니다.");
   }
 
   const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;

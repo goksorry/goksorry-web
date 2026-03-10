@@ -138,7 +138,10 @@ export const fetchRecentFeedRows = async (
     .limit(limit);
 
   if (sentimentError) {
-    return { rows: [], errorMessage: sentimentError.message };
+    console.error("feed sentiment query failed", {
+      message: sentimentError.message
+    });
+    return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다." };
   }
 
   const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => ({
@@ -161,7 +164,10 @@ export const fetchRecentFeedRows = async (
       .in("post_key", postKeyBatch);
 
     if (externalError) {
-      return { rows: [], errorMessage: externalError.message };
+      console.error("feed external post query failed", {
+        message: externalError.message
+      });
+      return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다." };
     }
 
     externalRows.push(

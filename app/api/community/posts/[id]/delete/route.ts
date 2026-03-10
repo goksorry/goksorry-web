@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -10,14 +11,20 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
   const user = await getUserFromAuthorization(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonMessage(requestId, 401, "Unauthorized");
   }
 
   const postId = String(params.id ?? "").trim();
   if (!UUID_PATTERN.test(postId)) {
-    return NextResponse.json({ error: "Invalid post id" }, { status: 400 });
+    return jsonMessage(requestId, 400, "Invalid post id");
   }
 
   const role = await ensureProfileForUser(user);
@@ -31,7 +38,7 @@ export async function POST(
     .maybeSingle();
 
   if (!post) {
-    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    return jsonMessage(requestId, 404, "Post not found");
   }
 
   if (post.is_deleted) {
@@ -39,7 +46,7 @@ export async function POST(
   }
 
   if (post.author_id !== user.id && !admin) {
-    return NextResponse.json({ error: "Only author/admin can delete" }, { status: 403 });
+    return jsonMessage(requestId, 403, "Only author/admin can delete");
   }
 
   const { error } = await service
@@ -52,7 +59,8 @@ export async function POST(
     .eq("id", postId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logApiError("community post delete failed", requestId, error);
+    return jsonMessage(requestId, 500, "글을 삭제하지 못했습니다.");
   }
 
   const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireDetectorWriteAuth } from "@/lib/api-auth";
+import { jsonError, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
@@ -128,7 +128,8 @@ export async function POST(request: Request) {
       .upsert(signalRows, { onConflict: "symbol" });
 
     if (error) {
-      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+      logApiError("detector signal upsert failed", auth.requestId, error);
+      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "signal upsert failed");
     }
   }
 
@@ -138,7 +139,8 @@ export async function POST(request: Request) {
       .upsert(marketRows, { onConflict: "market" });
 
     if (error) {
-      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+      logApiError("detector market state upsert failed", auth.requestId, error);
+      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "market state upsert failed");
     }
   }
 
@@ -160,7 +162,8 @@ export async function POST(request: Request) {
 
     const { error } = await service.from("detector_status").upsert(row, { onConflict: "singleton" });
     if (error) {
-      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+      logApiError("detector status upsert failed", auth.requestId, error);
+      return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "status upsert failed");
     }
     statusUpdated = true;
   }

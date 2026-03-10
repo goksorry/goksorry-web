@@ -1,14 +1,21 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { sanitizePlainText } from "@/lib/plain-text";
 import { getNicknamePolicy } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function PATCH(request: Request) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
   const user = await getUserFromAuthorization(request);
   if (!user || !user.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonMessage(requestId, 401, "Unauthorized");
   }
 
   await ensureProfileForUser(user);
@@ -17,14 +24,14 @@ export async function PATCH(request: Request) {
   try {
     body = (await request.json()) as { nickname?: unknown };
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return jsonMessage(requestId, 400, "Invalid JSON body");
   }
 
   let nickname: string;
   try {
     nickname = sanitizePlainText(body.nickname, "nickname", 30);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 });
+    return jsonMessage(requestId, 400, String(error));
   }
 
   const service = getServiceSupabaseClient();
@@ -35,7 +42,10 @@ export async function PATCH(request: Request) {
     .maybeSingle();
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: profileError?.message ?? "Profile not found" }, { status: 404 });
+    if (profileError) {
+      logApiError("profile lookup failed", requestId, profileError);
+    }
+    return jsonMessage(requestId, 404, "Profile not found");
   }
 
   const nextRole = profile.role === "admin" ? "admin" : "user";
@@ -50,7 +60,7 @@ export async function PATCH(request: Request) {
 
   if (changed && !nicknamePolicy.can_change) {
     return NextResponse.json(
-      { error: "닉네임은 7일에 한 번만 변경할 수 있습니다. 관리자만 제한 없이 변경할 수 있습니다." },
+      { error: "닉네임은 7일에 한 번만 변경할 수 있습니다. 관리자만 제한 없이 변경할 수 있습니다.", request_id: requestId },
       { status: 403 }
     );
   }
@@ -66,9 +76,10 @@ export async function PATCH(request: Request) {
 
   if (updateError) {
     if (updateError.code === "23505") {
-      return NextResponse.json({ error: "이미 사용 중인 닉네임입니다." }, { status: 409 });
+      return jsonMessage(requestId, 409, "이미 사용 중인 닉네임입니다.");
     }
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    logApiError("profile update failed", requestId, updateError);
+    return jsonMessage(requestId, 500, "프로필을 저장하지 못했습니다.");
   }
 
   revalidatePath("/profile");

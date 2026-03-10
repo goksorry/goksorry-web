@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireTradingBotReadAuth } from "@/lib/api-auth";
+import { jsonError, logApiError, requireTradingBotReadAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const parseMarket = (value: string | null): "kr" | "us" | "all" | null => {
@@ -37,7 +37,8 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) {
-    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("market latest lookup failed", auth.requestId, error);
+    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "market state lookup failed");
   }
 
   return NextResponse.json({

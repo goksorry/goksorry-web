@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireTradingBotReadAuth } from "@/lib/api-auth";
+import { jsonError, logApiError, requireTradingBotReadAuth } from "@/lib/api-auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
@@ -86,7 +86,8 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (statusError) {
-    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", statusError.message);
+    logApiError("signals status lookup failed", auth.requestId, statusError);
+    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "status lookup failed");
   }
 
   if (statusRow?.llm_degraded || statusRow?.detector_mode === "degraded") {
@@ -111,7 +112,8 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) {
-    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", error.message);
+    logApiError("signals latest lookup failed", auth.requestId, error);
+    return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "signal lookup failed");
   }
 
   const nowMs = Date.now();
