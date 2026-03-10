@@ -5,6 +5,8 @@ import { getServerEnv } from "@/lib/env";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AppRole = "admin" | "user";
+export const NICKNAME_MAX_LENGTH = 30;
+export const NICKNAME_CHANGE_COOLDOWN_DAYS = 7;
 
 export type SyncedProfile = {
   id: string;
@@ -12,6 +14,14 @@ export type SyncedProfile = {
   nickname: string;
   role: AppRole;
   created_at: string;
+  nickname_confirmed_at: string | null;
+  nickname_changed_at: string | null;
+};
+
+export type NicknamePolicy = {
+  can_change: boolean;
+  needs_setup: boolean;
+  available_at: string | null;
 };
 
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
@@ -30,9 +40,11 @@ export const isAdminEmail = (email?: string | null): boolean => {
 };
 
 export const buildNickname = (email: string, preferredName?: string | null): string => {
-  const fallback = normalizeEmail(email).split("@")[0] || "user";
-  const candidate = String(preferredName ?? "").replace(/[<>]/g, "").trim().slice(0, 30);
-  return candidate || fallback;
+  const baseSource = String(preferredName ?? "").replace(/[<>]/g, "").trim() || normalizeEmail(email).split("@")[0] || "user";
+  const suffix = createHash("sha256").update(normalizeEmail(email)).digest("hex").slice(0, 6);
+  const maxBaseLength = Math.max(1, NICKNAME_MAX_LENGTH - suffix.length - 1);
+  const base = baseSource.slice(0, maxBaseLength);
+  return `${base}_${suffix}`;
 };
 
 export const buildStableProfileId = (email: string): string => {
@@ -46,6 +58,58 @@ export const buildStableProfileId = (email: string): string => {
 
   const hex = bytes.toString("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+};
+
+export const getNicknamePolicy = ({
+  role,
+  nickname_confirmed_at,
+  nickname_changed_at
+}: {
+  role: AppRole;
+  nickname_confirmed_at?: string | null;
+  nickname_changed_at?: string | null;
+}): NicknamePolicy => {
+  if (role === "admin") {
+    return {
+      can_change: true,
+      needs_setup: !nickname_confirmed_at,
+      available_at: null
+    };
+  }
+
+  if (!nickname_confirmed_at) {
+    return {
+      can_change: true,
+      needs_setup: true,
+      available_at: null
+    };
+  }
+
+  if (!nickname_changed_at) {
+    return {
+      can_change: true,
+      needs_setup: false,
+      available_at: null
+    };
+  }
+
+  const changedAtMs = new Date(nickname_changed_at).getTime();
+  if (Number.isNaN(changedAtMs)) {
+    return {
+      can_change: true,
+      needs_setup: false,
+      available_at: null
+    };
+  }
+
+  const availableAtMs = changedAtMs + NICKNAME_CHANGE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  const canChange = Date.now() >= availableAtMs;
+
+  return {
+    can_change: canChange,
+    needs_setup: false,
+    available_at: canChange ? null : new Date(availableAtMs).toISOString()
+  };
 };
 
 export const syncProfile = async ({
@@ -64,7 +128,7 @@ export const syncProfile = async ({
 
   const { data: existing, error: existingError } = await service
     .from("profiles")
-    .select("id,email,nickname,role,created_at")
+    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
     .ilike("email", normalizedEmail)
     .maybeSingle();
 
@@ -87,7 +151,7 @@ export const syncProfile = async ({
         },
         { onConflict: "id" }
       )
-      .select("id,email,nickname,role,created_at")
+      .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
       .single();
 
     if (updateError || !updated) {
@@ -99,7 +163,9 @@ export const syncProfile = async ({
       email: String(updated.email),
       nickname: String(updated.nickname),
       role: updated.role === "admin" ? "admin" : "user",
-      created_at: String(updated.created_at)
+      created_at: String(updated.created_at),
+      nickname_confirmed_at: updated.nickname_confirmed_at ? String(updated.nickname_confirmed_at) : null,
+      nickname_changed_at: updated.nickname_changed_at ? String(updated.nickname_changed_at) : null
     };
   }
 
@@ -111,7 +177,7 @@ export const syncProfile = async ({
       nickname,
       role: desiredRole
     })
-    .select("id,email,nickname,role,created_at")
+    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
     .single();
 
   if (insertError || !inserted) {
@@ -123,6 +189,45 @@ export const syncProfile = async ({
     email: String(inserted.email),
     nickname: String(inserted.nickname),
     role: inserted.role === "admin" ? "admin" : "user",
-    created_at: String(inserted.created_at)
+    created_at: String(inserted.created_at),
+    nickname_confirmed_at: inserted.nickname_confirmed_at ? String(inserted.nickname_confirmed_at) : null,
+    nickname_changed_at: inserted.nickname_changed_at ? String(inserted.nickname_changed_at) : null
+  };
+};
+
+export const findProfileByIdentity = async ({
+  id,
+  email
+}: {
+  id?: string | null;
+  email?: string | null;
+}): Promise<SyncedProfile | null> => {
+  const service = getServiceSupabaseClient();
+  let query = service
+    .from("profiles")
+    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at");
+
+  if (id) {
+    query = query.eq("id", id);
+  } else if (email) {
+    query = query.ilike("email", normalizeEmail(email));
+  } else {
+    return null;
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    id: String(data.id),
+    email: String(data.email),
+    nickname: String(data.nickname),
+    role: data.role === "admin" ? "admin" : "user",
+    created_at: String(data.created_at),
+    nickname_confirmed_at: data.nickname_confirmed_at ? String(data.nickname_confirmed_at) : null,
+    nickname_changed_at: data.nickname_changed_at ? String(data.nickname_changed_at) : null
   };
 };

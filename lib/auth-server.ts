@@ -2,7 +2,7 @@ import "server-only";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { buildStableProfileId, isAdminEmail, normalizeEmail, syncProfile } from "@/lib/profile-sync";
+import { buildStableProfileId, getNicknamePolicy, isAdminEmail, normalizeEmail, syncProfile } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AppAuthUser = {
@@ -13,6 +13,9 @@ export type AppAuthUser = {
   nickname: string | null;
   role: "admin" | "user";
   created_at: string;
+  nickname_confirmed_at: string | null;
+  nickname_changed_at: string | null;
+  nickname_needs_setup: boolean;
 };
 
 export const MIN_ACCOUNT_AGE_MINUTES = 15;
@@ -30,11 +33,17 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
   const service = getServiceSupabaseClient();
   const { data: profile } = await service
     .from("profiles")
-    .select("id,email,nickname,role,created_at")
+    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
     .eq("id", id)
     .maybeSingle();
 
   if (profile) {
+    const nicknamePolicy = getNicknamePolicy({
+      role: profile.role === "admin" ? "admin" : "user",
+      nickname_confirmed_at: profile.nickname_confirmed_at ? String(profile.nickname_confirmed_at) : null,
+      nickname_changed_at: profile.nickname_changed_at ? String(profile.nickname_changed_at) : null
+    });
+
     return {
       id: String(profile.id),
       email: String(profile.email ?? email),
@@ -42,7 +51,10 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
       image: session.user.image ?? null,
       nickname: String(profile.nickname ?? ""),
       role: profile.role === "admin" ? "admin" : "user",
-      created_at: String(profile.created_at)
+      created_at: String(profile.created_at),
+      nickname_confirmed_at: profile.nickname_confirmed_at ? String(profile.nickname_confirmed_at) : null,
+      nickname_changed_at: profile.nickname_changed_at ? String(profile.nickname_changed_at) : null,
+      nickname_needs_setup: nicknamePolicy.needs_setup
     };
   }
 
@@ -60,7 +72,10 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
       image: session.user.image ?? null,
       nickname: syncedProfile.nickname,
       role: syncedProfile.role,
-      created_at: syncedProfile.created_at
+      created_at: syncedProfile.created_at,
+      nickname_confirmed_at: syncedProfile.nickname_confirmed_at,
+      nickname_changed_at: syncedProfile.nickname_changed_at,
+      nickname_needs_setup: getNicknamePolicy(syncedProfile).needs_setup
     };
   } catch (error) {
     console.error("profile sync failed during session lookup", error);
@@ -78,7 +93,10 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
     image: session.user.image ?? null,
     nickname: session.user.nickname ?? null,
     role: session.user.role === "admin" ? "admin" : "user",
-    created_at: createdAt
+    created_at: createdAt,
+    nickname_confirmed_at: session.user.nickname_confirmed_at ?? null,
+    nickname_changed_at: session.user.nickname_changed_at ?? null,
+    nickname_needs_setup: Boolean(session.user.nickname_needs_setup)
   };
 };
 

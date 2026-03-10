@@ -4,7 +4,16 @@ import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
 import { getServerEnv } from "@/lib/env";
-import { buildNickname, buildStableProfileId, isAdminEmail, normalizeEmail, syncProfile } from "@/lib/profile-sync";
+import {
+  buildNickname,
+  buildStableProfileId,
+  findProfileByIdentity,
+  getNicknamePolicy,
+  isAdminEmail,
+  normalizeEmail,
+  type SyncedProfile,
+  syncProfile
+} from "@/lib/profile-sync";
 
 const syncTokenProfile = async (
   token: JWT,
@@ -30,6 +39,26 @@ const syncTokenProfile = async (
   token.role = profile.role;
   token.nickname = profile.nickname;
   token.profileCreatedAt = profile.created_at;
+  token.nicknameConfirmedAt = profile.nickname_confirmed_at;
+  token.nicknameChangedAt = profile.nickname_changed_at;
+  token.nicknameNeedsSetup = getNicknamePolicy(profile).needs_setup;
+  return token;
+};
+
+const applyProfileToToken = (token: JWT, profile: SyncedProfile | null): JWT => {
+  if (!profile) {
+    return token;
+  }
+
+  token.email = profile.email;
+  token.name = profile.nickname;
+  token.appUserId = profile.id;
+  token.role = profile.role;
+  token.nickname = profile.nickname;
+  token.profileCreatedAt = profile.created_at;
+  token.nicknameConfirmedAt = profile.nickname_confirmed_at;
+  token.nicknameChangedAt = profile.nickname_changed_at;
+  token.nicknameNeedsSetup = getNicknamePolicy(profile).needs_setup;
   return token;
 };
 
@@ -57,6 +86,15 @@ const seedTokenIdentity = (
     typeof token.profileCreatedAt === "string" && token.profileCreatedAt.trim()
       ? token.profileCreatedAt
       : new Date().toISOString();
+  token.nicknameConfirmedAt =
+    typeof token.nicknameConfirmedAt === "string" && token.nicknameConfirmedAt.trim()
+      ? token.nicknameConfirmedAt
+      : null;
+  token.nicknameChangedAt =
+    typeof token.nicknameChangedAt === "string" && token.nicknameChangedAt.trim()
+      ? token.nicknameChangedAt
+      : null;
+  token.nicknameNeedsSetup = token.nicknameNeedsSetup === false ? false : true;
   return token;
 };
 
@@ -81,6 +119,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       const seededToken = seedTokenIdentity(token, user);
 
+      const profileFromDb = await findProfileByIdentity({
+        id: typeof seededToken.appUserId === "string" ? seededToken.appUserId : null,
+        email: typeof seededToken.email === "string" ? seededToken.email : null
+      });
+
+      if (profileFromDb) {
+        return applyProfileToToken(seededToken, profileFromDb);
+      }
+
       if (user?.email || !seededToken.appUserId || !seededToken.profileCreatedAt) {
         try {
           return await syncTokenProfile(seededToken, user);
@@ -102,6 +149,10 @@ export const authOptions: NextAuthOptions = {
       session.user.nickname = typeof token.nickname === "string" ? token.nickname : null;
       session.user.created_at =
         typeof token.profileCreatedAt === "string" ? token.profileCreatedAt : new Date().toISOString();
+      session.user.nickname_confirmed_at =
+        typeof token.nicknameConfirmedAt === "string" ? token.nicknameConfirmedAt : null;
+      session.user.nickname_changed_at = typeof token.nicknameChangedAt === "string" ? token.nicknameChangedAt : null;
+      session.user.nickname_needs_setup = Boolean(token.nicknameNeedsSetup);
       session.user.name = typeof token.name === "string" ? token.name : session.user.name ?? null;
       session.user.email = typeof token.email === "string" ? token.email : session.user.email ?? null;
       return session;

@@ -4,7 +4,9 @@ import Link from "next/link";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
+import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
+import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
@@ -24,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
                 <Link href="/">피드</Link>
                 <Link href="/community">커뮤니티</Link>
-                <Link href="/admin/reports">신고 관리</Link>
+                <HeaderNavExtras />
               </nav>
               <div className="auth">
                 <Suspense fallback={<button type="button" disabled>구글 로그인</button>}>
@@ -47,6 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 }
               >
                 <MarketOverviewShell />
+              </Suspense>
+              <Suspense fallback={null}>
+                <ProfileSetupRedirect />
               </Suspense>
               {children}
             </main>

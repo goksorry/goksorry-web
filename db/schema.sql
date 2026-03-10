@@ -4,6 +4,8 @@ create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
   nickname text not null,
+  nickname_confirmed_at timestamptz,
+  nickname_changed_at timestamptz,
   role text not null default 'user' check (role in ('user', 'admin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -91,6 +93,7 @@ create table if not exists public.reports (
 
 create index if not exists external_posts_source_fetched_at_idx on public.external_posts(source, fetched_at desc);
 create index if not exists sentiment_results_analyzed_at_idx on public.sentiment_results(analyzed_at desc);
+create unique index if not exists profiles_nickname_unique_ci_idx on public.profiles(lower(nickname));
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
 create index if not exists community_comments_post_created_idx on public.community_comments(post_id, created_at asc);
 create index if not exists reports_status_created_idx on public.reports(status, created_at desc);

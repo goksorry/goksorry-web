@@ -17,6 +17,7 @@
 - Canonical schema file: `db/schema.sql`
 - Keep schema evolving in this single file until service launch.
 - If you are upgrading an existing deployed DB from the old Supabase Auth-coupled schema, run `db/migrations/003_nextauth_auth.sql` once before enabling NextAuth login.
+- If you are upgrading an existing deployed DB to the nickname setup/cooldown policy, run `db/migrations/004_profile_nickname_policy.sql` once.
 
 ## API summary
 
