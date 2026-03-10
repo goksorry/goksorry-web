@@ -838,7 +838,15 @@ button:disabled {
   opacity: 0;
 }
 
-.clean-filter-overlay-pretty .clean-filter-overlay-flash {
+.clean-filter-overlay-loading.clean-filter-overlay-pretty .clean-filter-overlay-flash {
+  background:
+    radial-gradient(circle at 24% 24%, rgba(255, 210, 236, 0.36), transparent 26%),
+    radial-gradient(circle at 78% 28%, rgba(255, 238, 196, 0.26), transparent 24%),
+    radial-gradient(circle at 50% 70%, rgba(214, 188, 255, 0.24), transparent 30%);
+  animation: clean-filter-pretty-bloom 0.95s ease-out infinite;
+}
+
+.clean-filter-overlay-pretty:not(.clean-filter-overlay-loading) .clean-filter-overlay-flash {
   background:
     radial-gradient(circle at 24% 24%, rgba(255, 210, 236, 0.36), transparent 26%),
     radial-gradient(circle at 78% 28%, rgba(255, 238, 196, 0.26), transparent 24%),
@@ -846,7 +854,15 @@ button:disabled {
   animation: clean-filter-pretty-bloom 1s ease-out forwards;
 }
 
-.clean-filter-overlay-grim .clean-filter-overlay-flash {
+.clean-filter-overlay-loading.clean-filter-overlay-grim .clean-filter-overlay-flash {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(82, 22, 22, 0.34), transparent 24%),
+    radial-gradient(circle at 82% 30%, rgba(34, 18, 46, 0.32), transparent 24%),
+    radial-gradient(circle at 52% 76%, rgba(16, 20, 34, 0.34), transparent 30%);
+  animation: clean-filter-grim-bloom 0.95s ease-out infinite;
+}
+
+.clean-filter-overlay-grim:not(.clean-filter-overlay-loading) .clean-filter-overlay-flash {
   background:
     radial-gradient(circle at 18% 22%, rgba(82, 22, 22, 0.34), transparent 24%),
     radial-gradient(circle at 82% 30%, rgba(34, 18, 46, 0.32), transparent 24%),

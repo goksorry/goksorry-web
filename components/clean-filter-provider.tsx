@@ -41,16 +41,21 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
 
     if (animationTimeoutRef.current !== null) {
       window.clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+  };
+
+  const finishApply = () => {
+    setIsApplying(false);
+
+    if (animationTimeoutRef.current !== null) {
+      window.clearTimeout(animationTimeoutRef.current);
     }
 
     animationTimeoutRef.current = window.setTimeout(() => {
       setAnimationMode(null);
       animationTimeoutRef.current = null;
     }, 1000);
-  };
-
-  const finishApply = () => {
-    setIsApplying(false);
   };
 
   return (
