@@ -104,11 +104,12 @@ a:hover {
 
 .overview-heading h2 {
   margin: 0.15rem 0 0;
+  font-size: 1.2rem;
 }
 
 .overview-kicker {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   letter-spacing: 0.06em;
   color: #0f4c81;
 }
@@ -154,14 +155,14 @@ a:hover {
 
 .overview-label {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   color: var(--muted);
 }
 
 .overview-value {
   display: block;
   margin-top: 0.45rem;
-  font-size: 1.35rem;
+  font-size: 1.08rem;
   line-height: 1.1;
   color: #09233b;
 }
@@ -169,7 +170,7 @@ a:hover {
 .overview-delta,
 .overview-note {
   margin: 0.45rem 0 0;
-  font-size: 0.86rem;
+  font-size: 0.74rem;
 }
 
 .overview-note {
@@ -188,13 +189,14 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  min-width: 3.4rem;
-  height: 2rem;
-  padding: 0 0.55rem;
+  min-width: 3rem;
+  height: 1.75rem;
+  padding: 0 0.48rem;
   border-radius: 999px;
   background: rgba(15, 76, 129, 0.1);
   color: #0f4c81;
   font-weight: 700;
+  font-size: 0.76rem;
 }
 
 .sentiment-columns {
@@ -238,31 +240,43 @@ a:hover {
 
 .sentiment-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 0;
+  border-top: 1px solid rgba(15, 76, 129, 0.12);
 }
 
 .sentiment-card {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 0.9rem;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 26px rgba(15, 76, 129, 0.06);
+  border: 0;
+  border-bottom: 1px solid rgba(15, 76, 129, 0.12);
+  border-radius: 0;
+  padding: 0.8rem 0.15rem 0.85rem;
+  background: transparent;
+  box-shadow: none;
+  transition: background 120ms ease;
 }
 
 .sentiment-card-fear {
-  border-color: rgba(180, 35, 24, 0.16);
+  border-bottom-color: rgba(180, 35, 24, 0.14);
 }
 
 .sentiment-card-hope {
-  border-color: rgba(17, 127, 61, 0.16);
+  border-bottom-color: rgba(17, 127, 61, 0.14);
+}
+
+.sentiment-card:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.sentiment-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0.2rem;
 }
 
 .sentiment-card-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.6rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.35rem;
 }
 
 .sentiment-title {
@@ -270,7 +284,7 @@ a:hover {
   color: #08243d;
   font-weight: 700;
   line-height: 1.4;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.3rem;
 }
 
 .sentiment-title:hover {

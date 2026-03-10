@@ -175,9 +175,6 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
               <p className="overview-delta">
                 언급 {group.mentions} · 희망 {group.bullish} · 공포 {group.bearish}
               </p>
-              <p className="overview-note">
-                {pathname === "/" ? "클릭 시 피드 필터 적용" : pathname.startsWith("/community") ? "클릭 시 팝업 미리보기" : "클릭 시 피드 이동"}
-              </p>
             </button>
           ))}
         </div>
