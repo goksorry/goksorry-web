@@ -179,11 +179,9 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
     const blockMatch = html.match(
       /<a href="\/marketindex\/exchangeDetail\.naver\?marketindexCd=FX_USDKRW"[\s\S]*?<div class="head_info ([^"]+)">([\s\S]*?)<\/div>/i
     );
-    const className = blockMatch?.[1] ?? "";
     const inner = blockMatch?.[2] ?? "";
     const value = inner.match(/<span class="value">([\s\S]*?)<\/span>/i)?.[1] ?? "";
     const change = inner.match(/<span class="change">\s*([\s\S]*?)<\/span>/i)?.[1] ?? "";
-    const tone: IndicatorTone = className.includes("point_up") ? "up" : className.includes("point_dn") ? "down" : "flat";
 
     const valueText = stripTags(value);
     if (!valueText) {
@@ -191,6 +189,7 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
     }
 
     const changeNumber = parseNumber(stripTags(change));
+    const tone: IndicatorTone = changeNumber === null ? "flat" : changeNumber > 0 ? "up" : changeNumber < 0 ? "down" : "flat";
     return {
       id: "usdkrw",
       label: "원/달러 환율",
