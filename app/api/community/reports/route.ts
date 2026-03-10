@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { allowRateLimit } from "@/lib/rate-limit";
-import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
+import { sanitizePlainText } from "@/lib/plain-text";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -28,9 +28,13 @@ export async function POST(request: Request) {
   let reason: string;
   try {
     targetType = sanitizePlainText(body.target_type, "target_type", 20).toLowerCase();
-    reason = sanitizeOptionalPlainText(body.reason, "reason", 300) ?? "report";
+    reason = sanitizePlainText(body.reason, "reason", 300);
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+
+  if (reason.length < 10) {
+    return NextResponse.json({ error: "신고 사유는 10자 이상 입력해야 합니다." }, { status: 400 });
   }
 
   if (targetType !== "post" && targetType !== "comment") {

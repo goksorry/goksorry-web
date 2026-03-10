@@ -25,16 +25,16 @@ export default async function NewPostPage({ params }: { params: { boardSlug: str
     <section className="panel">
       <h1>{board.name}에 글쓰기</h1>
       {board.slug === "notice" ? (
-        <>
-          {viewer?.role === "admin" ? (
-            <>
-              <p className="muted">입력은 평문만 허용됩니다.</p>
-              <NewPostForm boardSlug={board.slug} />
-            </>
-          ) : (
-            <p className="error">공지 작성 권한이 없습니다. 공지는 관리자만 작성할 수 있습니다.</p>
-          )}
-        </>
+        !viewer ? (
+          <GoogleSignInButton callbackUrl={`/community/${board.slug}/new`} />
+        ) : viewer.role === "admin" ? (
+          <>
+            <p className="muted">입력은 평문만 허용됩니다.</p>
+            <NewPostForm boardSlug={board.slug} />
+          </>
+        ) : (
+          <p className="error">공지 작성 권한이 없습니다. 공지는 관리자만 작성할 수 있습니다.</p>
+        )
       ) : session?.user?.email ? (
         <>
           <p className="muted">입력은 평문만 허용됩니다.</p>

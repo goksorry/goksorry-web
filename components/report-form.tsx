@@ -11,12 +11,21 @@ export function ReportForm({
   targetId: string;
   compact?: boolean;
 }) {
-  const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const onSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async () => {
+    const reason = window.prompt("신고 사유를 10자 이상 입력하세요.");
+    if (reason === null) {
+      return;
+    }
+
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length < 10) {
+      setMessage("신고 사유는 10자 이상 입력해야 합니다.");
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
@@ -29,7 +38,7 @@ export function ReportForm({
         body: JSON.stringify({
           target_type: targetType,
           target_id: targetId,
-          reason
+          reason: normalizedReason
         })
       });
 
@@ -39,7 +48,6 @@ export function ReportForm({
         return;
       }
 
-      setReason("");
       setMessage("신고되었습니다.");
     } finally {
       setLoading(false);
@@ -47,19 +55,11 @@ export function ReportForm({
   };
 
   return (
-    <form onSubmit={onSubmit} className="inline">
-      {!compact ? (
-        <input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          maxLength={300}
-          placeholder="신고 사유 (선택)"
-        />
-      ) : null}
-      <button type="submit" className="btn-secondary" disabled={loading}>
-        {loading ? "..." : "신고"}
+    <div className="inline">
+      <button type="button" className="btn-secondary" onClick={() => void onSubmit()} disabled={loading}>
+        {loading ? "..." : compact ? "신고" : "신고하기"}
       </button>
       {message ? <span className="muted">{message}</span> : null}
-    </form>
+    </div>
   );
 }

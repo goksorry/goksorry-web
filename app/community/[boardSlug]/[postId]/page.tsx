@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CommentForm } from "@/components/comment-form";
 import { DeletePostButton } from "@/components/delete-post-button";
 import { ReportForm } from "@/components/report-form";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export default async function PostDetailPage({
   params: { boardSlug: string; postId: string };
 }) {
   const service = getServiceSupabaseClient();
+  const viewer = await getUserFromAuthorization();
 
   const { data: board } = await service
     .from("boards")
@@ -43,6 +45,7 @@ export default async function PostDetailPage({
     .order("created_at", { ascending: true });
 
   const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+  const canEdit = viewer && (viewer.role === "admin" || viewer.id === post.author_id);
 
   return (
     <>
@@ -55,7 +58,14 @@ export default async function PostDetailPage({
         <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
 
         <div className="actions">
-          <DeletePostButton postId={post.id} boardSlug={board.slug} />
+          {canEdit ? (
+            <>
+              <Link className="btn btn-secondary" href={`/community/${board.slug}/${post.id}/edit`}>
+                글 수정
+              </Link>
+              <DeletePostButton postId={post.id} boardSlug={board.slug} />
+            </>
+          ) : null}
           <ReportForm targetType="post" targetId={post.id} />
         </div>
 
