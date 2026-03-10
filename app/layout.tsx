@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
@@ -36,7 +37,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <header className="header">
                 <nav className="nav">
                   <Link className="brand" href="/">
-                    곡소리닷컴
+                    <Image
+                      className="brand-logo"
+                      src="/goksorry_logo.png"
+                      alt="곡소리닷컴"
+                      width={113}
+                      height={50}
+                      priority
+                    />
                   </Link>
                   <Link href="/" replace>
                     피드

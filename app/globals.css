@@ -210,7 +210,7 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.85rem 1rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--line);
   background: var(--header-bg);
   backdrop-filter: blur(6px);
@@ -226,9 +226,25 @@ a:hover {
 }
 
 .brand {
-  font-weight: 700;
-  color: var(--ink);
-  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.brand-logo {
+  display: block;
+  width: 7.5rem;
+  height: auto;
+}
+
+:root[data-theme="dark"] .brand-logo {
+  filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .brand-logo {
+    filter: invert(1);
+  }
 }
 
 .auth {
@@ -1240,6 +1256,14 @@ button:disabled {
   .auth {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .header {
+    padding: 0.55rem 0.85rem;
+  }
+
+  .brand-logo {
+    width: 6.9rem;
   }
 
   .overview-heading {
