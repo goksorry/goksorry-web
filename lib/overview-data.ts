@@ -88,6 +88,26 @@ const formatNumber = (value: number, digits = 2): string => {
   }).format(value);
 };
 
+const formatSignedNumber = (value: number, digits = 2): string => {
+  return `${value >= 0 ? "+" : ""}${formatNumber(value, digits)}`;
+};
+
+const formatDeltaWithPercent = (delta: number | null, percent: number | null): string => {
+  if (delta === null && percent === null) {
+    return "변동 정보 없음";
+  }
+
+  if (delta === null) {
+    return `${formatSignedNumber(percent ?? 0)}%`;
+  }
+
+  if (percent === null) {
+    return formatSignedNumber(delta, 2);
+  }
+
+  return `${formatSignedNumber(delta, 2)} (${formatSignedNumber(percent, 2)}%)`;
+};
+
 const formatRegime = (value: string): string => {
   switch (value.toLowerCase()) {
     case "bullish":
@@ -147,14 +167,17 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
     const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
     const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
     const value = compactInlineNumber(todayBlock);
-    const delta = compactInlineNumber(exdayEmMatches[0]?.[1] ?? "");
-    const percent = compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, "");
     const tone: IndicatorTone =
       exdayBlock.includes("ico minus") || exdayBlock.includes("no_down")
         ? "down"
         : exdayBlock.includes("no_up")
           ? "up"
           : "flat";
+    const direction = tone === "down" ? -1 : 1;
+    const delta = parseNumber(compactInlineNumber(exdayEmMatches[0]?.[1] ?? ""));
+    const percent = parseNumber(compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, ""));
+    const signedDelta = delta === null || tone === "flat" ? delta : delta * direction;
+    const signedPercent = percent === null || tone === "flat" ? percent : percent * direction;
 
     if (!value) {
       return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 대기 중");
@@ -164,7 +187,7 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       id: "nasdaq",
       label: "NASDAQ",
       value_text: value,
-      delta_text: [delta, percent].filter(Boolean).join(" "),
+      delta_text: formatDeltaWithPercent(signedDelta, signedPercent),
       tone,
       note: "네이버 해외지수 · 5분 캐시"
     };
@@ -175,26 +198,37 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
 
 const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
   try {
-    const html = await fetchText("https://finance.naver.com/marketindex/");
-    const blockMatch = html.match(
-      /<a href="\/marketindex\/exchangeDetail\.naver\?marketindexCd=FX_USDKRW"[\s\S]*?<div class="head_info ([^"]+)">([\s\S]*?)<\/div>/i
-    );
-    const inner = blockMatch?.[2] ?? "";
-    const value = inner.match(/<span class="value">([\s\S]*?)<\/span>/i)?.[1] ?? "";
-    const change = inner.match(/<span class="change">\s*([\s\S]*?)<\/span>/i)?.[1] ?? "";
-
-    const valueText = stripTags(value);
-    if (!valueText) {
+    const html = await fetchText("https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_USDKRW");
+    const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
+    const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
+    const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
+    const valueNumber = parseNumber(stripTags(todayBlock));
+    if (valueNumber === null) {
       return fallbackIndicator("usdkrw", "원/달러 환율", "환율 데이터 대기 중");
     }
 
-    const changeNumber = parseNumber(stripTags(change));
-    const tone: IndicatorTone = changeNumber === null ? "flat" : changeNumber > 0 ? "up" : changeNumber < 0 ? "down" : "flat";
+    const tone: IndicatorTone =
+      exdayBlock.includes('class="ico down"') || exdayBlock.includes("no_down")
+        ? "down"
+        : exdayBlock.includes('class="ico up"') || exdayBlock.includes("no_up")
+          ? "up"
+          : "flat";
+    const direction = tone === "down" ? -1 : 1;
+    const changeNumber = parseNumber(compactInlineNumber(exdayEmMatches[0]?.[1] ?? ""));
+    const percentNumber = parseNumber(compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, ""));
+    const signedChange = changeNumber === null || tone === "flat" ? changeNumber : changeNumber * direction;
+    const signedPercent = percentNumber === null || tone === "flat" ? percentNumber : percentNumber * direction;
+
     return {
       id: "usdkrw",
       label: "원/달러 환율",
-      value_text: valueText,
-      delta_text: changeNumber === null ? "변동 정보 없음" : `${changeNumber >= 0 ? "+" : ""}${formatNumber(changeNumber, 2)} KRW`,
+      value_text: formatNumber(valueNumber, 2),
+      delta_text:
+        signedChange === null && signedPercent === null
+          ? "변동 정보 없음"
+          : `${signedChange === null ? "" : `${formatSignedNumber(signedChange, 2)} KRW`}${
+              signedPercent === null ? "" : ` (${formatSignedNumber(signedPercent, 2)}%)`
+            }`.trim(),
       tone,
       note: "네이버 환율 · 5분 캐시"
     };

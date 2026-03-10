@@ -128,6 +128,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId) ?? null;
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
+  const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
 
   return (
     <>
@@ -202,7 +203,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             </div>
 
             <div className="overview-modal-list">
-              {activeGroup.rows.map((row) => (
+              {actionableActiveRows.map((row) => (
                 <article key={row.post_key} className="overview-modal-item">
                   <div className="overview-modal-meta">
                     <span className="tag">{row.source}</span>
@@ -218,7 +219,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
                 </article>
               ))}
 
-              {activeGroup.rows.length === 0 ? <p className="muted">최근 24시간 기준 외부 감지 글이 없습니다.</p> : null}
+              {actionableActiveRows.length === 0 ? <p className="muted">최근 24시간 기준 공포/희망 감지 글이 없습니다.</p> : null}
             </div>
 
             <div className="overview-modal-actions">
