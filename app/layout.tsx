@@ -5,6 +5,7 @@ import Script from "next/script";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
+import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <AuthSessionProvider>
           <CleanFilterProvider>
+            <CleanFilterOverlay />
             <div id="page-top" className="layout">
               <header className="header">
                 <nav className="nav">
