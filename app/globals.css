@@ -265,11 +265,6 @@ a:hover {
   margin-bottom: 0.65rem;
 }
 
-.sentiment-emoji {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
 .sentiment-title {
   display: block;
   color: #08243d;

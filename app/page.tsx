@@ -142,7 +142,6 @@ export default async function Home({
               {fearRows.map((row) => (
                 <article key={row.post_key} className="sentiment-card sentiment-card-fear">
                   <div className="sentiment-card-head">
-                    <span className="sentiment-emoji">{SENTIMENT_DISPLAY.bearish.emoji}</span>
                     <span className="tag">{row.source}</span>
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
@@ -175,7 +174,6 @@ export default async function Home({
               {hopeRows.map((row) => (
                 <article key={row.post_key} className="sentiment-card sentiment-card-hope">
                   <div className="sentiment-card-head">
-                    <span className="sentiment-emoji">{SENTIMENT_DISPLAY.bullish.emoji}</span>
                     <span className="tag">{row.source}</span>
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">

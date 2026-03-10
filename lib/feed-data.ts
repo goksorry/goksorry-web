@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
 
+const EXTERNAL_POST_BATCH_SIZE = 100;
+
 export type FeedRow = {
   post_key: string;
   source: string;
@@ -38,6 +40,16 @@ export type SourceGroupSummary = {
   rows: FeedRow[];
 };
 
+const chunk = <T>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+};
+
 export const fetchRecentFeedRows = async (
   service: SupabaseClient,
   { hours = 24, limit = 500 }: { hours?: number; limit?: number } = {}
@@ -66,21 +78,26 @@ export const fetchRecentFeedRows = async (
     return { rows: [], errorMessage: "" };
   }
 
-  const { data: externalData, error: externalError } = await service
-    .from("external_posts")
-    .select("post_key,source,title,url")
-    .in("post_key", postKeys);
+  const externalRows: ExternalPostRow[] = [];
+  for (const postKeyBatch of chunk(postKeys, EXTERNAL_POST_BATCH_SIZE)) {
+    const { data: externalData, error: externalError } = await service
+      .from("external_posts")
+      .select("post_key,source,title,url")
+      .in("post_key", postKeyBatch);
 
-  if (externalError) {
-    return { rows: [], errorMessage: externalError.message };
+    if (externalError) {
+      return { rows: [], errorMessage: externalError.message };
+    }
+
+    externalRows.push(
+      ...(externalData ?? []).map((item: any) => ({
+        post_key: String(item.post_key),
+        source: String(item.source),
+        title: String(item.title),
+        url: String(item.url)
+      }))
+    );
   }
-
-  const externalRows: ExternalPostRow[] = (externalData ?? []).map((item: any) => ({
-    post_key: String(item.post_key),
-    source: String(item.source),
-    title: String(item.title),
-    url: String(item.url)
-  }));
 
   const externalByPostKey = new Map(externalRows.map((row) => [row.post_key, row]));
   const rows = sentimentRows.flatMap((row) => {
@@ -143,4 +160,3 @@ export const getFeedExactSourceOptions = (rows: FeedRow[]): string[] => {
 export const getFeedGroupForRow = (row: FeedRow): SourceGroupId | null => {
   return getSourceGroupId(row.source);
 };
-
