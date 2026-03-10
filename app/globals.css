@@ -37,8 +37,8 @@
   --button-ink: #f6efe8;
   --button-danger-line: #8f4a45;
   --chip-line: rgba(111, 95, 87, 0.18);
-  --chip-hover-bg: #e0d6ce;
-  --chip-hover-line: rgba(111, 95, 87, 0.32);
+  --chip-hover-bg: rgba(111, 95, 87, 0.08);
+  --chip-hover-line: rgba(111, 95, 87, 0.26);
   --chip-active-bg: #6f5f57;
   --chip-active-line: #837067;
   --chip-active-ink: #f6efe8;
@@ -50,7 +50,7 @@
   --fab-hope-bg: rgba(95, 112, 97, 0.94);
   --theme-toggle-bg: var(--panel-elevated);
   --theme-toggle-line: var(--line);
-  --theme-toggle-hover-bg: var(--panel);
+  --theme-toggle-hover-bg: rgba(111, 95, 87, 0.08);
   --theme-toggle-active-bg: var(--chip-active-bg);
   --theme-toggle-active-line: var(--chip-active-line);
   --theme-toggle-active-ink: var(--chip-active-ink);
@@ -95,8 +95,8 @@
   --button-ink: #171115;
   --button-danger-line: #912018;
   --chip-line: rgba(186, 160, 138, 0.18);
-  --chip-hover-bg: #342c35;
-  --chip-hover-line: rgba(186, 160, 138, 0.3);
+  --chip-hover-bg: rgba(186, 160, 138, 0.08);
+  --chip-hover-line: rgba(186, 160, 138, 0.24);
   --chip-active-bg: var(--brand);
   --chip-active-line: #9f8874;
   --chip-active-ink: #171115;
@@ -106,6 +106,12 @@
   --fab-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
   --fab-fear-bg: rgba(111, 53, 51, 0.94);
   --fab-hope-bg: rgba(58, 79, 63, 0.94);
+  --theme-toggle-bg: var(--panel-elevated);
+  --theme-toggle-line: var(--line);
+  --theme-toggle-hover-bg: rgba(186, 160, 138, 0.08);
+  --theme-toggle-active-bg: var(--chip-active-bg);
+  --theme-toggle-active-line: var(--chip-active-line);
+  --theme-toggle-active-ink: var(--chip-active-ink);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -148,8 +154,8 @@
     --button-ink: #171115;
     --button-danger-line: #912018;
     --chip-line: rgba(186, 160, 138, 0.18);
-    --chip-hover-bg: #342c35;
-    --chip-hover-line: rgba(186, 160, 138, 0.3);
+    --chip-hover-bg: rgba(186, 160, 138, 0.08);
+    --chip-hover-line: rgba(186, 160, 138, 0.24);
     --chip-active-bg: var(--brand);
     --chip-active-line: #9f8874;
     --chip-active-ink: #171115;
@@ -159,6 +165,12 @@
     --fab-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
     --fab-fear-bg: rgba(111, 53, 51, 0.94);
     --fab-hope-bg: rgba(58, 79, 63, 0.94);
+    --theme-toggle-bg: var(--panel-elevated);
+    --theme-toggle-line: var(--line);
+    --theme-toggle-hover-bg: rgba(186, 160, 138, 0.08);
+    --theme-toggle-active-bg: var(--chip-active-bg);
+    --theme-toggle-active-line: var(--chip-active-line);
+    --theme-toggle-active-ink: var(--chip-active-ink);
   }
 }
 
@@ -760,6 +772,7 @@ button:disabled {
 
 .theme-toggle-button:hover {
   background: var(--theme-toggle-hover-bg);
+  color: var(--ink);
 }
 
 .theme-toggle-button-active {
@@ -793,6 +806,7 @@ button:disabled {
 
 .clean-filter-toggle:hover {
   background: var(--theme-toggle-hover-bg);
+  color: var(--ink);
 }
 
 .clean-filter-toggle-active {
@@ -1072,6 +1086,7 @@ button:disabled {
 .filter-chip:hover {
   background: var(--chip-hover-bg);
   border-color: var(--chip-hover-line);
+  color: var(--ink);
   text-decoration: none;
 }
 
