@@ -35,11 +35,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               fallback={
                 <section className="overview-panel">
                   <div className="overview-heading">
-                    <div>
+                    <div className="overview-heading-copy">
                       <p className="overview-kicker">시장 · 커뮤니티 체감</p>
                       <h2>실시간 체감 지수</h2>
                     </div>
-                    <p className="muted">캐시 지수 준비 중</p>
+                    <p className="overview-timestamp">캐시 지수 준비 중</p>
                   </div>
                 </section>
               }

@@ -113,15 +113,27 @@ a:hover {
 }
 
 .overview-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 1rem;
+}
+
+.overview-heading-copy {
+  min-width: 0;
 }
 
 .overview-heading h2 {
   margin: 0.15rem 0 0;
   font-size: 1.08rem;
+}
+
+.overview-timestamp {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .overview-kicker {
@@ -156,6 +168,14 @@ a:hover {
   min-height: 112px;
 }
 
+.overview-market-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.32rem;
+}
+
 .overview-card-community {
   background: rgba(255, 255, 255, 0.94);
   color: inherit;
@@ -180,6 +200,21 @@ a:hover {
 
 .overview-card-market .overview-label {
   font-size: 0.62rem;
+}
+
+.overview-card-market .overview-value {
+  margin-top: 0;
+}
+
+.overview-card-market .overview-delta {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.overview-card-market .overview-note {
+  margin-top: 0.28rem;
 }
 
 .overview-card-community .overview-label {
@@ -576,6 +611,75 @@ button:disabled {
   gap: 0.5rem;
 }
 
+.scroll-anchor {
+  scroll-margin-top: 5.4rem;
+}
+
+.feed-filter-panel h1 {
+  font-size: 1.32rem;
+}
+
+.feed-filter-panel > .muted {
+  font-size: 0.86rem;
+}
+
+.feed-filter-toolbar {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+}
+
+.feed-channel-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.38rem 0.74rem;
+  border: 1px solid rgba(15, 76, 129, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #0a263f;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.filter-chip:hover {
+  background: #f1f7fe;
+  border-color: rgba(15, 76, 129, 0.3);
+  text-decoration: none;
+}
+
+.filter-chip-active {
+  background: #0f4c81;
+  border-color: #0c3e69;
+  color: #fff;
+}
+
+.feed-range-actions {
+  justify-content: space-between;
+}
+
+.feed-range-actions .inline {
+  font-size: 0.84rem;
+}
+
+.feed-range-actions select {
+  width: auto;
+  min-width: 4.6rem;
+}
+
+.mobile-feed-fabs {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .header {
     flex-wrap: wrap;
@@ -619,7 +723,8 @@ button:disabled {
   }
 
   .overview-heading {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
   }
 
   .overview-top-row {
@@ -640,9 +745,90 @@ button:disabled {
     gap: 0.55rem;
   }
 
+  .feed-filter-panel h1 {
+    font-size: 1.18rem;
+  }
+
+  .feed-filter-panel > .muted {
+    font-size: 0.82rem;
+  }
+
+  .feed-filter-toolbar {
+    gap: 0.55rem;
+    margin-top: 0.6rem;
+  }
+
+  .feed-channel-buttons {
+    gap: 0.38rem;
+  }
+
+  .filter-chip {
+    min-height: 1.9rem;
+    padding: 0.34rem 0.66rem;
+    font-size: 0.78rem;
+  }
+
+  .feed-range-actions {
+    gap: 0.45rem;
+  }
+
+  .feed-range-actions .inline {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .overview-market-main {
+    gap: 0.35rem;
+  }
+
+  .overview-card-market .overview-delta {
+    font-size: 0.68rem;
+  }
+
   .sentiment-columns {
     grid-template-columns: 1fr;
     gap: 0.72rem;
+  }
+
+  .mobile-feed-fabs {
+    position: fixed;
+    right: max(0.72rem, env(safe-area-inset-right));
+    bottom: calc(0.85rem + env(safe-area-inset-bottom));
+    z-index: 55;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .mobile-feed-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    min-height: 2.2rem;
+    border-radius: 999px;
+    background: rgba(10, 38, 63, 0.92);
+    color: #fff;
+    box-shadow: 0 12px 28px rgba(7, 19, 34, 0.2);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  .mobile-feed-fab-top {
+    font-size: 1rem;
+  }
+
+  .mobile-feed-fab-fear {
+    background: rgba(180, 35, 24, 0.92);
+  }
+
+  .mobile-feed-fab-hope {
+    background: rgba(17, 127, 61, 0.92);
+  }
+
+  .mobile-feed-fab:hover {
+    text-decoration: none;
   }
 
   .overview-modal {

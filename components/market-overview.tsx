@@ -131,11 +131,11 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
     <>
       <section className="overview-panel">
         <div className="overview-heading">
-          <div>
+          <div className="overview-heading-copy">
             <p className="overview-kicker">시장 · 커뮤니티 체감</p>
             <h2>실시간 체감 지수</h2>
           </div>
-          <p className="muted">
+          <p className="overview-timestamp">
             {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
           </p>
         </div>
@@ -149,8 +149,10 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
               className={`overview-card overview-card-market overview-tone-${indicator.tone ?? "flat"}`}
             >
               <p className="overview-label">{indicator.label}</p>
-              <strong className="overview-value">{indicator.value_text}</strong>
-              <p className="overview-delta">{indicator.delta_text}</p>
+              <div className="overview-market-main">
+                <strong className="overview-value">{indicator.value_text}</strong>
+                <p className="overview-delta">{indicator.delta_text}</p>
+              </div>
               <p className="overview-note">{indicator.note}</p>
             </article>
           ))}

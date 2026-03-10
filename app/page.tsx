@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchRecentFeedRows, filterRowsBySourceGroup, getFeedExactSourceOptions } from "@/lib/feed-data";
+import { fetchRecentFeedRows, filterRowsBySourceGroup } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -38,12 +38,29 @@ const toLocalTime = (iso: string, timezone: string): string => {
   }).format(date);
 };
 
+const buildFeedHref = ({
+  channel,
+  range
+}: {
+  channel: SourceGroupId | "";
+  range: string;
+}): string => {
+  const params = new URLSearchParams();
+  if (channel) {
+    params.set("channel", channel);
+  }
+  if (range && range !== "24h") {
+    params.set("range", range);
+  }
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+};
+
 export default async function Home({
   searchParams
 }: {
   searchParams?: Record<string, QueryValue>;
 }) {
-  const selectedSource = pickFirst(searchParams?.source);
   const selectedChannelRaw = pickFirst(searchParams?.channel);
   const selectedChannel: SourceGroupId | "" = isSourceGroupId(selectedChannelRaw) ? selectedChannelRaw : "";
   const selectedRange = pickFirst(searchParams?.range) || "24h";
@@ -54,14 +71,8 @@ export default async function Home({
 
   const timezone = getTimezone();
   const channelFilteredRows = filterRowsBySourceGroup(rows, selectedChannel);
-  const sourceOptions = getFeedExactSourceOptions(channelFilteredRows);
-  const normalizedSelectedSource = sourceOptions.includes(selectedSource) ? selectedSource : "";
   const nowMs = Date.now();
   const filteredRows = channelFilteredRows.filter((row) => {
-    if (normalizedSelectedSource && row.source !== normalizedSelectedSource) {
-      return false;
-    }
-
     const analyzedAtMs = new Date(row.analyzed_at).getTime();
     if (Number.isNaN(analyzedAtMs)) {
       return false;
@@ -75,56 +86,53 @@ export default async function Home({
 
   return (
     <>
-      <section className="panel">
+      <section id="feed-top" className="panel feed-filter-panel scroll-anchor">
         <h1>외부 감성 피드</h1>
         <p className="muted">
           외부 커뮤니티에서 감지한 글 중 공포와 희망 흐름만 분리해서 보여줍니다. 중립 글은 기본적으로 숨깁니다.
         </p>
 
-        <form className="actions" method="get">
-          <label className="inline">
-            <span>커뮤니티 묶음</span>
-            <select name="channel" defaultValue={selectedChannel}>
-              <option value="">전체</option>
-              {SOURCE_GROUPS.map((group) => (
-                <option value={group.id} key={group.id}>
-                  {group.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="feed-filter-toolbar">
+          <div className="feed-channel-buttons" aria-label="커뮤니티 묶음">
+            <Link
+              className={`filter-chip ${selectedChannel === "" ? "filter-chip-active" : ""}`}
+              href={buildFeedHref({ channel: "", range: selectedRange })}
+            >
+              전체
+            </Link>
+            {SOURCE_GROUPS.map((group) => (
+              <Link
+                key={group.id}
+                className={`filter-chip ${selectedChannel === group.id ? "filter-chip-active" : ""}`}
+                href={buildFeedHref({ channel: group.id, range: selectedRange })}
+              >
+                {group.shortLabel}
+              </Link>
+            ))}
+          </div>
 
-          <label className="inline">
-            <span>세부 소스</span>
-            <select name="source" defaultValue={normalizedSelectedSource}>
-              <option value="">전체</option>
-              {sourceOptions.map((source) => (
-                <option value={source} key={source}>
-                  {source}
-                </option>
-              ))}
-            </select>
-          </label>
+          <form className="actions feed-range-actions" method="get">
+            {selectedChannel ? <input type="hidden" name="channel" value={selectedChannel} /> : null}
+            <label className="inline">
+              <span>범위</span>
+              <select name="range" defaultValue={selectedRange}>
+                <option value="1h">1h</option>
+                <option value="6h">6h</option>
+                <option value="24h">24h</option>
+              </select>
+            </label>
 
-          <label className="inline">
-            <span>범위</span>
-            <select name="range" defaultValue={selectedRange}>
-              <option value="1h">1h</option>
-              <option value="6h">6h</option>
-              <option value="24h">24h</option>
-            </select>
-          </label>
-
-          <button type="submit">적용</button>
-          <Link className="btn btn-secondary" href="/">
-            초기화
-          </Link>
-        </form>
+            <button type="submit">적용</button>
+            <Link className="btn btn-secondary" href="/">
+              초기화
+            </Link>
+          </form>
+        </div>
       </section>
 
       <section className="panel">
         <div className="sentiment-columns">
-          <section className="sentiment-lane sentiment-lane-fear">
+          <section id="fear-lane" className="sentiment-lane sentiment-lane-fear scroll-anchor">
             <div className="sentiment-lane-head">
               <div>
                 <p className="overview-kicker">공포 흐름</p>
@@ -156,7 +164,7 @@ export default async function Home({
             </div>
           </section>
 
-          <section className="sentiment-lane sentiment-lane-hope">
+          <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
             <div className="sentiment-lane-head">
               <div>
                 <p className="overview-kicker">희망 흐름</p>
@@ -189,6 +197,18 @@ export default async function Home({
           </section>
         </div>
       </section>
+
+      <nav className="mobile-feed-fabs" aria-label="피드 빠른 이동">
+        <a className="mobile-feed-fab mobile-feed-fab-top" href="#feed-top">
+          ↑
+        </a>
+        <a className="mobile-feed-fab mobile-feed-fab-fear" href="#fear-lane">
+          공포
+        </a>
+        <a className="mobile-feed-fab mobile-feed-fab-hope" href="#hope-lane">
+          희망
+        </a>
+      </nav>
     </>
   );
 }
