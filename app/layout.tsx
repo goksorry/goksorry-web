@@ -27,8 +27,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link className="brand" href="/">
                   곡소리닷컴
                 </Link>
-                <Link href="/">피드</Link>
-                <Link href="/community">커뮤니티</Link>
+                <Link href="/" replace>
+                  피드
+                </Link>
+                <Link href="/community" replace>
+                  커뮤니티
+                </Link>
                 <HeaderNavExtras />
               </nav>
               <div className="auth">

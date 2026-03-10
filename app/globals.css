@@ -936,6 +936,10 @@ button:disabled {
   display: none;
 }
 
+.mobile-swipe-hint {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .header {
     flex-wrap: wrap;
@@ -1122,6 +1126,29 @@ button:disabled {
 
   .mobile-feed-fab:hover {
     text-decoration: none;
+  }
+
+  .mobile-swipe-hint {
+    position: fixed;
+    left: 50%;
+    top: 52%;
+    transform: translate(-50%, -50%);
+    z-index: 52;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: min(16rem, calc(100vw - 3rem));
+    padding: 0.72rem 0.9rem;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    color: var(--ink);
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    box-shadow: 0 14px 32px var(--shadow);
+    backdrop-filter: blur(6px);
+    pointer-events: none;
   }
 
   .overview-modal {

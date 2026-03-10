@@ -1,4 +1,5 @@
 import { FeedFilterControls } from "@/components/feed-filter-controls";
+import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { fetchRecentFeedRows, filterRowsBySourceGroups } from "@/lib/feed-data";
 import {
   getSourceGroupShortLabel,
@@ -194,6 +195,7 @@ export default async function Home({
             </div>
           </section>
         </div>
+        <MobileSentimentSwipeHint />
       </section>
 
       <nav className="mobile-feed-fabs" aria-label="피드 빠른 이동">
