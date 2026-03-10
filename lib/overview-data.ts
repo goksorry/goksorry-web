@@ -204,44 +204,12 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
   }
 };
 
-const fetchFearGreedIndicator = async (): Promise<MarketIndicator> => {
-  try {
-    const service = getServiceSupabaseClient();
-    const { data, error } = await service
-      .from("detector_market_state_latest")
-      .select("market,asof,regime,fear_index,payload")
-      .eq("market", "us")
-      .maybeSingle();
-
-    if (error || !data) {
-      return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "미국장 스냅샷 대기 중");
-    }
-
-    const fearIndex = Number(data.fear_index ?? 50);
-    const regime = String(data.regime ?? "neutral");
-    const tone: IndicatorTone = fearIndex >= 60 ? "fear" : fearIndex <= 40 ? "greed" : "mixed";
-    const symbolCount = Number((data.payload as any)?.symbol_count ?? 0);
-
-    return {
-      id: "fear-greed",
-      label: "미장 공포탐욕지수",
-      value_text: `${fearIndex.toFixed(1)} / 100`,
-      delta_text: formatRegime(regime),
-      tone,
-      note: symbolCount > 0 ? `감지 종목 ${symbolCount}개` : "스냅샷 대기 중"
-    };
-  } catch {
-    return fallbackIndicator("fear-greed", "미장 공포탐욕지수", "미국장 스냅샷 지연");
-  }
-};
-
 const buildMarketOverview = async (): Promise<Pick<OverviewPayload, "generated_at" | "market_indicators">> => {
   const marketIndicators = await Promise.all([
     fetchServiceIndex("KOSPI", "KOSPI"),
     fetchServiceIndex("KOSDAQ", "KOSDAQ"),
     fetchNasdaqIndicator(),
-    fetchUsdKrwIndicator(),
-    fetchFearGreedIndicator()
+    fetchUsdKrwIndicator()
   ]);
 
   return {
