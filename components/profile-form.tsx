@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { formatKstDateTime } from "@/lib/date-time";
 
 export function ProfileForm({
   email,
@@ -87,7 +88,7 @@ export function ProfileForm({
       {!nicknameNeedsSetup && !canEditNickname && nicknameAvailableAt ? (
         <p className="muted">
           닉네임은 7일에 한 번만 변경할 수 있습니다. 다음 변경 가능 시각:{" "}
-          {new Date(nicknameAvailableAt).toLocaleString("ko-KR")}
+          {formatKstDateTime(nicknameAvailableAt)}
         </p>
       ) : null}
       {isAdmin ? <p className="muted">관리자는 닉네임 변경 주기 제한을 받지 않습니다.</p> : null}

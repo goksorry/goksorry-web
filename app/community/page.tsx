@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatKstDateTime } from "@/lib/date-time";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default async function CommunityHomePage() {
                 </h4>
                 <p className="muted">
                   게시판: {board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
-                  {new Date(post.created_at).toLocaleString("ko-KR")}
+                  {formatKstDateTime(post.created_at)}
                 </p>
               </article>
             );

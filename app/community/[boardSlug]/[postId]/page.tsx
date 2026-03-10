@@ -4,6 +4,7 @@ import { CommentForm } from "@/components/comment-form";
 import { DeletePostButton } from "@/components/delete-post-button";
 import { ReportForm } from "@/components/report-form";
 import { getUserFromAuthorization } from "@/lib/auth-server";
+import { formatKstDateTime } from "@/lib/date-time";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export default async function PostDetailPage({
         <h1>{post.title}</h1>
         <p className="muted">
           게시판: /{board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
-          {new Date(post.created_at).toLocaleString("ko-KR")}
+          {formatKstDateTime(post.created_at)}
         </p>
         <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
 
@@ -85,7 +86,7 @@ export default async function PostDetailPage({
               <article key={comment.id} className="card">
                 <p style={{ whiteSpace: "pre-wrap" }}>{comment.content}</p>
                 <p className="muted">
-                  작성자 {commentAuthor?.nickname ?? "알 수 없음"} · {new Date(comment.created_at).toLocaleString("ko-KR")}
+                  작성자 {commentAuthor?.nickname ?? "알 수 없음"} · {formatKstDateTime(comment.created_at)}
                 </p>
                 <ReportForm targetType="comment" targetId={comment.id} compact />
               </article>

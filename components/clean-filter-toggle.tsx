@@ -24,7 +24,11 @@ export function CleanFilterToggle() {
       aria-label={cleanFilterEnabled ? "클린필터 끄기" : "클린필터 켜기"}
       title={cleanFilterEnabled ? "클린필터 켜짐" : "클린필터 꺼짐"}
     >
-      <span aria-hidden="true">🧼</span>
+      <span aria-hidden="true" className="clean-filter-toggle-emoji">
+        🧼
+      </span>
+      <span className="clean-filter-toggle-label">예쁜말</span>
+      <span className="clean-filter-toggle-state">{cleanFilterEnabled ? "ON" : "OFF"}</span>
     </button>
   );
 }

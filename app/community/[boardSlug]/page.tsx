@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUserFromAuthorization } from "@/lib/auth-server";
+import { formatKstDateTime } from "@/lib/date-time";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,7 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
                 <Link href={`/community/${board.slug}/${post.id}`}>{post.title}</Link>
               </h3>
               <p className="muted">
-                작성자 {author?.nickname ?? "알 수 없음"} · {new Date(post.created_at).toLocaleString("ko-KR")}
+                작성자 {author?.nickname ?? "알 수 없음"} · {formatKstDateTime(post.created_at)}
               </p>
             </article>
           );
