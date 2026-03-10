@@ -104,6 +104,9 @@ export async function DELETE(request: Request) {
   if (!user || !user.email) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
+  if (user.role === "admin") {
+    return jsonMessage(requestId, 403, "관리자 계정은 회원 탈퇴할 수 없습니다.");
+  }
 
   try {
     await withdrawAccount({

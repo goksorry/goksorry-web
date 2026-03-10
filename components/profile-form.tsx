@@ -130,33 +130,39 @@ export function ProfileForm({
       </div>
 
       <div className="profile-danger-zone">
-        <p className="muted">
-          회원 탈퇴 시 프로필, 작성한 글/댓글, 신고 및 발급한 API 토큰이 함께 삭제되며 같은 이메일은 탈퇴 후 7일이 지나야 다시 가입할 수 있습니다.
-        </p>
-
-        {!confirmWithdraw ? (
-          <div className="actions">
-            <button type="button" className="btn-danger" onClick={() => setConfirmWithdraw(true)} disabled={withdrawing}>
-              회원탈퇴
-            </button>
-          </div>
+        {isAdmin ? (
+          <p className="muted">관리자 계정은 내 프로필 화면에서 회원탈퇴할 수 없습니다.</p>
         ) : (
-          <div className="grid">
-            <p className="error">정말 탈퇴할까요? 이 작업은 되돌릴 수 없고, 같은 이메일로는 7일 뒤에야 다시 가입할 수 있습니다.</p>
-            <div className="actions">
-              <button type="button" className="btn-danger" onClick={() => void onWithdraw()} disabled={withdrawing}>
-                {withdrawing ? "탈퇴 처리 중..." : "정말 탈퇴합니다"}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setConfirmWithdraw(false)}
-                disabled={withdrawing}
-              >
-                취소
-              </button>
-            </div>
-          </div>
+          <>
+            <p className="muted">
+              회원 탈퇴 시 프로필, 작성한 글/댓글, 신고 및 발급한 API 토큰이 함께 삭제되며 같은 이메일은 탈퇴 후 7일이 지나야 다시 가입할 수 있습니다.
+            </p>
+
+            {!confirmWithdraw ? (
+              <div className="actions">
+                <button type="button" className="btn-danger" onClick={() => setConfirmWithdraw(true)} disabled={withdrawing}>
+                  회원탈퇴
+                </button>
+              </div>
+            ) : (
+              <div className="grid">
+                <p className="error">정말 탈퇴할까요? 이 작업은 되돌릴 수 없고, 같은 이메일로는 7일 뒤에야 다시 가입할 수 있습니다.</p>
+                <div className="actions">
+                  <button type="button" className="btn-danger" onClick={() => void onWithdraw()} disabled={withdrawing}>
+                    {withdrawing ? "탈퇴 처리 중..." : "정말 탈퇴합니다"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setConfirmWithdraw(false)}
+                    disabled={withdrawing}
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </form>

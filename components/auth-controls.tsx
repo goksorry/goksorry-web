@@ -49,7 +49,10 @@ export function AuthControls() {
 
   return (
     <div className="inline">
-      <span className="muted">{session.user.email ?? "로그인됨"}</span>
+      <span className="muted">
+        {session.user.email ?? "로그인됨"}
+        {session.user.nickname ? ` (${session.user.nickname})` : ""}
+      </span>
       <button type="button" className="btn-secondary" onClick={() => void handleSignOut()} disabled={loading}>
         로그아웃
       </button>
