@@ -8,7 +8,7 @@ export default async function CommunityHomePage() {
   const service = getServiceSupabaseClient();
 
   const [{ data: boards, error: boardsError }, { data: recentPosts, error: postsError }] = await Promise.all([
-    service.from("boards").select("id,slug,name,description,sort_order").order("sort_order", { ascending: true }),
+    service.from("boards").select("id,slug,name,sort_order").order("sort_order", { ascending: true }),
     service
       .from("community_posts")
       .select("id,title,created_at,board_id,author_id,boards(slug,name),profiles(nickname)")
@@ -21,18 +21,15 @@ export default async function CommunityHomePage() {
     <>
       <section className="panel">
         <h1>커뮤니티 게시판</h1>
-        <p className="muted">구글 로그인 사용자는 글과 댓글을 작성할 수 있습니다. 입력은 평문만 허용됩니다.</p>
 
         {boardsError ? <p className="error">게시판 조회 실패: {boardsError.message}</p> : null}
 
-        <div className="list">
+        <div className="board-grid">
           {(boards ?? []).map((board: any) => (
-            <article key={board.id} className="card">
+            <article key={board.id} className="card board-card">
               <h3>
                 <Link href={`/community/${board.slug}`}>{board.name}</Link>
               </h3>
-              <p className="muted">/{board.slug}</p>
-              {board.description ? <p>{board.description}</p> : null}
             </article>
           ))}
         </div>
