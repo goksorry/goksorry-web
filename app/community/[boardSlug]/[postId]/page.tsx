@@ -5,6 +5,8 @@ import { DeletePostButton } from "@/components/delete-post-button";
 import { ReportForm } from "@/components/report-form";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
+export const dynamic = "force-dynamic";
+
 export default async function PostDetailPage({
   params
 }: {

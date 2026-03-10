@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
@@ -53,6 +54,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
 
+  if (board.slug === "notice" && user.role !== "admin") {
+    return NextResponse.json({ error: "공지 작성 권한이 없습니다." }, { status: 403 });
+  }
+
   const { data, error } = await service
     .from("community_posts")
     .insert({
@@ -67,6 +72,10 @@ export async function POST(request: Request) {
   if (error || !data) {
     return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
   }
+
+  revalidatePath("/community");
+  revalidatePath(`/community/${board.slug}`);
+  revalidatePath(`/community/${board.slug}/${data.id}`);
 
   return NextResponse.json({ id: data.id });
 }

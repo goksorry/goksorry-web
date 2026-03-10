@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+
+export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ params }: { params: { boardSlug: string } }) {
   const service = getServiceSupabaseClient();
+  const viewer = await getUserFromAuthorization();
 
   const { data: board, error: boardError } = await service
     .from("boards")
@@ -14,6 +18,8 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
   if (boardError || !board) {
     notFound();
   }
+
+  const canWrite = board.slug !== "notice" || viewer?.role === "admin";
 
   const { data: posts, error: postsError } = await service
     .from("community_posts")
@@ -31,13 +37,16 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
       {board.description ? <p className="muted">{board.description}</p> : null}
 
       <div className="actions" style={{ marginBottom: "0.9rem" }}>
-        <Link className="btn" href={`/community/${board.slug}/new`}>
-          글쓰기
-        </Link>
+        {canWrite ? (
+          <Link className="btn" href={`/community/${board.slug}/new`}>
+            글쓰기
+          </Link>
+        ) : null}
         <Link className="btn btn-secondary" href="/community">
           게시판 목록
         </Link>
       </div>
+      {board.slug === "notice" && !canWrite ? <p className="muted">공지 작성은 관리자만 가능합니다.</p> : null}
 
       {postsError ? <p className="error">글 목록 조회 실패: {postsError.message}</p> : null}
 

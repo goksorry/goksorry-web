@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   const service = getServiceSupabaseClient();
   const { data: post } = await service
     .from("community_posts")
-    .select("id,is_deleted")
+    .select("id,is_deleted,boards(slug)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -74,6 +75,11 @@ export async function POST(request: Request) {
 
   if (error || !data) {
     return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
+  }
+
+  const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
+  if (board?.slug) {
+    revalidatePath(`/community/${board.slug}/${postId}`);
   }
 
   return NextResponse.json({ id: data.id });

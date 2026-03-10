@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -25,7 +26,7 @@ export async function POST(
   const service = getServiceSupabaseClient();
   const { data: post } = await service
     .from("community_posts")
-    .select("id,author_id,is_deleted")
+    .select("id,author_id,is_deleted,board_id,boards(slug)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -52,6 +53,13 @@ export async function POST(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
+  revalidatePath("/community");
+  if (board?.slug) {
+    revalidatePath(`/community/${board.slug}`);
+    revalidatePath(`/community/${board.slug}/${postId}`);
   }
 
   return NextResponse.json({ ok: true });

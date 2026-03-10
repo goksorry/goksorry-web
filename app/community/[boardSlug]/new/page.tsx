@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { NewPostForm } from "@/components/new-post-form";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -9,6 +10,7 @@ import { getServiceSupabaseClient } from "@/lib/supabase/service";
 export default async function NewPostPage({ params }: { params: { boardSlug: string } }) {
   const service = getServiceSupabaseClient();
   const session = await getServerSession(authOptions);
+  const viewer = await getUserFromAuthorization();
   const { data: board } = await service
     .from("boards")
     .select("id,slug,name")
@@ -22,7 +24,18 @@ export default async function NewPostPage({ params }: { params: { boardSlug: str
   return (
     <section className="panel">
       <h1>{board.name}에 글쓰기</h1>
-      {session?.user?.email ? (
+      {board.slug === "notice" ? (
+        <>
+          {viewer?.role === "admin" ? (
+            <>
+              <p className="muted">입력은 평문만 허용됩니다.</p>
+              <NewPostForm boardSlug={board.slug} />
+            </>
+          ) : (
+            <p className="error">공지 작성 권한이 없습니다. 공지는 관리자만 작성할 수 있습니다.</p>
+          )}
+        </>
+      ) : session?.user?.email ? (
         <>
           <p className="muted">입력은 평문만 허용됩니다.</p>
           <NewPostForm boardSlug={board.slug} />
