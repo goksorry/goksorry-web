@@ -832,42 +832,27 @@ button:disabled {
   pointer-events: auto;
 }
 
-.clean-filter-overlay-flash {
+.clean-filter-overlay-burst {
   position: absolute;
-  inset: 0;
+  left: var(--burst-x);
+  top: var(--burst-y);
+  width: var(--burst-size);
+  height: var(--burst-size);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.48);
+  background: radial-gradient(circle, var(--burst-color) 0%, transparent 70%);
+  pointer-events: none;
   opacity: 0;
 }
 
-.clean-filter-overlay-loading.clean-filter-overlay-pretty .clean-filter-overlay-flash {
-  background:
-    radial-gradient(circle at 24% 24%, rgba(255, 210, 236, 0.36), transparent 26%),
-    radial-gradient(circle at 78% 28%, rgba(255, 238, 196, 0.26), transparent 24%),
-    radial-gradient(circle at 50% 70%, rgba(214, 188, 255, 0.24), transparent 30%);
-  animation: clean-filter-pretty-bloom 0.95s ease-out infinite;
+.clean-filter-overlay-burst-pretty {
+  filter: blur(1px) saturate(1.1);
+  animation: clean-filter-random-burst 0.65s ease-out forwards;
 }
 
-.clean-filter-overlay-pretty:not(.clean-filter-overlay-loading) .clean-filter-overlay-flash {
-  background:
-    radial-gradient(circle at 24% 24%, rgba(255, 210, 236, 0.36), transparent 26%),
-    radial-gradient(circle at 78% 28%, rgba(255, 238, 196, 0.26), transparent 24%),
-    radial-gradient(circle at 50% 70%, rgba(214, 188, 255, 0.24), transparent 30%);
-  animation: clean-filter-pretty-bloom 1s ease-out forwards;
-}
-
-.clean-filter-overlay-loading.clean-filter-overlay-grim .clean-filter-overlay-flash {
-  background:
-    radial-gradient(circle at 18% 22%, rgba(82, 22, 22, 0.34), transparent 24%),
-    radial-gradient(circle at 82% 30%, rgba(34, 18, 46, 0.32), transparent 24%),
-    radial-gradient(circle at 52% 76%, rgba(16, 20, 34, 0.34), transparent 30%);
-  animation: clean-filter-grim-bloom 0.95s ease-out infinite;
-}
-
-.clean-filter-overlay-grim:not(.clean-filter-overlay-loading) .clean-filter-overlay-flash {
-  background:
-    radial-gradient(circle at 18% 22%, rgba(82, 22, 22, 0.34), transparent 24%),
-    radial-gradient(circle at 82% 30%, rgba(34, 18, 46, 0.32), transparent 24%),
-    radial-gradient(circle at 52% 76%, rgba(16, 20, 34, 0.34), transparent 30%);
-  animation: clean-filter-grim-bloom 1s ease-out forwards;
+.clean-filter-overlay-burst-grim {
+  filter: blur(1px) saturate(1.08);
+  animation: clean-filter-random-burst 0.65s ease-out forwards;
 }
 
 .clean-filter-overlay-loader {
@@ -913,44 +898,23 @@ button:disabled {
   }
 }
 
-@keyframes clean-filter-pretty-bloom {
+@keyframes clean-filter-random-burst {
   0% {
     opacity: 0;
-    transform: scale(0.96);
-    filter: saturate(0.9);
+    transform: translate(-50%, -50%) scale(0.48);
   }
-  35% {
-    opacity: 1;
-    transform: scale(1.02);
-    filter: saturate(1.15);
+  18% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(0.9);
   }
   100% {
     opacity: 0;
-    transform: scale(1.08);
-    filter: saturate(0.95);
-  }
-}
-
-@keyframes clean-filter-grim-bloom {
-  0% {
-    opacity: 0;
-    transform: scale(0.98);
-    filter: saturate(1);
-  }
-  35% {
-    opacity: 1;
-    transform: scale(1.03);
-    filter: saturate(1.18);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.08);
-    filter: saturate(0.92);
+    transform: translate(-50%, -50%) scale(1.2);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .clean-filter-overlay-flash,
+  .clean-filter-overlay-burst,
   .clean-filter-overlay-spinner {
     animation: none;
   }
