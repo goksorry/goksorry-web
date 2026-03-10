@@ -1,80 +1,21 @@
 import "server-only";
 
-import { createClient, type User } from "@supabase/supabase-js";
-import { getPublicEnv, getServerEnv } from "@/lib/env";
+import { getServerSession } from "next-auth";
+import { getServerEnv } from "@/lib/env";
+import { authOptions } from "@/lib/auth";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
+export type AppAuthUser = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  image: string | null;
+  nickname: string | null;
+  role: "admin" | "user";
+  created_at: string;
+};
+
 export const MIN_ACCOUNT_AGE_MINUTES = 15;
-export const SESSION_COOKIE_NAME = "gks_session";
-
-const parseBearerToken = (request: Request): string | null => {
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  const token = authHeader.slice(7).trim();
-  return token || null;
-};
-
-const parseCookieToken = (request: Request): string | null => {
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  if (!cookieHeader) {
-    return null;
-  }
-
-  const cookies = cookieHeader.split(";");
-  for (const part of cookies) {
-    const [rawName, ...rest] = part.trim().split("=");
-    if (!rawName || rest.length === 0) {
-      continue;
-    }
-
-    if (rawName !== SESSION_COOKIE_NAME) {
-      continue;
-    }
-
-    const rawValue = rest.join("=");
-    try {
-      const decoded = decodeURIComponent(rawValue);
-      return decoded || null;
-    } catch {
-      return rawValue || null;
-    }
-  }
-
-  return null;
-};
-
-export const getUserFromAccessToken = async (accessToken: string): Promise<User | null> => {
-  const token = accessToken.trim();
-  if (!token) {
-    return null;
-  }
-
-  const env = getPublicEnv();
-  const anonClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  });
-
-  const { data, error } = await anonClient.auth.getUser(token);
-  if (error || !data.user) {
-    return null;
-  }
-
-  return data.user;
-};
-
-export const getUserFromAuthorization = async (request: Request): Promise<User | null> => {
-  const token = parseBearerToken(request) ?? parseCookieToken(request);
-  if (!token) {
-    return null;
-  }
-
-  return getUserFromAccessToken(token);
-};
 
 export const isAdminEmail = (email?: string | null): boolean => {
   if (!email) {
@@ -87,30 +28,85 @@ export const isAdminEmail = (email?: string | null): boolean => {
   return email.toLowerCase() === adminEmail;
 };
 
-export const ensureProfileForUser = async (user: User): Promise<"admin" | "user"> => {
+const deriveNickname = (user: Pick<AppAuthUser, "id" | "email" | "name" | "nickname">): string => {
+  const fallback = String(user.email ?? "").trim().toLowerCase().split("@")[0] || `user_${user.id.slice(0, 8)}`;
+  const source = String(user.name ?? user.nickname ?? "").replace(/[<>]/g, "").trim().slice(0, 30);
+  return source || fallback;
+};
+
+export const getUserFromAuthorization = async (_request?: Request): Promise<AppAuthUser | null> => {
+  const session = await getServerSession(authOptions);
+  const email = String(session?.user?.email ?? "").trim().toLowerCase();
+  const id = String(session?.user?.id ?? "").trim();
+
+  if (!session?.user || !email || !id) {
+    return null;
+  }
+
   const service = getServiceSupabaseClient();
-  const role: "admin" | "user" = isAdminEmail(user.email) ? "admin" : "user";
+  const { data: profile } = await service
+    .from("profiles")
+    .select("id,email,nickname,role,created_at")
+    .eq("id", id)
+    .maybeSingle();
 
-  const email = user.email ?? `unknown_${user.id.slice(0, 8)}@local.invalid`;
-  const nameFromProvider = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "");
-  const fallback = email.split("@")[0] || `user_${user.id.slice(0, 8)}`;
-  const nickname = (nameFromProvider || fallback).replace(/[<>]/g, "").trim().slice(0, 30) || fallback;
+  if (profile) {
+    return {
+      id: String(profile.id),
+      email: String(profile.email ?? email),
+      name: session.user.name ?? null,
+      image: session.user.image ?? null,
+      nickname: String(profile.nickname ?? ""),
+      role: profile.role === "admin" ? "admin" : "user",
+      created_at: String(profile.created_at)
+    };
+  }
 
-  await service.from("profiles").upsert(
+  const createdAt = String(session.user.created_at ?? "").trim();
+  if (!createdAt) {
+    return null;
+  }
+
+  return {
+    id,
+    email,
+    name: session.user.name ?? null,
+    image: session.user.image ?? null,
+    nickname: session.user.nickname ?? null,
+    role: session.user.role === "admin" ? "admin" : "user",
+    created_at: createdAt
+  };
+};
+
+export const ensureProfileForUser = async (user: AppAuthUser): Promise<"admin" | "user"> => {
+  if (!user.email) {
+    return "user";
+  }
+
+  const role: "admin" | "user" = isAdminEmail(user.email) ? "admin" : user.role;
+  const nickname = deriveNickname(user);
+  const normalizedEmail = user.email.trim().toLowerCase();
+
+  const service = getServiceSupabaseClient();
+  const { error } = await service.from("profiles").upsert(
     {
       id: user.id,
-      email,
+      email: normalizedEmail,
       nickname,
       role
     },
     { onConflict: "id" }
   );
 
+  if (error) {
+    throw error;
+  }
+
   return role;
 };
 
 export const checkAccountAge = (
-  user: User,
+  user: Pick<AppAuthUser, "created_at">,
   minMinutes: number = MIN_ACCOUNT_AGE_MINUTES
 ): { ok: boolean; waitMinutes: number } => {
   const createdAtMs = new Date(user.created_at).getTime();

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
+import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 
 export const metadata: Metadata = {
@@ -14,41 +15,43 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <div id="page-top" className="layout">
-          <header className="header">
-            <nav className="nav">
-              <Link className="brand" href="/">
-                곡소리닷컴
-              </Link>
-              <Link href="/">피드</Link>
-              <Link href="/community">커뮤니티</Link>
-              <Link href="/admin/reports">신고 관리</Link>
-            </nav>
-            <div className="auth">
-              <Suspense fallback={<button type="button" disabled>구글 로그인</button>}>
-                <AuthControls />
-              </Suspense>
-            </div>
-          </header>
-          <main className="main">
-            <Suspense
-              fallback={
-                <section className="overview-panel">
-                  <div className="overview-heading">
-                    <div className="overview-heading-copy">
-                      <p className="overview-kicker">시장 · 커뮤니티 체감</p>
-                      <h2>실시간 체감 지수</h2>
+        <AuthSessionProvider>
+          <div id="page-top" className="layout">
+            <header className="header">
+              <nav className="nav">
+                <Link className="brand" href="/">
+                  곡소리닷컴
+                </Link>
+                <Link href="/">피드</Link>
+                <Link href="/community">커뮤니티</Link>
+                <Link href="/admin/reports">신고 관리</Link>
+              </nav>
+              <div className="auth">
+                <Suspense fallback={<button type="button" disabled>구글 로그인</button>}>
+                  <AuthControls />
+                </Suspense>
+              </div>
+            </header>
+            <main className="main">
+              <Suspense
+                fallback={
+                  <section className="overview-panel">
+                    <div className="overview-heading">
+                      <div className="overview-heading-copy">
+                        <p className="overview-kicker">시장 · 커뮤니티 체감</p>
+                        <h2>실시간 체감 지수</h2>
+                      </div>
+                      <p className="overview-timestamp">캐시 지수 준비 중</p>
                     </div>
-                    <p className="overview-timestamp">캐시 지수 준비 중</p>
-                  </div>
-                </section>
-              }
-            >
-              <MarketOverviewShell />
-            </Suspense>
-            {children}
-          </main>
-        </div>
+                  </section>
+                }
+              >
+                <MarketOverviewShell />
+              </Suspense>
+              {children}
+            </main>
+          </div>
+        </AuthSessionProvider>
       </body>
     </html>
   );

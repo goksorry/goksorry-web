@@ -2,13 +2,16 @@
 
 ## Stack
 - Next.js (App Router)
-- Supabase (Postgres/Auth)
+- Supabase (Postgres)
+- NextAuth (Google OAuth)
 - Deploy target assumption: Vercel
 
 ## Required Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+- `NEXTAUTH_SECRET` (server-only)
+- `GOOGLE_CLIENT_ID` (server-only)
+- `GOOGLE_CLIENT_SECRET` (server-only)
 - `DETECTOR_WRITE_TOKEN` (server-only)
 - `ADMIN_EMAIL` (server-only)
 - `DEFAULT_TIMEZONE` (optional, default `Asia/Seoul`)

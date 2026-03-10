@@ -6,17 +6,13 @@ const required = (name: string): string => {
   return value;
 };
 
-export const getPublicEnv = () => {
-  return {
-    NEXT_PUBLIC_SUPABASE_URL: required("NEXT_PUBLIC_SUPABASE_URL"),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: required("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-  };
-};
-
 export const getServerEnv = () => {
   return {
-    ...getPublicEnv(),
+    NEXT_PUBLIC_SUPABASE_URL: required("NEXT_PUBLIC_SUPABASE_URL"),
     SUPABASE_SERVICE_ROLE_KEY: required("SUPABASE_SERVICE_ROLE_KEY"),
+    NEXTAUTH_SECRET: required("NEXTAUTH_SECRET"),
+    GOOGLE_CLIENT_ID: required("GOOGLE_CLIENT_ID"),
+    GOOGLE_CLIENT_SECRET: required("GOOGLE_CLIENT_SECRET"),
     DETECTOR_WRITE_TOKEN: required("DETECTOR_WRITE_TOKEN"),
     ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
     APP_VERSION: process.env.APP_VERSION ?? "1.0.0",

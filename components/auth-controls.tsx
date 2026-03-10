@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
-
-type AuthSnapshot = {
-  authenticated: boolean;
-  email: string | null;
-};
+import { useState } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 const buildNextPath = (): string => {
   if (typeof window === "undefined") {
@@ -17,89 +11,37 @@ const buildNextPath = (): string => {
 };
 
 export function AuthControls() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const searchKey = useMemo(() => searchParams.toString(), [searchParams]);
+  const { data: session, status } = useSession();
+  const [pending, setPending] = useState(false);
 
-  const [snapshot, setSnapshot] = useState<AuthSnapshot>({ authenticated: false, email: null });
-  const [loading, setLoading] = useState(false);
+  const loading = status === "loading" || pending;
+  const authenticated = status === "authenticated" && Boolean(session?.user?.email);
 
-  useEffect(() => {
-    let active = true;
-
-    const load = async () => {
-      try {
-        const response = await fetch("/api/auth/me", {
-          method: "GET",
-          cache: "no-store"
-        });
-        const payload = (await response.json().catch(() => ({}))) as {
-          authenticated?: boolean;
-          user?: { email?: string | null };
-        };
-
-        if (!active) {
-          return;
-        }
-
-        if (!response.ok || !payload.authenticated) {
-          setSnapshot({ authenticated: false, email: null });
-          return;
-        }
-
-        setSnapshot({ authenticated: true, email: payload.user?.email ?? null });
-      } catch {
-        if (!active) {
-          return;
-        }
-        setSnapshot({ authenticated: false, email: null });
-      }
-    };
-
-    load().catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [pathname, searchKey]);
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
+  const handleSignIn = async () => {
+    setPending(true);
     try {
-      const supabase = getBrowserSupabaseClient();
-      const nextPath = buildNextPath();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo
-        }
+      await signIn("google", {
+        callbackUrl: buildNextPath()
       });
     } finally {
-      setLoading(false);
+      setPending(false);
     }
   };
 
-  const signOut = async () => {
-    setLoading(true);
+  const handleSignOut = async () => {
+    setPending(true);
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST"
-      }).catch(() => undefined);
-
-      const supabase = getBrowserSupabaseClient();
-      await supabase.auth.signOut().catch(() => undefined);
-
-      setSnapshot({ authenticated: false, email: null });
-      router.refresh();
+      await signOut({
+        callbackUrl: buildNextPath()
+      });
     } finally {
-      setLoading(false);
+      setPending(false);
     }
   };
 
-  if (!snapshot.authenticated) {
+  if (!authenticated) {
     return (
-      <button type="button" onClick={signInWithGoogle} disabled={loading}>
+      <button type="button" onClick={() => void handleSignIn()} disabled={loading}>
         {loading ? "로그인 중..." : "구글 로그인"}
       </button>
     );
@@ -107,10 +49,11 @@ export function AuthControls() {
 
   return (
     <div className="inline">
-      <span className="muted">{snapshot.email ?? "로그인됨"}</span>
-      <button type="button" className="btn-secondary" onClick={signOut} disabled={loading}>
+      <span className="muted">{session.user.email ?? "로그인됨"}</span>
+      <button type="button" className="btn-secondary" onClick={() => void handleSignOut()} disabled={loading}>
         로그아웃
       </button>
     </div>
   );
 }
+

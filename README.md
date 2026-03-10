@@ -16,6 +16,7 @@
 
 - Canonical schema file: `db/schema.sql`
 - Keep schema evolving in this single file until service launch.
+- If you are upgrading an existing deployed DB from the old Supabase Auth-coupled schema, run `db/migrations/003_nextauth_auth.sql` once before enabling NextAuth login.
 
 ## API summary
 
@@ -50,15 +51,16 @@ Read auth headers:
 
 Auth for token issuance endpoints:
 
-- Supabase user access token (`Authorization: Bearer <user_access_token>`)
+- NextAuth browser session cookie
 - Same-origin browser request required (`Origin` / `Sec-Fetch-Site` validation)
 - Responses use `Cache-Control: no-store`
 - Issue/revoke are rate-limited per user
 
 Auth session model:
 
-- Browser APIs use server-issued `HttpOnly` session cookie (`gks_session`).
-- Client-side components no longer attach bearer access tokens for normal community/admin writes.
+- Login is handled by NextAuth (`next-auth`) with Google OAuth.
+- Browser APIs rely on the NextAuth `HttpOnly` session cookie.
+- Community/admin writes do not attach Supabase bearer tokens from the browser.
 
 ## Required env
 
@@ -66,8 +68,10 @@ Auth session model:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=local-dev-anon-key
 SUPABASE_SERVICE_ROLE_KEY=local-dev-service-role-key
+NEXTAUTH_SECRET=local-dev-nextauth-secret
+GOOGLE_CLIENT_ID=local-dev-google-client-id
+GOOGLE_CLIENT_SECRET=local-dev-google-client-secret
 DETECTOR_WRITE_TOKEN=local-dev-detector-token
 ADMIN_EMAIL=admin@example.com
 APP_VERSION=1.0.0
@@ -75,7 +79,7 @@ DEFAULT_TIMEZONE=Asia/Seoul
 ```
 
 Local Next.js app origin is `http://localhost:3000`.
-No separate app base URL env is used by the current code.
+Google OAuth redirect target is handled by NextAuth under `/api/auth/*`.
 Production canonical domain is `https://goksorry.com`.
 Set the Vercel primary domain to the apex host, not `www.goksorry.com`, so detector API clients do not lose `Authorization` on cross-host redirects.
 
@@ -129,3 +133,4 @@ openssl rand -hex 32
 - TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).
 - Security headers and CSP are applied via `web/middleware.ts`.
 - The app redirects `www.goksorry.com` to `goksorry.com` at the edge to keep a single canonical host.
+- Community profile rows are app-managed and no longer depend on `auth.users`.

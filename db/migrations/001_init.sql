@@ -1,7 +1,7 @@
 create extension if not exists pgcrypto;
 
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
   email text not null unique,
   nickname text not null,
   role text not null default 'user' check (role in ('user', 'admin')),
@@ -120,28 +120,6 @@ as $$
   );
 $$;
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  base_nickname text;
-begin
-  base_nickname := coalesce(nullif(split_part(new.email, '@', 1), ''), 'user_' || substring(new.id::text, 1, 8));
-
-  insert into public.profiles (id, email, nickname, role)
-  values (new.id, coalesce(new.email, 'unknown_' || substring(new.id::text, 1, 8) || '@local.invalid'), base_nickname, 'user')
-  on conflict (id)
-  do update set
-    email = excluded.email,
-    updated_at = now();
-
-  return new;
-end;
-$$;
-
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
@@ -159,12 +137,6 @@ create trigger community_comments_set_updated_at
 before update on public.community_comments
 for each row
 execute function public.set_updated_at();
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row
-execute function public.handle_new_user();
 
 insert into public.boards (slug, name, description, sort_order)
 values
