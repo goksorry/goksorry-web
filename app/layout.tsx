@@ -45,6 +45,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       </div>
                       <p className="overview-timestamp">캐시 지수 준비 중</p>
                     </div>
+                    <div className="overview-top-row">
+                      {["KOSPI", "KOSDAQ", "NASDAQ", "원/달러 환율"].map((label) => (
+                        <article key={label} className="overview-card overview-card-market overview-tone-flat">
+                          <p className="overview-label">{label}</p>
+                          <div className="overview-market-main">
+                            <strong className="overview-value">로딩중</strong>
+                            <p className="overview-delta">로딩중</p>
+                          </div>
+                          <p className="overview-note">로딩중</p>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="overview-bottom-row">
+                      {[
+                        "네이버종토방 지수",
+                        "토스증권 종목커뮤니티 지수",
+                        "블라인드 주식투자 지수",
+                        "디시 주갤·국장갤·미장갤 지수"
+                      ].map((label) => (
+                        <article key={label} className="overview-card overview-card-community overview-tone-mixed">
+                          <div className="overview-community-head">
+                            <p className="overview-label">{label}</p>
+                            <span className="overview-score-badge">로딩중</span>
+                          </div>
+                          <p className="overview-delta">로딩중</p>
+                        </article>
+                      ))}
+                    </div>
                   </section>
                 }
               >

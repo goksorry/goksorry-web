@@ -127,6 +127,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
 
   const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId) ?? null;
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
+  const communityLoading = payload === null && !error;
 
   return (
     <>
@@ -166,17 +167,22 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
               type="button"
               className={`overview-card overview-card-community overview-tone-${group.tone}`}
               onClick={() => onCommunityIndicatorClick(group.id)}
+              disabled={communityLoading}
             >
               <div className="overview-community-head">
                 <p className="overview-label">{group.label}</p>
                 <span className="overview-score-badge">
-                  <span>{TONE_EMOJI[group.tone]}</span>
-                  <span>{group.score}</span>
+                  {communityLoading ? (
+                    <span>로딩중</span>
+                  ) : (
+                    <>
+                      <span>{TONE_EMOJI[group.tone]}</span>
+                      <span>{group.score}</span>
+                    </>
+                  )}
                 </span>
               </div>
-              <p className="overview-delta">
-                언급 {group.mentions} · 희망 {group.bullish} · 공포 {group.bearish}
-              </p>
+              <p className="overview-delta">{communityLoading ? "로딩중" : `언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}</p>
             </button>
           ))}
         </div>
