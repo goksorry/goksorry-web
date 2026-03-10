@@ -121,9 +121,12 @@ export default async function Home({
           <section id="fear-lane" className="sentiment-lane sentiment-lane-fear scroll-anchor">
             <div className="sentiment-lane-head">
               <h2>
-                {SENTIMENT_DISPLAY.bearish.emoji} 공포
+                공포
+                <span className="tag sentiment-count-tag">{fearRows.length}건</span>
               </h2>
-              <span className="tag">{fearRows.length}건</span>
+              <span className="sentiment-lane-watermark" aria-hidden="true">
+                {SENTIMENT_DISPLAY.bearish.emoji}
+              </span>
             </div>
             {fearSymbolBadges.length > 0 ? (
               <div className="feed-symbol-badges" aria-label="공포 등장 종목">
@@ -175,9 +178,12 @@ export default async function Home({
           <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
             <div className="sentiment-lane-head">
               <h2>
-                {SENTIMENT_DISPLAY.bullish.emoji} 희망
+                희망
+                <span className="tag sentiment-count-tag">{hopeRows.length}건</span>
               </h2>
-              <span className="tag">{hopeRows.length}건</span>
+              <span className="sentiment-lane-watermark" aria-hidden="true">
+                {SENTIMENT_DISPLAY.bullish.emoji}
+              </span>
             </div>
             {hopeSymbolBadges.length > 0 ? (
               <div className="feed-symbol-badges" aria-label="희망 등장 종목">
