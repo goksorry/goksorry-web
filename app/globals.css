@@ -462,6 +462,8 @@ a:hover {
   display: grid;
   gap: 0.85rem;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .sentiment-lane-fear {
@@ -480,7 +482,6 @@ a:hover {
   justify-content: space-between;
   gap: 0.75rem;
   position: relative;
-  min-height: 3.15rem;
 }
 
 .sentiment-lane-head h2 {
@@ -500,13 +501,24 @@ a:hover {
 
 .sentiment-lane-watermark {
   position: absolute;
-  top: -0.2rem;
-  right: 0;
-  font-size: 3.1rem;
+  top: 0.2rem;
+  right: 0.45rem;
+  font-size: 5.8rem;
   line-height: 1;
-  opacity: 0.22;
+  opacity: 0.24;
   pointer-events: none;
   user-select: none;
+  z-index: 0;
+}
+
+.sentiment-lane-watermark-fear {
+  filter: saturate(0.96) drop-shadow(0 0.2rem 0.7rem rgba(77, 27, 22, 0.12));
+}
+
+.sentiment-lane-watermark-hope {
+  opacity: 0.34;
+  filter: saturate(0.98) brightness(0.96) drop-shadow(0 0.22rem 0.75rem rgba(37, 45, 57, 0.18));
+  text-shadow: 0 0 0.3rem rgba(42, 50, 60, 0.12);
 }
 
 .sentiment-list {
@@ -1329,6 +1341,15 @@ button:disabled {
 
   .sentiment-time {
     font-size: 0.67rem;
+  }
+
+  .sentiment-lane-head {
+    gap: 0.55rem;
+  }
+
+  .sentiment-lane-watermark {
+    top: 0.1rem;
+    font-size: 4.8rem;
   }
 
   .mobile-feed-fabs {

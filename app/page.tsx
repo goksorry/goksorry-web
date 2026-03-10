@@ -124,7 +124,7 @@ export default async function Home({
                 공포
                 <span className="tag sentiment-count-tag">{fearRows.length}건</span>
               </h2>
-              <span className="sentiment-lane-watermark" aria-hidden="true">
+              <span className="sentiment-lane-watermark sentiment-lane-watermark-fear" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bearish.emoji}
               </span>
             </div>
@@ -181,7 +181,7 @@ export default async function Home({
                 희망
                 <span className="tag sentiment-count-tag">{hopeRows.length}건</span>
               </h2>
-              <span className="sentiment-lane-watermark" aria-hidden="true">
+              <span className="sentiment-lane-watermark sentiment-lane-watermark-hope" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bullish.emoji}
               </span>
             </div>
