@@ -622,7 +622,7 @@ button:disabled {
 }
 
 .scroll-anchor {
-  scroll-margin-top: 5.4rem;
+  scroll-margin-top: 7rem;
 }
 
 .feed-filter-panel h1 {
@@ -783,6 +783,10 @@ button:disabled {
   .overview-heading {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.75rem;
+  }
+
+  .scroll-anchor {
+    scroll-margin-top: 8.75rem;
   }
 
   .overview-top-row {

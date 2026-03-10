@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 
 export function GoogleSignInButton({
   callbackUrl,
-  label = "구글 로그인"
+  label = "구글계정으로 로그인"
 }: {
   callbackUrl: string;
   label?: string;

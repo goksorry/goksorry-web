@@ -42,7 +42,7 @@ export function AuthControls() {
   if (!authenticated) {
     return (
       <button type="button" onClick={() => void handleSignIn()} disabled={loading}>
-        {loading ? "로그인 중..." : "구글 로그인"}
+        {loading ? "로그인 중..." : "구글계정으로 로그인"}
       </button>
     );
   }
@@ -56,4 +56,3 @@ export function AuthControls() {
     </div>
   );
 }
-
