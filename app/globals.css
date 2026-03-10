@@ -248,6 +248,8 @@ a:hover {
 
 .feed-lanes-panel {
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 .panel h1 {
@@ -1133,7 +1135,7 @@ button:disabled {
     left: 50%;
     top: 52%;
     transform: translate(-50%, -50%);
-    z-index: 52;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
