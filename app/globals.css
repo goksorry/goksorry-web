@@ -1,12 +1,18 @@
 :root {
-  color-scheme: light;
-  --bg: #f3f5fa;
-  --panel: #ffffff;
-  --ink: #111827;
-  --muted: #4b5563;
-  --line: #d6dbe7;
-  --brand: #0f4c81;
-  --danger: #b42318;
+  color-scheme: dark;
+  --bg: #141116;
+  --panel: #1b161c;
+  --panel-soft: #231d24;
+  --panel-elevated: #2a232b;
+  --ink: #efe6de;
+  --ink-soft: #d7cbc3;
+  --muted: #9a8c88;
+  --line: #3a3238;
+  --brand: #baa08a;
+  --brand-strong: #d4b79d;
+  --danger: #c56b64;
+  --hope: #7f9a84;
+  --shadow: rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -20,7 +26,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top right, #e4f0ff 0%, var(--bg) 45%);
+  background: var(--bg);
   color: var(--ink);
   font-family: "Segoe UI", "Noto Sans", sans-serif;
 }
@@ -47,7 +53,7 @@ a:hover {
   gap: 1rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(17, 13, 18, 0.92);
   backdrop-filter: blur(6px);
   position: sticky;
   top: 0;
@@ -62,7 +68,7 @@ a:hover {
 
 .brand {
   font-weight: 700;
-  color: #0a263f;
+  color: var(--ink);
   font-size: 1rem;
 }
 
@@ -85,6 +91,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.9rem;
+  box-shadow: 0 14px 36px var(--shadow);
 }
 
 .feed-lanes-panel {
@@ -108,15 +115,13 @@ a:hover {
 }
 
 .overview-panel {
-  background:
-    radial-gradient(circle at top left, rgba(15, 76, 129, 0.14), transparent 35%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(242, 247, 255, 0.96));
-  border: 1px solid rgba(15, 76, 129, 0.12);
+  background: var(--panel-soft);
+  border: 1px solid rgba(186, 160, 138, 0.14);
   border-radius: 18px;
   padding: 0.9rem;
   display: grid;
   gap: 0.8rem;
-  box-shadow: 0 14px 34px rgba(15, 76, 129, 0.08);
+  box-shadow: 0 18px 44px var(--shadow);
 }
 
 .overview-heading {
@@ -147,7 +152,7 @@ a:hover {
   margin: 0;
   font-size: 0.62rem;
   letter-spacing: 0.06em;
-  color: #0f4c81;
+  color: var(--brand);
 }
 
 .overview-top-row {
@@ -163,12 +168,12 @@ a:hover {
 }
 
 .overview-card {
-  border: 1px solid rgba(15, 76, 129, 0.12);
+  border: 1px solid rgba(186, 160, 138, 0.12);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--panel-elevated);
   padding: 0.78rem 0.82rem;
   text-align: left;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .overview-card-market {
@@ -184,9 +189,9 @@ a:hover {
 }
 
 .overview-card-community {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--panel-elevated);
   color: inherit;
-  border: 1px solid rgba(15, 76, 129, 0.12);
+  border: 1px solid rgba(186, 160, 138, 0.12);
   cursor: pointer;
   display: grid;
   gap: 0.35rem;
@@ -195,8 +200,8 @@ a:hover {
 
 .overview-card-community:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(15, 76, 129, 0.12);
-  border-color: rgba(15, 76, 129, 0.28);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+  border-color: rgba(186, 160, 138, 0.28);
 }
 
 .overview-label {
@@ -228,7 +233,7 @@ a:hover {
   font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.28;
-  color: #08243d;
+  color: var(--ink-soft);
 }
 
 .overview-value {
@@ -236,7 +241,7 @@ a:hover {
   margin-top: 0.32rem;
   font-size: 1.08rem;
   line-height: 1.1;
-  color: #09233b;
+  color: var(--ink);
 }
 
 .overview-delta,
@@ -270,8 +275,9 @@ a:hover {
   height: 1.75rem;
   padding: 0 0.48rem;
   border-radius: 999px;
-  background: rgba(15, 76, 129, 0.1);
-  color: #0f4c81;
+  background: rgba(186, 160, 138, 0.12);
+  border: 1px solid rgba(186, 160, 138, 0.14);
+  color: var(--brand-strong);
   font-weight: 700;
   font-size: 0.76rem;
 }
@@ -293,17 +299,13 @@ a:hover {
 }
 
 .sentiment-lane-fear {
-  background:
-    radial-gradient(circle at top left, rgba(180, 35, 24, 0.08), transparent 42%),
-    linear-gradient(180deg, rgba(255, 248, 247, 0.96), rgba(255, 255, 255, 0.98));
-  border-color: rgba(180, 35, 24, 0.18);
+  background: #21181d;
+  border-color: rgba(197, 107, 100, 0.26);
 }
 
 .sentiment-lane-hope {
-  background:
-    radial-gradient(circle at top left, rgba(17, 127, 61, 0.08), transparent 42%),
-    linear-gradient(180deg, rgba(248, 255, 250, 0.96), rgba(255, 255, 255, 0.98));
-  border-color: rgba(17, 127, 61, 0.18);
+  background: #18201d;
+  border-color: rgba(127, 154, 132, 0.24);
 }
 
 .sentiment-lane-head {
@@ -321,12 +323,12 @@ a:hover {
 .sentiment-list {
   display: grid;
   gap: 0;
-  border-top: 1px solid rgba(15, 76, 129, 0.12);
+  border-top: 1px solid rgba(186, 160, 138, 0.14);
 }
 
 .sentiment-card {
   border: 0;
-  border-bottom: 1px solid rgba(15, 76, 129, 0.12);
+  border-bottom: 1px solid rgba(186, 160, 138, 0.14);
   border-radius: 0;
   padding: 0.8rem 0.15rem 0.85rem;
   background: transparent;
@@ -335,15 +337,15 @@ a:hover {
 }
 
 .sentiment-card-fear {
-  border-bottom-color: rgba(180, 35, 24, 0.14);
+  border-bottom-color: rgba(197, 107, 100, 0.18);
 }
 
 .sentiment-card-hope {
-  border-bottom-color: rgba(17, 127, 61, 0.14);
+  border-bottom-color: rgba(127, 154, 132, 0.18);
 }
 
 .sentiment-card:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .sentiment-card:last-child {
@@ -362,7 +364,7 @@ a:hover {
 
 .sentiment-title {
   display: block;
-  color: #08243d;
+  color: var(--ink);
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 0.3rem;
@@ -384,16 +386,16 @@ a:hover {
 }
 
 .overview-tone-up {
-  border-color: rgba(17, 127, 61, 0.22);
+  border-color: rgba(127, 154, 132, 0.24);
 }
 
 .overview-tone-up .overview-delta,
 .overview-tone-greed .overview-delta {
-  color: #117f3d;
+  color: var(--hope);
 }
 
 .overview-tone-down {
-  border-color: rgba(180, 35, 24, 0.22);
+  border-color: rgba(197, 107, 100, 0.24);
 }
 
 .overview-tone-down .overview-delta,
@@ -402,11 +404,11 @@ a:hover {
 }
 
 .overview-tone-bullish {
-  border-color: rgba(17, 127, 61, 0.22);
+  border-color: rgba(127, 154, 132, 0.24);
 }
 
 .overview-tone-bearish {
-  border-color: rgba(180, 35, 24, 0.22);
+  border-color: rgba(197, 107, 100, 0.24);
 }
 
 .overview-inline-tone {
@@ -415,7 +417,7 @@ a:hover {
 }
 
 .overview-inline-tone-bullish {
-  color: #117f3d;
+  color: var(--hope);
 }
 
 .overview-inline-tone-bearish {
@@ -441,9 +443,9 @@ a:hover {
   max-height: min(80vh, 760px);
   overflow: auto;
   border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(15, 76, 129, 0.16);
-  box-shadow: 0 30px 80px rgba(7, 19, 34, 0.24);
+  background: var(--panel-soft);
+  border: 1px solid rgba(186, 160, 138, 0.18);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
   padding: 1rem;
   display: grid;
   gap: 1rem;
@@ -471,11 +473,11 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.85rem;
-  background: #fdfefe;
+  background: var(--panel-elevated);
 }
 
 .overview-modal-item a {
-  color: #08243d;
+  color: var(--ink);
   font-weight: 600;
 }
 
@@ -511,7 +513,7 @@ a:hover {
 }
 
 .table th {
-  background: #f7f9fe;
+  background: var(--panel-elevated);
 }
 
 .form-row {
@@ -534,7 +536,8 @@ select {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.58rem 0.66rem;
-  background: #fff;
+  background: var(--panel-elevated);
+  color: var(--ink);
 }
 
 textarea {
@@ -543,9 +546,9 @@ textarea {
 
 button,
 .btn {
-  border: 1px solid #0c3e69;
-  background: #0f4c81;
-  color: #fff;
+  border: 1px solid #8f7865;
+  background: #7a6656;
+  color: #171115;
   border-radius: 8px;
   padding: 0.5rem 0.8rem;
   cursor: pointer;
@@ -557,13 +560,14 @@ button:disabled {
 }
 
 .btn-secondary {
-  background: #fff;
-  color: #0f4c81;
+  background: var(--panel-elevated);
+  color: var(--ink);
 }
 
 .btn-danger {
   background: var(--danger);
   border-color: #912018;
+  color: var(--ink);
 }
 
 .inline {
@@ -577,7 +581,7 @@ button:disabled {
   padding: 0.2rem 0.45rem;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #f8fbff;
+  background: var(--panel-elevated);
   font-size: 0.84rem;
 }
 
@@ -592,7 +596,7 @@ button:disabled {
 }
 
 .success {
-  color: #117f3d;
+  color: var(--hope);
   font-size: 0.92rem;
 }
 
@@ -605,7 +609,7 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.75rem;
-  background: #fff;
+  background: var(--panel);
 }
 
 .card h3,
@@ -671,10 +675,10 @@ button:disabled {
   justify-content: center;
   min-height: 2rem;
   padding: 0.38rem 0.74rem;
-  border: 1px solid rgba(15, 76, 129, 0.18);
+  border: 1px solid rgba(186, 160, 138, 0.18);
   border-radius: 999px;
-  background: #fff;
-  color: #0a263f;
+  background: var(--panel-elevated);
+  color: var(--ink-soft);
   font-size: 0.84rem;
   font-weight: 600;
   text-decoration: none;
@@ -684,15 +688,15 @@ button:disabled {
 }
 
 .filter-chip:hover {
-  background: #f1f7fe;
-  border-color: rgba(15, 76, 129, 0.3);
+  background: #342c35;
+  border-color: rgba(186, 160, 138, 0.3);
   text-decoration: none;
 }
 
 .filter-chip-active {
-  background: #0f4c81;
-  border-color: #0c3e69;
-  color: #fff;
+  background: var(--brand);
+  border-color: #9f8874;
+  color: #171115;
 }
 
 .feed-range-actions {
@@ -717,9 +721,9 @@ button:disabled {
   min-height: 1.9rem;
   padding: 0.32rem 0.62rem;
   border-radius: 999px;
-  background: rgba(15, 76, 129, 0.08);
-  border: 1px solid rgba(15, 76, 129, 0.14);
-  color: #08243d;
+  background: rgba(186, 160, 138, 0.12);
+  border: 1px solid rgba(186, 160, 138, 0.14);
+  color: var(--ink);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -730,8 +734,8 @@ button:disabled {
 }
 
 .tag-symbol {
-  background: rgba(15, 76, 129, 0.08);
-  border-color: rgba(15, 76, 129, 0.12);
+  background: rgba(186, 160, 138, 0.12);
+  border-color: rgba(186, 160, 138, 0.14);
 }
 
 .mobile-feed-fabs {
@@ -901,9 +905,9 @@ button:disabled {
     width: 3rem;
     min-height: 2.2rem;
     border-radius: 999px;
-    background: rgba(10, 38, 63, 0.92);
-    color: #fff;
-    box-shadow: 0 12px 28px rgba(7, 19, 34, 0.2);
+    background: rgba(39, 31, 38, 0.94);
+    color: var(--ink);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -915,11 +919,11 @@ button:disabled {
   }
 
   .mobile-feed-fab-fear {
-    background: rgba(180, 35, 24, 0.92);
+    background: rgba(111, 53, 51, 0.94);
   }
 
   .mobile-feed-fab-hope {
-    background: rgba(17, 127, 61, 0.92);
+    background: rgba(58, 79, 63, 0.94);
   }
 
   .mobile-feed-fab:hover {
