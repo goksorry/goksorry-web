@@ -1,8 +1,8 @@
 import "server-only";
 
 import { getServerSession } from "next-auth";
-import { getServerEnv } from "@/lib/env";
 import { authOptions } from "@/lib/auth";
+import { buildStableProfileId, isAdminEmail, normalizeEmail, syncProfile } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AppAuthUser = {
@@ -16,28 +16,12 @@ export type AppAuthUser = {
 };
 
 export const MIN_ACCOUNT_AGE_MINUTES = 15;
-
-export const isAdminEmail = (email?: string | null): boolean => {
-  if (!email) {
-    return false;
-  }
-  const adminEmail = getServerEnv().ADMIN_EMAIL.trim().toLowerCase();
-  if (!adminEmail) {
-    return false;
-  }
-  return email.toLowerCase() === adminEmail;
-};
-
-const deriveNickname = (user: Pick<AppAuthUser, "id" | "email" | "name" | "nickname">): string => {
-  const fallback = String(user.email ?? "").trim().toLowerCase().split("@")[0] || `user_${user.id.slice(0, 8)}`;
-  const source = String(user.name ?? user.nickname ?? "").replace(/[<>]/g, "").trim().slice(0, 30);
-  return source || fallback;
-};
+export { isAdminEmail };
 
 export const getUserFromAuthorization = async (_request?: Request): Promise<AppAuthUser | null> => {
   const session = await getServerSession(authOptions);
   const email = String(session?.user?.email ?? "").trim().toLowerCase();
-  const id = String(session?.user?.id ?? "").trim();
+  const id = String(session?.user?.id ?? (email ? buildStableProfileId(email) : "")).trim();
 
   if (!session?.user || !email || !id) {
     return null;
@@ -62,6 +46,26 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
     };
   }
 
+  try {
+    const syncedProfile = await syncProfile({
+      email,
+      preferredName: session.user.name ?? session.user.nickname ?? null,
+      preferredId: id
+    });
+
+    return {
+      id: syncedProfile.id,
+      email: syncedProfile.email,
+      name: session.user.name ?? null,
+      image: session.user.image ?? null,
+      nickname: syncedProfile.nickname,
+      role: syncedProfile.role,
+      created_at: syncedProfile.created_at
+    };
+  } catch (error) {
+    console.error("profile sync failed during session lookup", error);
+  }
+
   const createdAt = String(session.user.created_at ?? "").trim();
   if (!createdAt) {
     return null;
@@ -83,26 +87,13 @@ export const ensureProfileForUser = async (user: AppAuthUser): Promise<"admin" |
     return "user";
   }
 
-  const role: "admin" | "user" = isAdminEmail(user.email) ? "admin" : user.role;
-  const nickname = deriveNickname(user);
-  const normalizedEmail = user.email.trim().toLowerCase();
+  const profile = await syncProfile({
+    email: normalizeEmail(user.email),
+    preferredName: user.name ?? user.nickname ?? null,
+    preferredId: user.id
+  });
 
-  const service = getServiceSupabaseClient();
-  const { error } = await service.from("profiles").upsert(
-    {
-      id: user.id,
-      email: normalizedEmail,
-      nickname,
-      role
-    },
-    { onConflict: "id" }
-  );
-
-  if (error) {
-    throw error;
-  }
-
-  return role;
+  return profile.role;
 };
 
 export const checkAccountAge = (
