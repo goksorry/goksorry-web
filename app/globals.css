@@ -521,11 +521,19 @@ a:hover {
 
 .sentiment-card-head {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.sentiment-card-head-tags {
+  display: flex;
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-bottom: 0.35rem;
+  min-width: 0;
 }
 
 .sentiment-title {
@@ -545,15 +553,13 @@ a:hover {
   text-decoration: none;
 }
 
-.sentiment-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.8rem;
-  margin: 0;
+.sentiment-time {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: right;
 }
 
 .overview-tone-up {
@@ -1288,6 +1294,18 @@ button:disabled {
     max-width: calc(100% - 0.2rem);
     flex: 0 0 calc(100% - 0.2rem);
     scroll-snap-align: start;
+  }
+
+  .sentiment-card-head {
+    gap: 0.45rem;
+  }
+
+  .sentiment-card-head-tags {
+    gap: 0.38rem;
+  }
+
+  .sentiment-time {
+    font-size: 0.67rem;
   }
 
   .mobile-feed-fabs {

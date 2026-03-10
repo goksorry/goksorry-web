@@ -150,8 +150,13 @@ export default async function Home({
                 return (
                   <article key={row.post_key} className="sentiment-card sentiment-card-fear">
                     <div className="sentiment-card-head">
-                      <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                      {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                      <div className="sentiment-card-head-tags">
+                        <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                        {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                      </div>
+                      <time className="sentiment-time" dateTime={row.analyzed_at}>
+                        {toLocalTime(row.analyzed_at, timezone)}
+                      </time>
                     </div>
                     <a
                       className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
@@ -161,10 +166,6 @@ export default async function Home({
                     >
                       {displayTitle.text}
                     </a>
-                    <p className="sentiment-meta">
-                      <span>확신도 {row.confidence.toFixed(2)}</span>
-                      <span>{toLocalTime(row.analyzed_at, timezone)}</span>
-                    </p>
                   </article>
                 );
               })}
@@ -203,8 +204,13 @@ export default async function Home({
                 return (
                   <article key={row.post_key} className="sentiment-card sentiment-card-hope">
                     <div className="sentiment-card-head">
-                      <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                      {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                      <div className="sentiment-card-head-tags">
+                        <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
+                        {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                      </div>
+                      <time className="sentiment-time" dateTime={row.analyzed_at}>
+                        {toLocalTime(row.analyzed_at, timezone)}
+                      </time>
                     </div>
                     <a
                       className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
@@ -214,10 +220,6 @@ export default async function Home({
                     >
                       {displayTitle.text}
                     </a>
-                    <p className="sentiment-meta">
-                      <span>확신도 {row.confidence.toFixed(2)}</span>
-                      <span>{toLocalTime(row.analyzed_at, timezone)}</span>
-                    </p>
                   </article>
                 );
               })}
