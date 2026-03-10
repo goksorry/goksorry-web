@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type HintState = {
   direction: "left" | "right";
@@ -9,6 +9,7 @@ type HintState = {
 
 const MOBILE_MEDIA_QUERY = "(max-width: 760px)";
 const LENGTH_DIFF_THRESHOLD = 160;
+const FADE_OUT_MS = 220;
 
 const buildHint = (activeLaneId: string): HintState => {
   if (activeLaneId === "fear-lane") {
@@ -26,6 +27,17 @@ const buildHint = (activeLaneId: string): HintState => {
 
 export function MobileSentimentSwipeHint() {
   const [hint, setHint] = useState<HintState>(null);
+  const [renderedHint, setRenderedHint] = useState<HintState>(null);
+  const [visible, setVisible] = useState(false);
+  const hideTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -121,14 +133,38 @@ export function MobileSentimentSwipeHint() {
     };
   }, []);
 
-  if (!hint) {
+  useEffect(() => {
+    if (hint) {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+
+      setRenderedHint(hint);
+      const frame = window.requestAnimationFrame(() => {
+        setVisible(true);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+      };
+    }
+
+    setVisible(false);
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setRenderedHint(null);
+      hideTimeoutRef.current = null;
+    }, FADE_OUT_MS);
+  }, [hint]);
+
+  if (!renderedHint && !visible) {
     return null;
   }
 
   return (
-    <div className="mobile-swipe-hint" aria-live="polite">
-      {hint.direction === "left" ? "←" : "→"} {hint.direction === "left" ? "왼쪽" : "오른쪽"}으로 스와이프하여{" "}
-      {hint.targetLabel} 피드 보기
+    <div className={`mobile-swipe-hint${visible ? " mobile-swipe-hint-visible" : ""}`} aria-live="polite">
+      {renderedHint?.direction === "left" ? "←" : "→"}{" "}
+      {renderedHint?.direction === "left" ? "왼쪽" : "오른쪽"}으로 스와이프하여 {renderedHint?.targetLabel} 피드 보기
     </div>
   );
 }

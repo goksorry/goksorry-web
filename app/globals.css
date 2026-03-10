@@ -1337,6 +1337,17 @@ button:disabled {
     box-shadow: 0 14px 32px var(--shadow);
     backdrop-filter: blur(6px);
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 220ms ease, transform 220ms ease;
+  }
+
+  .mobile-swipe-hint-visible {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  .mobile-swipe-hint:not(.mobile-swipe-hint-visible) {
+    transform: translate(-50%, calc(-50% + 8px));
   }
 
   .overview-modal {
