@@ -76,24 +76,31 @@ export default async function Home({
   const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
   const fearRows = actionableRows.filter((row) => row.label === "bearish");
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
-  const symbolCounts = actionableRows.reduce(
-    (acc, row) => {
-      if (!row.symbol_name) {
-        return acc;
-      }
 
-      const nextCount = (acc.get(row.symbol_name) ?? 0) + 1;
-      acc.set(row.symbol_name, nextCount);
-      return acc;
-    },
-    new Map<string, number>()
-  );
-  const symbolBadges = [...symbolCounts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ko-KR"))
-    .map(([name, count]) => ({
-      name,
-      count
-    }));
+  const buildSymbolBadges = (rowsToCount: typeof actionableRows) => {
+    const symbolCounts = rowsToCount.reduce(
+      (acc, row) => {
+        if (!row.symbol_name) {
+          return acc;
+        }
+
+        const nextCount = (acc.get(row.symbol_name) ?? 0) + 1;
+        acc.set(row.symbol_name, nextCount);
+        return acc;
+      },
+      new Map<string, number>()
+    );
+
+    return [...symbolCounts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ko-KR"))
+      .map(([name, count]) => ({
+        name,
+        count
+      }));
+  };
+
+  const fearSymbolBadges = buildSymbolBadges(fearRows);
+  const hopeSymbolBadges = buildSymbolBadges(hopeRows);
 
   return (
     <>
@@ -103,16 +110,6 @@ export default async function Home({
           외부 커뮤니티에서 감지한 글 중 공포와 희망 흐름만 분리해서 보여줍니다. 중립 글은 기본적으로 숨깁니다.
         </p>
         <FeedFilterControls selectedGroupIds={selectedGroupIds} selectedRange={selectedRange} />
-        {symbolBadges.length > 0 ? (
-          <div className="feed-symbol-badges" aria-label="등장 종목">
-            {symbolBadges.map((badge) => (
-              <span key={badge.name} className="feed-symbol-badge">
-                {badge.name}
-                {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </section>
 
       <section className="panel feed-lanes-panel">
@@ -124,6 +121,16 @@ export default async function Home({
               </h2>
               <span className="tag">{fearRows.length}건</span>
             </div>
+            {fearSymbolBadges.length > 0 ? (
+              <div className="feed-symbol-badges" aria-label="공포 등장 종목">
+                {fearSymbolBadges.map((badge) => (
+                  <span key={badge.name} className="feed-symbol-badge">
+                    {badge.name}
+                    {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
@@ -154,6 +161,16 @@ export default async function Home({
               </h2>
               <span className="tag">{hopeRows.length}건</span>
             </div>
+            {hopeSymbolBadges.length > 0 ? (
+              <div className="feed-symbol-badges" aria-label="희망 등장 종목">
+                {hopeSymbolBadges.map((badge) => (
+                  <span key={badge.name} className="feed-symbol-badge">
+                    {badge.name}
+                    {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}

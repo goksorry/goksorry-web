@@ -104,7 +104,7 @@ export function FeedFilterControls({
 
   return (
     <div className="feed-filter-toolbar">
-      <div className="feed-channel-buttons" aria-label="커뮤니티 묶음">
+      <div className="feed-selection-actions" aria-label="전체 선택">
         <button
           type="button"
           className={`filter-chip ${allSelected ? "filter-chip-active" : ""}`}
@@ -119,6 +119,9 @@ export function FeedFilterControls({
         >
           전체해제
         </button>
+      </div>
+
+      <div className="feed-channel-buttons" aria-label="커뮤니티 묶음">
         {SOURCE_GROUPS.map((group) => (
           <button
             key={group.id}
