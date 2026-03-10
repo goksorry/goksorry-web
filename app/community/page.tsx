@@ -26,11 +26,9 @@ export default async function CommunityHomePage() {
 
         <div className="board-grid">
           {(boards ?? []).map((board: any) => (
-            <article key={board.id} className="card board-card">
-              <h3>
-                <Link href={`/community/${board.slug}`}>{board.name}</Link>
-              </h3>
-            </article>
+            <Link key={board.id} href={`/community/${board.slug}`} className="card board-card">
+              <h3>{board.name}</h3>
+            </Link>
           ))}
         </div>
       </section>

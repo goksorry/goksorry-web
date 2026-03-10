@@ -1132,6 +1132,11 @@ button:disabled {
 
 .board-card {
   padding: 0.85rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 4rem;
 }
 
 .board-card h3 {
