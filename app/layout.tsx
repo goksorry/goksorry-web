@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
@@ -15,8 +17,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body>
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <AuthSessionProvider>
           <div id="page-top" className="layout">
             <header className="header">
@@ -29,7 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <HeaderNavExtras />
               </nav>
               <div className="auth">
-                <Suspense fallback={<button type="button" disabled>구글 로그인</button>}>
+                <ThemeToggle />
+                <Suspense fallback={<button type="button" disabled>구글계정으로 로그인</button>}>
                   <AuthControls />
                 </Suspense>
               </div>
