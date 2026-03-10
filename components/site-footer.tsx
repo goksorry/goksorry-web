@@ -7,7 +7,7 @@ const SOURCE_LINKS = [
   },
   {
     label: "토스증권 종목커뮤니티",
-    href: "https://www.tossinvest.com/community"
+    href: "https://www.tossinvest.com/"
   },
   {
     label: "블라인드 주식·투자",
