@@ -3,6 +3,8 @@
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCleanFilter } from "@/components/clean-filter-provider";
+import { pickDisplayTitle } from "@/lib/clean-filter";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -44,6 +46,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { cleanFilterEnabled } = useCleanFilter();
   const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(null);
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
@@ -214,7 +217,11 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
                     <span className="muted">{toLocalTime(row.analyzed_at)}</span>
                   </div>
                   <a href={row.url} target="_blank" rel="noreferrer">
-                    {row.title}
+                    {pickDisplayTitle({
+                      title: row.title,
+                      cleanTitle: row.clean_title,
+                      cleanFilterEnabled
+                    })}
                   </a>
                 </article>
               ))}

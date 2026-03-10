@@ -9,6 +9,7 @@ type IngestPayloadItem = {
   source: unknown;
   post_key: unknown;
   title: unknown;
+  clean_title?: unknown;
   url: unknown;
   preview?: unknown;
   fetched_at?: unknown;
@@ -54,6 +55,12 @@ export async function POST(request: Request) {
       const source = sanitizePlainText(item.source, "source", 120);
       const postKey = sanitizePlainText(item.post_key, "post_key", 1024);
       const title = sanitizePlainText(item.title, "title", 500);
+      let cleanTitle: string | null = null;
+      try {
+        cleanTitle = sanitizeOptionalPlainText(item.clean_title, "clean_title", 500);
+      } catch {
+        cleanTitle = null;
+      }
       const url = String(item.url ?? "").trim();
       if (!/^https?:\/\//i.test(url)) {
         skipped += 1;
@@ -81,6 +88,7 @@ export async function POST(request: Request) {
         source,
         post_key: postKey,
         title,
+        clean_title: cleanTitle,
         url,
         preview: sanitizeOptionalPlainText(item.preview, "preview", 4000),
         fetched_at: fetchedAt,

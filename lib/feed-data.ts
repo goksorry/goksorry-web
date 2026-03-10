@@ -9,6 +9,7 @@ export type FeedRow = {
   post_key: string;
   source: string;
   title: string;
+  clean_title: string | null;
   url: string;
   symbol: string | null;
   symbol_name: string | null;
@@ -28,6 +29,7 @@ type ExternalPostRow = {
   post_key: string;
   source: string;
   title: string;
+  clean_title: string | null;
   url: string;
 };
 
@@ -160,7 +162,7 @@ export const fetchRecentFeedRows = async (
   for (const postKeyBatch of chunk(postKeys, EXTERNAL_POST_BATCH_SIZE)) {
     const { data: externalData, error: externalError } = await service
       .from("external_posts")
-      .select("post_key,source,title,url")
+      .select("post_key,source,title,clean_title,url")
       .in("post_key", postKeyBatch);
 
     if (externalError) {
@@ -175,6 +177,7 @@ export const fetchRecentFeedRows = async (
         post_key: String(item.post_key),
         source: String(item.source),
         title: String(item.title),
+        clean_title: typeof item.clean_title === "string" ? item.clean_title : null,
         url: String(item.url)
       }))
     );
@@ -192,6 +195,7 @@ export const fetchRecentFeedRows = async (
         post_key: row.post_key,
         source: external.source,
         title: external.title,
+        clean_title: external.clean_title,
         url: external.url,
         symbol: getSymbolFromSource(external.source),
         symbol_name: null,

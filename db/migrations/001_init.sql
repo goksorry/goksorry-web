@@ -17,11 +17,13 @@ create table if not exists public.external_posts (
   source text not null,
   post_key text not null unique,
   title text not null,
+  clean_title text,
   url text not null,
   preview text,
   created_at_from_source timestamptz,
   fetched_at timestamptz not null default now(),
   constraint external_posts_title_plain_text check (title !~ '[<>]'),
+  constraint external_posts_clean_title_plain_text check (clean_title is null or clean_title !~ '[<>]'),
   constraint external_posts_preview_plain_text check (preview is null or preview !~ '[<>]')
 );
 

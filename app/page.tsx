@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { FeedFilterControls } from "@/components/feed-filter-controls";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
+import { CLEAN_FILTER_COOKIE, isCleanFilterEnabled, pickDisplayTitle } from "@/lib/clean-filter";
 import { fetchRecentFeedRows, filterRowsBySourceGroups } from "@/lib/feed-data";
 import {
   getSourceGroupShortLabel,
@@ -59,6 +61,7 @@ export default async function Home({
         : parseSourceGroupSelection("");
   const selectedRange = pickFirst(searchParams?.range) || "24h";
   const rangeHours = rangeHoursMap[selectedRange] ?? 24;
+  const cleanFilterEnabled = isCleanFilterEnabled(cookies().get(CLEAN_FILTER_COOKIE)?.value);
 
   const service = getServiceSupabaseClient();
   const { rows, errorMessage } = await fetchRecentFeedRows(service, { hours: rangeHours, limit: 500 });
@@ -144,7 +147,11 @@ export default async function Home({
                     {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
-                    {row.title}
+                    {pickDisplayTitle({
+                      title: row.title,
+                      cleanTitle: row.clean_title,
+                      cleanFilterEnabled
+                    })}
                   </a>
                   <p className="sentiment-meta">
                     <span>확신도 {row.confidence.toFixed(2)}</span>
@@ -184,7 +191,11 @@ export default async function Home({
                     {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
                   </div>
                   <a className="sentiment-title" href={row.url} target="_blank" rel="noreferrer">
-                    {row.title}
+                    {pickDisplayTitle({
+                      title: row.title,
+                      cleanTitle: row.clean_title,
+                      cleanFilterEnabled
+                    })}
                   </a>
                   <p className="sentiment-meta">
                     <span>확신도 {row.confidence.toFixed(2)}</span>
