@@ -14,6 +14,7 @@ import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
+import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authOptions } from "@/lib/auth";
 
@@ -111,6 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </Suspense>
                 {children}
               </main>
+              <SiteFooter />
             </div>
           </CleanFilterProvider>
         </AuthSessionProvider>

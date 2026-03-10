@@ -266,6 +266,59 @@ a:hover {
   gap: 0.9rem;
 }
 
+.site-footer {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 0 0.9rem 1rem;
+}
+
+.site-footer-grid {
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+}
+
+.site-footer-block {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.site-footer-block h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.site-footer-block p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.site-footer-links {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.site-footer-links a {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.legal-page h2 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.legal-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.38rem;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -1256,6 +1309,15 @@ button:disabled {
   .auth {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .site-footer {
+    padding: 0 0.9rem 1rem;
+  }
+
+  .site-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
   }
 
   .header {
