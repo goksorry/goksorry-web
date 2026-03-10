@@ -503,7 +503,7 @@ a:hover {
   position: absolute;
   top: 0.2rem;
   right: 0.45rem;
-  font-size: 5.8rem;
+  font-size: 4.8rem;
   line-height: 1;
   opacity: 0.24;
   pointer-events: none;
@@ -1349,7 +1349,7 @@ button:disabled {
 
   .sentiment-lane-watermark {
     top: 0.1rem;
-    font-size: 4.8rem;
+    font-size: 4.1rem;
   }
 
   .mobile-feed-fabs {
