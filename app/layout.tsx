@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <div className="layout">
+        <div id="page-top" className="layout">
           <header className="header">
             <nav className="nav">
               <Link className="brand" href="/">

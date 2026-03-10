@@ -199,7 +199,7 @@ export default async function Home({
       </section>
 
       <nav className="mobile-feed-fabs" aria-label="피드 빠른 이동">
-        <a className="mobile-feed-fab mobile-feed-fab-top" href="#feed-top">
+        <a className="mobile-feed-fab mobile-feed-fab-top" href="#page-top">
           ↑
         </a>
         <a className="mobile-feed-fab mobile-feed-fab-fear" href="#fear-lane">
