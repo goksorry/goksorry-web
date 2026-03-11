@@ -15,7 +15,7 @@ export function AuthControls() {
   const [pending, setPending] = useState(false);
 
   const loading = status === "loading" || pending;
-  const authenticated = status === "authenticated" && Boolean(session?.user?.email);
+  const authenticated = status === "authenticated";
 
   const handleSignIn = async () => {
     setPending(true);
