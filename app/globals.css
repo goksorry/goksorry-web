@@ -323,7 +323,7 @@ a:hover {
 }
 
 .main {
-  width: min(1100px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
   padding: 0.9rem;
   display: grid;
@@ -331,7 +331,7 @@ a:hover {
 }
 
 .site-footer {
-  width: min(1100px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
   padding: 0 0.9rem 1rem;
 }
@@ -692,7 +692,7 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
-  margin-bottom: 0.16rem;
+  margin-bottom: 0.3rem;
 }
 
 .sentiment-card-head-tags {
