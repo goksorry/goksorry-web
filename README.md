@@ -81,6 +81,12 @@ Auth session model:
 - Browser APIs rely on the NextAuth `HttpOnly` session cookie.
 - Community/admin writes do not attach Supabase bearer tokens from the browser.
 
+API docs:
+
+- Human-readable docs are served at `/docs`.
+- Machine-readable spec is served at `/openapi.json`.
+- Admin and internal endpoints are shown there only for admin sessions.
+
 ## Required env
 
 ### web (`web/.env.local`)

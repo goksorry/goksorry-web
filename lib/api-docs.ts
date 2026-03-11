@@ -199,7 +199,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           approval_note: null,
           created_at: "2026-03-11T10:00:00.000Z",
           last_used_at: "2026-03-11T10:06:00.000Z",
-          expires_at: null,
+          expires_at: "2027-03-11T10:05:00.000Z",
           revoked_at: null,
           token_claimed: true,
           claim_ready: false
@@ -253,7 +253,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         token_prefix: "gkst_123456789ab",
         scope: "tradingbot.read",
         approved_at: "2026-03-11T10:05:00.000Z",
-        expires_at: null,
+        expires_at: "2027-03-11T10:05:00.000Z",
         value: "gkst_full_secret_value"
       },
       note: "token value is shown only once"
