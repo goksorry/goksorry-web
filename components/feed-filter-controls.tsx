@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useFeedSelection } from "@/components/feed-selection-provider";
 import {
   SOURCE_GROUPS,
   SOURCE_GROUP_IDS,
@@ -41,15 +42,16 @@ export function FeedFilterControls({
   selectedRange: string;
 }) {
   const router = useRouter();
+  const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [pendingGroupIds, setPendingGroupIds] = useState<SourceGroupId[]>(selectedGroupIds);
   const [range, setRange] = useState(selectedRange);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const selectedKey = useMemo(() => selectedGroupIds.join(","), [selectedGroupIds]);
+  const selectedKey = useMemo(() => activeGroupIds.join(","), [activeGroupIds]);
 
   useEffect(() => {
-    setPendingGroupIds(selectedGroupIds);
-  }, [selectedKey, selectedGroupIds]);
+    setPendingGroupIds(activeGroupIds);
+  }, [selectedKey, activeGroupIds]);
 
   useEffect(() => {
     setRange(selectedRange);
@@ -68,8 +70,11 @@ export function FeedFilterControls({
       clearTimeout(debounceRef.current);
     }
 
+    setOptimisticGroupIds(nextGroupIds);
     debounceRef.current = setTimeout(() => {
-      router.replace(buildFeedHref({ groupIds: nextGroupIds, range }));
+      startTransition(() => {
+        router.replace(buildFeedHref({ groupIds: nextGroupIds, range }), { scroll: false });
+      });
     }, 500);
   };
 
@@ -96,7 +101,10 @@ export function FeedFilterControls({
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
-    router.push(buildFeedHref({ groupIds: pendingGroupIds, range }));
+    setOptimisticGroupIds(pendingGroupIds);
+    startTransition(() => {
+      router.push(buildFeedHref({ groupIds: pendingGroupIds, range }), { scroll: false });
+    });
   };
 
   const allSelected = arraysEqual(pendingGroupIds, SOURCE_GROUP_IDS);

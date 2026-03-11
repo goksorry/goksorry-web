@@ -2,6 +2,7 @@
 
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
+import { useFeedSelection } from "@/components/feed-selection-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
@@ -47,6 +48,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { cleanFilterEnabled } = useCleanFilter();
+  const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(null);
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
@@ -112,8 +114,9 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
       nextParams.set("channels", groupId);
       nextParams.delete("channel");
       nextParams.delete("source");
+      setOptimisticGroupIds([groupId]);
       startTransition(() => {
-        router.push(`/?${nextParams.toString()}`);
+        router.replace(`/?${nextParams.toString()}`, { scroll: false });
       });
       return;
     }
@@ -123,6 +126,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
       return;
     }
 
+    setOptimisticGroupIds([groupId]);
     startTransition(() => {
       router.push(`/?channels=${groupId}`);
     });
@@ -132,6 +136,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
+  const selectedFeedGroupId = pathname === "/" && activeGroupIds.length === 1 ? activeGroupIds[0] : null;
 
   return (
     <>
@@ -169,9 +174,10 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             <button
               key={group.id}
               type="button"
-              className={`overview-card overview-card-community overview-tone-${group.tone}`}
+              className={`overview-card overview-card-community overview-tone-${group.tone}${selectedFeedGroupId === group.id ? " overview-card-active" : ""}`}
               onClick={() => onCommunityIndicatorClick(group.id)}
               disabled={communityLoading}
+              aria-pressed={selectedFeedGroupId === group.id}
             >
               <div className="overview-community-head">
                 <p className="overview-label">{group.label}</p>
@@ -239,7 +245,14 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             </div>
 
             <div className="overview-modal-actions">
-              <Link className="btn" href={`/?channels=${activeGroup.id}`} onClick={() => setActiveGroupId(null)}>
+              <Link
+                className="btn"
+                href={`/?channels=${activeGroup.id}`}
+                onClick={() => {
+                  setActiveGroupId(null);
+                  setOptimisticGroupIds([activeGroup.id]);
+                }}
+              >
                 피드에서 열기
               </Link>
             </div>

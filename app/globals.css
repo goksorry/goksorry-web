@@ -503,6 +503,23 @@ a:hover {
   border-color: var(--overview-card-hover-line);
 }
 
+.overview-card-community.overview-card-active {
+  transform: translateY(-1px);
+  box-shadow: var(--overview-card-hover-shadow);
+  border-color: var(--chip-active-line);
+  background: var(--panel-soft);
+}
+
+.overview-card-community.overview-card-active .overview-label {
+  color: var(--ink);
+}
+
+.overview-card-community.overview-card-active .overview-score-badge {
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-line);
+  color: var(--chip-active-ink);
+}
+
 .overview-label {
   margin: 0;
   font-size: 0.66rem;

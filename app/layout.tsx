@@ -11,6 +11,7 @@ import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
+import { FeedSelectionProvider } from "@/components/feed-selection-provider";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
@@ -32,9 +33,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <AuthSessionProvider session={session}>
           <CleanFilterProvider>
-            <CleanFilterOverlay />
-            <CleanFilterFirstVisit />
-            <div id="page-top" className="layout">
+            <FeedSelectionProvider>
+              <CleanFilterOverlay />
+              <CleanFilterFirstVisit />
+              <div id="page-top" className="layout">
               <header className="header">
                 <div className="header-main">
                   <Link className="brand" href="/">
@@ -117,7 +119,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </main>
               <SiteFooter />
-            </div>
+              </div>
+            </FeedSelectionProvider>
           </CleanFilterProvider>
         </AuthSessionProvider>
       </body>
