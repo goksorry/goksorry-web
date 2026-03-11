@@ -148,7 +148,7 @@ export const requireTradingBotReadAuth = async (
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("api_access_tokens")
-    .select("id,user_id,scope,revoked_at,expires_at")
+    .select("id,user_id,scope,approval_status,revoked_at,expires_at")
     .eq("token_hash", tokenHash)
     .maybeSingle();
 
@@ -171,6 +171,13 @@ export const requireTradingBotReadAuth = async (
     return {
       ok: false,
       response: jsonError(requestId, 403, "FORBIDDEN", "token revoked")
+    };
+  }
+
+  if (String(data.approval_status) !== "approved") {
+    return {
+      ok: false,
+      response: jsonError(requestId, 403, "FORBIDDEN", "token pending admin approval")
     };
   }
 

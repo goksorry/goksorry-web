@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
-import { generateTradingBotApiToken } from "@/lib/api-tokens";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const MAX_ACTIVE_TOKENS_PER_USER = 20;
+const TOKEN_SELECT =
+  "id,name,token_prefix,scope,approval_status,approval_requested_at,approved_at,rejected_at,approval_note,created_at,last_used_at,expires_at,revoked_at";
 
 const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextResponse => {
   const response = NextResponse.json(body, { status });
@@ -26,6 +27,31 @@ const asIsoOrNull = (value: unknown): string | null => {
   return date.toISOString();
 };
 
+const serializeTokenRow = (row: Record<string, unknown>) => {
+  const approvalStatus = String(row.approval_status ?? "pending");
+  const tokenPrefix =
+    typeof row.token_prefix === "string" && row.token_prefix.trim() ? String(row.token_prefix) : null;
+  const revokedAt = row.revoked_at ? String(row.revoked_at) : null;
+
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    token_prefix: tokenPrefix,
+    scope: String(row.scope ?? "tradingbot.read"),
+    approval_status: approvalStatus,
+    approval_requested_at: row.approval_requested_at ? String(row.approval_requested_at) : null,
+    approved_at: row.approved_at ? String(row.approved_at) : null,
+    rejected_at: row.rejected_at ? String(row.rejected_at) : null,
+    approval_note: row.approval_note ? String(row.approval_note) : null,
+    created_at: row.created_at ? String(row.created_at) : null,
+    last_used_at: row.last_used_at ? String(row.last_used_at) : null,
+    expires_at: row.expires_at ? String(row.expires_at) : null,
+    revoked_at: revokedAt,
+    token_claimed: Boolean(tokenPrefix),
+    claim_ready: approvalStatus === "approved" && !tokenPrefix && !revokedAt
+  };
+};
+
 export async function GET(request: Request) {
   const requestId = getRequestId(request);
   const user = await getUserFromAuthorization(request);
@@ -38,7 +64,7 @@ export async function GET(request: Request) {
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("api_access_tokens")
-    .select("id,name,token_prefix,scope,created_at,last_used_at,expires_at,revoked_at")
+    .select(TOKEN_SELECT)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -50,7 +76,7 @@ export async function GET(request: Request) {
 
   return jsonNoStore({
     status: "ok",
-    tokens: data ?? []
+    tokens: (data ?? []).map((row) => serializeTokenRow(row as Record<string, unknown>))
   });
 }
 
@@ -102,7 +128,8 @@ export async function POST(request: Request) {
     .from("api_access_tokens")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .is("revoked_at", null);
+    .is("revoked_at", null)
+    .in("approval_status", ["pending", "approved"]);
 
   if (countError) {
     logApiError("token count lookup failed", requestId, countError);
@@ -113,19 +140,17 @@ export async function POST(request: Request) {
     return jsonError(requestId, 429, "RATE_LIMITED", `max active tokens is ${MAX_ACTIVE_TOKENS_PER_USER}`);
   }
 
-  const generated = generateTradingBotApiToken();
-
   const { data, error } = await service
     .from("api_access_tokens")
     .insert({
       user_id: user.id,
       name: tokenName,
-      token_prefix: generated.tokenPrefix,
-      token_hash: generated.tokenHash,
       scope: "tradingbot.read",
-      expires_at: expiresAt
+      expires_at: expiresAt,
+      approval_status: "pending",
+      approval_requested_at: new Date().toISOString()
     })
-    .select("id,name,token_prefix,scope,created_at,expires_at")
+    .select(TOKEN_SELECT)
     .single();
 
   if (error || !data) {
@@ -135,15 +160,7 @@ export async function POST(request: Request) {
 
   return jsonNoStore({
     status: "ok",
-    token: {
-      id: data.id,
-      name: data.name,
-      token_prefix: data.token_prefix,
-      scope: data.scope,
-      created_at: data.created_at,
-      expires_at: data.expires_at,
-      value: generated.rawToken
-    },
-    note: "token value is shown only once"
-  });
+    token_request: serializeTokenRow(data as Record<string, unknown>),
+    note: "token request submitted. admin approval is required before the token can be revealed"
+  }, 202);
 }

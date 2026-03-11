@@ -38,6 +38,12 @@ Auth:
 - `GET /api/v1/market/latest?market=kr|us|all`
 - `GET /api/v1/status`
 
+Read payload scope:
+
+- These APIs expose `community-derived` market signals only.
+- Official price/index/macro feeds are fetched separately by the bot when needed.
+- `signals/latest` and `market/latest` summarize community sentiment for stocks and macro context.
+
 Read auth headers:
 
 - `Authorization: Bearer <member-issued trading bot token>`
@@ -46,16 +52,24 @@ Read auth headers:
 
 ### TradingBot token issuance API (member -> web)
 
-- `GET /api/v1/tokens` (list own tokens)
-- `POST /api/v1/tokens` (issue new token)
+- `GET /api/v1/tokens` (list own token requests/tokens)
+- `POST /api/v1/tokens` (submit new token request)
+- `POST /api/v1/tokens/{id}/claim` (reveal approved token value once)
 - `POST /api/v1/tokens/{id}/revoke` (revoke)
+
+Token workflow:
+
+- Members request a TradingBot token from `내 프로필`.
+- Every new token request requires admin approval.
+- Admin approves/rejects requests from `/admin/tokens`.
+- After approval, the member reveals the actual token value once from `내 프로필`.
 
 Auth for token issuance endpoints:
 
 - NextAuth browser session cookie
 - Same-origin browser request required (`Origin` / `Sec-Fetch-Site` validation)
 - Responses use `Cache-Control: no-store`
-- Issue/revoke are rate-limited per user
+- Request/claim/revoke are rate-limited per user
 
 Auth session model:
 

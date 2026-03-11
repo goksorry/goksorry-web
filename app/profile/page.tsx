@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { ProfileForm } from "@/components/profile-form";
+import { ProfileTokenManager } from "@/components/profile-token-manager";
 import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getNicknamePolicy } from "@/lib/profile-sync";
 
@@ -30,7 +31,7 @@ export default async function ProfilePage({
   return (
     <section className="panel">
       <h1>내 프로필</h1>
-      <p className="muted">현재는 닉네임만 관리할 수 있습니다. 닉네임은 다른 회원과 중복될 수 없습니다.</p>
+      <p className="muted">닉네임과 TradingBot 토큰 요청을 관리할 수 있습니다. 토큰은 관리자 승인 후 사용할 수 있습니다.</p>
       <ProfileForm
         email={user.email}
         initialNickname={user.nickname ?? ""}
@@ -40,6 +41,7 @@ export default async function ProfilePage({
         isAdmin={user.role === "admin"}
         nextPath={nextPath}
       />
+      <ProfileTokenManager />
       <p>
         <Link href={nextPath ?? "/community"}>돌아가기</Link>
       </p>

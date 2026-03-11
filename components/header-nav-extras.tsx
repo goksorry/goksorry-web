@@ -12,5 +12,10 @@ export function HeaderNavExtras({ initialSession }: { initialSession: Session | 
     return null;
   }
 
-  return <Link href="/admin/reports">신고 관리</Link>;
+  return (
+    <>
+      <Link href="/admin/reports">신고 관리</Link>
+      <Link href="/admin/tokens">토큰 승인</Link>
+    </>
+  );
 }

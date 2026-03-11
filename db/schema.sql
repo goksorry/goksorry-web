@@ -380,15 +380,23 @@ create table if not exists public.api_access_tokens (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   name text not null,
-  token_prefix text not null,
-  token_hash text not null unique,
+  token_prefix text,
+  token_hash text unique,
   scope text not null default 'tradingbot.read' check (scope in ('tradingbot.read')),
+  approval_status text not null default 'pending' check (approval_status in ('pending', 'approved', 'rejected')),
+  approval_requested_at timestamptz not null default now(),
+  approved_at timestamptz,
+  approved_by uuid references public.profiles(id) on delete set null,
+  rejected_at timestamptz,
+  rejected_by uuid references public.profiles(id) on delete set null,
+  approval_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   last_used_at timestamptz,
   expires_at timestamptz,
   revoked_at timestamptz,
-  constraint api_access_tokens_name_plain_text check (name !~ '[<>]')
+  constraint api_access_tokens_name_plain_text check (name !~ '[<>]'),
+  constraint api_access_tokens_note_plain_text check (approval_note is null or approval_note !~ '[<>]')
 );
 
 create index if not exists api_access_tokens_user_created_idx

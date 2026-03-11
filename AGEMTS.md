@@ -29,4 +29,6 @@
 - Never use anon key for privileged DB writes.
 - Detector write APIs must return `401` when token is missing/invalid.
 - TradingBot read token is member-issued and DB-backed (not env static token).
+- TradingBot read APIs expose community-derived signals only; official price/index feeds are fetched separately by the bot.
+- TradingBot token requests require admin approval before the user can claim the token from `내 프로필`.
 - Community input must be plain text only.
