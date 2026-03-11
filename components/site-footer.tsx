@@ -2,8 +2,8 @@ import Link from "next/link";
 
 const SOURCE_LINKS = [
   {
-    label: "네이버 종목토론방",
-    href: "https://finance.naver.com/"
+    label: "네이버페이증권 주주오픈톡",
+    href: "https://m.stock.naver.com/"
   },
   {
     label: "토스증권 종목커뮤니티",

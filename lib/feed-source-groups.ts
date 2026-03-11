@@ -1,8 +1,8 @@
 export const SOURCE_GROUPS = [
   {
     id: "naver",
-    label: "네이버종토방 지수",
-    shortLabel: "네이버종토방"
+    label: "네이버 주주오픈톡 지수",
+    shortLabel: "네이버 오픈톡"
   },
   {
     id: "toss",

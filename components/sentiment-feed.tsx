@@ -22,7 +22,7 @@ const getFeedSourceLabel = (source: string): string => {
     return "디시 해주갤";
   }
   if (source.startsWith("naver_stock_")) {
-    return "네이버종토방";
+    return "네이버 주주오픈톡";
   }
   if (source.startsWith("toss_stock_community_")) {
     return "토스증권";
