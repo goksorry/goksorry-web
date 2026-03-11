@@ -63,6 +63,7 @@ Token workflow:
 - Every new token request requires admin approval.
 - Admin approves/rejects requests from `/admin/tokens`.
 - After approval, the member reveals the actual token value once from `내 프로필`.
+- Claimed token expiry is fixed to one year from claim time.
 
 Auth for token issuance endpoints:
 

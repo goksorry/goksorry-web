@@ -15,18 +15,6 @@ const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextR
   return response;
 };
 
-const asIsoOrNull = (value: unknown): string | null => {
-  if (value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return date.toISOString();
-};
-
 const serializeTokenRow = (row: Record<string, unknown>) => {
   const approvalStatus = String(row.approval_status ?? "pending");
   const tokenPrefix =
@@ -94,9 +82,9 @@ export async function POST(request: Request) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token creations. try again in a minute");
   }
 
-  let body: { name?: unknown; expires_at?: unknown };
+  let body: { name?: unknown };
   try {
-    body = (await request.json()) as { name?: unknown; expires_at?: unknown };
+    body = (await request.json()) as { name?: unknown };
   } catch {
     body = {};
   }
@@ -108,15 +96,6 @@ export async function POST(request: Request) {
       sanitizePlainText(`tradingbot-${new Date().toISOString().slice(0, 10)}`, "name", 80);
   } catch (error) {
     return jsonError(requestId, 400, "INVALID_QUERY", String(error));
-  }
-
-  const expiresAt = asIsoOrNull(body.expires_at);
-  if (body.expires_at !== undefined && body.expires_at !== null && body.expires_at !== "" && !expiresAt) {
-    return jsonError(requestId, 400, "INVALID_QUERY", "expires_at must be ISO8601 or null");
-  }
-
-  if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
-    return jsonError(requestId, 400, "INVALID_QUERY", "expires_at must be in the future");
   }
 
   const service = getServiceSupabaseClient();
@@ -142,7 +121,6 @@ export async function POST(request: Request) {
       user_id: user.id,
       name: tokenName,
       scope: "tradingbot.read",
-      expires_at: expiresAt,
       approval_status: "pending",
       approval_requested_at: new Date().toISOString()
     })

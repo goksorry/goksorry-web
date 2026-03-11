@@ -72,7 +72,6 @@ export function ProfileTokenManager() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [tokens, setTokens] = useState<TokenRow[]>([]);
   const [tokenName, setTokenName] = useState(defaultTokenName);
-  const [expiresAt, setExpiresAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revealedToken, setRevealedToken] = useState<RevealedToken | null>(null);
@@ -120,8 +119,7 @@ export function ProfileTokenManager() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          name: tokenName,
-          expires_at: expiresAt ? new Date(expiresAt).toISOString() : null
+          name: tokenName
         })
       });
       const rawText = await response.text();
@@ -133,7 +131,6 @@ export function ProfileTokenManager() {
 
       setMessage("토큰 요청이 접수되었습니다. 관리자 승인 후 이 화면에서 실제 토큰 값을 확인할 수 있습니다.");
       setTokenName(defaultTokenName());
-      setExpiresAt("");
       await loadTokens();
     } catch (requestError) {
       setError(String(requestError));
@@ -210,6 +207,7 @@ export function ProfileTokenManager() {
           <p className="muted">
             연동 규격과 응답 예시는 <Link href="/docs">API 문서</Link>에서 확인할 수 있습니다.
           </p>
+          <p className="muted">토큰 만료 시각은 실제 발급 시점부터 1년으로 고정됩니다.</p>
         </div>
 
         <form className="grid" onSubmit={onRequestToken}>
@@ -222,17 +220,6 @@ export function ProfileTokenManager() {
               maxLength={80}
               placeholder="예: tradingbot-main"
               required
-              disabled={submitting}
-            />
-          </label>
-
-          <label className="form-row">
-            <span>만료 시각 (선택)</span>
-            <input
-              type="datetime-local"
-              name="expires_at"
-              value={expiresAt}
-              onChange={(event) => setExpiresAt(event.target.value)}
               disabled={submitting}
             />
           </label>

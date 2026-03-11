@@ -14,6 +14,12 @@ const jsonNoStore = (body: Record<string, unknown>, status: number = 200): NextR
   return response;
 };
 
+const oneYearFromNowIso = (): string => {
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+  return expiresAt.toISOString();
+};
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const requestId = getRequestId(request);
   const sameOriginError = requireSameOriginMutation(request, requestId);
@@ -38,7 +44,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("api_access_tokens")
-    .select("id,name,token_prefix,token_hash,scope,approval_status,approved_at,expires_at,revoked_at")
+    .select("id,name,token_prefix,token_hash,scope,approval_status,approved_at,revoked_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -60,23 +66,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return jsonError(requestId, 403, "FORBIDDEN", "token pending admin approval");
   }
 
-  if (data.expires_at) {
-    const expiresAtMs = new Date(String(data.expires_at)).getTime();
-    if (!Number.isNaN(expiresAtMs) && Date.now() >= expiresAtMs) {
-      return jsonError(requestId, 403, "FORBIDDEN", "token expired");
-    }
-  }
-
   if (data.token_hash) {
     return jsonError(requestId, 409, "FORBIDDEN", "token value is already claimed");
   }
 
   const generated = generateTradingBotApiToken();
+  const expiresAt = oneYearFromNowIso();
   const { error: updateError } = await service
     .from("api_access_tokens")
     .update({
       token_prefix: generated.tokenPrefix,
-      token_hash: generated.tokenHash
+      token_hash: generated.tokenHash,
+      expires_at: expiresAt
     })
     .eq("id", id)
     .eq("user_id", user.id)
@@ -96,7 +97,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       token_prefix: generated.tokenPrefix,
       scope: String(data.scope ?? "tradingbot.read"),
       approved_at: data.approved_at ? String(data.approved_at) : null,
-      expires_at: data.expires_at ? String(data.expires_at) : null,
+      expires_at: expiresAt,
       value: generated.rawToken
     },
     note: "token value is shown only once"

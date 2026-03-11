@@ -216,8 +216,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     requestBody: {
       contentType: "application/json",
       example: {
-        name: "tradingbot-main",
-        expires_at: "2026-12-31T23:59:59.000Z"
+        name: "tradingbot-main"
       }
     },
     responseExample: {
@@ -230,7 +229,8 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         claim_ready: false
       },
       note: "token request submitted. admin approval is required before the token can be revealed"
-    }
+    },
+    notes: ["Claimed token expiry is always fixed to one year from claim time."]
   },
   {
     method: "POST",
