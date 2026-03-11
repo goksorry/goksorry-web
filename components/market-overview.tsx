@@ -10,7 +10,7 @@ import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
-import { SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
+import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
 
 const toLocalTime = (iso: string): string => {
   const date = new Date(iso);
@@ -39,7 +39,8 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
   bullish: 0,
   bearish: 0,
   neutral: 0,
-  score: 50,
+  score: 5,
+  sentiment_band: "neutral",
   tone: "mixed",
   rows: []
 }));
@@ -138,6 +139,8 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
   const selectedFeedGroupId = pathname === "/" && activeGroupIds.length === 1 ? activeGroupIds[0] : null;
+  const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
+  const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
 
   return (
     <>
@@ -151,6 +154,12 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
           </p>
         </div>
+
+        <p className="overview-community-summary">
+          {communityLoading
+            ? "커뮤니티 평균 방향 계산 중"
+            : `커뮤니티 전체 평균 ${overallCommunityScore.toFixed(1)} / 10 · ${SENTIMENT_BAND_DISPLAY[overallCommunityBand].label}`}
+        </p>
 
         {error ? <p className="error">커뮤니티 지수 로드 실패: {error}</p> : null}
 
@@ -187,13 +196,17 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
                     <span>로딩중</span>
                   ) : (
                     <>
-                      <span>{TONE_EMOJI[group.tone]}</span>
-                      <span>{group.score}</span>
+                      <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
+                      <span>{group.score.toFixed(1)}</span>
                     </>
                   )}
                 </span>
               </div>
-              <p className="overview-delta">{communityLoading ? "로딩중" : `언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}</p>
+              <p className="overview-delta">
+                {communityLoading
+                  ? "로딩중"
+                  : `${SENTIMENT_BAND_DISPLAY[group.sentiment_band].label} · 언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}
+              </p>
             </button>
           ))}
         </div>

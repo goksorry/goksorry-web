@@ -447,6 +447,12 @@ a:hover {
   white-space: nowrap;
 }
 
+.overview-community-summary {
+  margin: -0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .overview-kicker {
   margin: 0;
   font-size: 0.62rem;

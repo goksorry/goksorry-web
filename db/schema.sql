@@ -53,6 +53,7 @@ create table if not exists public.sentiment_results (
   id uuid primary key default gen_random_uuid(),
   post_key text not null unique references public.external_posts(post_key) on delete cascade,
   label text not null check (label in ('bullish', 'bearish', 'neutral')),
+  sentiment_score smallint not null default 5 check (sentiment_score between 1 and 10),
   confidence double precision not null check (confidence >= 0 and confidence <= 1),
   model text not null default 'gemini-2.5-flash-lite',
   analyzed_at timestamptz not null default now()

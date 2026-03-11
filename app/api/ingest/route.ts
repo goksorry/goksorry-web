@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { jsonMessage, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
+import { resolveSentimentScore, sentimentLabelFromScore } from "@/lib/sentiment-score";
 import { extractSymbolFromSource, syncSymbolMetadata } from "@/lib/symbol-metadata";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const LABELS = new Set(["bullish", "bearish", "neutral"]);
+const POST_RETENTION_DAYS = 7;
 
 type IngestPayloadItem = {
   source: unknown;
@@ -17,6 +19,7 @@ type IngestPayloadItem = {
   created_at_from_source?: unknown;
   analysis?: {
     label?: unknown;
+    sentiment_score?: unknown;
     confidence?: unknown;
   };
 };
@@ -69,11 +72,13 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const label = String(item.analysis?.label ?? "").trim().toLowerCase();
-      if (!LABELS.has(label)) {
+      const rawLabel = String(item.analysis?.label ?? "").trim().toLowerCase();
+      if (rawLabel && !LABELS.has(rawLabel)) {
         skipped += 1;
         continue;
       }
+      const sentimentScore = resolveSentimentScore(item.analysis?.sentiment_score, rawLabel);
+      const label = sentimentLabelFromScore(sentimentScore);
 
       const confidenceNum = Number(item.analysis?.confidence ?? 0);
       const confidence = Number.isFinite(confidenceNum) ? Math.min(1, Math.max(0, confidenceNum)) : 0;
@@ -101,6 +106,7 @@ export async function POST(request: Request) {
       sentimentRows.push({
         post_key: postKey,
         label,
+        sentiment_score: sentimentScore,
         confidence,
         model: "gemini-2.5-flash-lite",
         analyzed_at: new Date().toISOString()
@@ -138,6 +144,12 @@ export async function POST(request: Request) {
     } catch (error) {
       logApiError("symbol metadata sync failed", auth.requestId, error);
     }
+  }
+
+  const retentionCutoff = new Date(Date.now() - POST_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { error: cleanupError } = await service.from("external_posts").delete().lt("fetched_at", retentionCutoff);
+  if (cleanupError) {
+    logApiError("external post retention cleanup failed", auth.requestId, cleanupError);
   }
 
   return NextResponse.json({ upserted: sentimentRows.length, skipped });

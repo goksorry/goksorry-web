@@ -1,6 +1,12 @@
 import { unstable_cache } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
-import { buildSourceGroupSummaries, fetchRecentFeedRows, type SourceGroupSummary } from "@/lib/feed-data";
+import {
+  buildFeedScoreOverview,
+  buildSourceGroupSummaries,
+  fetchRecentFeedRows,
+  type SourceGroupSummary
+} from "@/lib/feed-data";
+import type { SentimentBand } from "@/lib/sentiment-score";
 
 type IndicatorTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 
@@ -16,11 +22,15 @@ export type MarketIndicator = {
 export type OverviewPayload = {
   generated_at: string;
   market_indicators: MarketIndicator[];
+  overall_sentiment_score: number;
+  overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
 };
 
 export type CommunityIndicatorsPayload = {
   generated_at: string;
+  overall_sentiment_score: number;
+  overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
 };
 
@@ -259,9 +269,12 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   const service = getServiceSupabaseClient();
   const { rows } = await fetchRecentFeedRows(service, { hours: 24, limit: 600 });
   const communityIndicators = buildSourceGroupSummaries(rows);
+  const overall = buildFeedScoreOverview(rows);
 
   return {
     generated_at: new Date().toISOString(),
+    overall_sentiment_score: overall.score,
+    overall_sentiment_band: overall.sentiment_band,
     community_indicators: communityIndicators
   };
 };
@@ -275,6 +288,8 @@ export const buildOverviewData = async (): Promise<OverviewPayload> => {
   return {
     generated_at: marketOverview.generated_at,
     market_indicators: marketOverview.market_indicators,
+    overall_sentiment_score: communityOverview.overall_sentiment_score,
+    overall_sentiment_band: communityOverview.overall_sentiment_band,
     community_indicators: communityOverview.community_indicators
   };
 };

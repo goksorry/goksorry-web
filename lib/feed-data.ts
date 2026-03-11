@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
+import {
+  averageSentimentScore,
+  resolveSentimentScore,
+  sentimentBandFromScore,
+  sentimentLabelFromScore,
+  sentimentToneFromScore,
+  type SentimentBand,
+  type SentimentLabel
+} from "@/lib/sentiment-score";
 import { extractSymbolFromSource, loadSymbolMetadataMap } from "@/lib/symbol-metadata";
 
 const EXTERNAL_POST_BATCH_SIZE = 100;
@@ -12,14 +21,16 @@ export type FeedRow = {
   url: string;
   symbol: string | null;
   symbol_name: string | null;
-  label: "bullish" | "bearish" | "neutral";
+  label: SentimentLabel;
+  sentiment_score: number;
   confidence: number;
   analyzed_at: string;
 };
 
 type SentimentRow = {
   post_key: string;
-  label: "bullish" | "bearish" | "neutral";
+  label: SentimentLabel;
+  sentiment_score: number;
   confidence: number;
   analyzed_at: string;
 };
@@ -42,8 +53,14 @@ export type SourceGroupSummary = {
   bearish: number;
   neutral: number;
   score: number;
+  sentiment_band: SentimentBand;
   tone: "bullish" | "bearish" | "mixed";
   rows: FeedRow[];
+};
+
+export type FeedScoreOverview = {
+  score: number;
+  sentiment_band: SentimentBand;
 };
 
 const chunk = <T>(items: T[], size: number): T[][] => {
@@ -63,7 +80,7 @@ export const fetchRecentFeedRows = async (
   const cutoffIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   const { data: sentimentData, error: sentimentError } = await service
     .from("sentiment_results")
-    .select("post_key,label,confidence,analyzed_at")
+    .select("post_key,label,sentiment_score,confidence,analyzed_at")
     .gte("analyzed_at", cutoffIso)
     .order("analyzed_at", { ascending: false })
     .limit(limit);
@@ -75,12 +92,16 @@ export const fetchRecentFeedRows = async (
     return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다." };
   }
 
-  const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => ({
-    post_key: String(item.post_key),
-    label: String(item.label) as SentimentRow["label"],
-    confidence: Number(item.confidence ?? 0),
-    analyzed_at: String(item.analyzed_at)
-  }));
+  const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => {
+    const sentimentScore = resolveSentimentScore(item.sentiment_score, item.label);
+    return {
+      post_key: String(item.post_key),
+      label: sentimentLabelFromScore(sentimentScore),
+      sentiment_score: sentimentScore,
+      confidence: Number(item.confidence ?? 0),
+      analyzed_at: String(item.analyzed_at)
+    };
+  });
 
   const postKeys = [...new Set(sentimentRows.map((row) => row.post_key))];
   if (postKeys.length === 0) {
@@ -133,6 +154,7 @@ export const fetchRecentFeedRows = async (
         symbol: external.symbol,
         symbol_name: null,
         label: row.label,
+        sentiment_score: row.sentiment_score,
         confidence: row.confidence,
         analyzed_at: row.analyzed_at
       }
@@ -176,8 +198,9 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
     const bullish = groupRows.filter((row) => row.label === "bullish").length;
     const bearish = groupRows.filter((row) => row.label === "bearish").length;
     const neutral = groupRows.length - bullish - bearish;
-    const score = groupRows.length === 0 ? 50 : Math.max(0, Math.min(100, Math.round(50 + ((bullish - bearish) / groupRows.length) * 50)));
-    const tone = score >= 60 ? "bullish" : score <= 40 ? "bearish" : "mixed";
+    const score = averageSentimentScore(groupRows.map((row) => row.sentiment_score));
+    const tone = sentimentToneFromScore(score);
+    const sentimentBand = sentimentBandFromScore(score);
 
     return {
       id: group.id,
@@ -188,10 +211,19 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
       bearish,
       neutral,
       score,
+      sentiment_band: sentimentBand,
       tone,
       rows: groupRows.slice(0, 12)
     };
   });
+};
+
+export const buildFeedScoreOverview = (rows: FeedRow[]): FeedScoreOverview => {
+  const score = averageSentimentScore(rows.map((row) => row.sentiment_score));
+  return {
+    score,
+    sentiment_band: sentimentBandFromScore(score)
+  };
 };
 
 export const getFeedExactSourceOptions = (rows: FeedRow[]): string[] => {

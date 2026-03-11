@@ -43,6 +43,7 @@ Read payload scope:
 - These APIs expose `community-derived` market signals only.
 - Official price/index/macro feeds are fetched separately by the bot when needed.
 - `signals/latest` and `market/latest` summarize community sentiment for stocks and macro context.
+- Per-post sentiment is stored internally as a `1..10` directional score and rolled up into community averages, while the public bot APIs keep exposing derived market-level metrics such as `panic_score`, `euphoria_score`, and `fear_index`.
 
 Read auth headers:
 
@@ -149,6 +150,7 @@ openssl rand -hex 32
 - Dedupe is done locally before LLM calls via `.queue/processed_post_keys.txt` to reduce worker -> web traffic.
 - Worker also sends aggregated symbol signals/market status via `/api/v1/detector/register`.
 - TradingBot token values are stored hashed in DB (`api_access_tokens.token_hash`).
+- `external_posts` and cascaded `sentiment_results` are retained for 7 days.
 - Security headers and CSP are applied via `web/middleware.ts`.
 - The app redirects `www.goksorry.com` to `goksorry.com` at the edge to keep a single canonical host.
 - Community profile rows are app-managed and no longer depend on `auth.users`.
