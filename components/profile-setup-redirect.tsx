@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { Session } from "next-auth";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -9,14 +10,15 @@ const buildNextPath = (pathname: string, searchParams: URLSearchParams): string 
   return query ? `${pathname}?${query}` : pathname;
 };
 
-export function ProfileSetupRedirect() {
+export function ProfileSetupRedirect({ initialSession }: { initialSession: Session | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
+  const { data: liveSession } = useSession();
+  const session = liveSession ?? initialSession;
 
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.nickname_needs_setup) {
+    if (!session?.user?.email || !session.user.nickname_needs_setup) {
       return;
     }
 
@@ -26,7 +28,7 @@ export function ProfileSetupRedirect() {
 
     const next = buildNextPath(pathname, searchParams);
     router.replace(`/profile?next=${encodeURIComponent(next)}`);
-  }, [pathname, router, searchParams, session?.user?.nickname_needs_setup, status]);
+  }, [pathname, router, searchParams, session?.user?.email, session?.user?.nickname_needs_setup]);
 
   return null;
 }

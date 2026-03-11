@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Session } from "next-auth";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 const buildNextPath = (): string => {
@@ -10,12 +11,14 @@ const buildNextPath = (): string => {
   return `${window.location.pathname}${window.location.search}`;
 };
 
-export function AuthControls() {
-  const { data: session, status } = useSession();
+export function AuthControls({ initialSession }: { initialSession: Session | null }) {
+  const { data: liveSession, status } = useSession();
   const [pending, setPending] = useState(false);
+  const session = liveSession ?? initialSession;
+  const user = session?.user ?? null;
 
-  const loading = status === "loading" || pending;
-  const authenticated = status === "authenticated";
+  const authenticated = Boolean(user?.email);
+  const loading = pending || (status === "loading" && !authenticated);
 
   const handleSignIn = async () => {
     setPending(true);
@@ -50,8 +53,8 @@ export function AuthControls() {
   return (
     <div className="inline">
       <span className="muted">
-        {session.user.email ?? "로그인됨"}
-        {session.user.nickname ? ` (${session.user.nickname})` : ""}
+        {user?.email ?? "로그인됨"}
+        {user?.nickname ? ` (${user.nickname})` : ""}
       </span>
       <button type="button" className="btn-secondary" onClick={() => void handleSignOut()} disabled={loading}>
         로그아웃

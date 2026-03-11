@@ -53,13 +53,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/community" replace>
                     커뮤니티
                   </Link>
-                  <HeaderNavExtras />
+                  <HeaderNavExtras initialSession={session} />
                 </nav>
                 <div className="auth">
                   <ThemeToggle />
                   <CleanFilterToggle />
                   <Suspense fallback={<button type="button" disabled>구글계정으로 로그인</button>}>
-                    <AuthControls />
+                    <AuthControls initialSession={session} />
                   </Suspense>
                 </div>
               </header>
@@ -108,7 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <MarketOverviewShell />
                 </Suspense>
                 <Suspense fallback={null}>
-                  <ProfileSetupRedirect />
+                  <ProfileSetupRedirect initialSession={session} />
                 </Suspense>
                 {children}
               </main>

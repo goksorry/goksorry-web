@@ -4,58 +4,63 @@ import { useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-const MIN_REFRESH_INTERVAL_MS = 60_000;
+const MIN_RECOVERY_ATTEMPT_INTERVAL_MS = 15_000;
 
 export function SessionResumeRefresh() {
   const router = useRouter();
-  const { status } = useSession();
+  const { status, update } = useSession();
   const [, startTransition] = useTransition();
-  const lastRefreshAtRef = useRef(0);
+  const lastRecoveryAttemptAtRef = useRef(0);
 
   useEffect(() => {
     if (status === "authenticated") {
-      lastRefreshAtRef.current = Date.now();
+      lastRecoveryAttemptAtRef.current = 0;
       return;
     }
 
-    const refreshSessionShell = () => {
+    const recoverSessionShell = () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") {
         return;
       }
 
       const now = Date.now();
-      if (now - lastRefreshAtRef.current < MIN_REFRESH_INTERVAL_MS) {
+      if (now - lastRecoveryAttemptAtRef.current < MIN_RECOVERY_ATTEMPT_INTERVAL_MS) {
         return;
       }
 
-      lastRefreshAtRef.current = now;
-      startTransition(() => {
-        router.refresh();
-      });
+      lastRecoveryAttemptAtRef.current = now;
+
+      void update()
+        .catch(() => null)
+        .finally(() => {
+          startTransition(() => {
+            router.refresh();
+          });
+        });
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        refreshSessionShell();
+        recoverSessionShell();
       }
     };
 
     const handlePageShow = () => {
-      refreshSessionShell();
+      recoverSessionShell();
     };
 
     window.addEventListener("pageshow", handlePageShow);
-    window.addEventListener("focus", refreshSessionShell);
-    window.addEventListener("online", refreshSessionShell);
+    window.addEventListener("focus", recoverSessionShell);
+    window.addEventListener("online", recoverSessionShell);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("pageshow", handlePageShow);
-      window.removeEventListener("focus", refreshSessionShell);
-      window.removeEventListener("online", refreshSessionShell);
+      window.removeEventListener("focus", recoverSessionShell);
+      window.removeEventListener("online", recoverSessionShell);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [router, startTransition, status]);
+  }, [router, startTransition, status, update]);
 
   return null;
 }
