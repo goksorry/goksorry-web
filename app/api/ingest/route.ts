@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonMessage, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
+import { extractSymbolFromSource, syncSymbolMetadata } from "@/lib/symbol-metadata";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const LABELS = new Set(["bullish", "bearish", "neutral"]);
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
       const source = sanitizePlainText(item.source, "source", 120);
       const postKey = sanitizePlainText(item.post_key, "post_key", 1024);
       const title = sanitizePlainText(item.title, "title", 500);
+      const symbol = extractSymbolFromSource(source);
       let cleanTitle: string | null = null;
       try {
         cleanTitle = sanitizeOptionalPlainText(item.clean_title, "clean_title", 500);
@@ -86,6 +88,7 @@ export async function POST(request: Request) {
 
       externalRows.push({
         source,
+        symbol,
         post_key: postKey,
         title,
         clean_title: cleanTitle,
@@ -125,6 +128,15 @@ export async function POST(request: Request) {
     if (error) {
       logApiError("sentiment results upsert failed", auth.requestId, error);
       return jsonMessage(auth.requestId, 500, "sentiment upsert failed");
+    }
+  }
+
+  const symbols = [...new Set(externalRows.map((row) => String(row.symbol ?? "").trim().toUpperCase()).filter(Boolean))];
+  if (symbols.length > 0) {
+    try {
+      await syncSymbolMetadata(service, symbols);
+    } catch (error) {
+      logApiError("symbol metadata sync failed", auth.requestId, error);
     }
   }
 

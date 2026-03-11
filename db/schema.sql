@@ -23,6 +23,7 @@ create table if not exists public.withdrawn_accounts (
 create table if not exists public.external_posts (
   id uuid primary key default gen_random_uuid(),
   source text not null,
+  symbol text,
   post_key text not null unique,
   title text not null,
   clean_title text,
@@ -30,9 +31,22 @@ create table if not exists public.external_posts (
   preview text,
   created_at_from_source timestamptz,
   fetched_at timestamptz not null default now(),
+  constraint external_posts_symbol_plain_text check (symbol is null or symbol !~ '[<>]'),
   constraint external_posts_title_plain_text check (title !~ '[<>]'),
   constraint external_posts_clean_title_plain_text check (clean_title is null or clean_title !~ '[<>]'),
   constraint external_posts_preview_plain_text check (preview is null or preview !~ '[<>]')
+);
+
+create table if not exists public.symbol_metadata (
+  symbol text primary key,
+  display_name text,
+  market text check (market in ('kr', 'us')),
+  status text not null default 'pending' check (status in ('pending', 'ready', 'failed')),
+  last_fetched_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint symbol_metadata_symbol_plain_text check (symbol !~ '[<>]'),
+  constraint symbol_metadata_display_name_plain_text check (display_name is null or display_name !~ '[<>]')
 );
 
 create table if not exists public.sentiment_results (
@@ -102,7 +116,9 @@ create table if not exists public.reports (
 );
 
 create index if not exists external_posts_source_fetched_at_idx on public.external_posts(source, fetched_at desc);
+create index if not exists external_posts_symbol_fetched_at_idx on public.external_posts(symbol, fetched_at desc) where symbol is not null;
 create index if not exists sentiment_results_analyzed_at_idx on public.sentiment_results(analyzed_at desc);
+create index if not exists symbol_metadata_status_updated_idx on public.symbol_metadata(status, updated_at desc);
 create unique index if not exists profiles_nickname_unique_ci_idx on public.profiles(lower(nickname));
 create index if not exists withdrawn_accounts_withdrawn_at_idx on public.withdrawn_accounts(withdrawn_at desc);
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
@@ -140,6 +156,12 @@ before update on public.profiles
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists symbol_metadata_set_updated_at on public.symbol_metadata;
+create trigger symbol_metadata_set_updated_at
+before update on public.symbol_metadata
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists community_posts_set_updated_at on public.community_posts;
 create trigger community_posts_set_updated_at
 before update on public.community_posts
@@ -164,6 +186,7 @@ do update set
   sort_order = excluded.sort_order;
 
 alter table public.external_posts enable row level security;
+alter table public.symbol_metadata enable row level security;
 alter table public.sentiment_results enable row level security;
 alter table public.boards enable row level security;
 alter table public.profiles enable row level security;
@@ -176,6 +199,12 @@ alter table public.reports enable row level security;
 drop policy if exists external_posts_public_select on public.external_posts;
 create policy external_posts_public_select
 on public.external_posts
+for select
+using (true);
+
+drop policy if exists symbol_metadata_public_select on public.symbol_metadata;
+create policy symbol_metadata_public_select
+on public.symbol_metadata
 for select
 using (true);
 

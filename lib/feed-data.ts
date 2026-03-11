@@ -1,9 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
+import { extractSymbolFromSource, loadSymbolMetadataMap } from "@/lib/symbol-metadata";
 
 const EXTERNAL_POST_BATCH_SIZE = 100;
-const SYMBOL_NAME_TTL_MS = 5 * 60 * 1000;
-const symbolNameCache = new Map<string, { name: string | null; expiresAt: number }>();
 
 export type FeedRow = {
   post_key: string;
@@ -31,77 +30,7 @@ type ExternalPostRow = {
   title: string;
   clean_title: string | null;
   url: string;
-};
-
-const getSymbolFromSource = (source: string): string | null => {
-  if (source.startsWith("naver_stock_")) {
-    return source.replace("naver_stock_", "").trim() || null;
-  }
-
-  if (source.startsWith("toss_stock_community_")) {
-    return source.replace("toss_stock_community_", "").trim().toUpperCase() || null;
-  }
-
-  return null;
-};
-
-const fetchSymbolName = async (symbol: string): Promise<string | null> => {
-  const now = Date.now();
-  const cached = symbolNameCache.get(symbol);
-  if (cached && cached.expiresAt > now) {
-    return cached.name;
-  }
-
-  try {
-    const response = await fetch(`https://wts-info-api.tossinvest.com/api/v2/stock-infos/code-or-symbol/${encodeURIComponent(symbol)}`, {
-      headers: {
-        "User-Agent": "goksorry-web/1.0",
-        Accept: "application/json"
-      },
-      next: { revalidate: SYMBOL_NAME_TTL_MS / 1000 }
-    });
-
-    if (!response.ok) {
-      throw new Error(`upstream ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      result?: {
-        name?: string;
-        detailName?: string;
-        companyName?: string;
-      };
-    };
-
-    const name = String(
-      payload.result?.name ?? payload.result?.detailName ?? payload.result?.companyName ?? ""
-    ).trim() || null;
-
-    symbolNameCache.set(symbol, {
-      name,
-      expiresAt: now + SYMBOL_NAME_TTL_MS
-    });
-
-    return name;
-  } catch {
-    symbolNameCache.set(symbol, {
-      name: null,
-      expiresAt: now + SYMBOL_NAME_TTL_MS
-    });
-    return null;
-  }
-};
-
-const resolveSymbolNames = async (symbols: string[]): Promise<Map<string, string | null>> => {
-  const uniqueSymbols = [...new Set(symbols.map((symbol) => symbol.trim()).filter(Boolean))];
-  const pairs = await Promise.all(
-    uniqueSymbols.map(async (symbol) => {
-      const name = await fetchSymbolName(symbol);
-      return [symbol, name] as const;
-    })
-  );
-
-  return new Map(pairs);
+  symbol: string | null;
 };
 
 export type SourceGroupSummary = {
@@ -162,7 +91,7 @@ export const fetchRecentFeedRows = async (
   for (const postKeyBatch of chunk(postKeys, EXTERNAL_POST_BATCH_SIZE)) {
     const { data: externalData, error: externalError } = await service
       .from("external_posts")
-      .select("post_key,source,title,clean_title,url")
+      .select("post_key,source,title,clean_title,url,symbol")
       .in("post_key", postKeyBatch);
 
     if (externalError) {
@@ -178,7 +107,11 @@ export const fetchRecentFeedRows = async (
         source: String(item.source),
         title: String(item.title),
         clean_title: typeof item.clean_title === "string" ? item.clean_title : null,
-        url: String(item.url)
+        url: String(item.url),
+        symbol:
+          typeof item.symbol === "string" && item.symbol.trim()
+            ? item.symbol.trim().toUpperCase()
+            : extractSymbolFromSource(String(item.source))
       }))
     );
   }
@@ -197,7 +130,7 @@ export const fetchRecentFeedRows = async (
         title: external.title,
         clean_title: external.clean_title,
         url: external.url,
-        symbol: getSymbolFromSource(external.source),
+        symbol: external.symbol,
         symbol_name: null,
         label: row.label,
         confidence: row.confidence,
@@ -206,10 +139,13 @@ export const fetchRecentFeedRows = async (
     ];
   });
 
-  const symbolNames = await resolveSymbolNames(baseRows.map((row) => row.symbol ?? "").filter(Boolean));
+  const symbolMetadata = await loadSymbolMetadataMap(
+    service,
+    baseRows.map((row) => row.symbol ?? "").filter(Boolean)
+  );
   const rows = baseRows.map((row) => ({
     ...row,
-    symbol_name: row.symbol ? symbolNames.get(row.symbol) ?? null : null
+    symbol_name: row.symbol ? symbolMetadata.get(row.symbol)?.display_name ?? row.symbol : null
   }));
 
   return { rows, errorMessage: "" };
