@@ -340,29 +340,79 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     method: "GET",
     path: "/api/admin/members",
     section: "Admin",
-    summary: "List members with email, nickname, and token inventory.",
+    summary: "List members with pagination and email/nickname search.",
     auth: "admin-session",
     visibility: "admin",
+    query: [
+      { name: "page", type: "integer", description: "Page number. Default: 1" },
+      { name: "page_size", type: "integer", description: "Rows per page. Default: 20, max: 100" },
+      { name: "q", type: "string", description: "Email or nickname search" }
+    ],
     responseExample: {
       status: "ok",
+      query: "member",
       members: [
         {
           id: "uuid",
           email: "member@example.com",
           nickname: "개미123",
           role: "user",
-          active_token_count: 1,
-          total_token_count: 2,
-          tokens: [
-            {
-              id: "uuid",
-              name: "tradingbot-main",
-              approval_status: "approved",
-              token_prefix: "gkst_123456789ab"
-            }
-          ]
+          created_at: "2026-03-11T09:00:00.000Z",
+          is_current_user: false
         }
-      ]
+      ],
+      pagination: {
+        page: 1,
+        page_size: 20,
+        total_count: 148,
+        total_pages: 8,
+        has_prev: false,
+        has_next: true
+      }
+    },
+    notes: ["Use this list API for the admin member table. Token inventory is fetched from the member detail endpoint."]
+  },
+  {
+    method: "GET",
+    path: "/api/admin/members/{id}",
+    section: "Admin",
+    summary: "Load one member detail with token inventory.",
+    auth: "admin-session",
+    visibility: "admin",
+    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
+    responseExample: {
+      status: "ok",
+      member: {
+        id: "uuid",
+        email: "member@example.com",
+        nickname: "개미123",
+        role: "user",
+        created_at: "2026-03-11T09:00:00.000Z",
+        nickname_confirmed_at: "2026-03-11T09:00:00.000Z",
+        nickname_changed_at: "2026-03-11T09:15:00.000Z",
+        is_current_user: false,
+        active_token_count: 1,
+        total_token_count: 2,
+        tokens: [
+          {
+            id: "uuid",
+            name: "tradingbot-main",
+            token_prefix: "gkst_123456789ab",
+            scope: "tradingbot.read",
+            approval_status: "approved",
+            approval_requested_at: "2026-03-11T10:00:00.000Z",
+            approved_at: "2026-03-11T10:05:00.000Z",
+            rejected_at: null,
+            approval_note: null,
+            created_at: "2026-03-11T10:00:00.000Z",
+            last_used_at: "2026-03-11T10:06:00.000Z",
+            expires_at: "2027-03-11T10:05:00.000Z",
+            revoked_at: null,
+            token_claimed: true,
+            claim_ready: false
+          }
+        ]
+      }
     }
   },
   {

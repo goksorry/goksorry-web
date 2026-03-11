@@ -1333,65 +1333,69 @@ button:disabled {
   gap: 0.5rem;
 }
 
-.admin-member-list {
+.admin-member-toolbar {
   display: grid;
-  gap: 0.9rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: end;
 }
 
-.admin-member-card {
-  display: grid;
-  gap: 0.9rem;
+.admin-member-toolbar .form-row {
+  margin-bottom: 0;
 }
 
-.admin-member-head {
+.admin-member-toolbar-meta {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-member-row {
+  cursor: pointer;
+}
+
+.admin-member-table tbody tr {
+  transition: background 120ms ease;
+}
+
+.admin-member-table tbody tr:hover,
+.admin-member-table tbody tr:focus-visible {
+  background: var(--surface-hover);
+}
+
+.admin-member-pagination {
+  justify-content: center;
+  margin-top: 0.8rem;
+}
+
+.admin-member-modal {
+  width: min(1120px, 100%);
+  max-height: min(86vh, 920px);
+}
+
+.admin-member-detail-shell {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-member-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
-.admin-member-copy {
+.admin-member-detail-grid {
   display: grid;
-  gap: 0.18rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.8rem;
 }
 
-.admin-member-copy h2 {
-  margin: 0;
-  font-size: 1.02rem;
-  line-height: 1.28;
-}
-
-.admin-member-copy .muted {
-  margin: 0;
-}
-
-.admin-member-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.admin-member-meta p {
-  margin: 0;
-}
-
-.admin-member-edit-grid {
+.admin-member-token-card {
   display: grid;
   gap: 0.75rem;
-}
-
-.admin-member-actions {
-  justify-content: flex-start;
-}
-
-.admin-member-token-section {
-  display: grid;
-  gap: 0.65rem;
-}
-
-.admin-member-token-section h3 {
-  margin: 0;
 }
 
 .docs-shell {
@@ -1695,13 +1699,18 @@ button:disabled {
   }
 
   .docs-hero,
-  .docs-top-grid {
+  .docs-top-grid,
+  .admin-member-toolbar,
+  .admin-member-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .admin-member-meta {
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
+  .admin-member-toolbar-meta {
+    justify-content: flex-start;
+  }
+
+  .admin-member-modal {
+    max-height: min(84vh, 900px);
   }
 
   .panel h1 {
