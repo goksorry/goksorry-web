@@ -44,6 +44,7 @@
   --chip-active-ink: #f3f5f7;
   --tag-bg: rgba(88, 96, 106, 0.08);
   --tag-line: rgba(88, 96, 106, 0.12);
+  --scroll-anchor-offset: 7rem;
   --fab-bg: rgba(78, 85, 94, 0.94);
   --fab-shadow: 0 12px 28px rgba(36, 42, 47, 0.18);
   --fab-fear-bg: rgba(138, 83, 79, 0.94);
@@ -180,6 +181,7 @@
 
 html {
   font-size: 15px;
+  scroll-padding-top: calc(var(--scroll-anchor-offset) + env(safe-area-inset-top));
 }
 
 body {
@@ -1251,7 +1253,7 @@ button:disabled {
 }
 
 .scroll-anchor {
-  scroll-margin-top: 7rem;
+  scroll-margin-top: calc(var(--scroll-anchor-offset) + env(safe-area-inset-top));
 }
 
 .feed-filter-panel h1 {
@@ -1373,6 +1375,10 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  :root {
+    --scroll-anchor-offset: 10.5rem;
+  }
+
   .header {
     flex-wrap: wrap;
     align-items: flex-start;
@@ -1434,10 +1440,6 @@ button:disabled {
   .overview-heading {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.75rem;
-  }
-
-  .scroll-anchor {
-    scroll-margin-top: 8.75rem;
   }
 
   .overview-top-row {
@@ -1588,6 +1590,7 @@ button:disabled {
 
   .mobile-feed-fab-top {
     font-size: 1rem;
+    color: rgba(248, 250, 252, 0.96);
   }
 
   .mobile-feed-fab-fear {
