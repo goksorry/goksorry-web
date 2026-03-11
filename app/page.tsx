@@ -33,6 +33,9 @@ const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_usstock") {
     return "디시 미장갤";
   }
+  if (source === "dc_tenbagger") {
+    return "디시 해주갤";
+  }
   if (source.startsWith("naver_stock_")) {
     return "네이버종토방";
   }

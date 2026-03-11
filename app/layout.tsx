@@ -95,7 +95,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                           "네이버종토방 지수",
                           "토스증권 종목커뮤니티 지수",
                           "블라인드 주식투자 지수",
-                          "디시 주갤·국장갤·미장갤 지수"
+                          "디시 주갤·국장갤·미장갤·해주갤 지수"
                         ].map((label) => (
                           <article key={label} className="overview-card overview-card-community overview-tone-mixed">
                             <div className="overview-community-head">

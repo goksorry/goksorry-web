@@ -16,8 +16,8 @@ export const SOURCE_GROUPS = [
   },
   {
     id: "dc",
-    label: "디시 주갤·국장갤·미장갤 지수",
-    shortLabel: "디시 3종"
+    label: "디시 주갤·국장갤·미장갤·해주갤 지수",
+    shortLabel: "디시 4종"
   }
 ] as const;
 
@@ -78,7 +78,7 @@ export const matchesSourceGroup = (source: string, groupId: SourceGroupId): bool
   if (groupId === "blind") {
     return source === "blind_stock_invest";
   }
-  return source === "dc_stock" || source === "dc_krstock" || source === "dc_usstock";
+  return source === "dc_stock" || source === "dc_krstock" || source === "dc_usstock" || source === "dc_tenbagger";
 };
 
 export const getSourceGroupId = (source: string): SourceGroupId | null => {

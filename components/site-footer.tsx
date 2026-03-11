@@ -23,7 +23,11 @@ const SOURCE_LINKS = [
   },
   {
     label: "디시인사이드 미국주식 갤러리",
-    href: "https://gall.dcinside.com/mgallery/board/lists?id=usstock"
+    href: "https://gall.dcinside.com/mgallery/board/lists?id=stockus"
+  },
+  {
+    label: "디시인사이드 해외주식 갤러리",
+    href: "https://gall.dcinside.com/mgallery/board/lists?id=tenbagger"
   }
 ];
 
