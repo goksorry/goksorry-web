@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { apiEndpointDocs, apiSections, authModeDescriptions } from "@/lib/api-docs";
+import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
   "TradingBot Read": "자동거래봇이 읽는 커뮤니티 지수 API입니다. 공식 시세와 거시 원데이터는 봇이 별도로 가져가고, 여기서는 커뮤니티 기반 신호만 제공합니다.",
@@ -10,10 +11,16 @@ const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
 
 const prettyJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
 
-export default function DocsPage() {
-  const endpointGroups = apiSections.map((section) => ({
+export const dynamic = "force-dynamic";
+
+export default async function DocsPage() {
+  const user = await getUserFromAuthorization();
+  const isAdmin = Boolean(user && (user.role === "admin" || isAdminEmail(user.email)));
+  const visibleDocs = filterApiDocs(isAdmin);
+  const visibleSections = apiSections.filter((section) => visibleDocs.some((item) => item.section === section));
+  const endpointGroups = visibleSections.map((section) => ({
     section,
-    items: apiEndpointDocs.filter((item) => item.section === section)
+    items: visibleDocs.filter((item) => item.section === section)
   }));
 
   return (
@@ -33,9 +40,11 @@ export default function DocsPage() {
           <Link href="/profile" className="tag">
             내 프로필
           </Link>
-          <Link href="/admin/tokens" className="tag">
-            토큰 승인
-          </Link>
+          {isAdmin ? (
+            <Link href="/admin/tokens" className="tag">
+              토큰 승인
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -54,9 +63,11 @@ export default function DocsPage() {
           <h2>인증 방식</h2>
           <div className="list">
             {Object.entries(authModeDescriptions).map(([key, value]) => (
-              <p key={key}>
-                <span className="tag">{key}</span> {value}
-              </p>
+              isAdmin || (key !== "admin-session" && key !== "detector") ? (
+                <p key={key}>
+                  <span className="tag">{key}</span> {value}
+                </p>
+              ) : null
             ))}
           </div>
         </article>

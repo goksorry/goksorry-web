@@ -1,5 +1,6 @@
 type HttpMethod = "GET" | "POST";
 type AuthMode = "public" | "tradingbot" | "browser-session" | "admin-session" | "detector";
+type Visibility = "all" | "admin";
 
 export type ApiEndpointDoc = {
   method: HttpMethod;
@@ -7,6 +8,7 @@ export type ApiEndpointDoc = {
   section: "TradingBot Read" | "Token Lifecycle" | "Admin" | "Internal";
   summary: string;
   auth: AuthMode;
+  visibility?: Visibility;
   query?: Array<{ name: string; type: string; description: string }>;
   pathParams?: Array<{ name: string; type: string; description: string }>;
   headers?: Array<{ name: string; required?: boolean; description: string }>;
@@ -275,6 +277,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     section: "Admin",
     summary: "List token requests for admin approval.",
     auth: "admin-session",
+    visibility: "admin",
     query: [{ name: "status", type: "pending|approved|rejected|all", description: "Filter. Default: pending" }],
     responseExample: {
       status: "ok",
@@ -298,6 +301,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     section: "Admin",
     summary: "Approve or reject a pending token request.",
     auth: "admin-session",
+    visibility: "admin",
     pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
     headers: [{ name: "Content-Type", required: true, description: "application/json" }, ...browserHeaders],
     requestBody: {
@@ -319,6 +323,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     section: "Internal",
     summary: "Internal detector snapshot upsert endpoint.",
     auth: "detector",
+    visibility: "admin",
     headers: [{ name: "Authorization", required: true, description: "Bearer <DETECTOR_WRITE_TOKEN>" }],
     requestBody: {
       contentType: "application/json",
@@ -339,8 +344,18 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   }
 ];
 
+export const filterApiDocs = (isAdmin: boolean): ApiEndpointDoc[] => {
+  return apiEndpointDocs.filter((doc) => isAdmin || doc.visibility !== "admin");
+};
+
 export const buildOpenApiSpec = () => {
-  const paths = apiEndpointDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
+  return buildOpenApiSpecForRole(false);
+};
+
+export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
+  const visibleDocs = filterApiDocs(isAdmin);
+
+  const paths = visibleDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
     const operation: Record<string, unknown> = {
       tags: [doc.section],
       summary: doc.summary,
@@ -406,7 +421,7 @@ export const buildOpenApiSpec = () => {
         "Community-derived stock and macro sentiment API for TradingBot integrations. Official market prices and indices are fetched separately by the bot."
     },
     servers: [{ url: "https://goksorry.com" }],
-    tags: apiSections.map((name) => ({ name })),
+    tags: [...new Set(visibleDocs.map((doc) => doc.section))].map((name) => ({ name })),
     paths
   };
 };
