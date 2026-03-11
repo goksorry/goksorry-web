@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type ReactNode
 } from "react";
+import { CLEAN_FILTER_APPLY_DURATION_MS } from "@/lib/clean-filter";
 
 type CrossfadeContentProps = {
   swapKey: string;
@@ -17,7 +18,7 @@ type CrossfadeContentProps = {
 
 export function CrossfadeContent({
   swapKey,
-  durationMs = 500,
+  durationMs = CLEAN_FILTER_APPLY_DURATION_MS,
   children
 }: CrossfadeContentProps) {
   const [previousNode, setPreviousNode] = useState<ReactNode | null>(null);

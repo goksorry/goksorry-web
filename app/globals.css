@@ -682,7 +682,7 @@ a:hover {
 }
 
 .crossfade-layer {
-  transition: opacity var(--crossfade-duration, 500ms) ease;
+  transition: opacity var(--crossfade-duration, 600ms) ease;
   will-change: opacity;
 }
 

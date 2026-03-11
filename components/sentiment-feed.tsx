@@ -4,7 +4,7 @@ import { CrossfadeContent } from "@/components/crossfade-content";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useFeedSelection } from "@/components/feed-selection-provider";
-import { resolveDisplayTitle } from "@/lib/clean-filter";
+import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 
@@ -117,7 +117,7 @@ export function SentimentFeed({
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
 
-            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={500}>
+            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
               <div className="sentiment-list">
                 {fearRows.map((row) => {
                   const displayTitle = resolveDisplayTitle({
@@ -176,7 +176,7 @@ export function SentimentFeed({
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
 
-            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={500}>
+            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
               <div className="sentiment-list">
                 {hopeRows.map((row) => {
                   const displayTitle = resolveDisplayTitle({

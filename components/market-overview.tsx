@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useFeedSelection } from "@/components/feed-selection-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
-import { resolveDisplayTitle } from "@/lib/clean-filter";
+import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -212,7 +212,10 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
               </button>
             </div>
 
-            <CrossfadeContent swapKey={cleanFilterEnabled ? "pretty" : "grim"} durationMs={500}>
+            <CrossfadeContent
+              swapKey={cleanFilterEnabled ? "pretty" : "grim"}
+              durationMs={CLEAN_FILTER_APPLY_DURATION_MS}
+            >
               <div className="overview-modal-list">
                 {actionableActiveRows.map((row) => {
                   const displayTitle = resolveDisplayTitle({
