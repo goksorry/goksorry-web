@@ -1,43 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { buildCleanFilterCookie } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 
 export function CleanFilterFirstVisit() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const pendingStartedAtRef = useRef<number | null>(null);
-  const {
-    cleanFilterEnabled,
-    isApplying,
-    showFirstVisitPrompt,
-    beginApply,
-    finishApply,
-    dismissFirstVisitPrompt
-  } = useCleanFilter();
-
-  useEffect(() => {
-    if (isPending) {
-      return;
-    }
-
-    if (pendingStartedAtRef.current === null) {
-      return;
-    }
-
-    const elapsedMs = Date.now() - pendingStartedAtRef.current;
-    const remainingMs = Math.max(0, 240 - elapsedMs);
-    const timeout = window.setTimeout(() => {
-      finishApply();
-      pendingStartedAtRef.current = null;
-    }, remainingMs);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [finishApply, isPending]);
+  const { isApplying, showFirstVisitPrompt, applyCleanFilter, dismissFirstVisitPrompt } = useCleanFilter();
 
   if (!showFirstVisitPrompt) {
     return null;
@@ -49,17 +16,13 @@ export function CleanFilterFirstVisit() {
   };
 
   const handleDisable = () => {
-    if (isApplying || isPending) {
+    if (isApplying) {
       return;
     }
 
-    pendingStartedAtRef.current = Date.now();
-    beginApply(false);
+    applyCleanFilter(false);
     document.cookie = buildCleanFilterCookie(false);
     dismissFirstVisitPrompt();
-    startTransition(() => {
-      router.refresh();
-    });
   };
 
   return (

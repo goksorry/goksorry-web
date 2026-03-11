@@ -677,6 +677,35 @@ a:hover {
   border-top: 1px solid var(--lane-line-soft);
 }
 
+.crossfade-shell {
+  position: relative;
+}
+
+.crossfade-layer {
+  transition: opacity var(--crossfade-duration, 500ms) ease;
+  will-change: opacity;
+}
+
+.crossfade-layer-current {
+  position: relative;
+  z-index: 1;
+}
+
+.crossfade-layer-previous {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.crossfade-layer-visible {
+  opacity: 1;
+}
+
+.crossfade-layer-hidden {
+  opacity: 0;
+}
+
 .sentiment-card {
   border: 0;
   border-bottom: 1px solid var(--lane-line-soft);

@@ -1,4 +1,6 @@
 export const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
+export const CLEAN_FILTER_SWITCH_DELAY_MS = 250;
+export const CLEAN_FILTER_APPLY_DURATION_MS = 500;
 
 export const isCleanFilterEnabled = (value: string | null | undefined): boolean => {
   return value !== "off";

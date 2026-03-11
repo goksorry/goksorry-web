@@ -1,5 +1,6 @@
 "use client";
 
+import { CrossfadeContent } from "@/components/crossfade-content";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useFeedSelection } from "@/components/feed-selection-provider";
@@ -86,6 +87,7 @@ export function SentimentFeed({
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
+  const cleanFilterModeKey = cleanFilterEnabled ? "pretty" : "grim";
 
   return (
     <>
@@ -115,37 +117,39 @@ export function SentimentFeed({
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
 
-            <div className="sentiment-list">
-              {fearRows.map((row) => {
-                const displayTitle = resolveDisplayTitle({
-                  title: row.title,
-                  cleanTitle: row.clean_title,
-                  cleanFilterEnabled
-                });
+            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={500}>
+              <div className="sentiment-list">
+                {fearRows.map((row) => {
+                  const displayTitle = resolveDisplayTitle({
+                    title: row.title,
+                    cleanTitle: row.clean_title,
+                    cleanFilterEnabled
+                  });
 
-                return (
-                  <article key={row.post_key} className="sentiment-card sentiment-card-fear">
-                    <div className="sentiment-card-head">
-                      <div className="sentiment-card-head-tags">
-                        <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
-                        {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
+                  return (
+                    <article key={row.post_key} className="sentiment-card sentiment-card-fear">
+                      <div className="sentiment-card-head">
+                        <div className="sentiment-card-head-tags">
+                          <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+                          {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
+                        </div>
+                        <time className="sentiment-time" dateTime={row.analyzed_at}>
+                          {toLocalTime(row.analyzed_at, timezone)}
+                        </time>
                       </div>
-                      <time className="sentiment-time" dateTime={row.analyzed_at}>
-                        {toLocalTime(row.analyzed_at, timezone)}
-                      </time>
-                    </div>
-                    <a
-                      className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-                      href={row.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {displayTitle.text}
-                    </a>
-                  </article>
-                );
-              })}
-            </div>
+                      <a
+                        className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+                        href={row.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {displayTitle.text}
+                      </a>
+                    </article>
+                  );
+                })}
+              </div>
+            </CrossfadeContent>
           </section>
 
           <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
@@ -172,37 +176,39 @@ export function SentimentFeed({
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
 
-            <div className="sentiment-list">
-              {hopeRows.map((row) => {
-                const displayTitle = resolveDisplayTitle({
-                  title: row.title,
-                  cleanTitle: row.clean_title,
-                  cleanFilterEnabled
-                });
+            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={500}>
+              <div className="sentiment-list">
+                {hopeRows.map((row) => {
+                  const displayTitle = resolveDisplayTitle({
+                    title: row.title,
+                    cleanTitle: row.clean_title,
+                    cleanFilterEnabled
+                  });
 
-                return (
-                  <article key={row.post_key} className="sentiment-card sentiment-card-hope">
-                    <div className="sentiment-card-head">
-                      <div className="sentiment-card-head-tags">
-                        <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
-                        {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
+                  return (
+                    <article key={row.post_key} className="sentiment-card sentiment-card-hope">
+                      <div className="sentiment-card-head">
+                        <div className="sentiment-card-head-tags">
+                          <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+                          {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
+                        </div>
+                        <time className="sentiment-time" dateTime={row.analyzed_at}>
+                          {toLocalTime(row.analyzed_at, timezone)}
+                        </time>
                       </div>
-                      <time className="sentiment-time" dateTime={row.analyzed_at}>
-                        {toLocalTime(row.analyzed_at, timezone)}
-                      </time>
-                    </div>
-                    <a
-                      className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-                      href={row.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {displayTitle.text}
-                    </a>
-                  </article>
-                );
-              })}
-            </div>
+                      <a
+                        className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+                        href={row.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {displayTitle.text}
+                      </a>
+                    </article>
+                  );
+                })}
+              </div>
+            </CrossfadeContent>
           </section>
         </div>
         <MobileSentimentSwipeHint />

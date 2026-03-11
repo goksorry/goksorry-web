@@ -1,52 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import { buildCleanFilterCookie } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 
 export function CleanFilterToggle() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [showInfo, setShowInfo] = useState(false);
-  const pendingStartedAtRef = useRef<number | null>(null);
-  const { cleanFilterEnabled, isApplying, beginApply, finishApply } = useCleanFilter();
+  const { cleanFilterEnabled, isApplying, applyCleanFilter } = useCleanFilter();
 
   const onToggle = () => {
-    if (isApplying || isPending) {
+    if (isApplying) {
       return;
     }
 
     const nextValue = !cleanFilterEnabled;
-    pendingStartedAtRef.current = Date.now();
-    beginApply(nextValue);
+    applyCleanFilter(nextValue);
     document.cookie = buildCleanFilterCookie(nextValue);
-    startTransition(() => {
-      router.refresh();
-    });
   };
-
-  useEffect(() => {
-    if (isPending) {
-      return;
-    }
-
-    if (pendingStartedAtRef.current === null) {
-      return;
-    }
-
-    const elapsedMs = Date.now() - pendingStartedAtRef.current;
-    const remainingMs = Math.max(0, 240 - elapsedMs);
-    const timeout = window.setTimeout(() => {
-      finishApply();
-      pendingStartedAtRef.current = null;
-    }, remainingMs);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [finishApply, isPending]);
 
   useEffect(() => {
     if (!showInfo) {
@@ -86,10 +57,10 @@ export function CleanFilterToggle() {
           className="clean-filter-toggle"
           onClick={onToggle}
           aria-pressed={cleanFilterEnabled}
-          aria-busy={isApplying || isPending}
+          aria-busy={isApplying}
           aria-label={cleanFilterEnabled ? "클린필터 끄기" : "클린필터 켜기"}
           title={cleanFilterEnabled ? "클린필터 켜짐" : "클린필터 꺼짐"}
-          disabled={isApplying || isPending}
+          disabled={isApplying}
         >
           <span className="clean-filter-toggle-copy">예쁜말{cleanFilterEnabled ? "ON" : "OFF"}</span>
         </button>
