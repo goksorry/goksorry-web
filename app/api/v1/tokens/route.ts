@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
@@ -59,8 +59,6 @@ export async function GET(request: Request) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
   }
 
-  await ensureProfileForUser(user);
-
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("api_access_tokens")
@@ -95,8 +93,6 @@ export async function POST(request: Request) {
   if (!allowRateLimit(`token-issue:${user.id}`, 2)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token creations. try again in a minute");
   }
-
-  await ensureProfileForUser(user);
 
   let body: { name?: unknown; expires_at?: unknown };
   try {

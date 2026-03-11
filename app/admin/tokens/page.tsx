@@ -39,6 +39,18 @@ const formatDateTime = (value: string | null): string => {
   return date.toLocaleString("ko-KR");
 };
 
+const parsePayload = (rawText: string): Record<string, unknown> => {
+  if (!rawText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawText) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
 export default function AdminTokensPage() {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -55,10 +67,11 @@ export default function AdminTokensPage() {
       const response = await fetch(`/api/admin/tokens?status=${nextFilter}`, {
         cache: "no-store"
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
         setTokens([]);
-        setError(payload.error ?? "토큰 요청 목록을 불러오지 못했습니다.");
+        setError(String(payload.error ?? payload.message ?? rawText ?? "토큰 요청 목록을 불러오지 못했습니다."));
         return;
       }
 
@@ -90,9 +103,10 @@ export default function AdminTokensPage() {
           decision
         })
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
-        setError(payload.error ?? "토큰 요청 처리에 실패했습니다.");
+        setError(String(payload.error ?? payload.message ?? rawText ?? "토큰 요청 처리에 실패했습니다."));
         return;
       }
 

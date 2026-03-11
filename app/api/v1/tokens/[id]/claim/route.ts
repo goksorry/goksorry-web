@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { generateTradingBotApiToken } from "@/lib/api-tokens";
 import { allowRateLimit } from "@/lib/rate-limit";
@@ -29,8 +29,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!allowRateLimit(`token-claim:${user.id}`, 10)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token claims. try again in a minute");
   }
-
-  await ensureProfileForUser(user);
 
   const id = String(params.id ?? "").trim();
   if (!UUID_PATTERN.test(id)) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -28,8 +28,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!allowRateLimit(`token-revoke:${user.id}`, 20)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token revokes. try again in a minute");
   }
-
-  await ensureProfileForUser(user);
 
   const id = String(params.id ?? "").trim();
   if (!UUID_PATTERN.test(id)) {

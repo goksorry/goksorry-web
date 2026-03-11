@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
-import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { sanitizeOptionalPlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return jsonMessage(requestId, 401, "Unauthorized");
   }
 
-  const role = await ensureProfileForUser(user);
+  const role = user.role;
   if (role !== "admin" && !isAdminEmail(user.email)) {
     return jsonMessage(requestId, 403, "Forbidden");
   }

@@ -38,6 +38,18 @@ const formatDateTime = (iso: string | null): string => {
   return formatKstDateTime(iso);
 };
 
+const parsePayload = (rawText: string): Record<string, unknown> => {
+  if (!rawText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawText) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
 const tokenStatusLabel = (token: TokenRow): string => {
   if (token.revoked_at) {
     return "폐기됨";
@@ -73,10 +85,11 @@ export function ProfileTokenManager() {
       const response = await fetch("/api/v1/tokens", {
         cache: "no-store"
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
         setTokens([]);
-        setError(payload.message ?? payload.error ?? "토큰 목록을 불러오지 못했습니다.");
+        setError(String(payload.message ?? payload.error ?? rawText ?? "토큰 목록을 불러오지 못했습니다."));
         return;
       }
 
@@ -111,9 +124,10 @@ export function ProfileTokenManager() {
           expires_at: expiresAt ? new Date(expiresAt).toISOString() : null
         })
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
-        setError(payload.message ?? payload.error ?? "토큰 요청에 실패했습니다.");
+        setError(String(payload.message ?? payload.error ?? rawText ?? "토큰 요청에 실패했습니다."));
         return;
       }
 
@@ -138,13 +152,14 @@ export function ProfileTokenManager() {
       const response = await fetch(`/api/v1/tokens/${tokenId}/claim`, {
         method: "POST"
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
-        setError(payload.message ?? payload.error ?? "토큰 값을 발급하지 못했습니다.");
+        setError(String(payload.message ?? payload.error ?? rawText ?? "토큰 값을 발급하지 못했습니다."));
         return;
       }
 
-      const token = payload.token ?? {};
+      const token = (payload.token ?? {}) as Record<string, unknown>;
       setRevealedToken({
         id: String(token.id ?? tokenId),
         name: String(token.name ?? ""),
@@ -170,9 +185,10 @@ export function ProfileTokenManager() {
       const response = await fetch(`/api/v1/tokens/${tokenId}/revoke`, {
         method: "POST"
       });
-      const payload = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      const payload = parsePayload(rawText);
       if (!response.ok) {
-        setError(payload.message ?? payload.error ?? "토큰 폐기에 실패했습니다.");
+        setError(String(payload.message ?? payload.error ?? rawText ?? "토큰 폐기에 실패했습니다."));
         return;
       }
 
