@@ -117,7 +117,7 @@ export function CleanFilterOverlay() {
         <div className="clean-filter-overlay-loader" role="status" aria-live="polite">
           <span className="clean-filter-overlay-spinner" aria-hidden="true" />
           <span className="clean-filter-overlay-text">
-            {cleanFilterEnabled ? "예쁜말 적용 중..." : "날 것으로 돌리는중"}
+            {cleanFilterEnabled ? "예쁜말 적용 중..." : "날것으로 되돌리는 중..."}
           </span>
         </div>
       ) : null}

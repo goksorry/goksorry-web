@@ -914,6 +914,12 @@ button:disabled {
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
+.clean-filter-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .clean-filter-toggle:hover {
   background: var(--theme-toggle-hover-bg);
   color: var(--ink);
@@ -941,6 +947,85 @@ button:disabled {
   font-size: 0.66rem;
   font-weight: 700;
   opacity: 0.82;
+}
+
+.clean-filter-info-button {
+  width: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--theme-toggle-line);
+  background: var(--theme-toggle-bg);
+  color: var(--ink-soft);
+  box-shadow: inset 0 1px 0 var(--overview-card-inset);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.clean-filter-info-button:hover {
+  background: var(--theme-toggle-hover-bg);
+  color: var(--ink);
+}
+
+.clean-filter-info-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(14, 12, 18, 0.32);
+  backdrop-filter: blur(4px);
+}
+
+.clean-filter-info-panel {
+  width: min(31rem, 100%);
+  padding: 1.15rem;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.clean-filter-info-kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--brand);
+  text-transform: uppercase;
+}
+
+.clean-filter-info-panel h2 {
+  margin: 0;
+  font-size: 1.22rem;
+  line-height: 1.3;
+}
+
+.clean-filter-info-copy {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.clean-filter-info-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.clean-filter-info-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .clean-filter-overlay {
@@ -1555,5 +1640,10 @@ button:disabled {
   .overview-modal-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .clean-filter-info-panel,
+  .clean-filter-first-visit-panel {
+    padding: 1rem;
   }
 }
