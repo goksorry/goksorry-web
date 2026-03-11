@@ -8,14 +8,9 @@ export function HeaderNavExtras({ initialSession }: { initialSession: Session | 
   const { data: liveSession } = useSession();
   const session = liveSession ?? initialSession;
 
-  if (!session?.user?.email) {
+  if (session?.user?.role !== "admin") {
     return null;
   }
 
-  return (
-    <>
-      <Link href="/profile">내 프로필</Link>
-      {session.user.role === "admin" ? <Link href="/admin/reports">신고 관리</Link> : null}
-    </>
-  );
+  return <Link href="/admin/reports">신고 관리</Link>;
 }

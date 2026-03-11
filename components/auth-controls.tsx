@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { Session } from "next-auth";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -44,19 +45,26 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
 
   if (!authenticated) {
     return (
-      <button type="button" onClick={() => void handleSignIn()} disabled={loading}>
+      <button type="button" className="btn header-auth-button" onClick={() => void handleSignIn()} disabled={loading}>
         {loading ? "로그인 중..." : "구글계정으로 로그인"}
       </button>
     );
   }
 
+  const profileLabel = user?.nickname?.trim() || user?.email || "로그인됨";
+
   return (
-    <div className="inline">
-      <span className="muted">
-        {user?.email ?? "로그인됨"}
-        {user?.nickname ? ` (${user.nickname})` : ""}
-      </span>
-      <button type="button" className="btn-secondary" onClick={() => void handleSignOut()} disabled={loading}>
+    <div className="header-auth-shell">
+      <Link className="header-profile-link" href="/profile" aria-label="내 프로필">
+        <span className="header-profile-name">{profileLabel}</span>
+        {user?.nickname?.trim() && user.email ? <span className="header-profile-email">{user.email}</span> : null}
+      </Link>
+      <button
+        type="button"
+        className="btn-secondary header-auth-button"
+        onClick={() => void handleSignOut()}
+        disabled={loading}
+      >
         로그아웃
       </button>
     </div>

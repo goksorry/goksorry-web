@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <CleanFilterFirstVisit />
             <div id="page-top" className="layout">
               <header className="header">
-                <nav className="nav">
+                <div className="header-main">
                   <Link className="brand" href="/">
                     <Image
                       className="brand-logo"
@@ -47,18 +47,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       priority
                     />
                   </Link>
-                  <Link href="/" replace>
-                    피드
-                  </Link>
-                  <Link href="/community" replace>
-                    커뮤니티
-                  </Link>
-                  <HeaderNavExtras initialSession={session} />
-                </nav>
-                <div className="auth">
+                  <nav className="nav">
+                    <Link href="/" replace>
+                      피드
+                    </Link>
+                    <Link href="/community" replace>
+                      커뮤니티
+                    </Link>
+                    <HeaderNavExtras initialSession={session} />
+                  </nav>
+                </div>
+                <div className="header-controls">
                   <ThemeToggle />
                   <CleanFilterToggle />
-                  <Suspense fallback={<button type="button" disabled>구글계정으로 로그인</button>}>
+                </div>
+                <div className="header-profile">
+                  <Suspense fallback={<button type="button" className="btn header-auth-button" disabled>구글계정으로 로그인</button>}>
                     <AuthControls initialSession={session} />
                   </Suspense>
                 </div>
