@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CommunityPostList } from "@/components/community-post-list";
 import { getUserFromAuthorization } from "@/lib/auth-server";
-import { formatKstDateTime } from "@/lib/date-time";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -51,23 +51,20 @@ export default async function BoardPage({ params }: { params: { boardSlug: strin
 
       {postsError ? <p className="error">글 목록 조회 실패: {postsError.message}</p> : null}
 
-      <div className="list">
-        {(posts ?? []).map((post: any) => {
+      <CommunityPostList
+        emptyMessage="이 게시판에는 아직 글이 없습니다."
+        posts={(posts ?? []).map((post: any) => {
           const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-          return (
-            <article key={post.id} className="card">
-              <h3>
-                <Link href={`/community/${board.slug}/${post.id}`}>{post.title}</Link>
-              </h3>
-              <p className="muted">
-                작성자 {author?.nickname ?? "알 수 없음"} · {formatKstDateTime(post.created_at)}
-              </p>
-            </article>
-          );
-        })}
 
-        {(posts ?? []).length === 0 ? <p className="muted">이 게시판에는 아직 글이 없습니다.</p> : null}
-      </div>
+          return {
+            id: String(post.id),
+            href: `/community/${board.slug}/${post.id}`,
+            title: String(post.title ?? ""),
+            createdAt: post.created_at ? String(post.created_at) : null,
+            authorNickname: author?.nickname ? String(author.nickname) : null
+          };
+        })}
+      />
     </section>
   );
 }

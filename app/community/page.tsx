@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatKstDateTime } from "@/lib/date-time";
+import { CommunityPostList } from "@/components/community-post-list";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -37,29 +37,35 @@ export default async function CommunityHomePage() {
         <h2>최근 글</h2>
         {postsError ? <p className="error">최근 글 조회 실패: {postsError.message}</p> : null}
 
-        <div className="list">
-          {(recentPosts ?? []).map((post: any) => {
-            const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
-            const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-            if (!board) {
-              return null;
-            }
+        <CommunityPostList
+          showBoardName
+          emptyMessage="아직 글이 없습니다."
+          posts={(recentPosts ?? [])
+            .map((post: any) => {
+              const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
+              const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+              if (!board?.slug) {
+                return null;
+              }
 
-            return (
-              <article key={post.id} className="card">
-                <h4>
-                  <Link href={`/community/${board.slug}/${post.id}`}>{post.title}</Link>
-                </h4>
-                <p className="muted">
-                  게시판: {board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
-                  {formatKstDateTime(post.created_at)}
-                </p>
-              </article>
-            );
-          })}
-
-          {(recentPosts ?? []).length === 0 ? <p className="muted">아직 글이 없습니다.</p> : null}
-        </div>
+              return {
+                id: String(post.id),
+                href: `/community/${board.slug}/${post.id}`,
+                title: String(post.title ?? ""),
+                createdAt: post.created_at ? String(post.created_at) : null,
+                authorNickname: author?.nickname ? String(author.nickname) : null,
+                boardLabel: board.name ? String(board.name) : String(board.slug)
+              };
+            })
+            .filter(Boolean) as Array<{
+            id: string;
+            href: string;
+            title: string;
+            createdAt: string | null;
+            authorNickname: string | null;
+            boardLabel?: string | null;
+          }>}
+        />
       </section>
     </>
   );
