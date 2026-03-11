@@ -3,12 +3,7 @@ import { FeedFilterControls } from "@/components/feed-filter-controls";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { CLEAN_FILTER_COOKIE, isCleanFilterEnabled, resolveDisplayTitle } from "@/lib/clean-filter";
 import { fetchRecentFeedRows, filterRowsBySourceGroups } from "@/lib/feed-data";
-import {
-  getSourceGroupShortLabel,
-  isSourceGroupId,
-  parseSourceGroupSelection,
-  type SourceGroupId
-} from "@/lib/feed-source-groups";
+import { isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { getTimezone } from "@/lib/env";
@@ -26,6 +21,28 @@ const rangeHoursMap: Record<string, number> = {
   "1h": 1,
   "6h": 6,
   "24h": 24
+};
+
+const getFeedSourceLabel = (source: string): string => {
+  if (source === "dc_stock") {
+    return "디시 주갤";
+  }
+  if (source === "dc_krstock") {
+    return "디시 국장갤";
+  }
+  if (source === "dc_usstock") {
+    return "디시 미장갤";
+  }
+  if (source.startsWith("naver_stock_")) {
+    return "네이버종토방";
+  }
+  if (source.startsWith("toss_stock_community_")) {
+    return "토스증권";
+  }
+  if (source === "blind_stock_invest") {
+    return "블라인드";
+  }
+  return source;
 };
 
 const toLocalTime = (iso: string, timezone: string): string => {
@@ -154,8 +171,8 @@ export default async function Home({
                   <article key={row.post_key} className="sentiment-card sentiment-card-fear">
                     <div className="sentiment-card-head">
                       <div className="sentiment-card-head-tags">
-                        <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                        {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                        <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+                        {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
                       </div>
                       <time className="sentiment-time" dateTime={row.analyzed_at}>
                         {toLocalTime(row.analyzed_at, timezone)}
@@ -211,8 +228,8 @@ export default async function Home({
                   <article key={row.post_key} className="sentiment-card sentiment-card-hope">
                     <div className="sentiment-card-head">
                       <div className="sentiment-card-head-tags">
-                        <span className="tag">{getSourceGroupShortLabel(row.source)}</span>
-                        {row.symbol_name ? <span className="tag tag-symbol">{row.symbol_name}</span> : null}
+                        <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+                        {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
                       </div>
                       <time className="sentiment-time" dateTime={row.analyzed_at}>
                         {toLocalTime(row.analyzed_at, timezone)}
