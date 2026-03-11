@@ -1316,6 +1316,99 @@ button:disabled {
   gap: 0.5rem;
 }
 
+.docs-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.docs-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+}
+
+.docs-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.docs-top-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.docs-group {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.docs-group-head {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.docs-endpoint {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.docs-endpoint-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.docs-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.docs-method-get {
+  background: color-mix(in srgb, var(--hope) 18%, transparent);
+  color: var(--hope);
+  border: 1px solid color-mix(in srgb, var(--hope) 45%, var(--line));
+}
+
+.docs-method-post {
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line));
+}
+
+.docs-path {
+  display: inline-block;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  background: var(--panel-elevated);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.docs-code {
+  margin: 0;
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-elevated);
+  overflow-x: auto;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
 .profile-danger-zone {
   margin-top: 0.5rem;
   padding-top: 0.7rem;
@@ -1509,6 +1602,11 @@ button:disabled {
   .overview-panel,
   .sentiment-lane {
     padding: 0.8rem;
+  }
+
+  .docs-hero,
+  .docs-top-grid {
+    grid-template-columns: 1fr;
   }
 
   .panel h1 {

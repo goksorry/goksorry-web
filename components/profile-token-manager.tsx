@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatKstDateTime } from "@/lib/date-time";
 
@@ -190,6 +191,9 @@ export function ProfileTokenManager() {
         <div>
           <h2>TradingBot 토큰</h2>
           <p className="muted">공식 시세가 아니라 곡소리닷컴의 커뮤니티 지수를 읽는 용도입니다. 요청 후 관리자 승인 절차가 필요합니다.</p>
+          <p className="muted">
+            연동 규격과 응답 예시는 <Link href="/docs">API 문서</Link>에서 확인할 수 있습니다.
+          </p>
         </div>
 
         <form className="grid" onSubmit={onRequestToken}>
