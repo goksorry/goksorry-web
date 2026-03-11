@@ -29,6 +29,7 @@ type RevealedToken = {
   expires_at: string | null;
 };
 
+const MAX_ACTIVE_TOKENS_PER_USER = 3;
 const defaultTokenName = () => `tradingbot-${new Date().toISOString().slice(0, 10)}`;
 
 const formatDateTime = (iso: string | null): string => {
@@ -75,6 +76,10 @@ export function ProfileTokenManager() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revealedToken, setRevealedToken] = useState<RevealedToken | null>(null);
+  const activeTokenCount = tokens.filter(
+    (token) => !token.revoked_at && (token.approval_status === "pending" || token.approval_status === "approved")
+  ).length;
+  const requestLimitReached = activeTokenCount >= MAX_ACTIVE_TOKENS_PER_USER;
 
   const loadTokens = async () => {
     setLoading(true);
@@ -207,6 +212,7 @@ export function ProfileTokenManager() {
           <p className="muted">
             연동 규격과 응답 예시는 <Link href="/docs">API 문서</Link>에서 확인할 수 있습니다.
           </p>
+          <p className="muted">승인 대기와 사용 가능한 토큰을 합쳐 계정당 최대 3개까지 유지할 수 있습니다.</p>
           <p className="muted">토큰 만료 시각은 실제 발급 시점부터 1년으로 고정됩니다.</p>
         </div>
 
@@ -224,8 +230,14 @@ export function ProfileTokenManager() {
             />
           </label>
 
+          {requestLimitReached ? (
+            <p className="muted">
+              현재 활성 토큰/요청이 {activeTokenCount}개입니다. 새 요청을 만들려면 기존 요청을 취소하거나 토큰을 폐기하세요.
+            </p>
+          ) : null}
+
           <div className="actions">
-            <button type="submit" disabled={submitting}>
+            <button type="submit" disabled={submitting || requestLimitReached}>
               {submitting ? "요청 중..." : "토큰 요청"}
             </button>
           </div>

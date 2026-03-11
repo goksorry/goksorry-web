@@ -5,7 +5,7 @@ import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
-const MAX_ACTIVE_TOKENS_PER_USER = 20;
+const MAX_ACTIVE_TOKENS_PER_USER = 3;
 const TOKEN_SELECT =
   "id,name,token_prefix,scope,approval_status,approval_requested_at,approved_at,rejected_at,approval_note,created_at,last_used_at,expires_at,revoked_at";
 

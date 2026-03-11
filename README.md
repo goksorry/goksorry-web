@@ -60,8 +60,10 @@ Read auth headers:
 Token workflow:
 
 - Members request a TradingBot token from `내 프로필`.
+- Each member can keep at most 3 non-revoked pending/approved token requests.
 - Every new token request requires admin approval.
 - Admin approves/rejects requests from `/admin/tokens`.
+- Admin can manage member email/nickname/token state from `/admin/members`.
 - After approval, the member reveals the actual token value once from `내 프로필`.
 - Claimed token expiry is fixed to one year from claim time.
 

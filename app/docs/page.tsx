@@ -5,7 +5,7 @@ import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
   "TradingBot Read": "자동거래봇이 읽는 커뮤니티 지수 API입니다. 공식 시세와 거시 원데이터는 봇이 별도로 가져가고, 여기서는 커뮤니티 기반 신호만 제공합니다.",
   "Token Lifecycle": "사용자가 내 프로필에서 토큰을 요청하고, 승인 후 1회 확인하고, 필요시 폐기하는 흐름입니다.",
-  Admin: "관리자가 토큰 요청을 승인하거나 반려하는 운영 API입니다.",
+  Admin: "관리자가 토큰 요청을 승인하고, 회원 이메일·닉네임·토큰을 운영 관리하는 API입니다.",
   Internal: "내부 detector 워커가 web에 snapshot을 등록하는 비공개 성격의 API입니다."
 };
 
@@ -41,9 +41,14 @@ export default async function DocsPage() {
             내 프로필
           </Link>
           {isAdmin ? (
-            <Link href="/admin/tokens" className="tag">
-              토큰 승인
-            </Link>
+            <>
+              <Link href="/admin/members" className="tag">
+                회원 관리
+              </Link>
+              <Link href="/admin/tokens" className="tag">
+                토큰 승인
+              </Link>
+            </>
           ) : null}
         </div>
       </div>

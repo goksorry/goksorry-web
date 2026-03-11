@@ -1,4 +1,4 @@
-type HttpMethod = "GET" | "POST";
+type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 type AuthMode = "public" | "tradingbot" | "browser-session" | "admin-session" | "detector";
 type Visibility = "all" | "admin";
 
@@ -232,7 +232,10 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       },
       note: "token request submitted. admin approval is required before the token can be revealed"
     },
-    notes: ["Claimed token expiry is always fixed to one year from claim time."]
+    notes: [
+      "Claimed token expiry is always fixed to one year from claim time.",
+      "Each member can keep at most 3 non-revoked pending/approved token requests."
+    ]
   },
   {
     method: "POST",
@@ -286,7 +289,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         {
           id: "uuid",
           requester_nickname: "곡소리봇",
-          requester_email: "go***@gm***",
+          requester_email: "goksorrybot@gmail.com",
           name: "tradingbot-main",
           approval_status: "pending",
           token_claimed: false
@@ -316,6 +319,90 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       token_id: "uuid",
       decision: "approve"
     }
+  },
+  {
+    method: "DELETE",
+    path: "/api/admin/tokens/{id}",
+    section: "Admin",
+    summary: "Force delete a member token or pending token request.",
+    auth: "admin-session",
+    visibility: "admin",
+    pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
+    headers: browserHeaders,
+    responseExample: {
+      status: "ok",
+      token_id: "uuid",
+      deleted: true
+    },
+    notes: ["Admin-owned tokens are protected from force deletion in this screen."]
+  },
+  {
+    method: "GET",
+    path: "/api/admin/members",
+    section: "Admin",
+    summary: "List members with email, nickname, and token inventory.",
+    auth: "admin-session",
+    visibility: "admin",
+    responseExample: {
+      status: "ok",
+      members: [
+        {
+          id: "uuid",
+          email: "member@example.com",
+          nickname: "개미123",
+          role: "user",
+          active_token_count: 1,
+          total_token_count: 2,
+          tokens: [
+            {
+              id: "uuid",
+              name: "tradingbot-main",
+              approval_status: "approved",
+              token_prefix: "gkst_123456789ab"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    method: "PATCH",
+    path: "/api/admin/members/{id}",
+    section: "Admin",
+    summary: "Force change a member nickname.",
+    auth: "admin-session",
+    visibility: "admin",
+    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
+    headers: [{ name: "Content-Type", required: true, description: "application/json" }, ...browserHeaders],
+    requestBody: {
+      contentType: "application/json",
+      example: {
+        nickname: "새닉네임"
+      }
+    },
+    responseExample: {
+      status: "ok",
+      member: {
+        id: "uuid",
+        nickname: "새닉네임"
+      }
+    }
+  },
+  {
+    method: "DELETE",
+    path: "/api/admin/members/{id}",
+    section: "Admin",
+    summary: "Force withdraw a member account.",
+    auth: "admin-session",
+    visibility: "admin",
+    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
+    headers: browserHeaders,
+    responseExample: {
+      status: "ok",
+      member_id: "uuid",
+      withdrawn: true
+    },
+    notes: ["Profile, community content, votes, reports, and API tokens are removed together."]
   },
   {
     method: "POST",

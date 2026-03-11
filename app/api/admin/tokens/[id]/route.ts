@@ -113,3 +113,69 @@ export async function POST(request: Request, { params }: { params: { id: string 
     decision
   });
 }
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const requestId = getRequestId(request);
+  const sameOriginError = requireSameOriginMutation(request, requestId);
+  if (sameOriginError) {
+    return sameOriginError;
+  }
+
+  const user = await getUserFromAuthorization(request);
+  if (!user) {
+    return jsonMessage(requestId, 401, "Unauthorized");
+  }
+
+  const role = user.role;
+  if (role !== "admin" && !isAdminEmail(user.email)) {
+    return jsonMessage(requestId, 403, "Forbidden");
+  }
+
+  const id = String(params.id ?? "").trim();
+  if (!UUID_PATTERN.test(id)) {
+    return jsonMessage(requestId, 400, "잘못된 토큰 ID입니다.");
+  }
+
+  const service = getServiceSupabaseClient();
+  const { data, error } = await service
+    .from("api_access_tokens")
+    .select("id,user_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    logApiError("admin token delete lookup failed", requestId, error);
+    return jsonMessage(requestId, 500, "토큰 정보를 불러오지 못했습니다.");
+  }
+
+  if (!data) {
+    return jsonMessage(requestId, 404, "토큰을 찾지 못했습니다.");
+  }
+
+  const { data: owner, error: ownerError } = await service
+    .from("profiles")
+    .select("role")
+    .eq("id", String(data.user_id))
+    .maybeSingle();
+
+  if (ownerError) {
+    logApiError("admin token delete owner lookup failed", requestId, ownerError);
+    return jsonMessage(requestId, 500, "토큰 소유자 정보를 불러오지 못했습니다.");
+  }
+
+  if (owner?.role === "admin") {
+    return jsonMessage(requestId, 403, "관리자 계정 토큰은 이 화면에서 강제 삭제할 수 없습니다.");
+  }
+
+  const { error: deleteError } = await service.from("api_access_tokens").delete().eq("id", id);
+  if (deleteError) {
+    logApiError("admin token delete failed", requestId, deleteError);
+    return jsonMessage(requestId, 500, "토큰 삭제에 실패했습니다.");
+  }
+
+  return jsonNoStore({
+    status: "ok",
+    token_id: id,
+    deleted: true
+  });
+}

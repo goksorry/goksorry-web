@@ -3,26 +3,6 @@ import { getRequestId, jsonMessage, logApiError } from "@/lib/api-auth";
 import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
-const maskEmail = (value: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = value.trim();
-  const atIndex = normalized.indexOf("@");
-  if (atIndex <= 0 || atIndex === normalized.length - 1) {
-    return null;
-  }
-
-  const local = normalized.slice(0, atIndex);
-  const domain = normalized.slice(atIndex + 1);
-  const visibleLocal = local.slice(0, Math.min(2, local.length));
-  const visibleDomain = domain.slice(0, Math.min(2, domain.length));
-  return `${visibleLocal}${"*".repeat(Math.max(1, local.length - visibleLocal.length))}@${visibleDomain}${"*".repeat(
-    Math.max(1, domain.length - visibleDomain.length)
-  )}`;
-};
-
 const parseStatus = (value: string | null): "pending" | "approved" | "rejected" | "all" => {
   const normalized = String(value ?? "pending").trim().toLowerCase();
   if (normalized === "approved" || normalized === "rejected" || normalized === "all") {
@@ -101,7 +81,7 @@ export async function GET(request: Request) {
       id: String(token.id),
       requester_id: String(token.user_id),
       requester_nickname: requester?.nickname ?? null,
-      requester_email: maskEmail(requester?.email ?? null),
+      requester_email: requester?.email ?? null,
       name: String(token.name ?? ""),
       token_prefix: token.token_prefix ? String(token.token_prefix) : null,
       scope: String(token.scope ?? "tradingbot.read"),
