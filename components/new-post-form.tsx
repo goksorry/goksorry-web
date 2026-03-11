@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function NewPostForm({ boardSlug }: { boardSlug: string }) {
@@ -36,8 +36,9 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
 
       setTitle("");
       setContent("");
-      router.push(`/community/${boardSlug}/${payload.id}`);
-      router.refresh();
+      startTransition(() => {
+        router.replace(`/community/${boardSlug}/${payload.id}`);
+      });
     } catch (submitError) {
       setError(String(submitError));
     } finally {

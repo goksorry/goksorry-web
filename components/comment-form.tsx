@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function CommentForm({ postId }: { postId: string }) {
+export type CreatedCommentPayload = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_nickname: string | null;
+};
+
+export function CommentForm({
+  postId,
+  onCreated
+}: {
+  postId: string;
+  onCreated?: (comment: CreatedCommentPayload) => void;
+}) {
   const router = useRouter();
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +46,18 @@ export function CommentForm({ postId }: { postId: string }) {
       }
 
       setContent("");
-      router.refresh();
+      if (payload.comment?.id && payload.comment?.content && payload.comment?.created_at) {
+        onCreated?.({
+          id: String(payload.comment.id),
+          content: String(payload.comment.content),
+          created_at: String(payload.comment.created_at),
+          author_nickname:
+            typeof payload.comment.author_nickname === "string" ? payload.comment.author_nickname : null
+        });
+      }
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (submitError) {
       setError(String(submitError));
     } finally {

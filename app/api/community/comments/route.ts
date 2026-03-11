@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       author_id: user.id,
       content
     })
-    .select("id")
+    .select("id,content,created_at")
     .single();
 
   if (error || !data) {
@@ -91,5 +91,13 @@ export async function POST(request: Request) {
     revalidatePath(`/community/${board.slug}/${postId}`);
   }
 
-  return NextResponse.json({ id: data.id });
+  return NextResponse.json({
+    id: data.id,
+    comment: {
+      id: data.id,
+      content: data.content,
+      created_at: data.created_at,
+      author_nickname: user.nickname
+    }
+  });
 }
