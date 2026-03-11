@@ -66,10 +66,10 @@ export function CleanFilterToggle() {
 
   return (
     <>
-      <div className="clean-filter-toggle-group">
+      <div className={`clean-filter-toggle-group${cleanFilterEnabled ? " clean-filter-toggle-group-active" : ""}`}>
         <button
           type="button"
-          className={`clean-filter-toggle${cleanFilterEnabled ? " clean-filter-toggle-active" : ""}`}
+          className="clean-filter-toggle"
           onClick={onToggle}
           aria-pressed={cleanFilterEnabled}
           aria-busy={isApplying || isPending}
@@ -77,11 +77,7 @@ export function CleanFilterToggle() {
           title={cleanFilterEnabled ? "클린필터 켜짐" : "클린필터 꺼짐"}
           disabled={isApplying || isPending}
         >
-          <span aria-hidden="true" className="clean-filter-toggle-emoji">
-            🧼
-          </span>
-          <span className="clean-filter-toggle-label">예쁜말</span>
-          <span className="clean-filter-toggle-state">{cleanFilterEnabled ? "ON" : "OFF"}</span>
+          <span className="clean-filter-toggle-copy">예쁜말{cleanFilterEnabled ? "ON" : "OFF"}</span>
         </button>
         <button
           type="button"
