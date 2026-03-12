@@ -524,7 +524,7 @@ const renderHeaderBlock = (
 
 export const buildRawTextApiDocs = () => {
   const visibleDocs = filterApiDocs(false);
-  const publicAuthModes: AuthMode[] = ["public", "tradingbot", "browser-session"];
+  const publicAuthModes = [...new Set(visibleDocs.map((doc) => doc.auth))];
   const sections = apiSections
     .filter((section) => visibleDocs.some((doc) => doc.section === section))
     .map((section) => ({
