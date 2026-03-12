@@ -5,7 +5,7 @@ type Visibility = "all" | "admin";
 export type ApiEndpointDoc = {
   method: HttpMethod;
   path: string;
-  section: "TradingBot Read" | "Token Lifecycle" | "Admin" | "Internal";
+  section: "트레이딩봇 조회" | "토큰 관리" | "관리자" | "내부";
   summary: string;
   auth: AuthMode;
   visibility?: Visibility;
@@ -21,47 +21,47 @@ export type ApiEndpointDoc = {
 };
 
 const tradingBotHeaders = [
-  { name: "Authorization", required: true, description: "Bearer <approved trading bot token>" },
-  { name: "X-Client-Id", required: true, description: "Must start with trading-bot-" },
-  { name: "X-Request-Id", required: true, description: "Caller-generated UUID" }
+  { name: "Authorization", required: true, description: "Bearer <승인된 트레이딩봇 토큰>" },
+  { name: "X-Client-Id", required: true, description: "`trading-bot-`로 시작해야 합니다." },
+  { name: "X-Request-Id", required: true, description: "호출 측에서 만든 UUID" }
 ] satisfies ApiEndpointDoc["headers"];
 
-const browserHeaders = [{ name: "Origin", required: true, description: "Same-origin browser request only" }] satisfies ApiEndpointDoc["headers"];
+const browserHeaders = [{ name: "Origin", required: true, description: "같은 출처 브라우저 요청만 허용" }] satisfies ApiEndpointDoc["headers"];
 
-export const apiSections = ["TradingBot Read", "Token Lifecycle", "Admin", "Internal"] as const;
+export const apiSections = ["트레이딩봇 조회", "토큰 관리", "관리자", "내부"] as const;
 
 export const authModeDescriptions: Record<AuthMode, string> = {
-  public: "No authentication required",
-  tradingbot: "Approved TradingBot bearer token + X-Client-Id + X-Request-Id",
-  "browser-session": "Logged-in browser session with same-origin request",
-  "admin-session": "Admin browser session",
-  detector: "Internal detector bearer token"
+  public: "인증 없이 호출할 수 있습니다.",
+  tradingbot: "승인된 트레이딩봇 Bearer 토큰과 `X-Client-Id`, `X-Request-Id`가 필요합니다.",
+  "browser-session": "로그인된 브라우저 세션과 같은 출처 요청이 필요합니다.",
+  "admin-session": "관리자 브라우저 세션이 필요합니다.",
+  detector: "내부 detector Bearer 토큰이 필요합니다."
 };
 
 export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "GET",
     path: "/api/v1/health",
-    section: "TradingBot Read",
-    summary: "Service health and deployed version.",
+    section: "트레이딩봇 조회",
+    summary: "서비스 상태와 배포 버전을 확인합니다.",
     auth: "public",
     responseExample: {
       status: "ok",
       time: "2026-03-11T10:00:00.000Z",
       version: "1.0.0"
     },
-    notes: ["No authentication required."]
+    notes: ["인증 없이 호출할 수 있습니다."]
   },
   {
     method: "GET",
     path: "/api/v1/signals/latest",
-    section: "TradingBot Read",
-    summary: "Latest community-derived symbol signals for KR/US markets.",
+    section: "트레이딩봇 조회",
+    summary: "한국·미국 시장의 최신 커뮤니티 기반 종목 신호를 조회합니다.",
     auth: "tradingbot",
     query: [
-      { name: "market", type: "kr|us|all", description: "Market filter. Default: all" },
-      { name: "symbols", type: "csv", description: "Optional symbol CSV. Max 100 symbols" },
-      { name: "max_age_sec", type: "integer", description: "Freshness threshold. Default: 1800, max: 86400" }
+      { name: "market", type: "kr|us|all", description: "시장 필터입니다. 기본값은 `all`입니다." },
+      { name: "symbols", type: "csv", description: "선택적 종목 CSV 목록입니다. 최대 100개까지 가능합니다." },
+      { name: "max_age_sec", type: "integer", description: "신호 신선도 기준(초)입니다. 기본값은 1800, 최대값은 86400입니다." }
     ],
     headers: tradingBotHeaders,
     responseExample: {
@@ -89,17 +89,17 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       ttl_sec: 60
     },
     notes: [
-      "This API exposes community-derived signals only.",
-      "Official prices, indexes, and macro series are expected to be fetched separately by the bot."
+      "이 API는 커뮤니티에서 파생된 신호만 제공합니다.",
+      "공식 시세, 지수, 거시 지표 원데이터는 봇이 별도로 수집해야 합니다."
     ]
   },
   {
     method: "GET",
     path: "/api/v1/signals/{symbol}",
-    section: "TradingBot Read",
-    summary: "Latest signal snapshot for a single symbol.",
+    section: "트레이딩봇 조회",
+    summary: "특정 종목 하나의 최신 신호 스냅샷을 조회합니다.",
     auth: "tradingbot",
-    pathParams: [{ name: "symbol", type: "string", description: "Ticker or symbol, up to 20 chars" }],
+    pathParams: [{ name: "symbol", type: "string", description: "티커 또는 종목 코드입니다. 최대 20자입니다." }],
     headers: tradingBotHeaders,
     responseExample: {
       symbol: "AAPL",
@@ -128,10 +128,10 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "GET",
     path: "/api/v1/market/latest",
-    section: "TradingBot Read",
-    summary: "Latest market-level community regime and fear index.",
+    section: "트레이딩봇 조회",
+    summary: "시장 단위의 최신 커뮤니티 레짐과 공포 지수를 조회합니다.",
     auth: "tradingbot",
-    query: [{ name: "market", type: "kr|us|all", description: "Market filter. Default: all" }],
+    query: [{ name: "market", type: "kr|us|all", description: "시장 필터입니다. 기본값은 `all`입니다." }],
     headers: tradingBotHeaders,
     responseExample: {
       status: "ok",
@@ -150,13 +150,13 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       ],
       ttl_sec: 60
     },
-    notes: ["Regime and fear index are derived from community activity, not official exchange indices."]
+    notes: ["레짐과 공포 지수는 공식 거래소 지표가 아니라 커뮤니티 활동에서 파생된 값입니다."]
   },
   {
     method: "GET",
     path: "/api/v1/status",
-    section: "TradingBot Read",
-    summary: "Detector pipeline health for bot-side safety checks.",
+    section: "트레이딩봇 조회",
+    summary: "봇 측 안전 점검을 위한 detector 파이프라인 상태를 조회합니다.",
     auth: "tradingbot",
     headers: tradingBotHeaders,
     responseExample: {
@@ -180,8 +180,8 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "GET",
     path: "/api/v1/tokens",
-    section: "Token Lifecycle",
-    summary: "List your token requests and claimed tokens.",
+    section: "토큰 관리",
+    summary: "내 토큰 요청 내역과 발급 완료된 토큰을 조회합니다.",
     auth: "browser-session",
     headers: browserHeaders,
     responseExample: {
@@ -206,15 +206,15 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         }
       ]
     },
-    notes: ["Login required.", "Same-origin browser request required."]
+    notes: ["로그인이 필요합니다.", "같은 출처 브라우저 요청만 허용됩니다."]
   },
   {
     method: "POST",
     path: "/api/v1/tokens",
-    section: "Token Lifecycle",
-    summary: "Submit a new token request. Admin approval is required.",
+    section: "토큰 관리",
+    summary: "새 토큰 발급 요청을 등록합니다. 관리자 승인이 필요합니다.",
     auth: "browser-session",
-    headers: [{ name: "Content-Type", required: true, description: "application/json" }, ...browserHeaders],
+    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
     requestBody: {
       contentType: "application/json",
       example: {
@@ -233,17 +233,17 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       note: "token request submitted. admin approval is required before the token can be revealed"
     },
     notes: [
-      "Claimed token expiry is always fixed to one year from claim time.",
-      "Each member can keep at most 3 non-revoked pending/approved token requests."
+      "토큰을 실제로 확인한 시점부터 만료일은 항상 1년 뒤로 고정됩니다.",
+      "회원 1명당 폐기되지 않은 `pending` 또는 `approved` 상태 요청은 최대 3개까지 유지할 수 있습니다."
     ]
   },
   {
     method: "POST",
     path: "/api/v1/tokens/{id}/claim",
-    section: "Token Lifecycle",
-    summary: "Reveal the approved token value once.",
+    section: "토큰 관리",
+    summary: "승인된 토큰의 실제 값을 1회 확인합니다.",
     auth: "browser-session",
-    pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
+    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
     headers: browserHeaders,
     responseExample: {
       status: "ok",
@@ -258,15 +258,15 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       },
       note: "token value is shown only once"
     },
-    notes: ["Only approved and unclaimed requests can be claimed."]
+    notes: ["승인되었고 아직 실제 값을 확인하지 않은 요청만 claim할 수 있습니다."]
   },
   {
     method: "POST",
     path: "/api/v1/tokens/{id}/revoke",
-    section: "Token Lifecycle",
-    summary: "Revoke an existing token or cancel a pending request.",
+    section: "토큰 관리",
+    summary: "기존 토큰을 폐기하거나 대기 중인 요청을 취소합니다.",
     auth: "browser-session",
-    pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
+    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
     headers: browserHeaders,
     responseExample: {
       status: "ok",
@@ -277,11 +277,11 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "GET",
     path: "/api/admin/tokens",
-    section: "Admin",
-    summary: "List token requests for admin approval.",
+    section: "관리자",
+    summary: "관리자 승인 대상 토큰 요청 목록을 조회합니다.",
     auth: "admin-session",
     visibility: "admin",
-    query: [{ name: "status", type: "pending|approved|rejected|all", description: "Filter. Default: pending" }],
+    query: [{ name: "status", type: "pending|approved|rejected|all", description: "상태 필터입니다. 기본값은 `pending`입니다." }],
     responseExample: {
       status: "ok",
       filter: "pending",
@@ -296,17 +296,17 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         }
       ]
     },
-    notes: ["Admin session required."]
+    notes: ["관리자 세션이 필요합니다."]
   },
   {
     method: "POST",
     path: "/api/admin/tokens/{id}",
-    section: "Admin",
-    summary: "Approve or reject a pending token request.",
+    section: "관리자",
+    summary: "대기 중인 토큰 요청을 승인하거나 거절합니다.",
     auth: "admin-session",
     visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
-    headers: [{ name: "Content-Type", required: true, description: "application/json" }, ...browserHeaders],
+    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
+    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
     requestBody: {
       contentType: "application/json",
       example: {
@@ -323,30 +323,30 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "DELETE",
     path: "/api/admin/tokens/{id}",
-    section: "Admin",
-    summary: "Force delete a member token or pending token request.",
+    section: "관리자",
+    summary: "회원 토큰 또는 대기 중인 토큰 요청을 강제로 삭제합니다.",
     auth: "admin-session",
     visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "Token request id" }],
+    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
     headers: browserHeaders,
     responseExample: {
       status: "ok",
       token_id: "uuid",
       deleted: true
     },
-    notes: ["Admin-owned tokens are protected from force deletion in this screen."]
+    notes: ["이 화면에서는 관리자 본인 소유 토큰은 강제 삭제하지 못하게 보호됩니다."]
   },
   {
     method: "GET",
     path: "/api/admin/members",
-    section: "Admin",
-    summary: "List members with pagination and email/nickname search.",
+    section: "관리자",
+    summary: "페이징과 이메일·닉네임 검색 조건으로 회원 목록을 조회합니다.",
     auth: "admin-session",
     visibility: "admin",
     query: [
-      { name: "page", type: "integer", description: "Page number. Default: 1" },
-      { name: "page_size", type: "integer", description: "Rows per page. Default: 20, max: 100" },
-      { name: "q", type: "string", description: "Email or nickname search" }
+      { name: "page", type: "integer", description: "페이지 번호입니다. 기본값은 1입니다." },
+      { name: "page_size", type: "integer", description: "페이지당 행 수입니다. 기본값은 20, 최대값은 100입니다." },
+      { name: "q", type: "string", description: "이메일 또는 닉네임 검색어입니다." }
     ],
     responseExample: {
       status: "ok",
@@ -370,16 +370,16 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         has_next: true
       }
     },
-    notes: ["Use this list API for the admin member table. Token inventory is fetched from the member detail endpoint."]
+    notes: ["관리자 회원 목록 테이블에는 이 API를 사용하고, 토큰 상세 목록은 회원 상세 API에서 조회합니다."]
   },
   {
     method: "GET",
     path: "/api/admin/members/{id}",
-    section: "Admin",
-    summary: "Load one member detail with token inventory.",
+    section: "관리자",
+    summary: "토큰 보유 현황을 포함한 회원 상세 1건을 조회합니다.",
     auth: "admin-session",
     visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
+    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
     responseExample: {
       status: "ok",
       member: {
@@ -418,12 +418,12 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "PATCH",
     path: "/api/admin/members/{id}",
-    section: "Admin",
-    summary: "Force change a member nickname.",
+    section: "관리자",
+    summary: "회원 닉네임을 강제로 변경합니다.",
     auth: "admin-session",
     visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
-    headers: [{ name: "Content-Type", required: true, description: "application/json" }, ...browserHeaders],
+    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
+    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
     requestBody: {
       contentType: "application/json",
       example: {
@@ -441,24 +441,24 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "DELETE",
     path: "/api/admin/members/{id}",
-    section: "Admin",
-    summary: "Force withdraw a member account.",
+    section: "관리자",
+    summary: "회원 계정을 강제로 탈퇴 처리합니다.",
     auth: "admin-session",
     visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "Member profile id" }],
+    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
     headers: browserHeaders,
     responseExample: {
       status: "ok",
       member_id: "uuid",
       withdrawn: true
     },
-    notes: ["Profile, community content, votes, reports, and API tokens are removed together."]
+    notes: ["프로필, 커뮤니티 글/댓글, 투표, 신고, API 토큰이 함께 정리됩니다."]
   },
   {
     method: "POST",
     path: "/api/v1/detector/register",
-    section: "Internal",
-    summary: "Internal detector snapshot upsert endpoint.",
+    section: "내부",
+    summary: "내부 detector 스냅샷을 upsert하는 엔드포인트입니다.",
     auth: "detector",
     visibility: "admin",
     headers: [{ name: "Authorization", required: true, description: "Bearer <DETECTOR_WRITE_TOKEN>" }],
@@ -477,7 +477,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       upserted_market_state: 2,
       status_updated: true
     },
-    notes: ["Internal worker-to-web API. Not intended for public clients."]
+    notes: ["내부 worker가 web으로 데이터를 적재할 때 쓰는 API이며, 공개 클라이언트용이 아닙니다."]
   }
 ];
 
@@ -487,6 +487,99 @@ export const filterApiDocs = (isAdmin: boolean): ApiEndpointDoc[] => {
 
 export const buildOpenApiSpec = () => {
   return buildOpenApiSpecForRole(false);
+};
+
+const buildPlainTextSection = (title: string, lines: string[]) => {
+  return [`[${title}]`, ...lines, ""].join("\n");
+};
+
+const renderParamBlock = (
+  label: string,
+  params: Array<{ name: string; type: string; description: string }> | undefined
+) => {
+  if (!params?.length) {
+    return [];
+  }
+
+  return [label, ...params.map((param) => `- ${param.name} (${param.type}): ${param.description}`)];
+};
+
+const renderHeaderBlock = (
+  headers: Array<{ name: string; required?: boolean; description: string }> | undefined
+) => {
+  if (!headers?.length) {
+    return [];
+  }
+
+  return [
+    "헤더",
+    ...headers.map((header) => `- ${header.name}${header.required ? " [필수]" : ""}: ${header.description}`)
+  ];
+};
+
+export const buildRawTextApiDocs = () => {
+  const visibleDocs = filterApiDocs(false);
+  const publicAuthModes: AuthMode[] = ["public", "tradingbot", "browser-session"];
+  const sections = apiSections
+    .filter((section) => visibleDocs.some((doc) => doc.section === section))
+    .map((section) => ({
+      section,
+      items: visibleDocs.filter((doc) => doc.section === section)
+    }));
+
+  const blocks: string[] = [
+    "곡소리닷컴 API 텍스트 문서",
+    "",
+    "이 문서는 일반 사용자에게 열려 있는 API만 포함합니다.",
+    "관리자 전용 API와 내부 detector API는 포함하지 않습니다.",
+    "",
+    buildPlainTextSection(
+      "인증 방식",
+      publicAuthModes.map((mode) => `- ${mode}: ${authModeDescriptions[mode]}`)
+    )
+  ];
+
+  for (const { section, items } of sections) {
+    const sectionLines: string[] = [];
+
+    for (const endpoint of items) {
+      sectionLines.push(`${endpoint.method} ${endpoint.path}`);
+      sectionLines.push(`요약: ${endpoint.summary}`);
+      sectionLines.push(`인증: ${endpoint.auth} - ${authModeDescriptions[endpoint.auth]}`);
+
+      const pathParams = renderParamBlock("경로 파라미터", endpoint.pathParams);
+      const queryParams = renderParamBlock("쿼리", endpoint.query);
+      const headers = renderHeaderBlock(endpoint.headers);
+      if (pathParams.length) {
+        sectionLines.push(...pathParams);
+      }
+      if (queryParams.length) {
+        sectionLines.push(...queryParams);
+      }
+      if (headers.length) {
+        sectionLines.push(...headers);
+      }
+
+      if (endpoint.requestBody) {
+        sectionLines.push(`요청 본문 예시 (${endpoint.requestBody.contentType})`);
+        sectionLines.push(JSON.stringify(endpoint.requestBody.example, null, 2));
+      }
+
+      sectionLines.push("응답 예시");
+      sectionLines.push(JSON.stringify(endpoint.responseExample, null, 2));
+
+      if (endpoint.notes?.length) {
+        sectionLines.push("비고");
+        sectionLines.push(...endpoint.notes.map((note) => `- ${note}`));
+      }
+
+      sectionLines.push("");
+    }
+
+    blocks.push(buildPlainTextSection(section, sectionLines));
+  }
+
+  return blocks.join("\n").trimEnd() + "\n";
 };
 
 export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
@@ -552,10 +645,10 @@ export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
   return {
     openapi: "3.1.0",
     info: {
-      title: "goksorry API",
+      title: "곡소리닷컴 API",
       version: "1.0.0",
       description:
-        "Community-derived stock and macro sentiment API for TradingBot integrations. Official market prices and indices are fetched separately by the bot."
+        "트레이딩봇 연동을 위한 곡소리닷컴 커뮤니티 기반 주식·거시 심리 API입니다. 공식 시세와 지수 원데이터는 봇이 별도로 수집해야 합니다."
     },
     servers: [{ url: "https://goksorry.com" }],
     tags: [...new Set(visibleDocs.map((doc) => doc.section))].map((name) => ({ name })),
