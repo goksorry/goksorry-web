@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type { Session } from "next-auth";
@@ -45,8 +46,17 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
 
   if (!authenticated) {
     return (
-      <button type="button" className="btn header-auth-button" onClick={() => void handleSignIn()} disabled={loading}>
-        {loading ? "로그인 중..." : "구글계정으로 로그인"}
+      <button
+        type="button"
+        className="btn header-auth-button header-login-button"
+        onClick={() => void handleSignIn()}
+        disabled={loading}
+        aria-label={loading ? "구글 로그인 중" : "구글 로그인"}
+      >
+        <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
+        <span className="header-auth-emoji" aria-hidden="true">
+          🔑
+        </span>
       </button>
     );
   }
@@ -61,11 +71,14 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
       </Link>
       <button
         type="button"
-        className="btn-secondary header-auth-button"
+        className="header-auth-signout"
         onClick={() => void handleSignOut()}
         disabled={loading}
+        aria-label="로그아웃"
       >
-        로그아웃
+        <span className="header-auth-emoji" aria-hidden="true">
+          🚪
+        </span>
       </button>
     </div>
   );

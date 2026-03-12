@@ -64,7 +64,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <CleanFilterToggle />
                 </div>
                 <div className="header-profile">
-                  <Suspense fallback={<button type="button" className="btn header-auth-button" disabled>구글계정으로 로그인</button>}>
+                  <Suspense
+                    fallback={
+                      <button
+                        type="button"
+                        className="btn header-auth-button header-login-button"
+                        disabled
+                        aria-label="구글 로그인 준비 중"
+                      >
+                        <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
+                        <span className="header-auth-emoji" aria-hidden="true">
+                          🔑
+                        </span>
+                      </button>
+                    }
+                  >
                     <AuthControls initialSession={session} />
                   </Suspense>
                 </div>
