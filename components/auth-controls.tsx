@@ -55,7 +55,7 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
       >
         <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
         <span className="header-auth-emoji" aria-hidden="true">
-          🔑
+          🔐
         </span>
       </button>
     );
