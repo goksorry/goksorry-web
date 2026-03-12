@@ -17,11 +17,20 @@ import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getAdsenseAccount } from "@/lib/adsense";
 import { authOptions } from "@/lib/auth";
+
+const adsenseAccount = getAdsenseAccount();
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
-  description: "외부 종목 커뮤니티 감성 피드와 커뮤니티"
+  description: "외부 종목 커뮤니티 감성 피드와 커뮤니티",
+  metadataBase: new URL("https://goksorry.com"),
+  other: adsenseAccount
+    ? {
+        "google-adsense-account": adsenseAccount
+      }
+    : undefined
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
