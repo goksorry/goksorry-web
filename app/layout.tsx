@@ -71,6 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         className="btn header-auth-button header-login-button"
                         disabled
                         aria-label="구글 로그인 준비 중"
+                        title="구글계정으로 로그인"
                       >
                         <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
                         <span className="header-auth-emoji" aria-hidden="true">

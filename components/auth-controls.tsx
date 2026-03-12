@@ -52,6 +52,7 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
         onClick={() => void handleSignIn()}
         disabled={loading}
         aria-label={loading ? "구글 로그인 중" : "구글 로그인"}
+        title={loading ? "구글계정으로 로그인 중" : "구글계정으로 로그인"}
       >
         <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
         <span className="header-auth-emoji" aria-hidden="true">
@@ -75,6 +76,7 @@ export function AuthControls({ initialSession }: { initialSession: Session | nul
         onClick={() => void handleSignOut()}
         disabled={loading}
         aria-label="로그아웃"
+        title="로그아웃"
       >
         <span className="header-auth-emoji" aria-hidden="true">
           🚪
