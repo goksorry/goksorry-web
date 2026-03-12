@@ -17,6 +17,7 @@ export default async function DocsPage() {
   const user = await getUserFromAuthorization();
   const isAdmin = Boolean(user && (user.role === "admin" || isAdminEmail(user.email)));
   const visibleDocs = filterApiDocs(isAdmin);
+  const visibleAuthModes = new Set(visibleDocs.map((doc) => doc.auth));
   const visibleSections = apiSections.filter((section) => visibleDocs.some((item) => item.section === section));
   const endpointGroups = visibleSections.map((section) => ({
     section,
@@ -31,6 +32,9 @@ export default async function DocsPage() {
           <h1>곡소리닷컴 API 문서</h1>
           <p className="muted">
             이 API는 공식 시세 제공 서비스가 아니라, 곡소리닷컴의 커뮤니티 기반 주식/거시 체감 지수를 TradingBot에 전달하는 용도입니다.
+          </p>
+          <p className="muted">
+            트레이딩봇 토큰 요청, 승인 후 확인, 폐기는 API로 직접 호출하지 말고 `내 프로필` 화면에서 브라우저로 처리하세요.
           </p>
         </div>
         <div className="actions">
@@ -71,7 +75,7 @@ export default async function DocsPage() {
           <h2>인증 방식</h2>
           <div className="list">
             {Object.entries(authModeDescriptions).map(([key, value]) => (
-              isAdmin || (key !== "admin-session" && key !== "detector") ? (
+              visibleAuthModes.has(key as keyof typeof authModeDescriptions) ? (
                 <p key={key}>
                   <span className="tag">{key}</span> {value}
                 </p>

@@ -482,7 +482,12 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
 ];
 
 export const filterApiDocs = (isAdmin: boolean): ApiEndpointDoc[] => {
-  return apiEndpointDocs.filter((doc) => isAdmin || doc.visibility !== "admin");
+  return apiEndpointDocs.filter((doc) => {
+    if (doc.section === "토큰 관리") {
+      return false;
+    }
+    return isAdmin || doc.visibility !== "admin";
+  });
 };
 
 export const buildOpenApiSpec = () => {
@@ -531,6 +536,7 @@ export const buildRawTextApiDocs = () => {
     "곡소리닷컴 API 텍스트 문서",
     "",
     "이 문서는 일반 사용자에게 열려 있는 API만 포함합니다.",
+    "트레이딩봇 토큰 요청, 승인 후 확인, 폐기는 API로 안내하지 않으며 브라우저의 `/profile` 화면에서 처리합니다.",
     "관리자 전용 API와 내부 detector API는 포함하지 않습니다.",
     "",
     buildPlainTextSection(
