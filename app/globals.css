@@ -413,6 +413,25 @@ a:hover {
   color: var(--ink-soft);
 }
 
+.site-footer-link-button,
+.legal-action-link {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 0;
+  border-radius: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  cursor: pointer;
+}
+
+.legal-action-link {
+  font-size: 0.92rem;
+}
+
 .legal-page h2 {
   margin-top: 1.2rem;
   margin-bottom: 0.4rem;

@@ -17,10 +17,11 @@ import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getAdsenseAccount } from "@/lib/adsense";
+import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
 import { authOptions } from "@/lib/auth";
 
 const adsenseAccount = getAdsenseAccount();
+const adsenseScriptSrc = getAdsenseScriptSrc();
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
@@ -40,6 +41,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="ko" suppressHydrationWarning>
       <body>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
+        {adsenseAccount ? (
+          <Script id="googlefc-init" strategy="beforeInteractive">
+            {`window.googlefc = window.googlefc || {}; window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];`}
+          </Script>
+        ) : null}
+        {adsenseScriptSrc ? (
+          <Script
+            id="google-adsense"
+            async
+            strategy="afterInteractive"
+            src={adsenseScriptSrc}
+            crossOrigin="anonymous"
+          />
+        ) : null}
         <AuthSessionProvider session={session}>
           <CleanFilterProvider>
             <FeedSelectionProvider>

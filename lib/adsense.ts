@@ -28,3 +28,12 @@ export const getAdsenseAdsTxt = (): string | null => {
 
   return `google.com, ${publisherId}, DIRECT, ${GOOGLE_ADSENSE_SELLER_ID}`;
 };
+
+export const getAdsenseScriptSrc = (): string | null => {
+  const account = getAdsenseAccount();
+  if (!account) {
+    return null;
+  }
+
+  return `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${account}`;
+};

@@ -1,3 +1,5 @@
+import { ConsentSettingsLink } from "@/components/consent-settings-link";
+
 export default function PrivacyPage() {
   return (
     <section className="panel legal-page">
@@ -47,6 +49,10 @@ export default function PrivacyPage() {
       <p>
         곡소리닷컴은 로그인 유지, 예쁜말 필터, 테마 설정 등 서비스 제공을 위해 쿠키 및 브라우저 저장소를 사용할 수 있습니다.
       </p>
+      <p>
+        광고가 활성화되는 경우 유럽 경제 지역(EEA), 영국, 스위스 방문자에게는 Google 인증 동의 관리 플랫폼(CMP)을 통한
+        개인정보 및 쿠키 동의 안내가 표시될 수 있습니다.
+      </p>
 
       <h2>7. 외부 로그인</h2>
       <p>
@@ -54,13 +60,21 @@ export default function PrivacyPage() {
         필요한 최소 범위만 저장·이용합니다.
       </p>
 
-      <h2>8. 방침 변경</h2>
+      <h2>8. 광고 동의 설정 변경</h2>
+      <p>
+        광고 개인정보 및 쿠키 설정은 아래 버튼을 통해 다시 열어 변경할 수 있습니다.
+      </p>
+      <p>
+        <ConsentSettingsLink className="legal-action-link" />
+      </p>
+
+      <h2>9. 방침 변경</h2>
       <p>
         본 방침은 서비스 변경, 법령 변경, 운영 정책 변경에 따라 수정될 수 있습니다. 중요한 변경이 있는 경우 서비스 내에서
         공지합니다.
       </p>
 
-      <h2>9. 문의처</h2>
+      <h2>10. 문의처</h2>
       <p>
         개인정보 관련 문의는 <a href="mailto:admin@goksorry.com">admin@goksorry.com</a> 으로 연락할 수 있습니다.
       </p>
