@@ -147,10 +147,29 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
 
   return (
     <>
+      <section className="overview-market-block">
+        <div className="overview-section-head">
+          <h3>시장</h3>
+          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름</p>
+        </div>
+        <div className="overview-market-row">
+          {marketOverview.market_indicators.map((indicator) => (
+            <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
+              <p className="overview-label">{indicator.label}</p>
+              <div className="overview-market-main">
+                <strong className="overview-value">{indicator.value_text}</strong>
+                <p className="overview-delta">{indicator.delta_text}</p>
+              </div>
+              <p className="overview-note">{indicator.note}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="overview-panel">
         <div className="overview-heading">
           <div className="overview-heading-copy">
-            <p className="overview-kicker">시장 · 커뮤니티 체감</p>
+            <p className="overview-kicker">커뮤니티 체감</p>
             <h2>실시간 체감 지수</h2>
             <p className="overview-timestamp">
               {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
@@ -167,25 +186,6 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
         </div>
 
         {error ? <p className="error">커뮤니티 지수 로드 실패: {error}</p> : null}
-
-        <section className="overview-section">
-          <div className="overview-section-head">
-            <h3>시장</h3>
-            <p className="overview-section-copy">주요 지수와 환율의 최근 흐름</p>
-          </div>
-          <div className="overview-market-row">
-            {marketOverview.market_indicators.map((indicator) => (
-              <article key={indicator.id} className={`overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
-                <p className="overview-label">{indicator.label}</p>
-                <div className="overview-market-main">
-                  <strong className="overview-value">{indicator.value_text}</strong>
-                  <p className="overview-delta">{indicator.delta_text}</p>
-                </div>
-                <p className="overview-note">{indicator.note}</p>
-              </article>
-            ))}
-          </div>
-        </section>
 
         <section className="overview-section">
           <div className="overview-section-head">

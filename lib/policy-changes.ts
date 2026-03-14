@@ -29,6 +29,15 @@ const POLICY_PAGE_BY_TYPE = {
   }
 } as const;
 
+const isMissingPolicyChangesTableError = (code: string | null | undefined, message: string): boolean => {
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("Could not find the table 'public.policy_changes'") ||
+    message.includes("schema cache")
+  );
+};
+
 export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
   const supabase = getServiceSupabaseClient();
   const now = new Date().toISOString();
@@ -42,7 +51,7 @@ export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null
     .maybeSingle<PolicyChangeRow>();
 
   if (error) {
-    if (error.code === "42P01") {
+    if (isMissingPolicyChangesTableError(error.code, error.message)) {
       return null;
     }
 
