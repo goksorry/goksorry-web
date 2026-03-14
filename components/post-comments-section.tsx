@@ -10,11 +10,13 @@ type PostComment = CreatedCommentPayload;
 export function PostCommentsSection({
   postId,
   initialComments,
-  errorMessage
+  errorMessage,
+  isSignedIn
 }: {
   postId: string;
   initialComments: PostComment[];
   errorMessage: string | null;
+  isSignedIn: boolean;
 }) {
   const [comments, setComments] = useState(initialComments);
 
@@ -37,13 +39,13 @@ export function PostCommentsSection({
             <p className="muted">
               작성자 {comment.author_nickname ?? "알 수 없음"} · {formatKstDateTime(comment.created_at)}
             </p>
-            <ReportForm targetType="comment" targetId={comment.id} compact />
+            {isSignedIn ? <ReportForm targetType="comment" targetId={comment.id} compact /> : null}
           </article>
         ))}
         {comments.length === 0 ? <p className="muted">아직 댓글이 없습니다.</p> : null}
       </div>
 
-      <CommentForm postId={postId} onCreated={handleCommentCreated} />
+      {isSignedIn ? <CommentForm postId={postId} onCreated={handleCommentCreated} /> : null}
     </>
   );
 }

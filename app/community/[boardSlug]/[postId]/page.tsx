@@ -73,7 +73,7 @@ export default async function PostDetailPage({
               <DeletePostButton postId={post.id} boardSlug={board.slug} />
             </>
           ) : null}
-          <ReportForm targetType="post" targetId={post.id} />
+          {viewer ? <ReportForm targetType="post" targetId={post.id} /> : null}
         </div>
 
         <p>
@@ -87,6 +87,7 @@ export default async function PostDetailPage({
           postId={post.id}
           initialComments={initialComments}
           errorMessage={commentsError?.message ?? null}
+          isSignedIn={Boolean(viewer)}
         />
       </section>
     </>
