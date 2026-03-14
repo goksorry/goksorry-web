@@ -19,7 +19,7 @@ export default async function PostDetailPage({
     getUserFromAuthorization(),
     service
       .from("community_posts")
-      .select("id,title,content,created_at,is_deleted,author_id,profiles(nickname),boards!inner(id,slug,name)")
+      .select("id,title,content,created_at,is_deleted,is_pinned_notice,author_id,profiles(nickname),boards!inner(id,slug,name)")
       .eq("id", params.postId)
       .eq("boards.slug", params.boardSlug)
       .maybeSingle(),
@@ -57,7 +57,10 @@ export default async function PostDetailPage({
   return (
     <>
       <section className="panel">
-        <h1>{post.title}</h1>
+        <h1>
+          {post.title}{" "}
+          {board.slug === "notice" && post.is_pinned_notice ? <span className="tag">상단 고정</span> : null}
+        </h1>
         <p className="muted">
           게시판: /{board.slug} | 작성자: {author?.nickname ?? "알 수 없음"} |{" "}
           {formatKstDateTime(post.created_at)}
