@@ -1,7 +1,7 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { revalidateCommunityPaths } from "@/lib/community-cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const UUID_PATTERN =
@@ -33,7 +33,7 @@ export async function POST(
   const service = getServiceSupabaseClient();
   const { data: post } = await service
     .from("community_posts")
-    .select("id,author_id,is_deleted,board_id,boards(slug)")
+    .select("id,author_id,is_deleted,is_pinned_notice,board_id,boards(slug)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -64,10 +64,12 @@ export async function POST(
   }
 
   const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
-  revalidatePath("/community");
   if (board?.slug) {
-    revalidatePath(`/community/${board.slug}`);
-    revalidatePath(`/community/${board.slug}/${postId}`);
+    await revalidateCommunityPaths(service, {
+      boardSlug: board.slug,
+      postId,
+      includeAllBoards: board.slug === "notice" && Boolean(post.is_pinned_notice)
+    });
   }
 
   return NextResponse.json({ ok: true });

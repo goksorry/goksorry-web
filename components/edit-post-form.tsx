@@ -7,16 +7,21 @@ export function EditPostForm({
   postId,
   boardSlug,
   initialTitle,
-  initialContent
+  initialContent,
+  allowPinNotice = false,
+  initialPinNotice = false
 }: {
   postId: string;
   boardSlug: string;
   initialTitle: string;
   initialContent: string;
+  allowPinNotice?: boolean;
+  initialPinNotice?: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
+  const [pinNotice, setPinNotice] = useState(initialPinNotice);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +38,8 @@ export function EditPostForm({
         },
         body: JSON.stringify({
           title,
-          content
+          content,
+          pin_notice: allowPinNotice ? pinNotice : false
         })
       });
 
@@ -77,6 +83,17 @@ export function EditPostForm({
           required
         />
       </label>
+
+      {allowPinNotice ? (
+        <label className="form-row-checkbox">
+          <input
+            type="checkbox"
+            checked={pinNotice}
+            onChange={(event) => setPinNotice(event.target.checked)}
+          />
+          <span>공지에 걸기</span>
+        </label>
+      ) : null}
 
       {error ? <p className="error">{error}</p> : null}
 

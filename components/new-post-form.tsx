@@ -3,10 +3,17 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function NewPostForm({ boardSlug }: { boardSlug: string }) {
+export function NewPostForm({
+  boardSlug,
+  allowPinNotice = false
+}: {
+  boardSlug: string;
+  allowPinNotice?: boolean;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [pinNotice, setPinNotice] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +31,8 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
         body: JSON.stringify({
           board_slug: boardSlug,
           title,
-          content
+          content,
+          pin_notice: allowPinNotice ? pinNotice : false
         })
       });
 
@@ -71,6 +79,17 @@ export function NewPostForm({ boardSlug }: { boardSlug: string }) {
           required
         />
       </label>
+
+      {allowPinNotice ? (
+        <label className="form-row-checkbox">
+          <input
+            type="checkbox"
+            checked={pinNotice}
+            onChange={(event) => setPinNotice(event.target.checked)}
+          />
+          <span>공지에 걸기</span>
+        </label>
+      ) : null}
 
       {error ? <p className="error">{error}</p> : null}
 

@@ -27,7 +27,7 @@ export default async function EditPostPage({
 
   const { data: post, error: postError } = await service
     .from("community_posts")
-    .select("id,title,content,author_id,is_deleted")
+    .select("id,title,content,author_id,is_deleted,is_pinned_notice")
     .eq("id", params.postId)
     .eq("board_id", board.id)
     .maybeSingle();
@@ -51,6 +51,8 @@ export default async function EditPostPage({
             boardSlug={board.slug}
             initialTitle={post.title}
             initialContent={post.content}
+            allowPinNotice={board.slug === "notice" && viewer.role === "admin"}
+            initialPinNotice={Boolean(post.is_pinned_notice)}
           />
         </>
       ) : (

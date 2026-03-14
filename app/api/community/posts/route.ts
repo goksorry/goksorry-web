@@ -1,7 +1,7 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
+import { revalidateCommunityPaths } from "@/lib/community-cache";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
   checkAccountAge,
@@ -10,6 +10,16 @@ import {
   MIN_ACCOUNT_AGE_MINUTES
 } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+
+const parsePinNotice = (value: unknown): boolean => {
+  if (value === undefined) {
+    return false;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  throw new Error("pin_notice must be boolean");
+};
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
@@ -32,7 +42,7 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 403, `Posting is blocked for new users. Try again in ${ageCheck.waitMinutes} minute(s).`);
   }
 
-  let body: { board_slug?: unknown; title?: unknown; content?: unknown };
+  let body: { board_slug?: unknown; title?: unknown; content?: unknown; pin_notice?: unknown };
   try {
     body = (await request.json()) as { board_slug?: unknown; title?: unknown; content?: unknown };
   } catch {
@@ -42,10 +52,12 @@ export async function POST(request: Request) {
   let boardSlug: string;
   let title: string;
   let content: string;
+  let pinNotice: boolean;
   try {
     boardSlug = sanitizePlainText(body.board_slug, "board_slug", 50).toLowerCase();
     title = sanitizePlainText(body.title, "title", 200);
     content = sanitizePlainText(body.content, "content", 5000);
+    pinNotice = parsePinNotice(body.pin_notice);
   } catch (error) {
     return jsonMessage(requestId, 400, String(error));
   }
@@ -62,13 +74,15 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 403, "공지 작성 권한이 없습니다.");
   }
 
+  const isPinnedNotice = board.slug === "notice" && user.role === "admin" ? pinNotice : false;
   const { data, error } = await service
     .from("community_posts")
     .insert({
       board_id: board.id,
       author_id: user.id,
       title,
-      content
+      content,
+      is_pinned_notice: isPinnedNotice
     })
     .select("id")
     .single();
@@ -78,9 +92,11 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 500, "글을 저장하지 못했습니다.");
   }
 
-  revalidatePath("/community");
-  revalidatePath(`/community/${board.slug}`);
-  revalidatePath(`/community/${board.slug}/${data.id}`);
+  await revalidateCommunityPaths(service, {
+    boardSlug: board.slug,
+    postId: data.id,
+    includeAllBoards: board.slug === "notice" && isPinnedNotice
+  });
 
   return NextResponse.json({ id: data.id });
 }

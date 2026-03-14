@@ -74,6 +74,7 @@ create table if not exists public.community_posts (
   author_id uuid not null references public.profiles(id) on delete cascade,
   title text not null,
   content text not null,
+  is_pinned_notice boolean not null default false,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -123,6 +124,7 @@ create index if not exists symbol_metadata_status_updated_idx on public.symbol_m
 create unique index if not exists profiles_nickname_unique_ci_idx on public.profiles(lower(nickname));
 create index if not exists withdrawn_accounts_withdrawn_at_idx on public.withdrawn_accounts(withdrawn_at desc);
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
+create index if not exists community_posts_notice_pin_idx on public.community_posts(board_id, is_pinned_notice, created_at desc);
 create index if not exists community_comments_post_created_idx on public.community_comments(post_id, created_at asc);
 create index if not exists reports_status_created_idx on public.reports(status, created_at desc);
 create unique index if not exists votes_user_post_unique_idx on public.votes(user_id, post_id) where post_id is not null;

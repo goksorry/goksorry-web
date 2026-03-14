@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CommunityPostList } from "@/components/community-post-list";
+import { fetchCommentCountsByPostId, formatPinnedNoticeTitle } from "@/lib/community-posts";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +12,15 @@ export default async function CommunityHomePage() {
     service.from("boards").select("id,slug,name,sort_order").order("sort_order", { ascending: true }),
     service
       .from("community_posts")
-      .select("id,title,created_at,board_id,author_id,boards(slug,name),profiles(nickname)")
+      .select("id,title,created_at,board_id,author_id,is_pinned_notice,boards(slug,name),profiles(nickname)")
       .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(30)
   ]);
+  const commentCounts = await fetchCommentCountsByPostId(
+    service,
+    (recentPosts ?? []).map((post: any) => String(post.id))
+  );
 
   return (
     <>
@@ -48,14 +53,15 @@ export default async function CommunityHomePage() {
                 return null;
               }
 
-              return {
-                id: String(post.id),
-                href: `/community/${board.slug}/${post.id}`,
-                title: String(post.title ?? ""),
-                createdAt: post.created_at ? String(post.created_at) : null,
-                authorNickname: author?.nickname ? String(author.nickname) : null,
-                boardLabel: board.name ? String(board.name) : String(board.slug)
-              };
+                return {
+                  id: String(post.id),
+                  href: `/community/${board.slug}/${post.id}`,
+                  title: formatPinnedNoticeTitle(String(post.title ?? ""), Boolean(post.is_pinned_notice)),
+                  createdAt: post.created_at ? String(post.created_at) : null,
+                  authorNickname: author?.nickname ? String(author.nickname) : null,
+                  commentCount: commentCounts.get(String(post.id)) ?? 0,
+                  boardLabel: board.name ? String(board.name) : String(board.slug)
+                };
             })
             .filter(Boolean) as Array<{
             id: string;
@@ -63,6 +69,7 @@ export default async function CommunityHomePage() {
             title: string;
             createdAt: string | null;
             authorNickname: string | null;
+            commentCount: number;
             boardLabel?: string | null;
           }>}
         />

@@ -7,6 +7,7 @@ type CommunityPostListItem = {
   title: string;
   createdAt: string | null;
   authorNickname: string | null;
+  commentCount: number;
   boardLabel?: string | null;
 };
 
@@ -43,7 +44,10 @@ export function CommunityPostList({
           >
             {showBoardName ? <span className="community-post-board">{boardLabel}</span> : null}
 
-            <strong className="community-post-title">{post.title}</strong>
+            <strong className="community-post-title">
+              <span>{post.title}</span>
+              <span className="community-post-comment-count">[{post.commentCount}]</span>
+            </strong>
 
             <span className={`community-post-meta${showBoardName ? " community-post-meta-board" : ""}`}>
               {showBoardName ? <span className="community-post-board-mobile">{boardLabel}</span> : null}

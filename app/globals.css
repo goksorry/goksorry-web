@@ -1011,6 +1011,22 @@ textarea {
   min-height: 130px;
 }
 
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+}
+
+.form-row-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
+}
+
+.form-row-checkbox input[type="checkbox"] {
+  accent-color: var(--brand);
+}
+
 button,
 .btn {
   border: 1px solid var(--button-line);
@@ -1447,12 +1463,26 @@ button:disabled {
 }
 
 .community-post-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 0.38rem;
+  min-width: 0;
   font-size: 0.98rem;
   line-height: 1.35;
   color: var(--ink);
+}
+
+.community-post-title span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-post-comment-count {
+  flex: 0 0 auto;
+  font-size: 0.84em;
+  color: var(--muted);
 }
 
 .community-post-meta {
