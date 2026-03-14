@@ -141,6 +141,9 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const selectedFeedGroupId = pathname === "/" && activeGroupIds.length === 1 ? activeGroupIds[0] : null;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
+  const overallCommunityLabel = communityLoading
+    ? "계산 중"
+    : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
 
   return (
     <>
@@ -149,67 +152,78 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
           <div className="overview-heading-copy">
             <p className="overview-kicker">시장 · 커뮤니티 체감</p>
             <h2>실시간 체감 지수</h2>
+            <p className="overview-timestamp">
+              {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
+            </p>
           </div>
-          <p className="overview-timestamp">
-            {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
-          </p>
+          <div className="overview-overall-score" aria-live="polite">
+            <p className="overview-overall-label">커뮤니티 전체 평균</p>
+            <strong className="overview-overall-value">
+              {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
+              <span>/10</span>
+            </strong>
+            <p className="overview-overall-band">{overallCommunityLabel}</p>
+          </div>
         </div>
-
-        <p className="overview-community-summary">
-          {communityLoading
-            ? "커뮤니티 평균 방향 계산 중"
-            : `커뮤니티 전체 평균 ${overallCommunityScore.toFixed(1)} / 10 · ${SENTIMENT_BAND_DISPLAY[overallCommunityBand].label}`}
-        </p>
 
         {error ? <p className="error">커뮤니티 지수 로드 실패: {error}</p> : null}
 
-        <div className="overview-top-row">
-          {marketOverview.market_indicators.map((indicator) => (
-            <article
-              key={indicator.id}
-              className={`overview-card overview-card-market overview-tone-${indicator.tone ?? "flat"}`}
-            >
-              <p className="overview-label">{indicator.label}</p>
-              <div className="overview-market-main">
-                <strong className="overview-value">{indicator.value_text}</strong>
-                <p className="overview-delta">{indicator.delta_text}</p>
-              </div>
-              <p className="overview-note">{indicator.note}</p>
-            </article>
-          ))}
-        </div>
+        <section className="overview-section">
+          <div className="overview-section-head">
+            <h3>시장</h3>
+            <p className="overview-section-copy">주요 지수와 환율의 최근 흐름</p>
+          </div>
+          <div className="overview-market-row">
+            {marketOverview.market_indicators.map((indicator) => (
+              <article key={indicator.id} className={`overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
+                <p className="overview-label">{indicator.label}</p>
+                <div className="overview-market-main">
+                  <strong className="overview-value">{indicator.value_text}</strong>
+                  <p className="overview-delta">{indicator.delta_text}</p>
+                </div>
+                <p className="overview-note">{indicator.note}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-        <div className="overview-bottom-row">
-          {communityGroups.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              className={`overview-card overview-card-community overview-tone-${group.tone}${selectedFeedGroupId === group.id ? " overview-card-active" : ""}`}
-              onClick={() => onCommunityIndicatorClick(group.id)}
-              disabled={communityLoading}
-              aria-pressed={selectedFeedGroupId === group.id}
-            >
-              <div className="overview-community-head">
-                <p className="overview-label">{group.label}</p>
-                <span className="overview-score-badge">
-                  {communityLoading ? (
-                    <span>로딩중</span>
-                  ) : (
-                    <>
-                      <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
-                      <span>{group.score.toFixed(1)}</span>
-                    </>
-                  )}
-                </span>
-              </div>
-              <p className="overview-delta">
-                {communityLoading
-                  ? "로딩중"
-                  : `${SENTIMENT_BAND_DISPLAY[group.sentiment_band].label} · 언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}
-              </p>
-            </button>
-          ))}
-        </div>
+        <section className="overview-section">
+          <div className="overview-section-head">
+            <h3>커뮤니티</h3>
+            <p className="overview-section-copy">채널별 분위기와 언급 흐름</p>
+          </div>
+          <div className="overview-bottom-row">
+            {communityGroups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                className={`overview-card overview-card-community overview-tone-${group.tone}${selectedFeedGroupId === group.id ? " overview-card-active" : ""}`}
+                onClick={() => onCommunityIndicatorClick(group.id)}
+                disabled={communityLoading}
+                aria-pressed={selectedFeedGroupId === group.id}
+              >
+                <div className="overview-community-head">
+                  <p className="overview-label">{group.label}</p>
+                  <span className="overview-score-badge">
+                    {communityLoading ? (
+                      <span>로딩중</span>
+                    ) : (
+                      <>
+                        <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
+                        <span>{group.score.toFixed(1)}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                <p className="overview-delta">
+                  {communityLoading
+                    ? "로딩중"
+                    : `${SENTIMENT_BAND_DISPLAY[group.sentiment_band].label} · 언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
       </section>
 
       {activeGroup ? (

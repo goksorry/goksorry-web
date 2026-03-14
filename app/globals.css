@@ -487,7 +487,7 @@ a:hover {
 .overview-heading {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: flex-start;
+  align-items: end;
   gap: 1rem;
 }
 
@@ -501,16 +501,8 @@ a:hover {
 }
 
 .overview-timestamp {
-  margin: 0.1rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 0.72rem;
-  color: var(--muted);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.overview-community-summary {
-  margin: -0.15rem 0 0;
-  font-size: 0.8rem;
   color: var(--muted);
 }
 
@@ -521,7 +513,69 @@ a:hover {
   color: var(--brand);
 }
 
-.overview-top-row {
+.overview-overall-score {
+  display: grid;
+  justify-items: end;
+  gap: 0.12rem;
+  min-width: 9.5rem;
+}
+
+.overview-overall-label,
+.overview-overall-band {
+  margin: 0;
+}
+
+.overview-overall-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.overview-overall-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  line-height: 0.95;
+  color: var(--ink);
+}
+
+.overview-overall-value span {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.overview-overall-band {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--brand-strong);
+}
+
+.overview-section {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.overview-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.overview-section-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.overview-section-copy {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.overview-market-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
@@ -542,16 +596,38 @@ a:hover {
   box-shadow: inset 0 1px 0 var(--overview-card-inset);
 }
 
-.overview-card-market {
-  min-height: 96px;
-}
-
 .overview-market-main {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 0.32rem;
+  margin-top: 0.2rem;
+}
+
+.overview-market-stat {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.15rem 0.15rem 0.35rem;
+  min-width: 0;
+}
+
+.overview-market-stat .overview-label {
+  font-size: 0.62rem;
+}
+
+.overview-market-stat .overview-value {
+  margin-top: 0;
+}
+
+.overview-market-stat .overview-delta {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.overview-market-stat .overview-note {
+  margin-top: 0.22rem;
 }
 
 .overview-card-community {
@@ -591,25 +667,6 @@ a:hover {
   margin: 0;
   font-size: 0.66rem;
   color: var(--muted);
-}
-
-.overview-card-market .overview-label {
-  font-size: 0.62rem;
-}
-
-.overview-card-market .overview-value {
-  margin-top: 0;
-}
-
-.overview-card-market .overview-delta {
-  margin: 0;
-  text-align: right;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.overview-card-market .overview-note {
-  margin-top: 0.28rem;
 }
 
 .overview-card-community .overview-label {
@@ -1997,21 +2054,32 @@ button:disabled {
   }
 
   .overview-heading {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
   }
 
-  .overview-top-row {
-    display: flex;
-    overflow-x: auto;
-    gap: 0.6rem;
-    padding-bottom: 0.2rem;
-    scroll-snap-type: x mandatory;
+  .overview-overall-score {
+    justify-items: start;
+    min-width: 0;
   }
 
-  .overview-top-row .overview-card {
-    min-width: 74%;
-    scroll-snap-align: start;
+  .overview-section-head {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.22rem;
+  }
+
+  .overview-section-copy {
+    text-align: left;
+  }
+
+  .overview-market-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .overview-market-stat {
+    padding: 0.1rem 0;
   }
 
   .overview-bottom-row {
@@ -2071,7 +2139,7 @@ button:disabled {
     gap: 0.35rem;
   }
 
-  .overview-card-market .overview-delta {
+  .overview-market-stat .overview-delta {
     font-size: 0.68rem;
   }
 
