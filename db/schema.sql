@@ -117,6 +117,16 @@ create table if not exists public.reports (
   constraint reports_reason_plain_text check (reason !~ '[<>]')
 );
 
+create table if not exists public.policy_changes (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('terms', 'privacy')),
+  summary text not null,
+  published_at timestamptz not null,
+  effective_at timestamptz not null,
+  constraint policy_changes_summary_plain_text check (summary !~ '[<>]'),
+  constraint policy_changes_effective_at_check check (published_at < effective_at)
+);
+
 create index if not exists external_posts_source_fetched_at_idx on public.external_posts(source, fetched_at desc);
 create index if not exists external_posts_symbol_fetched_at_idx on public.external_posts(symbol, fetched_at desc) where symbol is not null;
 create index if not exists sentiment_results_analyzed_at_idx on public.sentiment_results(analyzed_at desc);
@@ -127,6 +137,7 @@ create index if not exists community_posts_board_created_idx on public.community
 create index if not exists community_posts_notice_pin_idx on public.community_posts(board_id, is_pinned_notice, created_at desc);
 create index if not exists community_comments_post_created_idx on public.community_comments(post_id, created_at asc);
 create index if not exists reports_status_created_idx on public.reports(status, created_at desc);
+create index if not exists policy_changes_active_window_idx on public.policy_changes(published_at, effective_at);
 create unique index if not exists votes_user_post_unique_idx on public.votes(user_id, post_id) where post_id is not null;
 create unique index if not exists votes_user_comment_unique_idx on public.votes(user_id, comment_id) where comment_id is not null;
 
@@ -198,6 +209,7 @@ alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.votes enable row level security;
 alter table public.reports enable row level security;
+alter table public.policy_changes enable row level security;
 
 drop policy if exists external_posts_public_select on public.external_posts;
 create policy external_posts_public_select
@@ -299,6 +311,12 @@ on public.reports
 for select
 to authenticated
 using (public.is_admin(auth.uid()));
+
+drop policy if exists policy_changes_public_select on public.policy_changes;
+create policy policy_changes_public_select
+on public.policy_changes
+for select
+using (true);
 
 drop policy if exists votes_public_select on public.votes;
 create policy votes_public_select

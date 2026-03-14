@@ -14,6 +14,7 @@ import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { FeedSelectionProvider } from "@/components/feed-selection-provider";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
+import { PolicyChangeBanner } from "@/components/policy-change-banner";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -108,6 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   </Suspense>
                 </div>
               </header>
+              <PolicyChangeBanner />
               <main className="main">
                 <Suspense
                   fallback={

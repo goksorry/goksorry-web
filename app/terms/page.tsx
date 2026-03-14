@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function TermsPage() {
   return (
     <section className="panel legal-page">
@@ -36,6 +38,7 @@ export default function TermsPage() {
         곡소리닷컴은 운영 정책 위반, 법령 위반, 신고 접수, 서비스 안전성 저해 등이 확인되는 경우 게시물을 비공개, 삭제 또는
         제한할 수 있으며, 회원에 대해 이용 제한 조치를 할 수 있습니다.
       </p>
+      <p>이용 제한 조치에 이의가 있는 경우 admin@goksorry.com으로 이의를 제기할 수 있습니다.</p>
 
       <h2>6. 외부 피드 및 출처</h2>
       <p>
@@ -61,10 +64,18 @@ export default function TermsPage() {
         내에서 책임을 제한할 수 있습니다.
       </p>
 
-      <h2>10. 준거법 및 관할</h2>
+      <h2>10. 약관 변경</h2>
+      <p>약관 변경 시 서비스 내 공지합니다. 이용자에게 불리한 변경의 경우 시행 7일 전에 공지합니다.</p>
+
+      <h2>11. 개인정보 처리</h2>
+      <p>
+        회원의 개인정보 처리에 관한 사항은 <Link href="/privacy">개인정보처리방침</Link>을 따릅니다.
+      </p>
+
+      <h2>12. 준거법 및 관할</h2>
       <p>본 약관은 대한민국 법률을 준거법으로 하며, 관련 분쟁은 대한민국 법원 관할에 따릅니다.</p>
 
-      <h2>11. 문의</h2>
+      <h2>13. 문의</h2>
       <p>
         서비스 이용, 권리침해 신고, 운영 문의는 <a href="mailto:admin@goksorry.com">admin@goksorry.com</a> 으로
         연락할 수 있습니다.
