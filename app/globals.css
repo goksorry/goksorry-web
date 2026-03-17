@@ -944,7 +944,7 @@ a:hover {
   border: 1px solid var(--chip-line);
   background: transparent;
   color: var(--muted);
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 0.18rem 0.56rem;
   font: inherit;
   font-size: 0.69rem;
