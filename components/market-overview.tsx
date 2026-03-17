@@ -176,7 +176,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
             </p>
           </div>
           <div className="overview-overall-score" aria-live="polite">
-            <p className="overview-overall-label">커뮤니티 전체 평균</p>
+            <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
             <strong className="overview-overall-value">
               {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
               <span>/10</span>
@@ -190,7 +190,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
         <section className="overview-section">
           <div className="overview-section-head">
             <h3>커뮤니티</h3>
-            <p className="overview-section-copy">채널별 분위기와 언급 흐름</p>
+            <p className="overview-section-copy">최근 6시간 채널별 분위기와 언급 흐름</p>
           </div>
           <div className="overview-bottom-row">
             {communityGroups.map((group) => (

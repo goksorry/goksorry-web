@@ -140,7 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                             <p className="overview-timestamp">캐시 지수 준비 중</p>
                           </div>
                           <div className="overview-overall-score">
-                            <p className="overview-overall-label">커뮤니티 전체 평균</p>
+                            <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
                             <strong className="overview-overall-value">
                               --<span>/10</span>
                             </strong>
@@ -150,7 +150,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         <section className="overview-section">
                           <div className="overview-section-head">
                             <h3>커뮤니티</h3>
-                            <p className="overview-section-copy">채널별 분위기와 언급 흐름</p>
+                            <p className="overview-section-copy">최근 6시간 채널별 분위기와 언급 흐름</p>
                           </div>
                           <div className="overview-bottom-row">
                             {[

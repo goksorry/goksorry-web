@@ -1886,13 +1886,8 @@ button:disabled {
 
 .feed-filter-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "actions range"
-    "groups range";
-  align-items: start;
-  column-gap: 0.8rem;
-  row-gap: 0.55rem;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
   margin-top: 0.7rem;
 }
 
@@ -2187,10 +2182,6 @@ button:disabled {
 
   .feed-filter-toolbar {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "actions"
-      "groups"
-      "range";
     gap: 0.55rem;
     margin-top: 0.6rem;
   }

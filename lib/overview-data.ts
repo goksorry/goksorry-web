@@ -50,6 +50,7 @@ type NaverServiceIndexResponse = {
 };
 
 const MARKET_TTL_SEC = 300;
+const COMMUNITY_WINDOW_HOURS = 6;
 
 const fetchText = async (url: string): Promise<string> => {
   const controller = new AbortController();
@@ -267,7 +268,7 @@ export const getCachedMarketOverview = unstable_cache(buildMarketOverview, ["mar
 
 export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
   const service = getServiceSupabaseClient();
-  const { rows } = await fetchRecentFeedRows(service, { hours: 24, limit: 600 });
+  const { rows } = await fetchRecentFeedRows(service, { hours: COMMUNITY_WINDOW_HOURS, limit: 600 });
   const communityIndicators = buildSourceGroupSummaries(rows);
   const overall = buildFeedScoreOverview(rows);
 

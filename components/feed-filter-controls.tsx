@@ -1,30 +1,20 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFeedSelection } from "@/components/feed-selection-provider";
 import {
   SOURCE_GROUPS,
   SOURCE_GROUP_IDS,
-  serializeSourceGroupSelection,
   type SourceGroupId
 } from "@/lib/feed-source-groups";
+import { serializeSourceGroupSelection } from "@/lib/feed-source-groups";
 
-const buildFeedHref = ({
-  groupIds,
-  range
-}: {
-  groupIds: SourceGroupId[];
-  range: string;
-}): string => {
+const buildFeedHref = ({ groupIds }: { groupIds: SourceGroupId[] }): string => {
   const params = new URLSearchParams();
   const serializedGroups = serializeSourceGroupSelection(groupIds);
   if (serializedGroups) {
     params.set("channels", serializedGroups);
-  }
-  if (range && range !== "24h") {
-    params.set("range", range);
   }
   const query = params.toString();
   return query ? `/?${query}` : "/";
@@ -34,17 +24,10 @@ const arraysEqual = (left: SourceGroupId[], right: SourceGroupId[]): boolean => 
   return left.length === right.length && left.every((item, index) => right[index] === item);
 };
 
-export function FeedFilterControls({
-  selectedGroupIds,
-  selectedRange
-}: {
-  selectedGroupIds: SourceGroupId[];
-  selectedRange: string;
-}) {
+export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: SourceGroupId[] }) {
   const router = useRouter();
   const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [pendingGroupIds, setPendingGroupIds] = useState<SourceGroupId[]>(selectedGroupIds);
-  const [range, setRange] = useState(selectedRange);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedKey = useMemo(() => activeGroupIds.join(","), [activeGroupIds]);
@@ -52,10 +35,6 @@ export function FeedFilterControls({
   useEffect(() => {
     setPendingGroupIds(activeGroupIds);
   }, [selectedKey, activeGroupIds]);
-
-  useEffect(() => {
-    setRange(selectedRange);
-  }, [selectedRange]);
 
   useEffect(() => {
     return () => {
@@ -73,7 +52,7 @@ export function FeedFilterControls({
     setOptimisticGroupIds(nextGroupIds);
     debounceRef.current = setTimeout(() => {
       startTransition(() => {
-        router.replace(buildFeedHref({ groupIds: nextGroupIds, range }), { scroll: false });
+        router.replace(buildFeedHref({ groupIds: nextGroupIds }), { scroll: false });
       });
     }, 500);
   };
@@ -95,16 +74,6 @@ export function FeedFilterControls({
   const onClearAll = () => {
     setPendingGroupIds([]);
     scheduleApply([]);
-  };
-
-  const onApplyRange = () => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    setOptimisticGroupIds(pendingGroupIds);
-    startTransition(() => {
-      router.push(buildFeedHref({ groupIds: pendingGroupIds, range }), { scroll: false });
-    });
   };
 
   const allSelected = arraysEqual(pendingGroupIds, SOURCE_GROUP_IDS);
@@ -140,24 +109,6 @@ export function FeedFilterControls({
             {group.shortLabel}
           </button>
         ))}
-      </div>
-
-      <div className="actions feed-range-actions">
-        <label className="inline">
-          <span>범위</span>
-          <select value={range} onChange={(event) => setRange(event.target.value)}>
-            <option value="1h">1h</option>
-            <option value="6h">6h</option>
-            <option value="24h">24h</option>
-          </select>
-        </label>
-
-        <button type="button" onClick={onApplyRange}>
-          적용
-        </button>
-        <Link className="btn btn-secondary" href="/">
-          초기화
-        </Link>
       </div>
     </div>
   );
