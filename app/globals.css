@@ -933,6 +933,34 @@ a:hover {
   margin-bottom: 0.3rem;
 }
 
+.sentiment-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sentiment-clean-toggle {
+  border: 1px solid var(--chip-line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.18rem 0.56rem;
+  font: inherit;
+  font-size: 0.69rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.sentiment-clean-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--ink-soft);
+}
+
+.sentiment-clean-toggle-active {
+  background: var(--score-badge-bg);
+  border-color: var(--score-badge-line);
+  color: var(--ink);
+}
+
 .sentiment-title-fallback,
 .fallback-clean-title {
   color: var(--ink-soft);

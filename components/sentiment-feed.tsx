@@ -7,6 +7,7 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
+import { useEffect, useState } from "react";
 
 const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_stock") {
@@ -88,6 +89,135 @@ export function SentimentFeed({
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
   const cleanFilterModeKey = cleanFilterEnabled ? "pretty" : "grim";
+  const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
+  const [hoverRevealRowKey, setHoverRevealRowKey] = useState<string | null>(null);
+  const [mobileRevealRowKeys, setMobileRevealRowKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const syncSupportsHoverReveal = () => {
+      setSupportsHoverReveal(mediaQuery.matches);
+    };
+
+    syncSupportsHoverReveal();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncSupportsHoverReveal);
+      return () => {
+        mediaQuery.removeEventListener("change", syncSupportsHoverReveal);
+      };
+    }
+
+    mediaQuery.addListener(syncSupportsHoverReveal);
+    return () => {
+      mediaQuery.removeListener(syncSupportsHoverReveal);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (cleanFilterEnabled) {
+      return;
+    }
+
+    setHoverRevealRowKey(null);
+    setMobileRevealRowKeys([]);
+  }, [cleanFilterEnabled]);
+
+  const toggleMobileRevealRow = (postKey: string) => {
+    setMobileRevealRowKeys((current) => {
+      if (current.includes(postKey)) {
+        return current.filter((item) => item !== postKey);
+      }
+
+      return [...current, postKey];
+    });
+  };
+
+  const renderRow = (row: FeedRow, tone: "fear" | "hope") => {
+    const isRowRevealActive = cleanFilterEnabled
+      ? supportsHoverReveal
+        ? hoverRevealRowKey === row.post_key
+        : mobileRevealRowKeys.includes(row.post_key)
+      : false;
+    const displayTitle = resolveDisplayTitle({
+      title: row.title,
+      cleanTitle: row.clean_title,
+      cleanFilterEnabled: cleanFilterEnabled && !isRowRevealActive
+    });
+
+    return (
+      <article key={row.post_key} className={`sentiment-card sentiment-card-${tone}`}>
+        <div className="sentiment-card-head">
+          <div className="sentiment-card-head-tags">
+            <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+            {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
+          </div>
+          <time className="sentiment-time" dateTime={row.analyzed_at}>
+            {toLocalTime(row.analyzed_at, timezone)}
+          </time>
+        </div>
+        <a
+          className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+          href={row.url}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {displayTitle.text}
+        </a>
+        {cleanFilterEnabled ? (
+          <div className="sentiment-card-actions">
+            <button
+              type="button"
+              className={`sentiment-clean-toggle${!supportsHoverReveal && isRowRevealActive ? " sentiment-clean-toggle-active" : ""}`}
+              aria-pressed={!supportsHoverReveal ? isRowRevealActive : undefined}
+              title={supportsHoverReveal ? "마우스를 올리면 원문 보기" : isRowRevealActive ? "이 글만 예쁜말 적용" : "이 글만 원문 보기"}
+              onMouseEnter={
+                supportsHoverReveal
+                  ? () => {
+                      setHoverRevealRowKey(row.post_key);
+                    }
+                  : undefined
+              }
+              onMouseLeave={
+                supportsHoverReveal
+                  ? () => {
+                      setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
+                    }
+                  : undefined
+              }
+              onFocus={
+                supportsHoverReveal
+                  ? () => {
+                      setHoverRevealRowKey(row.post_key);
+                    }
+                  : undefined
+              }
+              onBlur={
+                supportsHoverReveal
+                  ? () => {
+                      setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
+                    }
+                  : undefined
+              }
+              onClick={
+                supportsHoverReveal
+                  ? undefined
+                  : () => {
+                      toggleMobileRevealRow(row.post_key);
+                    }
+              }
+            >
+              {supportsHoverReveal ? "필터 해제" : isRowRevealActive ? "필터 적용" : "필터 해제"}
+            </button>
+          </div>
+        ) : null}
+      </article>
+    );
+  };
 
   return (
     <>
@@ -118,37 +248,7 @@ export function SentimentFeed({
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
 
             <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
-              <div className="sentiment-list">
-                {fearRows.map((row) => {
-                  const displayTitle = resolveDisplayTitle({
-                    title: row.title,
-                    cleanTitle: row.clean_title,
-                    cleanFilterEnabled
-                  });
-
-                  return (
-                    <article key={row.post_key} className="sentiment-card sentiment-card-fear">
-                      <div className="sentiment-card-head">
-                        <div className="sentiment-card-head-tags">
-                          <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
-                          {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
-                        </div>
-                        <time className="sentiment-time" dateTime={row.analyzed_at}>
-                          {toLocalTime(row.analyzed_at, timezone)}
-                        </time>
-                      </div>
-                      <a
-                        className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-                        href={row.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {displayTitle.text}
-                      </a>
-                    </article>
-                  );
-                })}
-              </div>
+              <div className="sentiment-list">{fearRows.map((row) => renderRow(row, "fear"))}</div>
             </CrossfadeContent>
           </section>
 
@@ -177,37 +277,7 @@ export function SentimentFeed({
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
 
             <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
-              <div className="sentiment-list">
-                {hopeRows.map((row) => {
-                  const displayTitle = resolveDisplayTitle({
-                    title: row.title,
-                    cleanTitle: row.clean_title,
-                    cleanFilterEnabled
-                  });
-
-                  return (
-                    <article key={row.post_key} className="sentiment-card sentiment-card-hope">
-                      <div className="sentiment-card-head">
-                        <div className="sentiment-card-head-tags">
-                          <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
-                          {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
-                        </div>
-                        <time className="sentiment-time" dateTime={row.analyzed_at}>
-                          {toLocalTime(row.analyzed_at, timezone)}
-                        </time>
-                      </div>
-                      <a
-                        className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-                        href={row.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {displayTitle.text}
-                      </a>
-                    </article>
-                  );
-                })}
-              </div>
+              <div className="sentiment-list">{hopeRows.map((row) => renderRow(row, "hope"))}</div>
             </CrossfadeContent>
           </section>
         </div>
