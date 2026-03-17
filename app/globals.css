@@ -945,7 +945,7 @@ a:hover {
   background: transparent;
   color: var(--muted);
   border-radius: 8px;
-  padding: 0.18rem 0.56rem;
+  padding: 0.18rem;
   font: inherit;
   font-size: 0.69rem;
   line-height: 1.2;
