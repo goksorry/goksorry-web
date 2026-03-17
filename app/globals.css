@@ -930,12 +930,14 @@ a:hover {
   color: var(--ink);
   font-weight: 700;
   line-height: 1.4;
-  margin-bottom: 0.3rem;
+  margin: 0;
 }
 
-.sentiment-card-actions {
-  display: flex;
-  justify-content: flex-end;
+.sentiment-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.55rem;
 }
 
 .sentiment-clean-toggle {
@@ -948,6 +950,17 @@ a:hover {
   font-size: 0.69rem;
   line-height: 1.2;
   cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.02rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.sentiment-clean-toggle span {
+  display: block;
 }
 
 .sentiment-clean-toggle:hover {

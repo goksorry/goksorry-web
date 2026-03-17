@@ -160,16 +160,16 @@ export function SentimentFeed({
             {toLocalTime(row.analyzed_at, timezone)}
           </time>
         </div>
-        <a
-          className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-          href={row.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {displayTitle.text}
-        </a>
-        {cleanFilterEnabled ? (
-          <div className="sentiment-card-actions">
+        <div className="sentiment-card-body">
+          <a
+            className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+            href={row.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {displayTitle.text}
+          </a>
+          {cleanFilterEnabled ? (
             <button
               type="button"
               className={`sentiment-clean-toggle${!supportsHoverReveal && isRowRevealActive ? " sentiment-clean-toggle-active" : ""}`}
@@ -211,10 +211,11 @@ export function SentimentFeed({
                     }
               }
             >
-              {supportsHoverReveal ? "필터 해제" : isRowRevealActive ? "필터 적용" : "필터 해제"}
+              <span>필터</span>
+              <span>{supportsHoverReveal ? "해제" : isRowRevealActive ? "적용" : "해제"}</span>
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </article>
     );
   };
