@@ -1892,14 +1892,12 @@ button:disabled {
 }
 
 .feed-selection-actions {
-  grid-area: actions;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
 }
 
 .feed-channel-buttons {
-  grid-area: groups;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -1940,21 +1938,6 @@ button:disabled {
   background: var(--chip-active-bg);
   border-color: var(--chip-active-line);
   color: var(--chip-active-ink);
-}
-
-.feed-range-actions {
-  grid-area: range;
-  justify-content: space-between;
-  align-self: start;
-}
-
-.feed-range-actions .inline {
-  font-size: 0.84rem;
-}
-
-.feed-range-actions select {
-  width: auto;
-  min-width: 4.6rem;
 }
 
 .feed-symbol-badge {
