@@ -23,6 +23,7 @@ import { authOptions } from "@/lib/auth";
 
 const adsenseAccount = getAdsenseAccount();
 const adsenseScriptSrc = getAdsenseScriptSrc();
+const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
@@ -40,6 +41,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${googleAnalyticsMeasurementId}');
+            `
+          }}
+        />
+      </head>
       <body>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         {adsenseAccount ? (
