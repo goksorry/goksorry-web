@@ -1964,9 +1964,9 @@ button:disabled {
   max-height: 34rem;
   overflow-y: auto;
   display: grid;
-  gap: 0.65rem;
+  gap: 0.4rem;
   justify-items: start;
-  padding: 0.85rem;
+  padding: 0.55rem;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
@@ -1980,10 +1980,10 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
+  gap: 0.22rem;
   width: 100%;
   height: fit-content;
-  padding: 0.7rem 0.8rem;
+  padding: 0.45rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-elevated);
@@ -2007,14 +2007,19 @@ button:disabled {
 }
 
 .chat-message-meta strong {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+}
+
+.chat-message-meta .muted {
+  font-size: 0.76rem;
 }
 
 .chat-message p {
   margin: 0;
+  font-size: 0.92rem;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .chat-form {
