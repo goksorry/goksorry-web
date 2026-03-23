@@ -4,11 +4,33 @@ import { NextResponse } from "next/server";
 const CANONICAL_HOST = "goksorry.com";
 const LEGACY_HOSTS = new Set(["www.goksorry.com"]);
 
+const getChatConnectSources = (): string[] => {
+  const wsBaseUrl = String(process.env.CHAT_WS_BASE_URL ?? "").trim();
+  if (!wsBaseUrl) {
+    return [];
+  }
+
+  try {
+    const url = new URL(wsBaseUrl);
+    return [`${url.protocol}//${url.host}`];
+  } catch {
+    return [];
+  }
+};
+
 const buildCsp = (nonce: string): string => {
   const isDev = process.env.NODE_ENV !== "production";
   const scriptDirectives = isDev
     ? "'self' 'unsafe-inline' 'unsafe-eval'"
     : `'self' 'nonce-${nonce}' 'strict-dynamic'`;
+  const connectSources = [
+    "'self'",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://accounts.google.com",
+    "https://www.googleapis.com",
+    ...getChatConnectSources()
+  ].join(" ");
 
   return [
     "default-src 'self'",
@@ -16,7 +38,7 @@ const buildCsp = (nonce: string): string => {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://www.googleapis.com",
+    `connect-src ${connectSources}`,
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
