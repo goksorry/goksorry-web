@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LiveChat } from "@/components/live-chat";
 
-const openChatWindow = (mode: "tab" | "popup") => {
+const openChatWindow = () => {
   const url = new URL("/chat", window.location.origin).toString();
-
-  if (mode === "tab") {
-    window.open(url, "_blank", "noopener,noreferrer");
-    return;
-  }
-
   window.open(
     url,
     "goksorry-chat-popup",
@@ -45,21 +38,11 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
             <h2>전체 채팅</h2>
           </div>
           <div className="chat-dock-head-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => openChatWindow("tab")}>
-              새탭 전체화면
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => openChatWindow("popup")}>
+            <button type="button" className="btn btn-secondary" onClick={openChatWindow}>
               작은 창
             </button>
           </div>
         </div>
-        <p className="muted chat-dock-copy">
-          비로그인 사용자는 읽기만 가능하며, 로그인하면 닉네임으로 바로 채팅을 보낼 수 있습니다. 전체 화면은{" "}
-          <Link href="/chat" target="_blank" rel="noreferrer">
-            /chat
-          </Link>
-          에서도 열 수 있습니다.
-        </p>
         {open ? <LiveChat enabled={enabled} className="chat-dock-live" /> : null}
       </section>
 

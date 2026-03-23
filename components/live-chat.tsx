@@ -2,11 +2,9 @@
 
 import { startTransition, type CSSProperties, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CHAT_DEFAULT_FILTER,
   CHAT_MESSAGE_MAX_LENGTH,
   CHAT_RECENT_LIMIT,
   type ChatClientEvent,
-  type ChatFilterMode,
   type ChatMessage,
   type ChatServerEvent,
   type ChatSessionResponse,
@@ -64,12 +62,10 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(enabled ? null : "채팅 설정이 아직 배포되지 않았습니다.");
   const [state, setState] = useState<ConnectionState>(enabled ? "connecting" : "idle");
-  const [filter, setFilter] = useState<ChatFilterMode>(CHAT_DEFAULT_FILTER);
   const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const preferredFilterRef = useRef<ChatFilterMode>(CHAT_DEFAULT_FILTER);
   const shouldReconnectRef = useRef(enabled);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -145,11 +141,6 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
         setNotice(null);
         setViewer(payload.viewer);
 
-        if (!payload.viewer.can_filter_guests) {
-          preferredFilterRef.current = CHAT_DEFAULT_FILTER;
-          setFilter(CHAT_DEFAULT_FILTER);
-        }
-
         const socket = new WebSocket(payload.ws_url);
         socketRef.current = socket;
 
@@ -168,23 +159,9 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
 
           if (serverEvent.type === "session.ready") {
             setViewer(serverEvent.viewer);
-
-            const nextFilter = serverEvent.viewer.can_filter_guests
-              ? preferredFilterRef.current
-              : CHAT_DEFAULT_FILTER;
-
-            setFilter(nextFilter);
             startTransition(() => {
               setMessages((current) => mergeMessages(current, serverEvent.recent));
             });
-
-            if (nextFilter !== serverEvent.viewer.default_filter && socket.readyState === WebSocket.OPEN) {
-              const nextEvent: ChatClientEvent = {
-                type: "filter.set",
-                value: nextFilter
-              };
-              socket.send(JSON.stringify(nextEvent));
-            }
 
             return;
           }
@@ -193,12 +170,6 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
             startTransition(() => {
               setMessages((current) => mergeMessages(current, [serverEvent.message]));
             });
-            return;
-          }
-
-          if (serverEvent.type === "filter.updated") {
-            preferredFilterRef.current = serverEvent.value;
-            setFilter(serverEvent.value);
             return;
           }
 
@@ -251,14 +222,7 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [filter, messages]);
-
-  const visibleMessages = messages.filter((message) => {
-    if (filter === "members_only") {
-      return message.author_kind === "member";
-    }
-    return true;
-  });
+  }, [messages]);
 
   const canSend = state === "open" && Boolean(viewer?.can_send);
   const submitDisabled = !canSend || draft.trim().length === 0 || cooldownRemainingMs > 0;
@@ -303,23 +267,6 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
     setCooldownRemainingMs(SEND_COOLDOWN_MS);
   };
 
-  const updateFilter = (nextFilter: ChatFilterMode) => {
-    preferredFilterRef.current = nextFilter;
-    setFilter(nextFilter);
-
-    const socket = socketRef.current;
-    if (!viewer?.can_filter_guests || !socket || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    const nextEvent: ChatClientEvent = {
-      type: "filter.set",
-      value: nextFilter
-    };
-
-    socket.send(JSON.stringify(nextEvent));
-  };
-
   return (
     <section className={className ? `chat-shell ${className}` : "chat-shell"}>
       <div className="chat-toolbar">
@@ -331,33 +278,14 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
               : "세션 준비 중"}
           </span>
         </div>
-
-        {viewer?.can_filter_guests ? (
-          <div className="chat-filter-toggle" role="group" aria-label="채팅 필터">
-            <button
-              type="button"
-              className={filter === "all" ? "btn" : "btn btn-secondary"}
-              onClick={() => updateFilter("all")}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              className={filter === "members_only" ? "btn" : "btn btn-secondary"}
-              onClick={() => updateFilter("members_only")}
-            >
-              비로그인 숨기기
-            </button>
-          </div>
-        ) : null}
       </div>
 
       {notice ? <p className="muted chat-notice">{notice}</p> : null}
 
       <div className="chat-log" aria-live="polite">
-        {visibleMessages.length === 0 ? <p className="muted chat-empty">아직 메시지가 없습니다.</p> : null}
+        {messages.length === 0 ? <p className="muted chat-empty">아직 메시지가 없습니다.</p> : null}
 
-        {visibleMessages.map((message) => (
+        {messages.map((message) => (
           <article
             key={message.id}
             className={`chat-message ${message.author_kind === "member" ? "chat-message-member" : "chat-message-guest"}`}
@@ -381,7 +309,7 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
             onChange={(event) => setDraft(event.target.value)}
             maxLength={CHAT_MESSAGE_MAX_LENGTH}
             rows={3}
-            placeholder={viewer?.can_send ? "텍스트만 입력할 수 있습니다." : "로그인하면 채팅을 보낼 수 있습니다."}
+            placeholder={viewer?.can_send ? "메시지를 입력하세요." : "로그인하여 채팅에 참여하세요."}
             disabled={state !== "open" || !viewer?.can_send}
           />
         </label>
@@ -390,7 +318,6 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
             최근 {CHAT_RECENT_LIMIT}개만 유지 · {draft.length}/{CHAT_MESSAGE_MAX_LENGTH}
           </span>
           <div className="chat-submit-group">
-            {!viewer?.can_send ? <span className="muted">비로그인은 읽기 전용입니다.</span> : null}
             <button type="submit" disabled={submitDisabled}>
               {cooldownRemainingMs > 0 ? (
                 <>

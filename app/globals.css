@@ -1914,15 +1914,6 @@ button:disabled {
   gap: 0.9rem;
 }
 
-.chat-page-copy {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.chat-page-copy .muted {
-  margin: 0;
-}
-
 .chat-shell {
   display: grid;
   gap: 0.8rem;
@@ -1953,12 +1944,6 @@ button:disabled {
   border-color: var(--hope-line);
 }
 
-.chat-filter-toggle {
-  display: inline-flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
 .chat-notice {
   margin: 0;
 }
@@ -1969,6 +1954,7 @@ button:disabled {
   overflow-y: auto;
   display: grid;
   gap: 0.65rem;
+  justify-items: start;
   padding: 0.85rem;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1982,6 +1968,8 @@ button:disabled {
 .chat-message {
   display: grid;
   gap: 0.35rem;
+  width: fit-content;
+  max-width: min(100%, 40rem);
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1999,8 +1987,9 @@ button:disabled {
 .chat-message-meta {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.8rem;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .chat-message-meta strong {
@@ -2122,10 +2111,6 @@ button:disabled {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-}
-
-.chat-dock-copy {
-  margin: 0;
 }
 
 .chat-dock-live .chat-log {
