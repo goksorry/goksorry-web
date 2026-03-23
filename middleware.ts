@@ -3,20 +3,7 @@ import { NextResponse } from "next/server";
 
 const CANONICAL_HOST = "goksorry.com";
 const LEGACY_HOSTS = new Set(["www.goksorry.com"]);
-
-const getChatConnectSources = (): string[] => {
-  const wsBaseUrl = String(process.env.CHAT_WS_BASE_URL ?? "").trim();
-  if (!wsBaseUrl) {
-    return [];
-  }
-
-  try {
-    const url = new URL(wsBaseUrl);
-    return [`${url.protocol}//${url.host}`];
-  } catch {
-    return [];
-  }
-};
+const CHAT_CONNECT_SOURCES = ["https://*.workers.dev", "wss://*.workers.dev"];
 
 const buildCsp = (nonce: string): string => {
   const isDev = process.env.NODE_ENV !== "production";
@@ -29,7 +16,7 @@ const buildCsp = (nonce: string): string => {
     "wss://*.supabase.co",
     "https://accounts.google.com",
     "https://www.googleapis.com",
-    ...getChatConnectSources()
+    ...CHAT_CONNECT_SOURCES
   ].join(" ");
 
   return [
