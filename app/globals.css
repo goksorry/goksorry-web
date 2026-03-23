@@ -1927,10 +1927,21 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.chat-status-block {
+.chat-toolbar-main {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.chat-toolbar-main h2 {
+  margin: 0;
+}
+
+.chat-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
@@ -1971,6 +1982,7 @@ button:disabled {
   align-items: flex-start;
   gap: 0.35rem;
   width: 100%;
+  height: fit-content;
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -2087,32 +2099,6 @@ button:disabled {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-}
-
-.chat-dock-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.chat-dock-head h2 {
-  margin: 0.12rem 0 0;
-}
-
-.chat-dock-kicker {
-  margin: 0;
-  color: var(--brand);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
-}
-
-.chat-dock-head-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
 }
 
 .chat-dock-live .chat-log {
@@ -2487,13 +2473,13 @@ button:disabled {
     width: 100%;
   }
 
-  .chat-dock-head,
-  .chat-dock-head-actions,
+  .chat-toolbar,
+  .chat-toolbar-actions,
   .chat-submit-group {
     align-items: stretch;
   }
 
-  .chat-dock-head-actions,
+  .chat-toolbar-actions,
   .chat-submit-group {
     display: grid;
     grid-template-columns: 1fr;

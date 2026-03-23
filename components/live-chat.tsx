@@ -1,6 +1,15 @@
 "use client";
 
-import { startTransition, type CSSProperties, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import {
   CHAT_MESSAGE_MAX_LENGTH,
   CHAT_RECENT_LIMIT,
@@ -16,6 +25,8 @@ type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "error"
 type LiveChatProps = {
   enabled: boolean;
   className?: string;
+  title?: string;
+  headerActions?: ReactNode;
 };
 
 const SEND_COOLDOWN_MS = 500;
@@ -56,7 +67,7 @@ const formatTime = (value: string): string => {
   }).format(date);
 };
 
-export function LiveChat({ enabled, className }: LiveChatProps) {
+export function LiveChat({ enabled, className, title = "전체 채팅", headerActions = null }: LiveChatProps) {
   const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -270,14 +281,11 @@ export function LiveChat({ enabled, className }: LiveChatProps) {
   return (
     <section className={className ? `chat-shell ${className}` : "chat-shell"}>
       <div className="chat-toolbar">
-        <div className="chat-status-block">
+        <div className="chat-toolbar-main">
+          <h2>{title}</h2>
           <span className={`tag chat-status-tag ${state === "open" ? "chat-status-live" : ""}`}>{statusLabel[state]}</span>
-          <span className="muted">
-            {viewer
-              ? `${viewer.kind === "member" ? "닉네임" : "익명"} · ${viewer.display_name}`
-              : "세션 준비 중"}
-          </span>
         </div>
+        {headerActions ? <div className="chat-toolbar-actions">{headerActions}</div> : null}
       </div>
 
       {notice ? <p className="muted chat-notice">{notice}</p> : null}

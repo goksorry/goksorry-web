@@ -6,7 +6,7 @@ export default function ChatPage() {
 
   return (
     <section className="panel chat-page-panel">
-      <LiveChat enabled={chatEnv.enabled} />
+      <LiveChat enabled={chatEnv.enabled} title="전체 채팅" />
     </section>
   );
 }

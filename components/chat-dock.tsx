@@ -32,18 +32,17 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
         className={`panel chat-dock-panel ${open ? "chat-dock-panel-open" : ""}`}
         aria-hidden={!open}
       >
-        <div className="chat-dock-head">
-          <div>
-            <p className="chat-dock-kicker">실시간</p>
-            <h2>전체 채팅</h2>
-          </div>
-          <div className="chat-dock-head-actions">
-            <button type="button" className="btn btn-secondary" onClick={openChatWindow}>
-              작은 창
-            </button>
-          </div>
-        </div>
-        {open ? <LiveChat enabled={enabled} className="chat-dock-live" /> : null}
+        {open ? (
+          <LiveChat
+            enabled={enabled}
+            className="chat-dock-live"
+            headerActions={
+              <button type="button" className="btn btn-secondary" onClick={openChatWindow}>
+                작은 창
+              </button>
+            }
+          />
+        ) : null}
       </section>
 
       <button
