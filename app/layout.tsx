@@ -6,6 +6,7 @@ import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
+import { ChatDock } from "@/components/chat-dock";
 import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
@@ -20,6 +21,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
 import { authOptions } from "@/lib/auth";
+import { getChatServerEnv } from "@/lib/env";
 
 const adsenseAccount = getAdsenseAccount();
 const adsenseScriptSrc = getAdsenseScriptSrc();
@@ -38,6 +40,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
+  const chatEnv = getChatServerEnv();
 
   return (
     <html lang="ko" suppressHydrationWarning>
@@ -97,6 +100,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </Link>
                     <Link href="/community" replace>
                       커뮤니티
+                    </Link>
+                    <Link href="/chat" replace>
+                      채팅
                     </Link>
                     <HeaderNavExtras initialSession={session} />
                   </nav>
@@ -198,6 +204,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </main>
               <SiteFooter />
+              <ChatDock enabled={chatEnv.enabled} />
               </div>
             </FeedSelectionProvider>
           </CleanFilterProvider>

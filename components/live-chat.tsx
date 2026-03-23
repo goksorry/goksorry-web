@@ -1,0 +1,409 @@
+"use client";
+
+import { startTransition, type CSSProperties, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CHAT_DEFAULT_FILTER,
+  CHAT_MESSAGE_MAX_LENGTH,
+  CHAT_RECENT_LIMIT,
+  type ChatClientEvent,
+  type ChatFilterMode,
+  type ChatMessage,
+  type ChatServerEvent,
+  type ChatSessionResponse,
+  type ChatSessionViewer
+} from "@/lib/chat-types";
+
+type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "error";
+
+type LiveChatProps = {
+  enabled: boolean;
+  className?: string;
+};
+
+const SEND_COOLDOWN_MS = 500;
+
+const statusLabel: Record<ConnectionState, string> = {
+  idle: "대기 중",
+  connecting: "연결 중",
+  open: "실시간 연결됨",
+  reconnecting: "재연결 중",
+  error: "연결 오류"
+};
+
+const mergeMessages = (current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] => {
+  const byId = new Map<string, ChatMessage>();
+
+  for (const message of current) {
+    byId.set(message.id, message);
+  }
+
+  for (const message of incoming) {
+    byId.set(message.id, message);
+  }
+
+  return [...byId.values()]
+    .sort((left, right) => left.sent_at.localeCompare(right.sent_at))
+    .slice(-CHAT_RECENT_LIMIT);
+};
+
+const formatTime = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+};
+
+export function LiveChat({ enabled, className }: LiveChatProps) {
+  const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [notice, setNotice] = useState<string | null>(enabled ? null : "채팅 설정이 아직 배포되지 않았습니다.");
+  const [state, setState] = useState<ConnectionState>(enabled ? "connecting" : "idle");
+  const [filter, setFilter] = useState<ChatFilterMode>(CHAT_DEFAULT_FILTER);
+  const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const preferredFilterRef = useRef<ChatFilterMode>(CHAT_DEFAULT_FILTER);
+  const shouldReconnectRef = useRef(enabled);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (cooldownRemainingMs <= 0) {
+      return;
+    }
+
+    const startedAt = Date.now();
+    const timer = window.setTimeout(() => {
+      setCooldownRemainingMs((current) => Math.max(0, current - (Date.now() - startedAt)));
+    }, 40);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [cooldownRemainingMs]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    let cancelled = false;
+    shouldReconnectRef.current = true;
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+
+    const scheduleReconnect = (delayMs: number) => {
+      clearReconnectTimer();
+      if (cancelled || !shouldReconnectRef.current) {
+        return;
+      }
+
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        void connect("reconnecting");
+      }, delayMs);
+    };
+
+    const connect = async (nextState: ConnectionState) => {
+      if (cancelled) {
+        return;
+      }
+
+      setState(nextState);
+
+      try {
+        const response = await fetch("/api/chat/session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as Partial<ChatSessionResponse> & {
+          error?: string;
+        };
+
+        if (!response.ok || !payload.ws_url || !payload.viewer) {
+          throw new Error(payload.error ?? "채팅 세션을 만들지 못했습니다.");
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setNotice(null);
+        setViewer(payload.viewer);
+
+        if (!payload.viewer.can_filter_guests) {
+          preferredFilterRef.current = CHAT_DEFAULT_FILTER;
+          setFilter(CHAT_DEFAULT_FILTER);
+        }
+
+        const socket = new WebSocket(payload.ws_url);
+        socketRef.current = socket;
+
+        socket.onopen = () => {
+          reconnectAttemptRef.current = 0;
+          setState("open");
+        };
+
+        socket.onmessage = (event) => {
+          let serverEvent: ChatServerEvent;
+          try {
+            serverEvent = JSON.parse(String(event.data)) as ChatServerEvent;
+          } catch {
+            return;
+          }
+
+          if (serverEvent.type === "session.ready") {
+            setViewer(serverEvent.viewer);
+
+            const nextFilter = serverEvent.viewer.can_filter_guests
+              ? preferredFilterRef.current
+              : CHAT_DEFAULT_FILTER;
+
+            setFilter(nextFilter);
+            startTransition(() => {
+              setMessages((current) => mergeMessages(current, serverEvent.recent));
+            });
+
+            if (nextFilter !== serverEvent.viewer.default_filter && socket.readyState === WebSocket.OPEN) {
+              const nextEvent: ChatClientEvent = {
+                type: "filter.set",
+                value: nextFilter
+              };
+              socket.send(JSON.stringify(nextEvent));
+            }
+
+            return;
+          }
+
+          if (serverEvent.type === "chat.message") {
+            startTransition(() => {
+              setMessages((current) => mergeMessages(current, [serverEvent.message]));
+            });
+            return;
+          }
+
+          if (serverEvent.type === "filter.updated") {
+            preferredFilterRef.current = serverEvent.value;
+            setFilter(serverEvent.value);
+            return;
+          }
+
+          if (serverEvent.type === "system.error") {
+            setNotice(serverEvent.message);
+          }
+        };
+
+        socket.onerror = () => {
+          setNotice("채팅 연결에 문제가 발생했습니다.");
+        };
+
+        socket.onclose = () => {
+          if (socketRef.current === socket) {
+            socketRef.current = null;
+          }
+
+          if (cancelled || !shouldReconnectRef.current) {
+            return;
+          }
+
+          reconnectAttemptRef.current += 1;
+          setState("reconnecting");
+          scheduleReconnect(Math.min(5000, 1000 * reconnectAttemptRef.current));
+        };
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        reconnectAttemptRef.current += 1;
+        setState("error");
+        setNotice(error instanceof Error ? error.message : "채팅 연결을 준비하지 못했습니다.");
+        scheduleReconnect(Math.min(10000, 1500 * reconnectAttemptRef.current));
+      }
+    };
+
+    void connect("connecting");
+
+    return () => {
+      cancelled = true;
+      shouldReconnectRef.current = false;
+      clearReconnectTimer();
+
+      const socket = socketRef.current;
+      socketRef.current = null;
+      socket?.close();
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+  }, [filter, messages]);
+
+  const visibleMessages = messages.filter((message) => {
+    if (filter === "members_only") {
+      return message.author_kind === "member";
+    }
+    return true;
+  });
+
+  const canSend = state === "open" && Boolean(viewer?.can_send);
+  const submitDisabled = !canSend || draft.trim().length === 0 || cooldownRemainingMs > 0;
+  const cooldownProgressStyle = useMemo(() => {
+    const progress = ((SEND_COOLDOWN_MS - cooldownRemainingMs) / SEND_COOLDOWN_MS) * 360;
+    return {
+      "--chat-send-progress": `${Math.max(0, Math.min(360, progress))}deg`
+    } as CSSProperties;
+  }, [cooldownRemainingMs]);
+
+  const submitMessage = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!viewer?.can_send) {
+      setNotice("로그인 사용자만 채팅에 참여할 수 있습니다.");
+      return;
+    }
+
+    if (cooldownRemainingMs > 0) {
+      return;
+    }
+
+    const normalizedDraft = draft.replace(/\r\n?/g, "\n").trim();
+    if (!normalizedDraft) {
+      return;
+    }
+
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setNotice("채팅이 아직 연결되지 않았습니다.");
+      return;
+    }
+
+    const nextEvent: ChatClientEvent = {
+      type: "chat.send",
+      client_id: crypto.randomUUID(),
+      text: normalizedDraft
+    };
+
+    socket.send(JSON.stringify(nextEvent));
+    setDraft("");
+    setCooldownRemainingMs(SEND_COOLDOWN_MS);
+  };
+
+  const updateFilter = (nextFilter: ChatFilterMode) => {
+    preferredFilterRef.current = nextFilter;
+    setFilter(nextFilter);
+
+    const socket = socketRef.current;
+    if (!viewer?.can_filter_guests || !socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const nextEvent: ChatClientEvent = {
+      type: "filter.set",
+      value: nextFilter
+    };
+
+    socket.send(JSON.stringify(nextEvent));
+  };
+
+  return (
+    <section className={className ? `chat-shell ${className}` : "chat-shell"}>
+      <div className="chat-toolbar">
+        <div className="chat-status-block">
+          <span className={`tag chat-status-tag ${state === "open" ? "chat-status-live" : ""}`}>{statusLabel[state]}</span>
+          <span className="muted">
+            {viewer
+              ? `${viewer.kind === "member" ? "닉네임" : "익명"} · ${viewer.display_name}`
+              : "세션 준비 중"}
+          </span>
+        </div>
+
+        {viewer?.can_filter_guests ? (
+          <div className="chat-filter-toggle" role="group" aria-label="채팅 필터">
+            <button
+              type="button"
+              className={filter === "all" ? "btn" : "btn btn-secondary"}
+              onClick={() => updateFilter("all")}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              className={filter === "members_only" ? "btn" : "btn btn-secondary"}
+              onClick={() => updateFilter("members_only")}
+            >
+              비로그인 숨기기
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {notice ? <p className="muted chat-notice">{notice}</p> : null}
+
+      <div className="chat-log" aria-live="polite">
+        {visibleMessages.length === 0 ? <p className="muted chat-empty">아직 메시지가 없습니다.</p> : null}
+
+        {visibleMessages.map((message) => (
+          <article
+            key={message.id}
+            className={`chat-message ${message.author_kind === "member" ? "chat-message-member" : "chat-message-guest"}`}
+          >
+            <div className="chat-message-meta">
+              <strong>{message.author_name}</strong>
+              <span className="muted">{formatTime(message.sent_at)}</span>
+            </div>
+            <p>{message.text}</p>
+          </article>
+        ))}
+
+        <div ref={logEndRef} />
+      </div>
+
+      <form className="chat-form" onSubmit={submitMessage}>
+        <label className="chat-input-wrap">
+          <span className="sr-only">메시지 입력</span>
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            maxLength={CHAT_MESSAGE_MAX_LENGTH}
+            rows={3}
+            placeholder={viewer?.can_send ? "텍스트만 입력할 수 있습니다." : "로그인하면 채팅을 보낼 수 있습니다."}
+            disabled={state !== "open" || !viewer?.can_send}
+          />
+        </label>
+        <div className="chat-form-footer">
+          <span className="muted">
+            최근 {CHAT_RECENT_LIMIT}개만 유지 · {draft.length}/{CHAT_MESSAGE_MAX_LENGTH}
+          </span>
+          <div className="chat-submit-group">
+            {!viewer?.can_send ? <span className="muted">비로그인은 읽기 전용입니다.</span> : null}
+            <button type="submit" disabled={submitDisabled}>
+              {cooldownRemainingMs > 0 ? (
+                <>
+                  <span className="chat-send-spinner" aria-hidden="true" style={cooldownProgressStyle} />
+                  대기
+                </>
+              ) : (
+                "보내기"
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+  );
+}

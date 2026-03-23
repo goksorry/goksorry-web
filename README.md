@@ -45,6 +45,8 @@
 - `DEFAULT_TIMEZONE`
 - `NEXT_PUBLIC_GOOGLE_ADSENSE_ACCOUNT`
 - `GOOGLE_ADSENSE_ADS_TXT`
+- `CHAT_TOKEN_SECRET`
+- `CHAT_WS_BASE_URL`
 
 ## 로컬 실행
 
@@ -54,6 +56,13 @@ npm run dev
 ```
 
 기본 개발 주소는 `http://localhost:3000`입니다.
+
+## 실시간 채팅 메모
+
+- 채팅 UI는 `/chat` 입니다.
+- 웹 앱은 `POST /api/chat/session` 에서 member/guest 세션을 발급합니다.
+- 실시간 WebSocket 허브는 별도 Cloudflare Worker/Durable Object를 전제로 합니다.
+- 메시지는 영구 저장하지 않고 최근 20개만 유지하는 전제입니다.
 
 ## API 요약
 

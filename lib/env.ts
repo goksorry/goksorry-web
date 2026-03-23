@@ -20,6 +20,17 @@ export const getServerEnv = () => {
   };
 };
 
+export const getChatServerEnv = () => {
+  const CHAT_TOKEN_SECRET = process.env.CHAT_TOKEN_SECRET ?? "";
+  const CHAT_WS_BASE_URL = process.env.CHAT_WS_BASE_URL ?? "";
+
+  return {
+    CHAT_TOKEN_SECRET,
+    CHAT_WS_BASE_URL,
+    enabled: Boolean(CHAT_TOKEN_SECRET && CHAT_WS_BASE_URL)
+  };
+};
+
 export const getTimezone = (): string => {
   return process.env.DEFAULT_TIMEZONE ?? "Asia/Seoul";
 };
