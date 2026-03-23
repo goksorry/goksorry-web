@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { getRequestId, jsonMessage, requireSameOriginMutation } from "@/lib/api-auth";
-import { getUserFromAuthorization } from "@/lib/auth-server";
+import { authOptions } from "@/lib/auth";
 import {
   buildGuestChatDisplayName,
   createChatSessionToken,
@@ -34,30 +35,31 @@ export async function POST(request: Request) {
     return sameOriginError;
   }
 
-  const chatEnv = getChatServerEnv();
-  if (!chatEnv.enabled) {
-    return jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다.");
-  }
+	const chatEnv = getChatServerEnv();
+	if (!chatEnv.enabled) {
+	  return jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다.");
+	}
 
-  const user = await getUserFromAuthorization(request);
-  let viewer: SessionViewer;
-  let guestCookie: { value: string; expiresAt: string } | null = null;
+	const session = await getServerSession(authOptions);
+	const memberId = String(session?.user?.id ?? "").trim();
+	const memberNickname = String(session?.user?.nickname ?? "").trim();
+	let viewer: SessionViewer;
+	let guestCookie: { value: string; expiresAt: string } | null = null;
 
-  if (user) {
-    const nickname = String(user.nickname ?? "").trim();
-    if (!nickname) {
-      return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
-    }
+	if (memberId) {
+	  if (!memberNickname) {
+	    return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
+	  }
 
-    viewer = {
-      id: user.id,
-      kind: "member",
-      display_name: nickname,
-      can_filter_guests: true,
-      can_send: true,
-      default_filter: CHAT_DEFAULT_FILTER
-    };
-  } else {
+	  viewer = {
+	    id: memberId,
+	    kind: "member",
+	    display_name: memberNickname,
+	    can_filter_guests: true,
+	    can_send: true,
+	    default_filter: CHAT_DEFAULT_FILTER
+	  };
+	} else {
     const cookieHeader = request.headers.get("cookie") ?? "";
     const cookieMatch = cookieHeader.match(new RegExp(`(?:^|; )${CHAT_GUEST_COOKIE_NAME}=([^;]+)`));
     const cookieValue = cookieMatch?.[1] ? safeDecodeCookieValue(cookieMatch[1]) : "";
