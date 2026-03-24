@@ -7,6 +7,7 @@ import { LiveChat } from "@/components/live-chat";
 export function ChatDock({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
 
   useEffect(() => {
     setOpen(false);
@@ -18,8 +19,12 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="chat-dock-shell">
-      {open ? (
-        <section id="global-chat-dock" className="panel chat-dock-panel chat-dock-panel-open" aria-hidden={false}>
+      {hasOpened ? (
+        <section
+          id="global-chat-dock"
+          className={`panel chat-dock-panel ${open ? "chat-dock-panel-open" : ""}`}
+          aria-hidden={!open}
+        >
           <LiveChat
             enabled={enabled}
             className="chat-dock-live"
@@ -30,17 +35,22 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
             }
           />
         </section>
-      ) : (
+      ) : null}
+
+      {!open ? (
         <button
           type="button"
           className="chat-dock-toggle"
           aria-expanded={false}
           aria-controls="global-chat-dock"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setHasOpened(true);
+            setOpen(true);
+          }}
         >
           실시간 채팅
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
