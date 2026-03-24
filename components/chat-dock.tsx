@@ -18,23 +18,29 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="chat-dock-shell">
-      <section
-        id="global-chat-dock"
-        className={`panel chat-dock-panel ${open ? "chat-dock-panel-open" : ""}`}
-        aria-hidden={!open}
-      >
-        {open ? <LiveChat enabled={enabled} className="chat-dock-live" /> : null}
-      </section>
-
-      <button
-        type="button"
-        className={`chat-dock-toggle ${open ? "chat-dock-toggle-open" : ""}`}
-        aria-expanded={open}
-        aria-controls="global-chat-dock"
-        onClick={() => setOpen((current) => !current)}
-      >
-        {open ? "채팅 닫기" : "실시간 채팅"}
-      </button>
+      {open ? (
+        <section id="global-chat-dock" className="panel chat-dock-panel chat-dock-panel-open" aria-hidden={false}>
+          <LiveChat
+            enabled={enabled}
+            className="chat-dock-live"
+            headerActions={
+              <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
+                채팅 닫기
+              </button>
+            }
+          />
+        </section>
+      ) : (
+        <button
+          type="button"
+          className="chat-dock-toggle"
+          aria-expanded={false}
+          aria-controls="global-chat-dock"
+          onClick={() => setOpen(true)}
+        >
+          실시간 채팅
+        </button>
+      )}
     </div>
   );
 }

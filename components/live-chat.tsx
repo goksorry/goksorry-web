@@ -4,6 +4,7 @@ import {
   startTransition,
   type CSSProperties,
   type FormEvent,
+  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -25,6 +26,7 @@ type LiveChatProps = {
   enabled: boolean;
   className?: string;
   title?: string;
+  headerActions?: ReactNode;
 };
 
 const SEND_COOLDOWN_MS = 500;
@@ -79,7 +81,7 @@ const isScrolledToBottom = (element: HTMLDivElement | null): boolean => {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
 };
 
-export function LiveChat({ enabled, className, title = "전체 채팅" }: LiveChatProps) {
+export function LiveChat({ enabled, className, title = "전체 채팅", headerActions = null }: LiveChatProps) {
   const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -307,6 +309,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅" }: LiveCh
           <h2>{title}</h2>
           <span className={`tag chat-status-tag ${state === "open" ? "chat-status-live" : ""}`}>{statusLabel[state]}</span>
         </div>
+        {headerActions ? <div className="chat-toolbar-actions">{headerActions}</div> : null}
       </div>
 
       {notice ? <p className="muted chat-notice">{notice}</p> : null}
@@ -342,6 +345,14 @@ export function LiveChat({ enabled, className, title = "전체 채팅" }: LiveCh
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+                return;
+              }
+
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }}
             maxLength={CHAT_MESSAGE_MAX_LENGTH}
             rows={3}
             placeholder={viewer?.can_send ? "메시지를 입력하세요." : "로그인하여 채팅에 참여하세요."}

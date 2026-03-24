@@ -1938,6 +1938,14 @@ button:disabled {
   margin: 0;
 }
 
+.chat-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
 .chat-status-tag {
   min-width: 5.8rem;
   text-align: center;
@@ -2092,6 +2100,9 @@ button:disabled {
   visibility: hidden;
   pointer-events: none;
   transition: transform 220ms ease, opacity 220ms ease;
+  margin: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .chat-dock-panel-open {
@@ -2474,10 +2485,12 @@ button:disabled {
   }
 
   .chat-toolbar,
+  .chat-toolbar-actions,
   .chat-submit-group {
     align-items: stretch;
   }
 
+  .chat-toolbar-actions,
   .chat-submit-group {
     display: grid;
     grid-template-columns: 1fr;
