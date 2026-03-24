@@ -84,6 +84,7 @@ const isScrolledToBottom = (element: HTMLDivElement | null): boolean => {
 export function LiveChat({ enabled, className, title = "전체 채팅", headerActions = null }: LiveChatProps) {
   const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [connectionCount, setConnectionCount] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(enabled ? null : "채팅 설정이 아직 배포되지 않았습니다.");
   const [state, setState] = useState<ConnectionState>(enabled ? "connecting" : "idle");
@@ -185,10 +186,16 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
 
           if (serverEvent.type === "session.ready") {
             setViewer(serverEvent.viewer);
+            setConnectionCount(serverEvent.connections);
             startTransition(() => {
               setMessages((current) => mergeMessages(current, serverEvent.recent));
             });
 
+            return;
+          }
+
+          if (serverEvent.type === "presence.count") {
+            setConnectionCount(serverEvent.connections);
             return;
           }
 
@@ -308,6 +315,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
         <div className="chat-toolbar-main">
           <h2>{title}</h2>
           <span className={`tag chat-status-tag ${state === "open" ? "chat-status-live" : ""}`}>{statusLabel[state]}</span>
+          {connectionCount !== null ? <span className="muted chat-presence-count">{connectionCount}명 접속</span> : null}
         </div>
         {headerActions ? <div className="chat-toolbar-actions">{headerActions}</div> : null}
       </div>

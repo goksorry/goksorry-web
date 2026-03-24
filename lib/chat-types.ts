@@ -52,6 +52,7 @@ export type ChatSessionReadyEvent = {
   type: "session.ready";
   viewer: ChatSessionViewer;
   recent: ChatMessage[];
+  connections: number;
 };
 
 export type ChatMessageEvent = {
@@ -69,6 +70,11 @@ export type ChatPongEvent = {
   ts: number;
 };
 
+export type ChatPresenceCountEvent = {
+  type: "presence.count";
+  connections: number;
+};
+
 export type ChatSystemErrorEvent = {
   type: "system.error";
   code: string;
@@ -80,4 +86,5 @@ export type ChatServerEvent =
   | ChatMessageEvent
   | ChatFilterUpdatedEvent
   | ChatPongEvent
+  | ChatPresenceCountEvent
   | ChatSystemErrorEvent;

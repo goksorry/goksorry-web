@@ -1956,6 +1956,10 @@ button:disabled {
   border-color: var(--hope-line);
 }
 
+.chat-presence-count {
+  font-size: 0.78rem;
+}
+
 .chat-notice {
   margin: 0;
 }
