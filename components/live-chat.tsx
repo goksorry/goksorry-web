@@ -4,7 +4,6 @@ import {
   startTransition,
   type CSSProperties,
   type FormEvent,
-  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -26,7 +25,6 @@ type LiveChatProps = {
   enabled: boolean;
   className?: string;
   title?: string;
-  headerActions?: ReactNode;
 };
 
 const SEND_COOLDOWN_MS = 500;
@@ -61,13 +59,27 @@ const formatTime = (value: string): string => {
     return "--:--";
   }
 
+  const now = new Date();
+  const sameDay =
+    now.getFullYear() === date.getFullYear() && now.getMonth() === date.getMonth() && now.getDate() === date.getDate();
+
   return new Intl.DateTimeFormat("ko-KR", {
+    ...(sameDay ? {} : { month: "numeric", day: "numeric" }),
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    hour12: false
   }).format(date);
 };
 
-export function LiveChat({ enabled, className, title = "전체 채팅", headerActions = null }: LiveChatProps) {
+const isScrolledToBottom = (element: HTMLDivElement | null): boolean => {
+  if (!element) {
+    return true;
+  }
+
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
+};
+
+export function LiveChat({ enabled, className, title = "전체 채팅" }: LiveChatProps) {
   const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -78,7 +90,8 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const shouldReconnectRef = useRef(enabled);
-  const logEndRef = useRef<HTMLDivElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottomRef = useRef(true);
 
   useEffect(() => {
     if (cooldownRemainingMs <= 0) {
@@ -232,7 +245,16 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
   }, [enabled]);
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    if (!stickToBottomRef.current) {
+      return;
+    }
+
+    const log = logRef.current;
+    if (!log) {
+      return;
+    }
+
+    log.scrollTop = log.scrollHeight;
   }, [messages]);
 
   const canSend = state === "open" && Boolean(viewer?.can_send);
@@ -285,12 +307,18 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
           <h2>{title}</h2>
           <span className={`tag chat-status-tag ${state === "open" ? "chat-status-live" : ""}`}>{statusLabel[state]}</span>
         </div>
-        {headerActions ? <div className="chat-toolbar-actions">{headerActions}</div> : null}
       </div>
 
       {notice ? <p className="muted chat-notice">{notice}</p> : null}
 
-      <div className="chat-log" aria-live="polite">
+      <div
+        ref={logRef}
+        className="chat-log"
+        aria-live="polite"
+        onScroll={(event) => {
+          stickToBottomRef.current = isScrolledToBottom(event.currentTarget);
+        }}
+      >
         {messages.length === 0 ? <p className="muted chat-empty">아직 메시지가 없습니다.</p> : null}
 
         {messages.map((message) => (
@@ -306,7 +334,6 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
           </article>
         ))}
 
-        <div ref={logEndRef} />
       </div>
 
       <form className="chat-form" onSubmit={submitMessage}>

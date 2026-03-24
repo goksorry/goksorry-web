@@ -4,15 +4,6 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LiveChat } from "@/components/live-chat";
 
-const openChatWindow = () => {
-  const url = new URL("/chat", window.location.origin).toString();
-  window.open(
-    url,
-    "goksorry-chat-popup",
-    "popup=yes,width=440,height=760,left=80,top=80,resizable=yes,scrollbars=yes"
-  );
-};
-
 export function ChatDock({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -32,17 +23,7 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
         className={`panel chat-dock-panel ${open ? "chat-dock-panel-open" : ""}`}
         aria-hidden={!open}
       >
-        {open ? (
-          <LiveChat
-            enabled={enabled}
-            className="chat-dock-live"
-            headerActions={
-              <button type="button" className="btn btn-secondary" onClick={openChatWindow}>
-                작은 창
-              </button>
-            }
-          />
-        ) : null}
+        {open ? <LiveChat enabled={enabled} className="chat-dock-live" /> : null}
       </section>
 
       <button

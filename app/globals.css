@@ -1938,13 +1938,6 @@ button:disabled {
   margin: 0;
 }
 
-.chat-toolbar-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
 .chat-status-tag {
   min-width: 5.8rem;
   text-align: center;
@@ -1964,6 +1957,8 @@ button:disabled {
   max-height: 34rem;
   overflow-y: auto;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 0.08rem;
   justify-items: start;
   padding: 0.3rem;
@@ -2479,12 +2474,10 @@ button:disabled {
   }
 
   .chat-toolbar,
-  .chat-toolbar-actions,
   .chat-submit-group {
     align-items: stretch;
   }
 
-  .chat-toolbar-actions,
   .chat-submit-group {
     display: grid;
     grid-template-columns: 1fr;
