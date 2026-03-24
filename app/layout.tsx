@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
+import { headers } from "next/headers";
 import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
@@ -41,15 +42,18 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   const chatEnv = getChatServerEnv();
+  const nonce = headers().get("x-nonce") ?? undefined;
 
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
         <script
           async
+          nonce={nonce}
           src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
         />
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];

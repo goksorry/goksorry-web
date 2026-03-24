@@ -4,18 +4,23 @@ import { NextResponse } from "next/server";
 const CANONICAL_HOST = "goksorry.com";
 const LEGACY_HOSTS = new Set(["www.goksorry.com"]);
 const CHAT_CONNECT_SOURCES = ["https://*.workers.dev", "wss://*.workers.dev"];
+const GOOGLE_ANALYTICS_CONNECT_SOURCES = [
+  "https://www.google-analytics.com",
+  "https://region1.google-analytics.com"
+];
 
 const buildCsp = (nonce: string): string => {
   const isDev = process.env.NODE_ENV !== "production";
   const scriptDirectives = isDev
-    ? "'self' 'unsafe-inline' 'unsafe-eval'"
-    : `'self' 'nonce-${nonce}' 'strict-dynamic'`;
+    ? "'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com"
+    : `'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`;
   const connectSources = [
     "'self'",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://accounts.google.com",
     "https://www.googleapis.com",
+    ...GOOGLE_ANALYTICS_CONNECT_SOURCES,
     ...CHAT_CONNECT_SOURCES
   ].join(" ");
 
