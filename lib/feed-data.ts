@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
 import {
+  aggregateSentimentBand,
+  aggregateSentimentTone,
   averageSentimentScore,
   resolveSentimentScore,
-  sentimentBandFromScore,
   sentimentLabelFromScore,
-  sentimentToneFromScore,
   type SentimentBand,
   type SentimentLabel
 } from "@/lib/sentiment-score";
@@ -199,8 +199,11 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
     const bearish = groupRows.filter((row) => row.label === "bearish").length;
     const neutral = groupRows.length - bullish - bearish;
     const score = averageSentimentScore(groupRows.map((row) => row.sentiment_score));
-    const tone = sentimentToneFromScore(score);
-    const sentimentBand = sentimentBandFromScore(score);
+    const tone = aggregateSentimentTone(bullish, bearish);
+    const sentimentBand = aggregateSentimentBand(score, {
+      bullishCount: bullish,
+      bearishCount: bearish
+    });
 
     return {
       id: group.id,
@@ -220,9 +223,14 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
 
 export const buildFeedScoreOverview = (rows: FeedRow[]): FeedScoreOverview => {
   const score = averageSentimentScore(rows.map((row) => row.sentiment_score));
+  const bullish = rows.filter((row) => row.label === "bullish").length;
+  const bearish = rows.filter((row) => row.label === "bearish").length;
   return {
     score,
-    sentiment_band: sentimentBandFromScore(score)
+    sentiment_band: aggregateSentimentBand(score, {
+      bullishCount: bullish,
+      bearishCount: bearish
+    })
   };
 };
 

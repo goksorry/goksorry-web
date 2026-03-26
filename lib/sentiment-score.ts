@@ -14,6 +14,8 @@ const EXTREME_BEARISH_MAX = 2.4;
 const BEARISH_MAX = 4.4;
 const NEUTRAL_MAX = 5.5;
 const BULLISH_MAX = 7.5;
+const AGGREGATE_DOMINANCE_COUNT_GAP_MIN = 2;
+const AGGREGATE_DOMINANCE_SHARE_MIN = 0.55;
 
 export const clampSentimentScore = (value: number): number => {
   const clamped = Math.min(SENTIMENT_SCORE_MAX, Math.max(SENTIMENT_SCORE_MIN, value));
@@ -68,6 +70,60 @@ export const sentimentToneFromScore = (score: number): "bearish" | "mixed" | "bu
     return "bullish";
   }
   return "mixed";
+};
+
+const dominantAggregateSentimentLabel = (
+  bullishCount: number,
+  bearishCount: number
+): SentimentLabel => {
+  const actionableCount = bullishCount + bearishCount;
+  if (actionableCount === 0) {
+    return "neutral";
+  }
+
+  const dominanceCount = Math.abs(bullishCount - bearishCount);
+  const dominantShare = Math.max(bullishCount, bearishCount) / actionableCount;
+  if (
+    dominanceCount < AGGREGATE_DOMINANCE_COUNT_GAP_MIN ||
+    dominantShare < AGGREGATE_DOMINANCE_SHARE_MIN
+  ) {
+    return "neutral";
+  }
+
+  return bullishCount > bearishCount ? "bullish" : "bearish";
+};
+
+export const aggregateSentimentTone = (
+  bullishCount: number,
+  bearishCount: number
+): "bearish" | "mixed" | "bullish" => {
+  const dominantLabel = dominantAggregateSentimentLabel(bullishCount, bearishCount);
+  if (dominantLabel === "neutral") {
+    return "mixed";
+  }
+  return dominantLabel;
+};
+
+export const aggregateSentimentBand = (
+  score: number,
+  {
+    bullishCount,
+    bearishCount
+  }: {
+    bullishCount: number;
+    bearishCount: number;
+  }
+): SentimentBand => {
+  const dominantLabel = dominantAggregateSentimentLabel(bullishCount, bearishCount);
+  if (dominantLabel === "neutral") {
+    return "neutral";
+  }
+
+  const normalized = clampSentimentScore(score);
+  if (dominantLabel === "bearish") {
+    return normalized <= EXTREME_BEARISH_MAX ? "extreme_bearish" : "bearish";
+  }
+  return normalized > BULLISH_MAX ? "extreme_bullish" : "bullish";
 };
 
 export const resolveSentimentScore = (value: unknown, label?: unknown): number => {

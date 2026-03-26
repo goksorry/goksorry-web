@@ -144,13 +144,23 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           fear_index: 67.5,
           payload: {
             avg_euphoria: 31.2,
-            symbol_count: 18
+            avg_sentiment_score: 3.84,
+            symbol_count: 18,
+            pos_count: 42,
+            neg_count: 71,
+            neutral_count: 19,
+            actionable_count: 113,
+            dominant_share: 0.6283,
+            regime_basis: "post_dominance_v1"
           }
         }
       ],
       ttl_sec: 60
     },
-    notes: ["레짐과 공포 지수는 공식 거래소 지표가 아니라 커뮤니티 활동에서 파생된 값입니다."]
+    notes: [
+      "레짐과 공포 지수는 공식 거래소 지표가 아니라 커뮤니티 활동에서 파생된 값입니다.",
+      "regime은 최근 수집 글의 bullish/bearish 우세로 계산하고, fear_index는 평균 sentiment score에서 파생합니다."
+    ]
   },
   {
     method: "GET",
