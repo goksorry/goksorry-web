@@ -539,7 +539,7 @@ a:hover {
   display: grid;
   gap: 0.8rem;
   padding: 0.9rem;
-  padding-right: calc(var(--overview-art-width) + clamp(0.15rem, 0.8vw, 0.75rem));
+  padding-right: calc(var(--overview-art-width) + clamp(1.25rem, 2.5vw, 1.9rem));
   z-index: 1;
 }
 
@@ -674,7 +674,7 @@ a:hover {
   font-size: 0.76rem;
   color: var(--muted);
   text-align: right;
-  margin-right: clamp(3.2rem, 7vw, 5.75rem);
+  margin-right: calc(var(--overview-art-width) + clamp(0.5rem, 1.5vw, 1.25rem));
 }
 
 .overview-market-row {
