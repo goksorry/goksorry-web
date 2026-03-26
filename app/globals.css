@@ -538,7 +538,6 @@ a:hover {
   position: relative;
   display: grid;
   gap: 0.8rem;
-  min-height: clamp(10.5rem, 18vw, 12.5rem);
   padding: 0.9rem;
   padding-right: calc(var(--overview-art-width) + clamp(1.25rem, 2.5vw, 1.9rem));
   z-index: 1;
@@ -604,11 +603,11 @@ a:hover {
 
 .overview-overall-score {
   display: grid;
-  justify-items: start;
+  justify-items: end;
   gap: 0.12rem;
   min-width: 9.5rem;
-  padding-right: clamp(5rem, 8vw, 6.5rem);
-  text-align: left;
+  padding-right: 0;
+  text-align: right;
   position: relative;
   z-index: 1;
 }
@@ -675,6 +674,7 @@ a:hover {
   font-size: 0.76rem;
   color: var(--muted);
   text-align: right;
+  margin-right: calc(var(--overview-art-width) + clamp(0.5rem, 1.5vw, 1.25rem));
 }
 
 .overview-market-row {
@@ -2437,7 +2437,7 @@ button:disabled {
     inset: 0;
     left: auto;
     width: var(--overview-art-width);
-    background-position: right center;
+    background-position: left top;
     background-size: contain;
   }
 
@@ -2453,6 +2453,7 @@ button:disabled {
 
   .overview-section-copy {
     text-align: left;
+    margin-right: 0;
   }
 
   .overview-market-row {
