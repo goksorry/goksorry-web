@@ -190,26 +190,28 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
       </section>
 
       <section className="overview-panel">
-        <div className="overview-heading">
-          <div className="overview-heading-art" aria-hidden="true" style={overviewArtStyle} />
-          <div className="overview-heading-copy">
-            <p className="overview-kicker">커뮤니티 체감</p>
-            <h2>실시간 체감 지수</h2>
-            <p className="overview-timestamp">
-              {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
-            </p>
+        <div className="overview-hero" style={overviewArtStyle}>
+          <div className="overview-hero-art" aria-hidden="true" />
+          <div className="overview-heading">
+            <div className="overview-heading-copy">
+              <p className="overview-kicker">커뮤니티 체감</p>
+              <h2>실시간 체감 지수</h2>
+              <p className="overview-timestamp">
+                {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
+              </p>
+            </div>
+            <div className="overview-overall-score" aria-live="polite">
+              <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
+              <strong className="overview-overall-value">
+                {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
+                <span>/10</span>
+              </strong>
+              <p className="overview-overall-band">{overallCommunityLabel}</p>
+            </div>
           </div>
-          <div className="overview-overall-score" aria-live="polite">
-            <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
-            <strong className="overview-overall-value">
-              {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
-              <span>/10</span>
-            </strong>
-            <p className="overview-overall-band">{overallCommunityLabel}</p>
-          </div>
-        </div>
 
-        {error ? <p className="error">커뮤니티 지수 로드 실패: {error}</p> : null}
+          {error ? <p className="error overview-hero-error">커뮤니티 지수 로드 실패: {error}</p> : null}
+        </div>
 
         <section className="overview-section">
           <div className="overview-section-head">

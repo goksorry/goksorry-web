@@ -160,18 +160,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         </div>
                       </section>
                       <section className="overview-panel">
-                        <div className="overview-heading">
-                          <div className="overview-heading-copy">
-                            <p className="overview-kicker">커뮤니티 체감</p>
-                            <h2>실시간 체감 지수</h2>
-                            <p className="overview-timestamp">캐시 지수 준비 중</p>
-                          </div>
-                          <div className="overview-overall-score">
-                            <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
-                            <strong className="overview-overall-value">
-                              --<span>/10</span>
-                            </strong>
-                            <p className="overview-overall-band">계산 중</p>
+                        <div className="overview-hero">
+                          <div className="overview-hero-art" aria-hidden="true" />
+                          <div className="overview-heading">
+                            <div className="overview-heading-copy">
+                              <p className="overview-kicker">커뮤니티 체감</p>
+                              <h2>실시간 체감 지수</h2>
+                              <p className="overview-timestamp">캐시 지수 준비 중</p>
+                            </div>
+                            <div className="overview-overall-score">
+                              <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
+                              <strong className="overview-overall-value">
+                                --<span>/10</span>
+                              </strong>
+                              <p className="overview-overall-band">계산 중</p>
+                            </div>
                           </div>
                         </div>
                         <section className="overview-section">
