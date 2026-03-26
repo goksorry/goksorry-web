@@ -160,8 +160,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         </div>
                       </section>
                       <section className="overview-panel">
+                        <div className="overview-panel-art" aria-hidden="true" />
                         <div className="overview-hero">
-                          <div className="overview-hero-art" aria-hidden="true" />
                           <div className="overview-heading">
                             <div className="overview-heading-copy">
                               <p className="overview-kicker">커뮤니티 체감</p>

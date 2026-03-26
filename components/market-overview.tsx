@@ -189,9 +189,9 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
         </div>
       </section>
 
-      <section className="overview-panel">
-        <div className="overview-hero" style={overviewArtStyle}>
-          <div className="overview-hero-art" aria-hidden="true" />
+      <section className="overview-panel" style={overviewArtStyle}>
+        <div className="overview-panel-art" aria-hidden="true" />
+        <div className="overview-hero">
           <div className="overview-heading">
             <div className="overview-heading-copy">
               <p className="overview-kicker">커뮤니티 체감</p>
