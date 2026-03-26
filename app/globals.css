@@ -517,6 +517,7 @@ a:hover {
 .overview-panel {
   --overview-art-light: url("/images/overview-regimes/overview-regime-neutral-light.webp");
   --overview-art-dark: url("/images/overview-regimes/overview-regime-neutral-dark.webp");
+  --overview-art-width: clamp(18rem, 31vw, 23rem);
   background: var(--panel-soft);
   border: 1px solid var(--overview-line);
   border-radius: 18px;
@@ -539,7 +540,7 @@ a:hover {
   gap: 0.8rem;
   min-height: clamp(10.5rem, 18vw, 12.5rem);
   padding: 0.9rem;
-  padding-right: clamp(18rem, 30vw, 22rem);
+  padding-right: calc(var(--overview-art-width) + clamp(1.25rem, 2.5vw, 1.9rem));
   z-index: 1;
 }
 
@@ -566,11 +567,11 @@ a:hover {
 .overview-panel-art {
   position: absolute;
   inset: 0 0 0 auto;
-  width: clamp(18rem, 31vw, 23rem);
+  width: var(--overview-art-width);
   background-image: var(--overview-art-light);
   background-repeat: no-repeat;
-  background-position: center right;
-  background-size: cover;
+  background-position: right bottom;
+  background-size: auto 100%;
   opacity: 1;
   pointer-events: none;
   z-index: 0;
@@ -603,9 +604,11 @@ a:hover {
 
 .overview-overall-score {
   display: grid;
-  justify-items: end;
+  justify-items: start;
   gap: 0.12rem;
   min-width: 9.5rem;
+  padding-right: clamp(5rem, 8vw, 6.5rem);
+  text-align: left;
   position: relative;
   z-index: 1;
 }
@@ -2411,9 +2414,10 @@ button:disabled {
   }
 
   .overview-hero {
+    --overview-art-width: clamp(10.75rem, 44vw, 13rem);
     min-height: 8rem;
     padding-left: 0.8rem;
-    padding-right: clamp(8.5rem, 42vw, 11rem);
+    padding-right: calc(var(--overview-art-width) + 0.65rem);
     padding-top: 0.8rem;
     padding-bottom: 0.8rem;
   }
@@ -2426,14 +2430,15 @@ button:disabled {
   .overview-overall-score {
     justify-items: start;
     min-width: 0;
+    padding-right: 0;
   }
 
   .overview-panel-art {
     inset: 0;
     left: auto;
-    width: clamp(10.5rem, 44vw, 13rem);
-    background-position: center right;
-    background-size: cover;
+    width: var(--overview-art-width);
+    background-position: right center;
+    background-size: contain;
   }
 
   .overview-section {
