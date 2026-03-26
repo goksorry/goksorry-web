@@ -536,7 +536,8 @@ a:hover {
   gap: 1rem;
   position: relative;
   overflow: hidden;
-  min-height: 8.1rem;
+  min-height: clamp(10.5rem, 18vw, 12.5rem);
+  padding-right: clamp(17rem, 28vw, 18.75rem);
 }
 
 .overview-heading-copy {
@@ -552,17 +553,17 @@ a:hover {
 
 .overview-heading-art {
   position: absolute;
-  inset: -1.15rem 0 -1.15rem auto;
-  width: clamp(15rem, 24vw, 19rem);
+  inset: 0 0 0 auto;
+  width: clamp(18rem, 31vw, 23rem);
   background-image: var(--overview-art-light);
   background-repeat: no-repeat;
-  background-position: right -0.8rem center;
-  background-size: auto 118%;
-  opacity: 0.98;
+  background-position: center right;
+  background-size: cover;
+  opacity: 1;
   pointer-events: none;
   z-index: 0;
-  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 68%, rgba(0, 0, 0, 0.92) 80%, rgba(0, 0, 0, 0) 100%);
-  mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 68%, rgba(0, 0, 0, 0.92) 80%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 58%, rgba(0, 0, 0, 0.92) 72%, rgba(0, 0, 0, 0.42) 88%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 58%, rgba(0, 0, 0, 0.92) 72%, rgba(0, 0, 0, 0.42) 88%, rgba(0, 0, 0, 0) 100%);
 }
 
 :root[data-theme="dark"] .overview-heading-art {
@@ -593,7 +594,6 @@ a:hover {
   justify-items: end;
   gap: 0.12rem;
   min-width: 9.5rem;
-  margin-right: clamp(4.75rem, 8vw, 6.25rem);
   position: relative;
   z-index: 1;
 }
@@ -2393,21 +2393,21 @@ button:disabled {
   .overview-heading {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
-    min-height: 7.1rem;
+    min-height: 8rem;
+    padding-right: clamp(8.5rem, 42vw, 11rem);
   }
 
   .overview-overall-score {
     justify-items: start;
     min-width: 0;
-    margin-right: 0;
   }
 
   .overview-heading-art {
-    inset: -0.85rem -0.35rem -0.85rem auto;
-    width: clamp(9.4rem, 34vw, 11.5rem);
-    background-position: right -0.35rem center;
-    background-size: auto 108%;
-    opacity: 0.9;
+    inset: 0;
+    left: auto;
+    width: clamp(10.5rem, 44vw, 13rem);
+    background-position: center right;
+    background-size: cover;
   }
 
   .overview-section-head {
