@@ -1,7 +1,7 @@
 "use client";
 
 import { CrossfadeContent } from "@/components/crossfade-content";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useFeedSelection } from "@/components/feed-selection-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -11,6 +11,7 @@ import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
+import type { SentimentBand } from "@/lib/sentiment-score";
 
 const toLocalTime = (iso: string): string => {
   const date = new Date(iso);
@@ -29,6 +30,27 @@ const toLocalTime = (iso: string): string => {
 
 type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
+};
+
+type OverviewArtStyle = CSSProperties & {
+  "--overview-art-light": string;
+  "--overview-art-dark": string;
+};
+
+const OVERVIEW_REGIME_ART_SLUG: Record<SentimentBand, string> = {
+  extreme_bearish: "extreme-bearish",
+  bearish: "bearish",
+  neutral: "neutral",
+  bullish: "bullish",
+  extreme_bullish: "extreme-bullish"
+};
+
+const buildOverviewArtStyle = (band: SentimentBand): OverviewArtStyle => {
+  const slug = OVERVIEW_REGIME_ART_SLUG[band];
+  return {
+    "--overview-art-light": `url("/images/overview-regimes/overview-regime-${slug}-light.webp")`,
+    "--overview-art-dark": `url("/images/overview-regimes/overview-regime-${slug}-dark.webp")`
+  };
 };
 
 const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) => ({
@@ -144,6 +166,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const overallCommunityLabel = communityLoading
     ? "계산 중"
     : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
+  const overviewArtStyle = buildOverviewArtStyle(overallCommunityBand);
 
   return (
     <>
@@ -168,6 +191,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
 
       <section className="overview-panel">
         <div className="overview-heading">
+          <div className="overview-heading-art" aria-hidden="true" style={overviewArtStyle} />
           <div className="overview-heading-copy">
             <p className="overview-kicker">커뮤니티 체감</p>
             <h2>실시간 체감 지수</h2>

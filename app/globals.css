@@ -534,15 +534,45 @@ a:hover {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  min-height: 8.1rem;
 }
 
 .overview-heading-copy {
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .overview-heading h2 {
   margin: 0.15rem 0 0;
   font-size: 1.08rem;
+}
+
+.overview-heading-art {
+  position: absolute;
+  inset: -1.15rem 0 -1.15rem auto;
+  width: clamp(15rem, 24vw, 19rem);
+  background-image: var(--overview-art-light);
+  background-repeat: no-repeat;
+  background-position: right -0.8rem center;
+  background-size: auto 118%;
+  opacity: 0.98;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 68%, rgba(0, 0, 0, 0.92) 80%, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 68%, rgba(0, 0, 0, 0.92) 80%, rgba(0, 0, 0, 0) 100%);
+}
+
+:root[data-theme="dark"] .overview-heading-art {
+  background-image: var(--overview-art-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .overview-heading-art {
+    background-image: var(--overview-art-dark);
+  }
 }
 
 .overview-timestamp {
@@ -563,6 +593,9 @@ a:hover {
   justify-items: end;
   gap: 0.12rem;
   min-width: 9.5rem;
+  margin-right: clamp(4.75rem, 8vw, 6.25rem);
+  position: relative;
+  z-index: 1;
 }
 
 .overview-overall-label,
@@ -2360,11 +2393,21 @@ button:disabled {
   .overview-heading {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
+    min-height: 7.1rem;
   }
 
   .overview-overall-score {
     justify-items: start;
     min-width: 0;
+    margin-right: 0;
+  }
+
+  .overview-heading-art {
+    inset: -0.85rem -0.35rem -0.85rem auto;
+    width: clamp(9.4rem, 34vw, 11.5rem);
+    background-position: right -0.35rem center;
+    background-size: auto 108%;
+    opacity: 0.9;
   }
 
   .overview-section-head {
