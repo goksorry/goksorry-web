@@ -185,7 +185,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                           <div className="overview-bottom-row">
                             {[
                               "네이버 주주오픈톡 지수",
-                              "토스증권 종목커뮤니티 지수",
+                              "토스증권 커뮤니티 지수",
                               "블라인드 주식투자 지수",
                               "디시 주갤·국장갤·미장갤·해주갤 지수"
                             ].map((label) => (

@@ -6,7 +6,7 @@ export const SOURCE_GROUPS = [
   },
   {
     id: "toss",
-    label: "토스증권 종목커뮤니티 지수",
+    label: "토스증권 커뮤니티 지수",
     shortLabel: "토스증권"
   },
   {
@@ -73,7 +73,7 @@ export const matchesSourceGroup = (source: string, groupId: SourceGroupId): bool
     return source.startsWith("naver_stock_");
   }
   if (groupId === "toss") {
-    return source.startsWith("toss_stock_community_");
+    return source.startsWith("toss_stock_community_") || source.startsWith("toss_lounge_");
   }
   if (groupId === "blind") {
     return source === "blind_stock_invest";

@@ -25,8 +25,11 @@ const getFeedSourceLabel = (source: string): string => {
   if (source.startsWith("naver_stock_")) {
     return "네이버 주주오픈톡";
   }
+  if (source.startsWith("toss_lounge_")) {
+    return "토스증권 라운지";
+  }
   if (source.startsWith("toss_stock_community_")) {
-    return "토스증권";
+    return "토스증권 종목토론";
   }
   if (source === "blind_stock_invest") {
     return "블라인드";

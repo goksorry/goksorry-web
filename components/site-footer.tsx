@@ -7,7 +7,7 @@ const SOURCE_LINKS = [
     href: "https://m.stock.naver.com/"
   },
   {
-    label: "토스증권 종목커뮤니티",
+    label: "토스증권 커뮤니티",
     href: "https://www.tossinvest.com/"
   },
   {
