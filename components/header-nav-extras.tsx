@@ -8,7 +8,7 @@ export function HeaderNavExtras({ initialSession }: { initialSession: Session | 
   const { data: liveSession } = useSession();
   const session = liveSession ?? initialSession;
 
-  if (session?.user?.role !== "admin") {
+  if (session?.user?.role !== "admin" || session?.user?.profile_setup_required) {
     return null;
   }
 

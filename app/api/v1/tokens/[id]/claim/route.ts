@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthorization } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { generateTradingBotApiToken } from "@/lib/api-tokens";
 import { allowRateLimit } from "@/lib/rate-limit";
@@ -31,8 +31,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!user) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonError(requestId, 403, "FORBIDDEN", "complete profile setup first");
+  }
 
-  if (!allowRateLimit(`token-claim:${user.id}`, 10)) {
+  if (!allowRateLimit(`token-claim:${profile.id}`, 10)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token claims. try again in a minute");
   }
 
@@ -46,7 +50,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .from("api_access_tokens")
     .select("id,name,token_prefix,token_hash,scope,approval_status,approved_at,revoked_at")
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("user_id", profile.id)
     .maybeSingle();
 
   if (error) {
@@ -80,7 +84,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       expires_at: expiresAt
     })
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("user_id", profile.id)
     .is("token_hash", null)
     .eq("approval_status", "approved");
 

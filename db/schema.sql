@@ -6,6 +6,9 @@ create table if not exists public.profiles (
   nickname text not null,
   nickname_confirmed_at timestamptz,
   nickname_changed_at timestamptz,
+  age_confirmed_at timestamptz,
+  terms_agreed_at timestamptz,
+  privacy_agreed_at timestamptz,
   role text not null default 'user' check (role in ('user', 'admin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -161,6 +164,19 @@ as $$
     from public.profiles p
     where p.id = user_id
       and p.role = 'admin'
+  );
+$$;
+
+create or replace function public.is_nickname_available(candidate text, current_user_id uuid default null)
+returns boolean
+language sql
+stable
+as $$
+  select not exists (
+    select 1
+    from public.profiles p
+    where lower(p.nickname) = lower(candidate)
+      and (current_user_id is null or p.id <> current_user_id)
   );
 $$;
 
@@ -366,6 +382,7 @@ create table if not exists public.detector_status (
   llm_degraded boolean not null default false,
   detector_mode text not null default 'normal',
   us_cooldown_until timestamptz,
+  withdrawn_accounts_purged_at timestamptz,
   hold_list jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );

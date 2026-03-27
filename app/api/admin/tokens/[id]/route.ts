@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
-import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { sanitizeOptionalPlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -24,8 +24,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!user) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
-  const role = user.role;
+  const role = profile.role;
   if (role !== "admin" && !isAdminEmail(user.email)) {
     return jsonMessage(requestId, 403, "Forbidden");
   }
@@ -84,7 +88,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       ? {
           approval_status: "approved",
           approved_at: nowIso,
-          approved_by: user.id,
+          approved_by: profile.id,
           rejected_at: null,
           rejected_by: null,
           approval_note: note
@@ -94,7 +98,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
           approved_at: null,
           approved_by: null,
           rejected_at: nowIso,
-          rejected_by: user.id,
+          rejected_by: profile.id,
           approval_note: note,
           token_prefix: null,
           token_hash: null,
@@ -125,8 +129,12 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   if (!user) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
-  const role = user.role;
+  const role = profile.role;
   if (role !== "admin" && !isAdminEmail(user.email)) {
     return jsonMessage(requestId, 403, "Forbidden");
   }

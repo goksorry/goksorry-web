@@ -43,10 +43,14 @@ export async function POST(request: Request) {
 	const session = await getServerSession(authOptions);
 	const memberId = String(session?.user?.id ?? "").trim();
 	const memberNickname = String(session?.user?.nickname ?? "").trim();
+	const profileSetupRequired = Boolean(session?.user?.profile_setup_required);
 	let viewer: SessionViewer;
 	let guestCookie: { value: string; expiresAt: string } | null = null;
 
 	if (memberId) {
+	  if (profileSetupRequired) {
+	    return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 가입 설정을 완료해야 합니다.");
+	  }
 	  if (!memberNickname) {
 	    return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
 	  }

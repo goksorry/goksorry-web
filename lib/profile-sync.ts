@@ -17,6 +17,9 @@ export type SyncedProfile = {
   created_at: string;
   nickname_confirmed_at: string | null;
   nickname_changed_at: string | null;
+  age_confirmed_at: string | null;
+  terms_agreed_at: string | null;
+  privacy_agreed_at: string | null;
 };
 
 export type NicknamePolicy = {
@@ -25,21 +28,94 @@ export type NicknamePolicy = {
   available_at: string | null;
 };
 
-export class WithdrawnAccountError extends Error {
-  availableAt: string | null;
-
-  constructor(availableAt: string | null = null) {
-    super("withdrawn_account");
-    this.name = "WithdrawnAccountError";
-    this.availableAt = availableAt;
-  }
-}
+export type ProfileSetupState = {
+  needs_setup: boolean;
+  missing_nickname_confirmation: boolean;
+  missing_age_confirmation: boolean;
+  missing_terms_agreement: boolean;
+  missing_privacy_agreement: boolean;
+};
 
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
+
+const WITHDRAWAL_REJOIN_COOLDOWN_MS = ACCOUNT_REJOIN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+const WITHDRAWAL_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+const isMissingDetectorStatusFieldError = (code: string | null | undefined, message: string): boolean => {
+  return (
+    code === "42P01" ||
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("detector_status") ||
+    message.includes("schema cache")
+  );
+};
+
+const getWithdrawalExpiryCutoffIso = (): string => {
+  return new Date(Date.now() - WITHDRAWAL_REJOIN_COOLDOWN_MS).toISOString();
+};
+
+const shouldPurgeExpiredWithdrawnAccounts = async (): Promise<boolean> => {
+  const service = getServiceSupabaseClient();
+  const { data, error } = await service
+    .from("detector_status")
+    .select("withdrawn_accounts_purged_at")
+    .eq("singleton", true)
+    .maybeSingle<{ withdrawn_accounts_purged_at: string | null }>();
+
+  if (error) {
+    if (isMissingDetectorStatusFieldError(error.code, error.message)) {
+      return true;
+    }
+
+    console.error("failed to load withdrawn account purge status", error);
+    return true;
+  }
+
+  const lastPurgedAtMs = data?.withdrawn_accounts_purged_at ? new Date(data.withdrawn_accounts_purged_at).getTime() : NaN;
+  if (Number.isNaN(lastPurgedAtMs)) {
+    return true;
+  }
+
+  return Date.now() - lastPurgedAtMs >= WITHDRAWAL_PURGE_INTERVAL_MS;
+};
+
+const markExpiredWithdrawnAccountsPurged = async (purgedAtIso: string): Promise<void> => {
+  const service = getServiceSupabaseClient();
+  const { error } = await service.from("detector_status").upsert(
+    {
+      singleton: true,
+      withdrawn_accounts_purged_at: purgedAtIso
+    },
+    { onConflict: "singleton" }
+  );
+
+  if (error && !isMissingDetectorStatusFieldError(error.code, error.message)) {
+    console.error("failed to update withdrawn account purge status", error);
+  }
+};
+
+const purgeExpiredWithdrawnAccounts = async (): Promise<void> => {
+  if (!(await shouldPurgeExpiredWithdrawnAccounts())) {
+    return;
+  }
+
+  const service = getServiceSupabaseClient();
+  const purgedAtIso = new Date().toISOString();
+  const { error } = await service.from("withdrawn_accounts").delete().lt("withdrawn_at", getWithdrawalExpiryCutoffIso());
+
+  if (error) {
+    console.error("failed to purge expired withdrawn accounts", error);
+    return;
+  }
+
+  await markExpiredWithdrawnAccountsPurged(purgedAtIso);
+};
 
 export const getWithdrawalHoldUntil = async (email: string): Promise<string | null> => {
   const service = getServiceSupabaseClient();
   const normalizedEmail = normalizeEmail(email);
+  await purgeExpiredWithdrawnAccounts();
 
   const { data, error } = await service
     .from("withdrawn_accounts")
@@ -60,8 +136,12 @@ export const getWithdrawalHoldUntil = async (email: string): Promise<string | nu
     return null;
   }
 
-  const availableAtMs = withdrawnAtMs + ACCOUNT_REJOIN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  const availableAtMs = withdrawnAtMs + WITHDRAWAL_REJOIN_COOLDOWN_MS;
   if (Date.now() >= availableAtMs) {
+    const { error: cleanupError } = await service.from("withdrawn_accounts").delete().eq("email", normalizedEmail);
+    if (cleanupError) {
+      console.error("failed to delete expired withdrawn account hold", cleanupError);
+    }
     return null;
   }
 
@@ -185,90 +265,32 @@ export const getNicknamePolicy = ({
   };
 };
 
-export const syncProfile = async ({
-  email,
-  preferredName,
-  preferredId
+export const getProfileSetupState = ({
+  nickname_confirmed_at,
+  age_confirmed_at,
+  terms_agreed_at,
+  privacy_agreed_at
 }: {
-  email: string;
-  preferredName?: string | null;
-  preferredId?: string | null;
-}): Promise<SyncedProfile> => {
-  const service = getServiceSupabaseClient();
-  const normalizedEmail = normalizeEmail(email);
-  const holdUntil = await getWithdrawalHoldUntil(normalizedEmail);
-  if (holdUntil) {
-    throw new WithdrawnAccountError(holdUntil);
-  }
-  const desiredRole: AppRole = isAdminEmail(normalizedEmail) ? "admin" : "user";
-  const nickname = buildNickname(normalizedEmail, preferredName);
-
-  const { data: existing, error: existingError } = await service
-    .from("profiles")
-    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
-    .ilike("email", normalizedEmail)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  if (existing) {
-    const nextRole: AppRole = existing.role === "admin" || desiredRole === "admin" ? "admin" : "user";
-    const nextNickname = String(existing.nickname ?? "").trim() || nickname;
-
-    const { data: updated, error: updateError } = await service
-      .from("profiles")
-      .upsert(
-        {
-          id: existing.id,
-          email: normalizedEmail,
-          nickname: nextNickname,
-          role: nextRole
-        },
-        { onConflict: "id" }
-      )
-      .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
-      .single();
-
-    if (updateError || !updated) {
-      throw new Error(updateError?.message ?? "failed to update profile");
-    }
-
-    return {
-      id: String(updated.id),
-      email: String(updated.email),
-      nickname: String(updated.nickname),
-      role: updated.role === "admin" ? "admin" : "user",
-      created_at: String(updated.created_at),
-      nickname_confirmed_at: updated.nickname_confirmed_at ? String(updated.nickname_confirmed_at) : null,
-      nickname_changed_at: updated.nickname_changed_at ? String(updated.nickname_changed_at) : null
-    };
-  }
-
-  const { data: inserted, error: insertError } = await service
-    .from("profiles")
-    .insert({
-      id: String(preferredId ?? "").trim() || buildStableProfileId(normalizedEmail),
-      email: normalizedEmail,
-      nickname,
-      role: desiredRole
-    })
-    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at")
-    .single();
-
-  if (insertError || !inserted) {
-    throw new Error(insertError?.message ?? "failed to create profile");
-  }
+  nickname_confirmed_at?: string | null;
+  age_confirmed_at?: string | null;
+  terms_agreed_at?: string | null;
+  privacy_agreed_at?: string | null;
+}): ProfileSetupState => {
+  const missingNicknameConfirmation = !nickname_confirmed_at;
+  const missingAgeConfirmation = !age_confirmed_at;
+  const missingTermsAgreement = !terms_agreed_at;
+  const missingPrivacyAgreement = !privacy_agreed_at;
 
   return {
-    id: String(inserted.id),
-    email: String(inserted.email),
-    nickname: String(inserted.nickname),
-    role: inserted.role === "admin" ? "admin" : "user",
-    created_at: String(inserted.created_at),
-    nickname_confirmed_at: inserted.nickname_confirmed_at ? String(inserted.nickname_confirmed_at) : null,
-    nickname_changed_at: inserted.nickname_changed_at ? String(inserted.nickname_changed_at) : null
+    needs_setup:
+      missingNicknameConfirmation ||
+      missingAgeConfirmation ||
+      missingTermsAgreement ||
+      missingPrivacyAgreement,
+    missing_nickname_confirmation: missingNicknameConfirmation,
+    missing_age_confirmation: missingAgeConfirmation,
+    missing_terms_agreement: missingTermsAgreement,
+    missing_privacy_agreement: missingPrivacyAgreement
   };
 };
 
@@ -282,7 +304,9 @@ export const findProfileByIdentity = async ({
   const service = getServiceSupabaseClient();
   let query = service
     .from("profiles")
-    .select("id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at");
+    .select(
+      "id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at"
+    );
 
   if (id) {
     query = query.eq("id", id);
@@ -305,6 +329,9 @@ export const findProfileByIdentity = async ({
     role: data.role === "admin" ? "admin" : "user",
     created_at: String(data.created_at),
     nickname_confirmed_at: data.nickname_confirmed_at ? String(data.nickname_confirmed_at) : null,
-    nickname_changed_at: data.nickname_changed_at ? String(data.nickname_changed_at) : null
+    nickname_changed_at: data.nickname_changed_at ? String(data.nickname_changed_at) : null,
+    age_confirmed_at: data.age_confirmed_at ? String(data.age_confirmed_at) : null,
+    terms_agreed_at: data.terms_agreed_at ? String(data.terms_agreed_at) : null,
+    privacy_agreed_at: data.privacy_agreed_at ? String(data.privacy_agreed_at) : null
   };
 };

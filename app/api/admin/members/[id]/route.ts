@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
-import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { sanitizePlainText } from "@/lib/plain-text";
 import { withdrawAccount } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -62,17 +62,31 @@ const requireAdmin = async (request: Request) => {
       error: jsonMessage(requestId, 401, "Unauthorized")
     };
   }
-  if (user.role !== "admin" && !isAdminEmail(user.email)) {
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
     return {
       requestId,
       user,
+      error: jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.")
+    };
+  }
+  if (profile.role !== "admin" && !isAdminEmail(user.email)) {
+    return {
+      requestId,
+      user: {
+        ...user,
+        role: profile.role
+      },
       error: jsonMessage(requestId, 403, "Forbidden")
     };
   }
 
   return {
     requestId,
-    user,
+    user: {
+      ...user,
+      role: profile.role
+    },
     error: null
   };
 };

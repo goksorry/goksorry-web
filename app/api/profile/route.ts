@@ -1,9 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
-import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
+import { getUserFromAuthorization } from "@/lib/auth-server";
 import { sanitizePlainText } from "@/lib/plain-text";
-import { getNicknamePolicy, withdrawAccount } from "@/lib/profile-sync";
+import { buildStableProfileId, getNicknamePolicy, getProfileSetupState, isAdminEmail, normalizeEmail, withdrawAccount } from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function PATCH(request: Request) {
@@ -18,11 +18,19 @@ export async function PATCH(request: Request) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
 
-  await ensureProfileForUser(user);
-
-  let body: { nickname?: unknown };
+  let body: {
+    nickname?: unknown;
+    age_confirmed?: unknown;
+    terms_agreed?: unknown;
+    privacy_agreed?: unknown;
+  };
   try {
-    body = (await request.json()) as { nickname?: unknown };
+    body = (await request.json()) as {
+      nickname?: unknown;
+      age_confirmed?: unknown;
+      terms_agreed?: unknown;
+      privacy_agreed?: unknown;
+    };
   } catch {
     return jsonMessage(requestId, 400, "Invalid JSON body");
   }
@@ -37,25 +45,31 @@ export async function PATCH(request: Request) {
   const service = getServiceSupabaseClient();
   const { data: profile, error: profileError } = await service
     .from("profiles")
-    .select("id,nickname,role,nickname_confirmed_at,nickname_changed_at")
+    .select("id,nickname,role,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileError || !profile) {
+  if (profileError) {
     if (profileError) {
       logApiError("profile lookup failed", requestId, profileError);
     }
-    return jsonMessage(requestId, 404, "Profile not found");
+    return jsonMessage(requestId, 500, "프로필을 불러오지 못했습니다.");
   }
 
-  const nextRole = profile.role === "admin" ? "admin" : "user";
+  const nextRole = profile?.role === "admin" || isAdminEmail(user.email) ? "admin" : "user";
   const nicknamePolicy = getNicknamePolicy({
     role: nextRole,
-    nickname_confirmed_at: profile.nickname_confirmed_at ? String(profile.nickname_confirmed_at) : null,
-    nickname_changed_at: profile.nickname_changed_at ? String(profile.nickname_changed_at) : null
+    nickname_confirmed_at: profile?.nickname_confirmed_at ? String(profile.nickname_confirmed_at) : null,
+    nickname_changed_at: profile?.nickname_changed_at ? String(profile.nickname_changed_at) : null
+  });
+  const profileSetupState = getProfileSetupState({
+    nickname_confirmed_at: profile?.nickname_confirmed_at ? String(profile.nickname_confirmed_at) : null,
+    age_confirmed_at: profile?.age_confirmed_at ? String(profile.age_confirmed_at) : null,
+    terms_agreed_at: profile?.terms_agreed_at ? String(profile.terms_agreed_at) : null,
+    privacy_agreed_at: profile?.privacy_agreed_at ? String(profile.privacy_agreed_at) : null
   });
 
-  const currentNickname = String(profile.nickname ?? "").trim();
+  const currentNickname = String(profile?.nickname ?? "").trim();
   const changed = currentNickname.localeCompare(nickname, undefined, { sensitivity: "accent" }) !== 0;
 
   if (changed && !nicknamePolicy.can_change) {
@@ -66,13 +80,49 @@ export async function PATCH(request: Request) {
   }
 
   const nowIso = new Date().toISOString();
-  const updates = {
+  const updates: {
+    id?: string;
+    email?: string;
+    role?: "admin" | "user";
+    nickname: string;
+    nickname_confirmed_at: string;
+    nickname_changed_at: string;
+    age_confirmed_at?: string;
+    terms_agreed_at?: string;
+    privacy_agreed_at?: string;
+  } = {
     nickname,
-    nickname_confirmed_at: profile.nickname_confirmed_at ?? nowIso,
-    nickname_changed_at: changed || !profile.nickname_changed_at ? nowIso : profile.nickname_changed_at
+    nickname_confirmed_at: profile?.nickname_confirmed_at ?? nowIso,
+    nickname_changed_at: changed || !profile?.nickname_changed_at ? nowIso : profile.nickname_changed_at
   };
 
-  const { error: updateError } = await service.from("profiles").update(updates).eq("id", user.id);
+  if (!profile || profileSetupState.needs_setup) {
+    if (body.age_confirmed !== true) {
+      return jsonMessage(requestId, 400, "만 14세 이상 확인이 필요합니다.");
+    }
+    if (body.terms_agreed !== true) {
+      return jsonMessage(requestId, 400, "이용약관 동의가 필요합니다.");
+    }
+    if (body.privacy_agreed !== true) {
+      return jsonMessage(requestId, 400, "개인정보처리방침 동의가 필요합니다.");
+    }
+
+    updates.age_confirmed_at = profile?.age_confirmed_at ?? nowIso;
+    updates.terms_agreed_at = profile?.terms_agreed_at ?? nowIso;
+    updates.privacy_agreed_at = profile?.privacy_agreed_at ?? nowIso;
+  }
+
+  if (!profile) {
+    updates.id = String(user.id ?? "").trim() || buildStableProfileId(normalizeEmail(user.email));
+    updates.email = normalizeEmail(user.email);
+    updates.role = nextRole;
+  }
+
+  const profileQuery = !profile
+    ? service.from("profiles").insert(updates)
+    : service.from("profiles").update(updates).eq("id", user.id);
+
+  const { error: updateError } = await profileQuery;
 
   if (updateError) {
     if (updateError.code === "23505") {
@@ -89,7 +139,7 @@ export async function PATCH(request: Request) {
   return NextResponse.json({
     ok: true,
     nickname,
-    nickname_needs_setup: false
+    profile_setup_required: false
   });
 }
 

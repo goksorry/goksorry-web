@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError } from "@/lib/api-auth";
-import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const MEMBER_SELECT = "id,email,nickname,role,created_at";
@@ -35,8 +35,12 @@ export async function GET(request: Request) {
   if (!user) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
-  if (user.role !== "admin" && !isAdminEmail(user.email)) {
+  if (profile.role !== "admin" && !isAdminEmail(user.email)) {
     return jsonMessage(requestId, 403, "Forbidden");
   }
 
@@ -91,7 +95,7 @@ export async function GET(request: Request) {
     nickname: String(member.nickname ?? ""),
     role: member.role === "admin" ? "admin" : "user",
     created_at: member.created_at ? String(member.created_at) : null,
-    is_current_user: String(member.id) === user.id
+    is_current_user: String(member.id) === profile.id
   }));
 
   return jsonNoStore({

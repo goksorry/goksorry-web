@@ -9,44 +9,11 @@ import {
   buildNickname,
   buildStableProfileId,
   findProfileByIdentity,
+  getProfileSetupState,
   getWithdrawalHoldUntil,
-  getNicknamePolicy,
   isAdminEmail,
-  normalizeEmail,
-  type SyncedProfile,
-  syncProfile,
-  WithdrawnAccountError
+  type SyncedProfile
 } from "@/lib/profile-sync";
-
-const syncTokenProfile = async (
-  token: JWT,
-  user?: {
-    email?: string | null;
-    name?: string | null;
-  }
-): Promise<JWT> => {
-  const email = String(user?.email ?? token.email ?? "").trim().toLowerCase();
-  if (!email) {
-    return token;
-  }
-
-  const profile = await syncProfile({
-    email,
-    preferredName: user?.name ?? (typeof token.name === "string" ? token.name : null),
-    preferredId: typeof token.appUserId === "string" ? token.appUserId : null
-  });
-
-  token.email = profile.email;
-  token.name = profile.nickname;
-  token.appUserId = profile.id;
-  token.role = profile.role;
-  token.nickname = profile.nickname;
-  token.profileCreatedAt = profile.created_at;
-  token.nicknameConfirmedAt = profile.nickname_confirmed_at;
-  token.nicknameChangedAt = profile.nickname_changed_at;
-  token.nicknameNeedsSetup = getNicknamePolicy(profile).needs_setup;
-  return token;
-};
 
 const applyProfileToToken = (token: JWT, profile: SyncedProfile | null): JWT => {
   if (!profile) {
@@ -61,7 +28,7 @@ const applyProfileToToken = (token: JWT, profile: SyncedProfile | null): JWT => 
   token.profileCreatedAt = profile.created_at;
   token.nicknameConfirmedAt = profile.nickname_confirmed_at;
   token.nicknameChangedAt = profile.nickname_changed_at;
-  token.nicknameNeedsSetup = getNicknamePolicy(profile).needs_setup;
+  token.profileSetupRequired = getProfileSetupState(profile).needs_setup;
   return token;
 };
 
@@ -97,7 +64,7 @@ const seedTokenIdentity = (
     typeof token.nicknameChangedAt === "string" && token.nicknameChangedAt.trim()
       ? token.nicknameChangedAt
       : null;
-  token.nicknameNeedsSetup = token.nicknameNeedsSetup === false ? false : true;
+  token.profileSetupRequired = token.profileSetupRequired === false ? false : true;
   return token;
 };
 
@@ -146,18 +113,6 @@ export const authOptions: NextAuthOptions = {
         return applyProfileToToken(seededToken, profileFromDb);
       }
 
-      if (user?.email || !seededToken.appUserId || !seededToken.profileCreatedAt) {
-        try {
-          return await syncTokenProfile(seededToken, user);
-        } catch (error) {
-          if (error instanceof WithdrawnAccountError) {
-            return seededToken;
-          }
-          console.error("profile sync failed during jwt callback", error);
-          return seededToken;
-        }
-      }
-
       return seededToken;
     },
     async session({ session, token }) {
@@ -173,7 +128,7 @@ export const authOptions: NextAuthOptions = {
       session.user.nickname_confirmed_at =
         typeof token.nicknameConfirmedAt === "string" ? token.nicknameConfirmedAt : null;
       session.user.nickname_changed_at = typeof token.nicknameChangedAt === "string" ? token.nicknameChangedAt : null;
-      session.user.nickname_needs_setup = Boolean(token.nicknameNeedsSetup);
+      session.user.profile_setup_required = Boolean(token.profileSetupRequired);
       session.user.name = typeof token.name === "string" ? token.name : session.user.name ?? null;
       session.user.email = typeof token.email === "string" ? token.email : session.user.email ?? null;
       return session;

@@ -13,7 +13,7 @@ export function AuthSessionProvider({
   session: Session | null;
 }) {
   const sessionKey = session?.user
-    ? `auth:${session.user.id ?? ""}:${session.user.email ?? ""}:${session.user.role ?? "user"}:${session.user.nickname ?? ""}:${session.user.nickname_needs_setup ? "setup" : "ready"}`
+    ? `auth:${session.user.id ?? ""}:${session.user.email ?? ""}:${session.user.role ?? "user"}:${session.user.nickname ?? ""}:${session.user.profile_setup_required ? "setup" : "ready"}`
     : "guest";
 
   return (

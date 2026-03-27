@@ -10,7 +10,7 @@ declare module "next-auth" {
       created_at: string | null;
       nickname_confirmed_at: string | null;
       nickname_changed_at: string | null;
-      nickname_needs_setup: boolean;
+      profile_setup_required: boolean;
     };
   }
 }
@@ -23,6 +23,6 @@ declare module "next-auth/jwt" {
     profileCreatedAt?: string | null;
     nicknameConfirmedAt?: string | null;
     nicknameChangedAt?: string | null;
-    nicknameNeedsSetup?: boolean;
+    profileSetupRequired?: boolean;
   }
 }

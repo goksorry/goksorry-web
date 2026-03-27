@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 
 export default async function DocsPage() {
   const user = await getUserFromAuthorization();
-  const isAdmin = Boolean(user && (user.role === "admin" || isAdminEmail(user.email)));
+  const profile = user ? await getCompletedProfileForUser(user) : null;
+  const isAdmin = profile?.role === "admin";
   const visibleDocs = filterApiDocs(isAdmin);
   const visibleAuthModes = new Set(visibleDocs.map((doc) => doc.auth));
   const visibleSections = apiSections.filter((section) => visibleDocs.some((item) => item.section === section));

@@ -5,7 +5,7 @@ import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
   checkAccountAge,
-  ensureProfileForUser,
+  getCompletedProfileForUser,
   getUserFromAuthorization,
   MIN_ACCOUNT_AGE_MINUTES
 } from "@/lib/auth-server";
@@ -58,7 +58,10 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 400, String(error));
   }
 
-  await ensureProfileForUser(user);
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
   const service = getServiceSupabaseClient();
   const { data: post } = await service
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
       id: data.id,
       content: data.content,
       created_at: data.created_at,
-      author_nickname: user.nickname
+      author_nickname: profile.nickname
     }
   });
 }

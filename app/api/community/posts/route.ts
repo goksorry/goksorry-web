@@ -5,7 +5,7 @@ import { revalidateCommunityPaths } from "@/lib/community-cache";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
   checkAccountAge,
-  ensureProfileForUser,
+  getCompletedProfileForUser,
   getUserFromAuthorization,
   MIN_ACCOUNT_AGE_MINUTES
 } from "@/lib/auth-server";
@@ -62,7 +62,10 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 400, String(error));
   }
 
-  await ensureProfileForUser(user);
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
   const service = getServiceSupabaseClient();
   const { data: board } = await service.from("boards").select("id,slug").eq("slug", boardSlug).maybeSingle();
@@ -70,11 +73,11 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 404, "Board not found");
   }
 
-  if (board.slug === "notice" && user.role !== "admin") {
+  if (board.slug === "notice" && profile.role !== "admin") {
     return jsonMessage(requestId, 403, "공지 작성 권한이 없습니다.");
   }
 
-  const isPinnedNotice = board.slug === "notice" && user.role === "admin" ? pinNotice : false;
+  const isPinnedNotice = board.slug === "notice" && profile.role === "admin" ? pinNotice : false;
   const { data, error } = await service
     .from("community_posts")
     .insert({

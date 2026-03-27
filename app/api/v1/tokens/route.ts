@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthorization } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/plain-text";
@@ -46,12 +46,16 @@ export async function GET(request: Request) {
   if (!user) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonError(requestId, 403, "FORBIDDEN", "complete profile setup first");
+  }
 
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("api_access_tokens")
     .select(TOKEN_SELECT)
-    .eq("user_id", user.id)
+    .eq("user_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -77,8 +81,12 @@ export async function POST(request: Request) {
   if (!user) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonError(requestId, 403, "FORBIDDEN", "complete profile setup first");
+  }
 
-  if (!allowRateLimit(`token-issue:${user.id}`, 2)) {
+  if (!allowRateLimit(`token-issue:${profile.id}`, 2)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token creations. try again in a minute");
   }
 
@@ -102,7 +110,7 @@ export async function POST(request: Request) {
   const { count, error: countError } = await service
     .from("api_access_tokens")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
+    .eq("user_id", profile.id)
     .is("revoked_at", null)
     .in("approval_status", ["pending", "approved"]);
 
@@ -118,7 +126,7 @@ export async function POST(request: Request) {
   const { data, error } = await service
     .from("api_access_tokens")
     .insert({
-      user_id: user.id,
+      user_id: profile.id,
       name: tokenName,
       scope: "tradingbot.read",
       approval_status: "pending",

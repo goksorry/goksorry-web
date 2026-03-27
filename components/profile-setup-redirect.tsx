@@ -18,7 +18,7 @@ export function ProfileSetupRedirect({ initialSession }: { initialSession: Sessi
   const session = liveSession ?? initialSession;
 
   useEffect(() => {
-    if (!session?.user?.email || !session.user.nickname_needs_setup) {
+    if (!session?.user?.email || !session.user.profile_setup_required) {
       return;
     }
 
@@ -28,7 +28,7 @@ export function ProfileSetupRedirect({ initialSession }: { initialSession: Sessi
 
     const next = buildNextPath(pathname, searchParams);
     router.replace(`/profile?next=${encodeURIComponent(next)}`);
-  }, [pathname, router, searchParams, session?.user?.email, session?.user?.nickname_needs_setup]);
+  }, [pathname, router, searchParams, session?.user?.email, session?.user?.profile_setup_required]);
 
   return null;
 }

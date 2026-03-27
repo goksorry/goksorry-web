@@ -36,12 +36,12 @@ export default async function ProfilePage({
         email={user.email}
         initialNickname={user.nickname ?? ""}
         canEditNickname={nicknamePolicy.can_change}
-        nicknameNeedsSetup={nicknamePolicy.needs_setup}
+        profileSetupRequired={user.profile_setup_required}
         nicknameAvailableAt={nicknamePolicy.available_at}
         isAdmin={user.role === "admin"}
         nextPath={nextPath}
       />
-      <ProfileTokenManager />
+      {user.profile_setup_required ? null : <ProfileTokenManager />}
       <p>
         <Link href={nextPath ?? "/community"}>돌아가기</Link>
       </p>

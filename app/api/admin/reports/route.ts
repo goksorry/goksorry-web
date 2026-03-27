@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError } from "@/lib/api-auth";
-import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const maskEmail = (value: string | null): string | null => {
@@ -30,8 +30,8 @@ export async function GET(request: Request) {
     return jsonMessage(requestId, 401, "Unauthorized");
   }
 
-  const role = await ensureProfileForUser(user);
-  if (role !== "admin" && !isAdminEmail(user.email)) {
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile || (profile.role !== "admin" && !isAdminEmail(user.email))) {
     return jsonMessage(requestId, 403, "Forbidden");
   }
 

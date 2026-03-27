@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserFromAuthorization } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { getRequestId, jsonError, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -24,8 +24,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!user) {
     return jsonError(requestId, 401, "UNAUTHORIZED", "login required");
   }
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonError(requestId, 403, "FORBIDDEN", "complete profile setup first");
+  }
 
-  if (!allowRateLimit(`token-revoke:${user.id}`, 20)) {
+  if (!allowRateLimit(`token-revoke:${profile.id}`, 20)) {
     return jsonError(requestId, 429, "RATE_LIMITED", "too many token revokes. try again in a minute");
   }
 
@@ -39,7 +43,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .from("api_access_tokens")
     .select("id,revoked_at")
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("user_id", profile.id)
     .maybeSingle();
 
   if (error) {
@@ -63,7 +67,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .from("api_access_tokens")
     .update({ revoked_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", profile.id);
 
   if (updateError) {
     logApiError("token revoke update failed", requestId, updateError);

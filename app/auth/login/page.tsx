@@ -29,8 +29,8 @@ export default function LoginPage({
       </p>
       {errorMessage ? <p className="error">{errorMessage}</p> : null}
       <p className="muted">
-        로그인을 진행하면 <Link href="/terms">이용약관</Link> 및 <Link href="/privacy">개인정보처리방침</Link>에 따른
-        서비스 이용에 동의한 것으로 봅니다.
+        최초 가입 설정 화면에서 닉네임 확정, 만 14세 이상 확인, <Link href="/terms">이용약관</Link> 및{" "}
+        <Link href="/privacy">개인정보처리방침</Link> 동의를 완료해야 서비스 이용이 가능합니다.
       </p>
       <Link className="btn btn-secondary" href="/community">
         커뮤니티로 돌아가기

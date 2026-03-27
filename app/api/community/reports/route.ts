@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
 import { sanitizePlainText } from "@/lib/plain-text";
-import { ensureProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const UUID_PATTERN =
@@ -53,7 +53,10 @@ export async function POST(request: Request) {
     return jsonMessage(requestId, 400, "Invalid target_id");
   }
 
-  await ensureProfileForUser(user);
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
 
   const service = getServiceSupabaseClient();
   if (targetType === "post") {
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
   const { data, error } = await service
     .from("reports")
     .insert({
-      reporter_id: user.id,
+      reporter_id: profile.id,
       target_type: targetType,
       target_id: targetId,
       reason

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
-import { ensureProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
 import { revalidateCommunityPaths } from "@/lib/community-cache";
 import { sanitizePlainText } from "@/lib/plain-text";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -48,8 +48,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return jsonMessage(requestId, 400, String(error));
   }
 
-  const role = await ensureProfileForUser(user);
-  const admin = role === "admin" || isAdminEmail(user.email);
+  const profile = await getCompletedProfileForUser(user);
+  if (!profile) {
+    return jsonMessage(requestId, 403, "프로필 가입 설정을 먼저 완료해야 합니다.");
+  }
+  const admin = profile.role === "admin" || isAdminEmail(user.email);
 
   const service = getServiceSupabaseClient();
   const { data: post } = await service
@@ -62,7 +65,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return jsonMessage(requestId, 404, "Post not found");
   }
 
-  if (post.author_id !== user.id && !admin) {
+  if (post.author_id !== profile.id && !admin) {
     return jsonMessage(requestId, 403, "작성자 또는 관리자만 수정할 수 있습니다.");
   }
 
