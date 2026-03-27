@@ -44,6 +44,27 @@ const copyToClipboard = async (value: string): Promise<void> => {
   }
 };
 
+function ShareIcon() {
+  return (
+    <svg className="header-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <circle cx="18" cy="5" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="12" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="19" r="2.5" fill="currentColor" stroke="none" />
+      <path d="M8.25 11.1 15.7 6.7" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M8.25 12.9 15.7 17.3" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg className="header-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <rect x="9" y="7" width="9" height="11" rx="2" strokeWidth="1.8" />
+      <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function SiteShareButton() {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState<ShareStatus>("idle");
@@ -122,6 +143,7 @@ export function SiteShareButton() {
         : status === "error"
           ? "다시 시도"
           : "사이트 공유";
+  const ariaLabel = pending ? "사이트 공유 중" : buttonLabel;
 
   return (
     <button
@@ -129,10 +151,18 @@ export function SiteShareButton() {
       className="btn btn-secondary header-share-button"
       onClick={() => void handleClick()}
       disabled={pending}
-      aria-label="사이트 공유"
+      aria-label={ariaLabel}
       title={buttonLabel}
     >
-      <span>{pending ? "공유 중..." : buttonLabel}</span>
+      <span className="header-share-label-desktop" aria-hidden="true">
+        <span className="header-share-emoji">🔗</span>
+        <CopyIcon />
+      </span>
+      <span className="header-share-label-mobile" aria-hidden="true">
+        <span className="header-share-emoji">🔗</span>
+        <ShareIcon />
+      </span>
+      <span className="sr-only">{ariaLabel}</span>
       <span className="sr-only" aria-live="polite">
         {status === "copied"
           ? "사이트 주소가 복사되었습니다."

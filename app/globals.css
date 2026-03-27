@@ -385,6 +385,30 @@ a:hover {
   white-space: nowrap;
 }
 
+.header-share-label-desktop,
+.header-share-label-mobile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  line-height: 1;
+}
+
+.header-share-label-mobile {
+  display: none;
+}
+
+.header-share-emoji {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.header-share-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
 .header-auth-emoji {
   font-size: 0.95rem;
   line-height: 1;
@@ -2318,6 +2342,14 @@ button:disabled {
 
   .header-share-button {
     padding-inline: 0.72rem;
+  }
+
+  .header-share-label-desktop {
+    display: none;
+  }
+
+  .header-share-label-mobile {
+    display: inline-flex;
   }
 
   .header-auth-shell {
