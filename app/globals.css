@@ -579,8 +579,8 @@ a:hover {
   width: var(--overview-art-width);
   background-image: var(--overview-art-light);
   background-repeat: no-repeat;
-  background-position: right bottom;
-  background-size: auto 100%;
+  background-position: right center;
+  background-size: 100% auto;
   opacity: 0;
   pointer-events: none;
   transition: opacity 280ms ease;
