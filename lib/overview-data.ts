@@ -50,6 +50,7 @@ type NaverServiceIndexResponse = {
 };
 
 const MARKET_TTL_SEC = 300;
+const COMMUNITY_TTL_SEC = 60;
 const COMMUNITY_WINDOW_HOURS = 6;
 
 const fetchText = async (url: string): Promise<string> => {
@@ -292,10 +293,14 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   };
 };
 
+export const getCachedCommunityIndicators = unstable_cache(buildCommunityIndicatorsData, ["community-indicators"], {
+  revalidate: COMMUNITY_TTL_SEC
+});
+
 export const buildOverviewData = async (): Promise<OverviewPayload> => {
   const [marketOverview, communityOverview] = await Promise.all([
     getCachedMarketOverview(),
-    buildCommunityIndicatorsData()
+    getCachedCommunityIndicators()
   ]);
 
   return {

@@ -30,6 +30,7 @@ const toLocalTime = (iso: string): string => {
 
 type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
+  initialCommunityIndicators: CommunityIndicatorsPayload;
 };
 
 type OverviewArtStyle = CSSProperties & {
@@ -67,20 +68,24 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
   rows: []
 }));
 
-export function MarketOverview({ marketOverview }: MarketOverviewProps) {
+const COMMUNITY_REFRESH_MS = 60_000;
+const COMMUNITY_RETRY_MS = 15_000;
+
+export function MarketOverview({ marketOverview, initialCommunityIndicators }: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { cleanFilterEnabled } = useCleanFilter();
   const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
-  const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(null);
+  const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(initialCommunityIndicators);
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
+    let refreshTimer: number | null = null;
 
-    const load = async () => {
+    const fetchIndicators = async () => {
       try {
         const response = await fetch("/api/community-indicators", {
           signal: controller.signal,
@@ -100,12 +105,25 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
       }
     };
 
-    void load();
+    const generatedAtMs = payload?.generated_at ? new Date(payload.generated_at).getTime() : Number.NaN;
+    const ageMs = Number.isFinite(generatedAtMs) ? Date.now() - generatedAtMs : COMMUNITY_REFRESH_MS;
+    const delayMs = error
+      ? COMMUNITY_RETRY_MS
+      : ageMs >= COMMUNITY_REFRESH_MS
+        ? 0
+        : COMMUNITY_REFRESH_MS - ageMs;
+
+    refreshTimer = window.setTimeout(() => {
+      void fetchIndicators();
+    }, delayMs);
 
     return () => {
       controller.abort();
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
     };
-  }, []);
+  }, [error, payload?.generated_at]);
 
   useEffect(() => {
     setActiveGroupId(null);
