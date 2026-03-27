@@ -92,6 +92,16 @@ const parseNumber = (value: string): number | null => {
   return Number.isFinite(num) ? num : null;
 };
 
+const hasExplicitNumericSign = (html: string): boolean => /[+-]/.test(stripTags(html));
+
+const resolveDirectionalValue = (value: number | null, tone: IndicatorTone, html: string): number | null => {
+  if (value === null || tone === "flat" || hasExplicitNumericSign(html)) {
+    return value;
+  }
+
+  return value * (tone === "down" ? -1 : 1);
+};
+
 const formatNumber = (value: number, digits = 2): string => {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: digits,
@@ -184,11 +194,12 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
         : exdayBlock.includes("no_up")
           ? "up"
           : "flat";
-    const direction = tone === "down" ? -1 : 1;
-    const delta = parseNumber(compactInlineNumber(exdayEmMatches[0]?.[1] ?? ""));
-    const percent = parseNumber(compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, ""));
-    const signedDelta = delta === null || tone === "flat" ? delta : delta * direction;
-    const signedPercent = percent === null || tone === "flat" ? percent : percent * direction;
+    const deltaHtml = exdayEmMatches[0]?.[1] ?? "";
+    const percentHtml = exdayEmMatches[1]?.[1] ?? "";
+    const delta = parseNumber(compactInlineNumber(deltaHtml));
+    const percent = parseNumber(compactInlineNumber(percentHtml).replace(/[()]/g, ""));
+    const signedDelta = resolveDirectionalValue(delta, tone, deltaHtml);
+    const signedPercent = resolveDirectionalValue(percent, tone, percentHtml);
 
     if (!value) {
       return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 대기 중");
@@ -224,11 +235,12 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
         : exdayBlock.includes('class="ico up"') || exdayBlock.includes("no_up")
           ? "up"
           : "flat";
-    const direction = tone === "down" ? -1 : 1;
-    const changeNumber = parseNumber(compactInlineNumber(exdayEmMatches[0]?.[1] ?? ""));
-    const percentNumber = parseNumber(compactInlineNumber(exdayEmMatches[1]?.[1] ?? "").replace(/[()]/g, ""));
-    const signedChange = changeNumber === null || tone === "flat" ? changeNumber : changeNumber * direction;
-    const signedPercent = percentNumber === null || tone === "flat" ? percentNumber : percentNumber * direction;
+    const changeHtml = exdayEmMatches[0]?.[1] ?? "";
+    const percentHtml = exdayEmMatches[1]?.[1] ?? "";
+    const changeNumber = parseNumber(compactInlineNumber(changeHtml));
+    const percentNumber = parseNumber(compactInlineNumber(percentHtml).replace(/[()]/g, ""));
+    const signedChange = resolveDirectionalValue(changeNumber, tone, changeHtml);
+    const signedPercent = resolveDirectionalValue(percentNumber, tone, percentHtml);
 
     return {
       id: "usdkrw",
