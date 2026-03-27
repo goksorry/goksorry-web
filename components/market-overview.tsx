@@ -166,7 +166,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
   const overallCommunityLabel = communityLoading
     ? "계산 중"
     : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
-  const overviewArtStyle = buildOverviewArtStyle(overallCommunityBand);
+  const overviewArtStyle = payload ? buildOverviewArtStyle(overallCommunityBand) : undefined;
 
   return (
     <>
@@ -189,7 +189,7 @@ export function MarketOverview({ marketOverview }: MarketOverviewProps) {
         </div>
       </section>
 
-      <section className="overview-panel" style={overviewArtStyle}>
+      <section className="overview-panel" style={overviewArtStyle} data-art-ready={payload ? "true" : "false"}>
         <div className="overview-panel-art" aria-hidden="true" />
         <div className="overview-hero">
           <div className="overview-heading">
