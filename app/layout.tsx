@@ -151,12 +151,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         <div className="overview-market-row">
                           {["KOSPI", "KOSDAQ", "NASDAQ", "원/달러 환율"].map((label) => (
                             <article key={label} className="overview-card overview-market-stat overview-tone-flat">
-                              <p className="overview-label">{label}</p>
+                              <div className="overview-market-head">
+                                <p className="overview-label">{label}</p>
+                                <p className="overview-note">로딩중</p>
+                              </div>
                               <div className="overview-market-main">
                                 <strong className="overview-value">로딩중</strong>
                                 <p className="overview-delta">로딩중</p>
                               </div>
-                              <p className="overview-note">로딩중</p>
                             </article>
                           ))}
                         </div>
@@ -180,10 +182,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                           </div>
                         </div>
                         <section className="overview-section">
-                          <div className="overview-section-head">
-                            <h3>커뮤니티</h3>
-                            <p className="overview-section-copy">최근 6시간 채널별 분위기와 언급 흐름</p>
-                          </div>
                           <div className="overview-bottom-row">
                             {[
                               "네이버 주주오픈톡 지수",

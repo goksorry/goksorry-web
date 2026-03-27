@@ -196,12 +196,14 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
         <div className="overview-market-row">
           {marketOverview.market_indicators.map((indicator) => (
             <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
-              <p className="overview-label">{indicator.label}</p>
+              <div className="overview-market-head">
+                <p className="overview-label">{indicator.label}</p>
+                <p className="overview-note">{indicator.note}</p>
+              </div>
               <div className="overview-market-main">
                 <strong className="overview-value">{indicator.value_text}</strong>
                 <p className="overview-delta">{indicator.delta_text}</p>
               </div>
-              <p className="overview-note">{indicator.note}</p>
             </article>
           ))}
         </div>
@@ -232,10 +234,6 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
         </div>
 
         <section className="overview-section">
-          <div className="overview-section-head">
-            <h3>커뮤니티</h3>
-            <p className="overview-section-copy">최근 6시간 채널별 분위기와 언급 흐름</p>
-          </div>
           <div className="overview-bottom-row">
             {communityGroups.map((group) => (
               <button
