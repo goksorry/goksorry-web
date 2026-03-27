@@ -18,6 +18,7 @@ import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { PolicyChangeBanner } from "@/components/policy-change-banner";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
+import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
@@ -116,6 +117,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <CleanFilterToggle />
                 </div>
                 <div className="header-profile">
+                  <SiteShareButton />
                   <Suspense
                     fallback={
                       <button

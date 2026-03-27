@@ -309,15 +309,18 @@ a:hover {
 .header-profile {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   justify-content: flex-end;
   flex: 0 1 auto;
   margin-left: auto;
+  min-width: 0;
 }
 
 .header-auth-shell {
   display: inline-flex;
   align-items: stretch;
   justify-content: flex-end;
+  flex: 0 1 auto;
   min-height: 2.25rem;
   max-width: 100%;
   border: 1px solid var(--line);
@@ -373,6 +376,13 @@ a:hover {
   gap: 0.38rem;
   min-width: auto;
   padding: 0.5rem 0.7rem;
+}
+
+.header-share-button {
+  min-height: 2.25rem;
+  flex: 0 0 auto;
+  padding: 0.5rem 0.82rem;
+  white-space: nowrap;
 }
 
 .header-auth-emoji {
@@ -2304,6 +2314,10 @@ button:disabled {
     order: 3;
     flex: 1 1 auto;
     margin-left: auto;
+  }
+
+  .header-share-button {
+    padding-inline: 0.72rem;
   }
 
   .header-auth-shell {
