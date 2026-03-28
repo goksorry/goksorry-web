@@ -1,4 +1,3 @@
-import { ConsentSettingsLink } from "@/components/consent-settings-link";
 import { PolicyMarkdown } from "@/components/policy-markdown";
 import { formatPolicyDate } from "@/lib/policy-metadata";
 import { getCurrentPolicyDocument } from "@/lib/policy-documents";
@@ -14,12 +13,7 @@ export default async function PrivacyPage() {
       <p className="muted">
         시행일: {formatPolicyDate(document.effective_at)} | 최종수정일: {formatPolicyDate(document.updated_at)}
       </p>
-      <PolicyMarkdown
-        source={document.body}
-        directives={{
-          CONSENT_SETTINGS_BUTTON: <ConsentSettingsLink className="legal-action-link" />
-        }}
-      />
+      <PolicyMarkdown source={document.body} />
     </section>
   );
 }

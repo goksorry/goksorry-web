@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ConsentSettingsLink } from "@/components/consent-settings-link";
 
 const SOURCE_LINKS = [
   {
@@ -56,7 +55,6 @@ export function SiteFooter() {
           <div className="site-footer-links">
             <Link href="/terms">이용약관</Link>
             <Link href="/privacy">개인정보처리방침</Link>
-            <ConsentSettingsLink className="site-footer-link-button" />
           </div>
         </section>
 

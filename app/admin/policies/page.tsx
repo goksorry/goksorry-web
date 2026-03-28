@@ -167,9 +167,6 @@ export default function AdminPoliciesPage() {
         이용약관과 개인정보처리방침을 Markdown으로 편집합니다. 지원 문법: <code>## 제목</code>, 빈 줄 문단 구분, <code>- 목록</code>,{" "}
         <code>[링크](url)</code>
       </p>
-      <p className="muted">
-        개인정보처리방침에서 광고 동의 버튼 위치를 유지하려면 <code>[[CONSENT_SETTINGS_BUTTON]]</code> 토큰을 본문에 포함하세요.
-      </p>
 
       <div className="actions">
         {POLICY_TYPES.map((type) => (
