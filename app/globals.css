@@ -1287,6 +1287,18 @@ input[type="checkbox"] {
   margin-bottom: 0;
 }
 
+.profile-setup-checks-detail {
+  margin-left: 1.4rem;
+}
+
+.profile-setup-nickname-actions {
+  gap: 0.7rem;
+}
+
+.profile-setup-inline-message {
+  margin: 0;
+}
+
 .form-row-checkbox input[type="checkbox"] {
   accent-color: var(--brand);
 }

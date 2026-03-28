@@ -191,7 +191,7 @@ export function ProfileForm({
 
       {profileSetupRequired ? (
         <>
-          <div className="actions">
+          <div className="actions profile-setup-nickname-actions">
             <button
               type="button"
               className="btn-secondary"
@@ -200,6 +200,7 @@ export function ProfileForm({
             >
               {nicknameCheckStatus === "checking" ? "확인 중..." : "닉네임 중복확인"}
             </button>
+            {message === "사용 가능한 닉네임입니다." ? <p className="muted profile-setup-inline-message">{message}</p> : null}
           </div>
           <p className="muted">
             최초 가입 설정입니다. 닉네임 중복확인, 만 14세 이상 확인,{" "}
@@ -217,11 +218,11 @@ export function ProfileForm({
               <input type="checkbox" checked={allRequiredAgreed} onChange={(event) => onToggleAllRequired(event.target.checked)} />
               <span>필수 사항 전체 동의</span>
             </label>
-            <label className="form-row-checkbox">
+            <label className="form-row-checkbox profile-setup-checks-detail">
               <input type="checkbox" checked={ageConfirmed} onChange={(event) => setAgeConfirmed(event.target.checked)} />
               <span>본인은 만 14세 이상입니다.</span>
             </label>
-            <label className="form-row-checkbox">
+            <label className="form-row-checkbox profile-setup-checks-detail">
               <input type="checkbox" checked={termsAgreed} onChange={(event) => setTermsAgreed(event.target.checked)} />
               <span>
                 <Link href="/terms" target="_blank" rel="noreferrer">
@@ -230,7 +231,7 @@ export function ProfileForm({
                 에 동의합니다.
               </span>
             </label>
-            <label className="form-row-checkbox">
+            <label className="form-row-checkbox profile-setup-checks-detail">
               <input
                 type="checkbox"
                 checked={privacyAgreed}
@@ -255,10 +256,11 @@ export function ProfileForm({
       ) : null}
       {isAdmin ? <p className="muted">관리자는 닉네임 변경 주기 제한을 받지 않습니다.</p> : null}
       {profileSetupRequired && nicknameCheckStatus === "idle" ? <p className="muted">닉네임 중복확인이 필요합니다.</p> : null}
+      {profileSetupRequired && nicknameCheckStatus === "checking" ? <p className="muted">닉네임 중복확인 중입니다.</p> : null}
       {profileSetupRequired && nicknameCheckStatus === "available" ? <p className="muted">닉네임 중복확인이 완료되었습니다.</p> : null}
       {profileSetupRequired && nicknameCheckStatus === "unavailable" ? <p className="error">이미 사용 중인 닉네임입니다.</p> : null}
       {error ? <p className="error">{error}</p> : null}
-      {message ? <p className="muted">{message}</p> : null}
+      {message && message !== "사용 가능한 닉네임입니다." ? <p className="muted">{message}</p> : null}
 
       {profileSetupRequired ? <p className="muted">아래 버튼을 눌러야 계정이 생성됩니다.</p> : null}
 
