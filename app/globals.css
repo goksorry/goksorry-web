@@ -1278,6 +1278,15 @@ input[type="checkbox"] {
   margin-bottom: 0.8rem;
 }
 
+.profile-setup-checks {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.profile-setup-checks .form-row-checkbox {
+  margin-bottom: 0;
+}
+
 .form-row-checkbox input[type="checkbox"] {
   accent-color: var(--brand);
 }

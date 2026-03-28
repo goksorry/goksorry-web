@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { ProfileForm } from "@/components/profile-form";
 import { ProfileTokenManager } from "@/components/profile-token-manager";
@@ -27,11 +26,15 @@ export default async function ProfilePage({
   }
 
   const nicknamePolicy = getNicknamePolicy(user);
+  const profileTitle = user.profile_setup_required ? "계정 생성" : "내 프로필";
+  const profileDescription = user.profile_setup_required
+    ? "닉네임 설정과 정책 동의 후 계정을 생성합니다."
+    : "닉네임과 TradingBot 토큰 요청을 관리할 수 있습니다. 토큰은 관리자 승인 후 사용할 수 있습니다.";
 
   return (
     <section className="panel">
-      <h1>내 프로필</h1>
-      <p className="muted">닉네임과 TradingBot 토큰 요청을 관리할 수 있습니다. 토큰은 관리자 승인 후 사용할 수 있습니다.</p>
+      <h1>{profileTitle}</h1>
+      <p className="muted">{profileDescription}</p>
       <ProfileForm
         email={user.email}
         initialNickname={user.nickname ?? ""}
@@ -42,9 +45,6 @@ export default async function ProfilePage({
         nextPath={nextPath}
       />
       {user.profile_setup_required ? null : <ProfileTokenManager />}
-      <p>
-        <Link href={nextPath ?? "/community"}>돌아가기</Link>
-      </p>
     </section>
   );
 }

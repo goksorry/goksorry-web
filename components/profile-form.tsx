@@ -40,6 +40,7 @@ export function ProfileForm({
   const [message, setMessage] = useState<string | null>(null);
   const trimmedNickname = nickname.trim();
   const nicknameCheckConfirmed = nicknameCheckStatus === "available" && checkedNickname === trimmedNickname;
+  const allRequiredAgreed = ageConfirmed && termsAgreed && privacyAgreed;
   const submitDisabled = profileSetupRequired
     ? loading || !trimmedNickname || !nicknameCheckConfirmed || !ageConfirmed || !termsAgreed || !privacyAgreed
     : loading || !canEditNickname;
@@ -162,6 +163,12 @@ export function ProfileForm({
     }
   };
 
+  const onToggleAllRequired = (checked: boolean) => {
+    setAgeConfirmed(checked);
+    setTermsAgreed(checked);
+    setPrivacyAgreed(checked);
+  };
+
   return (
     <form onSubmit={onSubmit} className="grid">
       <label className="form-row">
@@ -205,32 +212,38 @@ export function ProfileForm({
             </Link>{" "}
             동의를 완료해야 계속 이용할 수 있습니다.
           </p>
-          <label className="form-row-checkbox">
-            <input type="checkbox" checked={ageConfirmed} onChange={(event) => setAgeConfirmed(event.target.checked)} />
-            <span>본인은 만 14세 이상입니다.</span>
-          </label>
-          <label className="form-row-checkbox">
-            <input type="checkbox" checked={termsAgreed} onChange={(event) => setTermsAgreed(event.target.checked)} />
-            <span>
-              <Link href="/terms" target="_blank" rel="noreferrer">
-                이용약관
-              </Link>
-              에 동의합니다.
-            </span>
-          </label>
-          <label className="form-row-checkbox">
-            <input
-              type="checkbox"
-              checked={privacyAgreed}
-              onChange={(event) => setPrivacyAgreed(event.target.checked)}
-            />
-            <span>
-              <Link href="/privacy" target="_blank" rel="noreferrer">
-                개인정보처리방침
-              </Link>
-              에 동의합니다.
-            </span>
-          </label>
+          <div className="profile-setup-checks">
+            <label className="form-row-checkbox">
+              <input type="checkbox" checked={allRequiredAgreed} onChange={(event) => onToggleAllRequired(event.target.checked)} />
+              <span>필수 사항 전체 동의</span>
+            </label>
+            <label className="form-row-checkbox">
+              <input type="checkbox" checked={ageConfirmed} onChange={(event) => setAgeConfirmed(event.target.checked)} />
+              <span>본인은 만 14세 이상입니다.</span>
+            </label>
+            <label className="form-row-checkbox">
+              <input type="checkbox" checked={termsAgreed} onChange={(event) => setTermsAgreed(event.target.checked)} />
+              <span>
+                <Link href="/terms" target="_blank" rel="noreferrer">
+                  이용약관
+                </Link>
+                에 동의합니다.
+              </span>
+            </label>
+            <label className="form-row-checkbox">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(event) => setPrivacyAgreed(event.target.checked)}
+              />
+              <span>
+                <Link href="/privacy" target="_blank" rel="noreferrer">
+                  개인정보처리방침
+                </Link>
+                에 동의합니다.
+              </span>
+            </label>
+          </div>
         </>
       ) : null}
 
@@ -241,10 +254,13 @@ export function ProfileForm({
         </p>
       ) : null}
       {isAdmin ? <p className="muted">관리자는 닉네임 변경 주기 제한을 받지 않습니다.</p> : null}
+      {profileSetupRequired && nicknameCheckStatus === "idle" ? <p className="muted">닉네임 중복확인이 필요합니다.</p> : null}
       {profileSetupRequired && nicknameCheckStatus === "available" ? <p className="muted">닉네임 중복확인이 완료되었습니다.</p> : null}
       {profileSetupRequired && nicknameCheckStatus === "unavailable" ? <p className="error">이미 사용 중인 닉네임입니다.</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {message ? <p className="muted">{message}</p> : null}
+
+      {profileSetupRequired ? <p className="muted">아래 버튼을 눌러야 계정이 생성됩니다.</p> : null}
 
       <div className="actions">
         <button type="submit" disabled={submitDisabled}>
@@ -252,42 +268,44 @@ export function ProfileForm({
         </button>
       </div>
 
-      <div className="profile-danger-zone">
-        {isAdmin ? (
-          <p className="muted">관리자 계정은 내 프로필 화면에서 회원탈퇴할 수 없습니다.</p>
-        ) : (
-          <>
-            <p className="muted">
-              회원 탈퇴 시 프로필, 작성한 글/댓글, 신고 및 발급한 API 토큰이 함께 삭제되며 같은 이메일은 탈퇴 후 7일이 지나야 다시 가입할 수 있습니다.
-            </p>
+      {profileSetupRequired ? null : (
+        <div className="profile-danger-zone">
+          {isAdmin ? (
+            <p className="muted">관리자 계정은 내 프로필 화면에서 회원탈퇴할 수 없습니다.</p>
+          ) : (
+            <>
+              <p className="muted">
+                회원 탈퇴 시 프로필, 작성한 글/댓글, 신고 및 발급한 API 토큰이 함께 삭제되며 같은 이메일은 탈퇴 후 7일이 지나야 다시 가입할 수 있습니다.
+              </p>
 
-            {!confirmWithdraw ? (
-              <div className="actions">
-                <button type="button" className="btn-danger" onClick={() => setConfirmWithdraw(true)} disabled={withdrawing}>
-                  회원탈퇴
-                </button>
-              </div>
-            ) : (
-              <div className="grid">
-                <p className="error">정말 탈퇴할까요? 이 작업은 되돌릴 수 없고, 같은 이메일로는 7일 뒤에야 다시 가입할 수 있습니다.</p>
+              {!confirmWithdraw ? (
                 <div className="actions">
-                  <button type="button" className="btn-danger" onClick={() => void onWithdraw()} disabled={withdrawing}>
-                    {withdrawing ? "탈퇴 처리 중..." : "정말 탈퇴합니다"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setConfirmWithdraw(false)}
-                    disabled={withdrawing}
-                  >
-                    취소
+                  <button type="button" className="btn-danger" onClick={() => setConfirmWithdraw(true)} disabled={withdrawing}>
+                    회원탈퇴
                   </button>
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              ) : (
+                <div className="grid">
+                  <p className="error">정말 탈퇴할까요? 이 작업은 되돌릴 수 없고, 같은 이메일로는 7일 뒤에야 다시 가입할 수 있습니다.</p>
+                  <div className="actions">
+                    <button type="button" className="btn-danger" onClick={() => void onWithdraw()} disabled={withdrawing}>
+                      {withdrawing ? "탈퇴 처리 중..." : "정말 탈퇴합니다"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setConfirmWithdraw(false)}
+                      disabled={withdrawing}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </form>
   );
 }
