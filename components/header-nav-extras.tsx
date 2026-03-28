@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 
-export function HeaderNavExtras({ initialSession }: { initialSession: Session | null }) {
-  const { data: liveSession } = useSession();
-  const session = liveSession ?? initialSession;
+export function HeaderNavExtras() {
+  const { data: session } = useSession();
 
   if (session?.user?.role !== "admin" || session?.user?.profile_setup_required) {
     return null;

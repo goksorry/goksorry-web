@@ -37,6 +37,10 @@ const isMissingPolicyDocumentVersionsTableError = (code: string | null | undefin
   );
 };
 
+const isTransientPolicyFetchError = (message: string): boolean => {
+  return message.includes("fetch failed") || message.includes("TypeError: fetch failed");
+};
+
 export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
   const supabase = getServiceSupabaseClient();
   const now = new Date().toISOString();
@@ -51,6 +55,10 @@ export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null
     .maybeSingle<PolicyChangeRow>();
 
   if (documentError && !isMissingPolicyDocumentVersionsTableError(documentError.code, documentError.message)) {
+    if (isTransientPolicyFetchError(documentError.message)) {
+      return null;
+    }
+
     throw new Error(`Failed to load active policy document change: ${documentError.message}`);
   }
 
@@ -77,6 +85,10 @@ export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null
 
   if (error) {
     if (isMissingPolicyChangesTableError(error.code, error.message)) {
+      return null;
+    }
+
+    if (isTransientPolicyFetchError(error.message)) {
       return null;
     }
 

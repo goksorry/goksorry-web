@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import type { Session } from "next-auth";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 const buildNextPath = (): string => {
@@ -13,10 +12,9 @@ const buildNextPath = (): string => {
   return `${window.location.pathname}${window.location.search}`;
 };
 
-export function AuthControls({ initialSession }: { initialSession: Session | null }) {
-  const { data: liveSession, status } = useSession();
+export function AuthControls() {
+  const { data: session, status } = useSession();
   const [pending, setPending] = useState(false);
-  const session = liveSession ?? initialSession;
   const user = session?.user ?? null;
 
   const authenticated = Boolean(user?.email);

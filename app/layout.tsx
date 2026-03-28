@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
-import { headers } from "next/headers";
 import Link from "next/link";
 import Script from "next/script";
-import { getServerSession } from "next-auth";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { ChatDock } from "@/components/chat-dock";
@@ -13,7 +11,7 @@ import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
-import { FeedSelectionProvider } from "@/components/feed-selection-provider";
+import { HeaderChatLink } from "@/components/header-chat-link";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { PolicyChangeBanner } from "@/components/policy-change-banner";
@@ -22,7 +20,6 @@ import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
-import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 
 const adsenseAccount = getAdsenseAccount();
@@ -41,32 +38,20 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
   const chatEnv = getChatServerEnv();
-  const nonce = headers().get("x-nonce") ?? undefined;
-  const chatVisible = !session?.user?.profile_setup_required;
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <head>
-        <script
-          async
-          nonce={nonce}
-          src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
-        />
-        <script
-          nonce={nonce}
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${googleAnalyticsMeasurementId}');
-            `
-          }}
-        />
-      </head>
       <body>
+        <Script async strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`} />
+        <Script id="google-analytics-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${googleAnalyticsMeasurementId}');
+          `}
+        </Script>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         {adsenseAccount ? (
           <Script id="googlefc-init" strategy="beforeInteractive">
@@ -82,12 +67,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             crossOrigin="anonymous"
           />
         ) : null}
-        <AuthSessionProvider session={session}>
+        <AuthSessionProvider>
           <CleanFilterProvider>
-            <FeedSelectionProvider>
-              <CleanFilterOverlay />
-              <CleanFilterFirstVisit />
-              <div id="page-top" className="layout">
+            <CleanFilterOverlay />
+            <CleanFilterFirstVisit />
+            <div id="page-top" className="layout">
               <header className="header">
                 <div className="header-main">
                   <Link className="brand" href="/">
@@ -107,12 +91,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/community" replace>
                       커뮤니티
                     </Link>
-                    {chatVisible ? (
-                      <Link href="/chat" replace>
-                        채팅
-                      </Link>
-                    ) : null}
-                    <HeaderNavExtras initialSession={session} />
+                    <HeaderChatLink />
+                    <HeaderNavExtras />
                   </nav>
                 </div>
                 <div className="header-controls">
@@ -137,7 +117,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       </button>
                     }
                   >
-                    <AuthControls initialSession={session} />
+                    <AuthControls />
                   </Suspense>
                 </div>
               </header>
@@ -209,14 +189,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <MarketOverviewShell />
                 </Suspense>
                 <Suspense fallback={null}>
-                  <ProfileSetupRedirect initialSession={session} />
+                  <ProfileSetupRedirect />
                 </Suspense>
                 {children}
               </main>
               <SiteFooter />
-              <ChatDock enabled={chatEnv.enabled && chatVisible} />
-              </div>
-            </FeedSelectionProvider>
+              <ChatDock enabled={chatEnv.enabled} />
+            </div>
           </CleanFilterProvider>
         </AuthSessionProvider>
       </body>

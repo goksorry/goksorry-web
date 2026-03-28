@@ -3,13 +3,12 @@
 import { CrossfadeContent } from "@/components/crossfade-content";
 import { startTransition, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useFeedSelection } from "@/components/feed-selection-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
-import { SOURCE_GROUPS, type SourceGroupId } from "@/lib/feed-source-groups";
+import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
 import type { SentimentBand } from "@/lib/sentiment-score";
 
@@ -75,11 +74,12 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
   const { cleanFilterEnabled } = useCleanFilter();
-  const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(initialCommunityIndicators);
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
+  const [optimisticGroupIds, setOptimisticGroupIds] = useState<SourceGroupId[] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -130,6 +130,10 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   }, [pathname]);
 
   useEffect(() => {
+    setOptimisticGroupIds(null);
+  }, [pathname, searchKey]);
+
+  useEffect(() => {
     if (!activeGroupId) {
       return;
     }
@@ -178,7 +182,22 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
-  const selectedFeedGroupId = pathname === "/" && activeGroupIds.length === 1 ? activeGroupIds[0] : null;
+  const selectedGroupIdsFromUrl = (() => {
+    const channels = searchParams.get("channels") ?? "";
+    const legacyChannel = searchParams.get("channel") ?? "";
+
+    if (channels.length > 0) {
+      return parseSourceGroupSelection(channels);
+    }
+
+    if (isSourceGroupId(legacyChannel)) {
+      return [legacyChannel];
+    }
+
+    return parseSourceGroupSelection("");
+  })();
+  const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
+  const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { formatKstDateTime } from "@/lib/date-time";
+import { PROFILE_SETUP_COMPLETED_FLAG } from "@/lib/profile-setup-client";
 
 type NicknameCheckStatus = "idle" | "checking" | "available" | "unavailable";
 
@@ -36,13 +37,14 @@ export function ProfileForm({
   const [loading, setLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [redirectingAfterSetup, setRedirectingAfterSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const trimmedNickname = nickname.trim();
   const nicknameCheckConfirmed = nicknameCheckStatus === "available" && checkedNickname === trimmedNickname;
   const allRequiredAgreed = ageConfirmed && termsAgreed && privacyAgreed;
   const submitDisabled = profileSetupRequired
-    ? loading || !trimmedNickname || !nicknameCheckConfirmed || !ageConfirmed || !termsAgreed || !privacyAgreed
+    ? loading || redirectingAfterSetup || !trimmedNickname || !nicknameCheckConfirmed || !ageConfirmed || !termsAgreed || !privacyAgreed
     : loading || !canEditNickname;
 
   const handleNicknameChange = (value: string) => {
@@ -104,6 +106,7 @@ export function ProfileForm({
     setLoading(true);
     setError(null);
     setMessage(null);
+    let keepPendingState = false;
 
     try {
       const response = await fetch("/api/profile", {
@@ -125,15 +128,28 @@ export function ProfileForm({
         return;
       }
 
-      setMessage(profileSetupRequired ? "가입 설정이 완료되었습니다." : "닉네임이 저장되었습니다.");
-      await update();
+      if (profileSetupRequired) {
+        keepPendingState = true;
+        setRedirectingAfterSetup(true);
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(PROFILE_SETUP_COMPLETED_FLAG, "1");
+        }
+        void update();
+      } else {
+        setMessage("닉네임이 저장되었습니다.");
+      }
+
       const destination = typeof nextPath === "string" && nextPath.startsWith("/") ? nextPath : "/profile";
-      router.push(destination);
-      router.refresh();
+      router.replace(destination);
+      if (destination === "/profile") {
+        router.refresh();
+      }
     } catch (submitError) {
       setError(String(submitError));
     } finally {
-      setLoading(false);
+      if (!keepPendingState) {
+        setLoading(false);
+      }
     }
   };
 
@@ -253,11 +269,15 @@ export function ProfileForm({
 
       {profileSetupRequired ? <p className="muted">아래 버튼을 눌러야 계정이 생성됩니다.</p> : null}
 
-      <div className="actions">
-        <button type="submit" disabled={submitDisabled}>
-          {loading ? "저장 중..." : profileSetupRequired ? "가입 완료" : "저장"}
-        </button>
-      </div>
+      {redirectingAfterSetup ? (
+        <p className="muted">잠시만 기다려주세요...</p>
+      ) : (
+        <div className="actions">
+          <button type="submit" disabled={submitDisabled}>
+            {loading ? "저장 중..." : profileSetupRequired ? "가입 완료" : "저장"}
+          </button>
+        </div>
+      )}
 
       {profileSetupRequired ? null : (
         <div className="profile-danger-zone">
