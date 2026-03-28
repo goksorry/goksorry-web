@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
+import { getServerSession } from "next-auth";
 import "@/app/globals.css";
 import { AuthControls } from "@/components/auth-controls";
 import { ChatDock } from "@/components/chat-dock";
@@ -20,6 +21,7 @@ import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
+import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 
 const adsenseAccount = getAdsenseAccount();
@@ -39,6 +41,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const chatEnv = getChatServerEnv();
+  const session = await getServerSession(authOptions);
 
   return (
     <html lang="ko" suppressHydrationWarning>
@@ -67,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             crossOrigin="anonymous"
           />
         ) : null}
-        <AuthSessionProvider>
+        <AuthSessionProvider session={session}>
           <CleanFilterProvider>
             <CleanFilterOverlay />
             <CleanFilterFirstVisit />
