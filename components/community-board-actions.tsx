@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function CommunityBoardActions({ boardSlug }: { boardSlug: string }) {
-  const { data: session, status } = useSession();
-  const isCompletedMember = Boolean(session?.user?.email) && !session?.user?.profile_setup_required;
-  const isAdmin = session?.user?.role === "admin";
+  const { user, status } = useSessionSnapshot();
+  const isCompletedMember = Boolean(user?.email) && !user?.profile_setup_required;
+  const isAdmin = user?.role === "admin";
   const canWrite = boardSlug !== "notice" || (isCompletedMember && isAdmin);
 
   return (

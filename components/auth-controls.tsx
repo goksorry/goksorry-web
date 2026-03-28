@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 const buildNextPath = (): string => {
   if (typeof window === "undefined") {
@@ -13,11 +14,8 @@ const buildNextPath = (): string => {
 };
 
 export function AuthControls() {
-  const { data: session, status } = useSession();
+  const { user, status, authenticated, hinted } = useSessionSnapshot();
   const [pending, setPending] = useState(false);
-  const user = session?.user ?? null;
-
-  const authenticated = Boolean(user?.email);
   const loading = pending || (status === "loading" && !authenticated);
 
   const handleSignIn = async () => {
@@ -72,7 +70,7 @@ export function AuthControls() {
         type="button"
         className="header-auth-signout"
         onClick={() => void handleSignOut()}
-        disabled={loading}
+        disabled={pending || hinted}
         aria-label="로그아웃"
         title="로그아웃"
       >

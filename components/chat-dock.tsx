@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { LiveChat } from "@/components/live-chat";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function ChatDock({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { user } = useSessionSnapshot();
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
@@ -15,7 +15,7 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
     setOpen(false);
   }, [pathname]);
 
-  if (!enabled || pathname === "/chat" || status === "loading" || session?.user?.profile_setup_required) {
+  if (!enabled || pathname === "/chat" || user?.profile_setup_required) {
     return null;
   }
 

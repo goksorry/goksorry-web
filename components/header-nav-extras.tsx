@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function HeaderNavExtras() {
-  const { data: session } = useSession();
+  const { user } = useSessionSnapshot();
 
-  if (session?.user?.role !== "admin" || session?.user?.profile_setup_required) {
+  if (user?.role !== "admin" || user?.profile_setup_required) {
     return null;
   }
 

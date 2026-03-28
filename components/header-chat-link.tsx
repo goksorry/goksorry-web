@@ -1,16 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function HeaderChatLink() {
-  const { data: session, status } = useSession();
+  const { user } = useSessionSnapshot();
 
-  if (status === "loading") {
-    return null;
-  }
-
-  if (session?.user?.profile_setup_required) {
+  if (user?.profile_setup_required) {
     return null;
   }
 

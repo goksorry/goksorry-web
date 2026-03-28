@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { DeletePostButton } from "@/components/delete-post-button";
 import { ReportForm } from "@/components/report-form";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function PostDetailActions({
   postId,
@@ -14,14 +14,9 @@ export function PostDetailActions({
   boardSlug: string;
   authorId: string;
 }) {
-  const { data: session, status } = useSession();
-
-  if (status === "loading") {
-    return <div className="actions" />;
-  }
-
-  const isCompletedMember = Boolean(session?.user?.email) && !session?.user?.profile_setup_required;
-  const canEdit = isCompletedMember && (session?.user?.role === "admin" || session?.user?.id === authorId);
+  const { user } = useSessionSnapshot();
+  const isCompletedMember = Boolean(user?.email) && !user?.profile_setup_required;
+  const canEdit = isCompletedMember && (user?.role === "admin" || user?.id === authorId);
 
   return (
     <div className="actions">

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { CommentForm, type CreatedCommentPayload } from "@/components/comment-form";
 import { ReportForm } from "@/components/report-form";
 import { formatKstDateTime } from "@/lib/date-time";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 type PostComment = CreatedCommentPayload;
 
@@ -17,9 +17,9 @@ export function PostCommentsSection({
   initialComments: PostComment[];
   errorMessage: string | null;
 }) {
-  const { data: session, status } = useSession();
+  const { user, status } = useSessionSnapshot();
   const [comments, setComments] = useState(initialComments);
-  const canInteract = status === "authenticated" && Boolean(session?.user?.email) && !session?.user?.profile_setup_required;
+  const canInteract = status !== "unauthenticated" && Boolean(user?.email) && !user?.profile_setup_required;
 
   useEffect(() => {
     setComments(initialComments);
