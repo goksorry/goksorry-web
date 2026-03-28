@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
 type SessionSnapshot = {
@@ -80,7 +80,7 @@ export function useSessionSnapshot() {
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
   const sessionUser = session?.user ?? null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setSnapshot(readSessionSnapshot());
   }, []);
 
