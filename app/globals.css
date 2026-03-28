@@ -1216,6 +1216,10 @@ a:hover {
   gap: 0.8rem;
 }
 
+.profile-form-setup {
+  gap: 0.42rem;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1242,6 +1246,10 @@ a:hover {
   display: grid;
   gap: 0.55rem;
   margin-bottom: 0.8rem;
+}
+
+.profile-form-setup .form-row {
+  margin-bottom: 0.32rem;
 }
 
 input,

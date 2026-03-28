@@ -170,7 +170,7 @@ export function ProfileForm({
   };
 
   return (
-    <form onSubmit={onSubmit} className="grid">
+    <form onSubmit={onSubmit} className={`grid${profileSetupRequired ? " profile-form-setup" : ""}`}>
       <label className="form-row">
         <span>이메일</span>
         <input value={email} disabled />
@@ -202,17 +202,6 @@ export function ProfileForm({
             </button>
             {message === "사용 가능한 닉네임입니다." ? <p className="muted profile-setup-inline-message">{message}</p> : null}
           </div>
-          <p className="muted">
-            최초 가입 설정입니다. 닉네임 중복확인, 만 14세 이상 확인,{" "}
-            <Link href="/terms" target="_blank" rel="noreferrer">
-              이용약관
-            </Link>{" "}
-            및{" "}
-            <Link href="/privacy" target="_blank" rel="noreferrer">
-              개인정보처리방침
-            </Link>{" "}
-            동의를 완료해야 계속 이용할 수 있습니다.
-          </p>
           <div className="profile-setup-checks">
             <label className="form-row-checkbox">
               <input type="checkbox" checked={allRequiredAgreed} onChange={(event) => onToggleAllRequired(event.target.checked)} />

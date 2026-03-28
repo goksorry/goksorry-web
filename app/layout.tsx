@@ -44,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await getServerSession(authOptions);
   const chatEnv = getChatServerEnv();
   const nonce = headers().get("x-nonce") ?? undefined;
+  const chatVisible = !session?.user?.profile_setup_required;
 
   return (
     <html lang="ko" suppressHydrationWarning>
@@ -106,9 +107,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/community" replace>
                       커뮤니티
                     </Link>
-                    <Link href="/chat" replace>
-                      채팅
-                    </Link>
+                    {chatVisible ? (
+                      <Link href="/chat" replace>
+                        채팅
+                      </Link>
+                    ) : null}
                     <HeaderNavExtras initialSession={session} />
                   </nav>
                 </div>
@@ -211,7 +214,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </main>
               <SiteFooter />
-              <ChatDock enabled={chatEnv.enabled} />
+              <ChatDock enabled={chatEnv.enabled && chatVisible} />
               </div>
             </FeedSelectionProvider>
           </CleanFilterProvider>

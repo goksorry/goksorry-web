@@ -35,6 +35,7 @@ export default async function ProfilePage({
     <section className="panel">
       <h1>{profileTitle}</h1>
       <p className="muted">{profileDescription}</p>
+      {user.profile_setup_required ? <p className="muted">생성을 취소하려면 우상단 로그아웃 버튼을 누르세요.</p> : null}
       <ProfileForm
         email={user.email}
         initialNickname={user.nickname ?? ""}
