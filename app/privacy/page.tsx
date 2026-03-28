@@ -1,131 +1,25 @@
 import { ConsentSettingsLink } from "@/components/consent-settings-link";
-import { POLICY_SUPPORT_EMAIL, PRIVACY_POLICY_METADATA, formatPolicyDate } from "@/lib/policy-metadata";
+import { PolicyMarkdown } from "@/components/policy-markdown";
+import { formatPolicyDate } from "@/lib/policy-metadata";
+import { getCurrentPolicyDocument } from "@/lib/policy-documents";
 
-export default function PrivacyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PrivacyPage() {
+  const document = await getCurrentPolicyDocument("privacy");
+
   return (
     <section className="panel legal-page">
-      <h1>개인정보처리방침</h1>
+      <h1>{document.title}</h1>
       <p className="muted">
-        곡소리닷컴은 로그인, 회원 설정, 커뮤니티 운영, 보안 및 기본 서비스 제공을 위해 필요한 범위 안에서만 개인정보를 처리합니다.
+        시행일: {formatPolicyDate(document.effective_at)} | 최종수정일: {formatPolicyDate(document.updated_at)}
       </p>
-      <p className="muted">
-        시행일: {formatPolicyDate(PRIVACY_POLICY_METADATA.effectiveDate)} | 최종수정일: {formatPolicyDate(PRIVACY_POLICY_METADATA.updatedDate)}
-      </p>
-
-      <h2>1. 수집하는 개인정보 항목</h2>
-      <p>곡소리닷컴은 현재 Google 로그인 및 서비스 이용 과정에서 아래 정보를 처리합니다.</p>
-      <ul className="legal-list">
-        <li>이메일 주소</li>
-        <li>닉네임</li>
-        <li>서비스 내부 계정 식별자</li>
-        <li>서비스 이용 권한 정보(회원/관리자 여부)</li>
-        <li>가입 시각, 닉네임 확정 시각, 닉네임 변경 시각</li>
-        <li>만 14세 이상 확인 시각, 이용약관 및 개인정보처리방침 동의 시각</li>
-        <li>게시글, 댓글, 신고 사유 등 이용자가 서비스에 직접 입력하는 정보</li>
-        <li>로그인 세션 유지를 위한 쿠키 정보</li>
-        <li>테마, 예쁜말 필터 등 서비스 표시 설정 정보</li>
-        <li>채팅 기능이 활성화된 경우 비회원 읽기 세션을 위한 쿠키 정보</li>
-      </ul>
-
-      <h2>2. 개인정보의 수집 및 이용 목적</h2>
-      <ul className="legal-list">
-        <li>회원 식별 및 로그인 처리</li>
-        <li>최초 가입 설정, 프로필 관리 및 만 14세 이상 여부 확인</li>
-        <li>커뮤니티 글쓰기, 댓글, 신고, 채팅 기능이 제공되는 경우 회원용 채팅 및 프로필 기능 제공</li>
-        <li>부정 이용 방지, 운영 및 보안 대응</li>
-        <li>관리자 권한 처리, 신고 검토, 커뮤니티 운영</li>
-        <li>약관·방침 동의 이력 관리</li>
-        <li>방문 통계 분석 및 서비스 개선</li>
-      </ul>
-
-      <h2>3. 보유 및 이용 기간</h2>
-      <p>
-        회원 정보는 원칙적으로 회원 탈퇴 또는 서비스 종료 시까지 보유합니다. 회원이 작성한 글, 댓글, 신고 정보 및 발급한 API
-        토큰은 탈퇴 시 함께 삭제됩니다.
-      </p>
-      <p>
-        다만 동일 이메일의 재가입 제한 확인 및 부정 이용 방지를 위해 탈퇴한 이메일 주소와 탈퇴 처리 사유를 탈퇴 후 7일 동안 별도
-        보관하며, 해당 기간이 지난 뒤 삭제 대상이 됩니다.
-      </p>
-      <p>
-        관계 법령에 따라 별도 보관이 필요한 경우에는 해당 법령이 정한 기간 동안 보관할 수 있습니다.
-      </p>
-
-      <h2>4. 제3자 제공 및 처리 위탁</h2>
-      <p>곡소리닷컴은 이용자의 개인정보를 원칙적으로 외부에 판매하거나 제공하지 않습니다.</p>
-      <p>
-        다만 로그인 처리를 위해 Google OAuth, 인증 및 데이터 저장을 위해 Supabase, 서비스 배포를 위해 Vercel을 이용하며, 방문
-        통계 분석을 위해 Google Analytics를 이용합니다. 광고가 활성화되는 경우 광고 제공 및 동의 관리를 위해 Google AdSense 및
-        Google CMP를 이용할 수 있습니다. 이 과정에서 서비스 운영에 필요한 범위 내의 처리가 발생할 수 있습니다.
-      </p>
-      <p>
-        Google, Supabase, Vercel 등 국외 사업자 서비스를 이용하는 과정에서 개인정보 또는 접속 정보가 국외에서 처리될 수 있습니다.
-      </p>
-
-      <h2>5. 개인정보 파기 절차 및 방법</h2>
-      <p>
-        개인정보의 보유 기간이 경과하거나 처리 목적이 달성된 경우, 지체 없이 삭제를 진행합니다. 다만 법령상 보존 또는 분쟁 대응,
-        부정 이용 방지 등 정당한 사유가 있는 경우에는 해당 정보만 별도로 분리하여 보관할 수 있습니다.
-      </p>
-      <p>
-        전자적 파일 형태의 정보는 복구 또는 재생이 어렵도록 삭제하며, 별도의 종이 문서가 있는 경우 분쇄 또는 소각 등의 방법으로
-        파기합니다.
-      </p>
-
-      <h2>6. 이용자의 권리</h2>
-      <p>이용자는 자신의 개인정보에 대해 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다.</p>
-      <p>권리 행사는 {POLICY_SUPPORT_EMAIL}으로 문의하시면 됩니다.</p>
-
-      <h2>7. 쿠키 및 설정 정보</h2>
-      <p>
-        곡소리닷컴은 로그인 유지, 예쁜말 필터, 테마 설정, 방문 통계 분석, 채팅 기능이 활성화된 경우 비회원 열람 세션 제공
-        등을 위해 쿠키 및 브라우저 저장소를 사용할 수 있습니다.
-      </p>
-      <p>
-        이용자는 브라우저 설정을 통해 쿠키 저장을 거부하거나 이미 저장된 쿠키를 삭제할 수 있습니다. 다만 이 경우 로그인 유지,
-        선호 설정 저장, 일부 서비스 이용에 제한이 생길 수 있습니다.
-      </p>
-      <p>
-        광고가 활성화되는 경우 유럽 경제 지역(EEA), 영국, 스위스 방문자에게는 Google 인증 동의 관리 플랫폼(CMP)을 통한
-        개인정보 및 쿠키 동의 안내가 표시될 수 있습니다.
-      </p>
-
-      <h2>8. 외부 로그인</h2>
-      <p>
-        현재 회원가입 및 로그인은 Google 계정을 통해 처리됩니다. Google 로그인 과정에서 제공되는 정보 중 서비스 운영에
-        필요한 최소 범위만 저장·이용합니다.
-      </p>
-
-      <h2>9. 아동의 개인정보 보호</h2>
-      <p>
-        곡소리닷컴은 만 14세 미만 아동을 대상으로 하지 않으며, 회원 가입 및 최초 가입 설정 과정에서 본인이 만 14세 이상임을
-        확인하도록 하고 있습니다.
-      </p>
-      <p>
-        회사가 만 14세 미만 아동의 개인정보를 수집한 사실을 알게 된 경우 해당 정보를 삭제하거나 서비스 이용을 제한할 수
-        있습니다.
-      </p>
-
-      <h2>10. 광고 동의 설정 변경</h2>
-      <p>
-        광고 개인정보 및 쿠키 설정은 아래 버튼을 통해 다시 열어 변경할 수 있습니다.
-      </p>
-      <p>
-        <ConsentSettingsLink className="legal-action-link" />
-      </p>
-
-      <h2>11. 문의처</h2>
-      <p>개인정보 보호업무 담당자: 곡소리닷컴 운영자</p>
-      <p>
-        개인정보 관련 문의 및 권리 행사 요청은 <a href={`mailto:${POLICY_SUPPORT_EMAIL}`}>{POLICY_SUPPORT_EMAIL}</a> 으로
-        연락할 수 있습니다.
-      </p>
-
-      <h2>12. 방침 변경</h2>
-      <p>
-        본 방침은 서비스 변경, 법령 변경, 운영 정책 변경에 따라 수정될 수 있습니다. 중요한 변경이 있는 경우 서비스 내에서
-        공지합니다.
-      </p>
+      <PolicyMarkdown
+        source={document.body}
+        directives={{
+          CONSENT_SETTINGS_BUTTON: <ConsentSettingsLink className="legal-action-link" />
+        }}
+      />
     </section>
   );
 }

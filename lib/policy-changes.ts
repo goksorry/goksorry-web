@@ -1,10 +1,11 @@
 import "server-only";
 
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+import { POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
 
 export type ActivePolicyChange = {
   id: string;
-  type: "terms" | "privacy";
+  type: PolicyDocumentType;
   summary: string;
   effectiveAt: string;
   href: string;
@@ -13,21 +14,10 @@ export type ActivePolicyChange = {
 
 type PolicyChangeRow = {
   id: string;
-  type: "terms" | "privacy";
+  type: PolicyDocumentType;
   summary: string;
   effective_at: string;
 };
-
-const POLICY_PAGE_BY_TYPE = {
-  terms: {
-    href: "/terms",
-    label: "이용약관"
-  },
-  privacy: {
-    href: "/privacy",
-    label: "개인정보처리방침"
-  }
-} as const;
 
 const isMissingPolicyChangesTableError = (code: string | null | undefined, message: string): boolean => {
   return (
@@ -38,9 +28,44 @@ const isMissingPolicyChangesTableError = (code: string | null | undefined, messa
   );
 };
 
+const isMissingPolicyDocumentVersionsTableError = (code: string | null | undefined, message: string): boolean => {
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("policy_document_versions") ||
+    message.includes("schema cache")
+  );
+};
+
 export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
   const supabase = getServiceSupabaseClient();
   const now = new Date().toISOString();
+  const { data: documentChange, error: documentError } = await supabase
+    .from("policy_document_versions")
+    .select("id, type, summary, effective_at")
+    .is("superseded_at", null)
+    .lte("published_at", now)
+    .gt("effective_at", now)
+    .order("effective_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<PolicyChangeRow>();
+
+  if (documentError && !isMissingPolicyDocumentVersionsTableError(documentError.code, documentError.message)) {
+    throw new Error(`Failed to load active policy document change: ${documentError.message}`);
+  }
+
+  if (documentChange) {
+    const policy = POLICY_DOCUMENT_META[documentChange.type];
+    return {
+      id: documentChange.id,
+      type: documentChange.type,
+      summary: documentChange.summary,
+      effectiveAt: documentChange.effective_at,
+      href: policy.href,
+      label: policy.title
+    };
+  }
+
   const { data, error } = await supabase
     .from("policy_changes")
     .select("id, type, summary, effective_at")
@@ -62,13 +87,13 @@ export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null
     return null;
   }
 
-  const policy = POLICY_PAGE_BY_TYPE[data.type];
+  const policy = POLICY_DOCUMENT_META[data.type];
   return {
     id: data.id,
     type: data.type,
     summary: data.summary,
     effectiveAt: data.effective_at,
     href: policy.href,
-    label: policy.label
+    label: policy.title
   };
 };

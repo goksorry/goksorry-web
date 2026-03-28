@@ -51,7 +51,7 @@ export function PolicyChangeBannerClient({ change }: PolicyChangeBannerClientPro
     <div className="policy-change-banner" role="status" aria-live="polite">
       <div className="policy-change-banner-inner">
         <p className="policy-change-banner-copy">
-          {change.label}이 변경됩니다. {formatEffectiveDate(change.effectiveAt)}부터 적용됩니다.{" "}
+          {change.label}이 변경됩니다. {change.summary}. {formatEffectiveDate(change.effectiveAt)}부터 적용됩니다.{" "}
           <Link href={change.href}>자세히 보기</Link>
         </p>
         <button
