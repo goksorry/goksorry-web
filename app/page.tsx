@@ -1,8 +1,7 @@
 import { HomeFeedShell } from "@/components/home-feed-shell";
-import { fetchRecentFeedRows } from "@/lib/feed-data";
+import { getCachedRecentFeedRows } from "@/lib/feed-read";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
-import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 type QueryValue = string | string[] | undefined;
 const FEED_WINDOW_HOURS = 6;
@@ -28,8 +27,7 @@ export default async function Home({
         ? [legacyChannelRaw]
         : parseSourceGroupSelection("");
 
-  const service = getServiceSupabaseClient();
-  const { rows, errorMessage } = await fetchRecentFeedRows(service, { hours: FEED_WINDOW_HOURS, limit: 500 });
+  const { rows, errorMessage } = await getCachedRecentFeedRows({ hours: FEED_WINDOW_HOURS, limit: 500 });
   const timezone = getTimezone();
 
   return (

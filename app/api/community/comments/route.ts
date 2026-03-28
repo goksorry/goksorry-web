@@ -1,7 +1,7 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { allowRateLimit } from "@/lib/rate-limit";
+import { revalidateCommunityPaths } from "@/lib/community-cache";
 import { sanitizePlainText } from "@/lib/plain-text";
 import {
   checkAccountAge,
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   const service = getServiceSupabaseClient();
   const { data: post } = await service
     .from("community_posts")
-    .select("id,is_deleted,boards(slug)")
+    .select("id,is_deleted,is_pinned_notice,boards(slug)")
     .eq("id", postId)
     .maybeSingle();
 
@@ -91,7 +91,11 @@ export async function POST(request: Request) {
 
   const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
   if (board?.slug) {
-    revalidatePath(`/community/${board.slug}/${postId}`);
+    await revalidateCommunityPaths(service, {
+      boardSlug: board.slug,
+      postId,
+      includeAllBoards: board.slug === "notice" && Boolean(post.is_pinned_notice)
+    });
   }
 
   return NextResponse.json({

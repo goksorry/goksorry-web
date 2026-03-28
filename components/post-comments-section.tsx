@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { CommentForm, type CreatedCommentPayload } from "@/components/comment-form";
 import { ReportForm } from "@/components/report-form";
 import { formatKstDateTime } from "@/lib/date-time";
@@ -10,15 +11,15 @@ type PostComment = CreatedCommentPayload;
 export function PostCommentsSection({
   postId,
   initialComments,
-  errorMessage,
-  isSignedIn
+  errorMessage
 }: {
   postId: string;
   initialComments: PostComment[];
   errorMessage: string | null;
-  isSignedIn: boolean;
 }) {
+  const { data: session, status } = useSession();
   const [comments, setComments] = useState(initialComments);
+  const canInteract = status === "authenticated" && Boolean(session?.user?.email) && !session?.user?.profile_setup_required;
 
   useEffect(() => {
     setComments(initialComments);
@@ -39,13 +40,13 @@ export function PostCommentsSection({
             <p className="muted">
               작성자 {comment.author_nickname ?? "알 수 없음"} · {formatKstDateTime(comment.created_at)}
             </p>
-            {isSignedIn ? <ReportForm targetType="comment" targetId={comment.id} compact /> : null}
+            {canInteract ? <ReportForm targetType="comment" targetId={comment.id} compact /> : null}
           </article>
         ))}
         {comments.length === 0 ? <p className="muted">아직 댓글이 없습니다.</p> : null}
       </div>
 
-      {isSignedIn ? <CommentForm postId={postId} onCreated={handleCommentCreated} /> : null}
+      {canInteract ? <CommentForm postId={postId} onCreated={handleCommentCreated} /> : null}
     </>
   );
 }
