@@ -191,14 +191,14 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
       <section className="overview-market-block">
         <div className="overview-section-head">
           <h3>시장</h3>
-          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름</p>
+          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
         </div>
         <div className="overview-market-row">
           {marketOverview.market_indicators.map((indicator) => (
             <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
               <div className="overview-market-head">
                 <p className="overview-label">{indicator.label}</p>
-                <p className="overview-note">{indicator.note}</p>
+                {indicator.note ? <p className="overview-note">{indicator.note}</p> : null}
               </div>
               <div className="overview-market-main">
                 <strong className="overview-value">{indicator.value_text}</strong>

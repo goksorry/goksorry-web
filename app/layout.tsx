@@ -146,7 +146,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       <section className="overview-market-block">
                         <div className="overview-section-head">
                           <h3>시장</h3>
-                          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름</p>
+                          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
                         </div>
                         <div className="overview-market-row">
                           {["KOSPI", "KOSDAQ", "NASDAQ", "원/달러 환율"].map((label) => (

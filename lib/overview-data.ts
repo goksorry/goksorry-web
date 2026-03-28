@@ -175,7 +175,7 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
       value_text: formatNumber(value, 2),
       delta_text: `${change >= 0 ? "+" : ""}${formatNumber(change, 2)} (${item.cr >= 0 ? "+" : ""}${item.cr.toFixed(2)}%)`,
       tone,
-      note: item.ms === "CLOSE" ? "장 마감 기준" : "5분 캐시"
+      note: item.ms === "CLOSE" ? "장 마감 기준" : ""
     };
   } catch {
     return fallbackIndicator(code.toLowerCase(), label, "네이버 지수 응답 지연");
@@ -212,7 +212,7 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       value_text: value,
       delta_text: formatDeltaWithPercent(signedDelta, signedPercent),
       tone,
-      note: "네이버 해외지수 · 5분 캐시"
+      note: "네이버 해외지수"
     };
   } catch {
     return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 응답 지연");
@@ -254,7 +254,7 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
               signedPercent === null ? "" : ` (${formatSignedNumber(signedPercent, 2)}%)`
             }`.trim(),
       tone,
-      note: "네이버 환율 · 5분 캐시"
+      note: "네이버 환율"
     };
   } catch {
     return fallbackIndicator("usdkrw", "원/달러 환율", "환율 응답 지연");
