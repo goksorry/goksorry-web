@@ -14,8 +14,10 @@ const EXTREME_BEARISH_MAX = 2.4;
 const BEARISH_MAX = 4.4;
 const NEUTRAL_MAX = 5.5;
 const BULLISH_MAX = 7.5;
-const AGGREGATE_DOMINANCE_COUNT_GAP_MIN = 2;
-const AGGREGATE_DOMINANCE_SHARE_MIN = 0.55;
+const AGGREGATE_ACTIONABLE_COUNT_MIN = 2;
+const AGGREGATE_DOMINANCE_COUNT_GAP_MIN = 1;
+const AGGREGATE_DOMINANCE_SHARE_MIN = 0.54;
+const AGGREGATE_SCORE_DRIFT_MULTIPLIER = 1.35;
 
 export const clampSentimentScore = (value: number): number => {
   const clamped = Math.min(SENTIMENT_SCORE_MAX, Math.max(SENTIMENT_SCORE_MIN, value));
@@ -77,7 +79,7 @@ const dominantAggregateSentimentLabel = (
   bearishCount: number
 ): SentimentLabel => {
   const actionableCount = bullishCount + bearishCount;
-  if (actionableCount === 0) {
+  if (actionableCount < AGGREGATE_ACTIONABLE_COUNT_MIN) {
     return "neutral";
   }
 
@@ -91,6 +93,14 @@ const dominantAggregateSentimentLabel = (
   }
 
   return bullishCount > bearishCount ? "bullish" : "bearish";
+};
+
+export const amplifyAggregateSentimentScore = (score: number): number => {
+  const normalized = clampSentimentScore(score);
+  const distanceFromNeutral = normalized - SENTIMENT_SCORE_NEUTRAL;
+  return clampSentimentScore(
+    SENTIMENT_SCORE_NEUTRAL + distanceFromNeutral * AGGREGATE_SCORE_DRIFT_MULTIPLIER
+  );
 };
 
 export const aggregateSentimentTone = (

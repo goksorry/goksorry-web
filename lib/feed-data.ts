@@ -3,6 +3,7 @@ import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId
 import {
   aggregateSentimentBand,
   aggregateSentimentTone,
+  amplifyAggregateSentimentScore,
   averageSentimentScore,
   resolveSentimentScore,
   sentimentLabelFromScore,
@@ -198,7 +199,9 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
     const bullish = groupRows.filter((row) => row.label === "bullish").length;
     const bearish = groupRows.filter((row) => row.label === "bearish").length;
     const neutral = groupRows.length - bullish - bearish;
-    const score = averageSentimentScore(groupRows.map((row) => row.sentiment_score));
+    const score = amplifyAggregateSentimentScore(
+      averageSentimentScore(groupRows.map((row) => row.sentiment_score))
+    );
     const tone = aggregateSentimentTone(bullish, bearish);
     const sentimentBand = aggregateSentimentBand(score, {
       bullishCount: bullish,
@@ -222,7 +225,9 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
 };
 
 export const buildFeedScoreOverview = (rows: FeedRow[]): FeedScoreOverview => {
-  const score = averageSentimentScore(rows.map((row) => row.sentiment_score));
+  const score = amplifyAggregateSentimentScore(
+    averageSentimentScore(rows.map((row) => row.sentiment_score))
+  );
   const bullish = rows.filter((row) => row.label === "bullish").length;
   const bearish = rows.filter((row) => row.label === "bearish").length;
   return {
