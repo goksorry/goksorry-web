@@ -1,0 +1,4 @@
+interface:
+  display_name: "Goksorry Web Supabase"
+  short_description: "Supabase CLI workflow for goksorry-web"
+  default_prompt: "Use this skill when working in /home/jujin/workspace/projects/goksorry/goksorry-web on Supabase CLI linking, migration creation, db push, schema sync, or deployment preparation."

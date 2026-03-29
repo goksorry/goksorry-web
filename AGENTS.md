@@ -53,6 +53,15 @@
 - Mirror durable repo-facing SQL history in `db/migrations`.
 - Keep `db/schema.sql` aligned when migrations change long-lived schema or seeded bootstrap content.
 
+## Skills
+- `goksorry-web-supabase` — Project-specific Supabase CLI workflow for this repository. (file: `/home/jujin/workspace/projects/goksorry/goksorry-web/.codex/skills/goksorry-web-supabase/SKILL.md`)
+
+## How to use skills
+- Use `goksorry-web-supabase` for Supabase CLI setup/linking, migration creation or application, `db/schema.sql` sync, legal document seed changes, and deployment prep that depends on Supabase state.
+- Open the skill's `SKILL.md` first and load extra files only when needed.
+- Resolve relative skill paths from the skill directory before searching elsewhere.
+- Keep `goksorry-web`-specific skill changes in this repository instead of editing `~/.codex/skills`, unless the user explicitly asks for a global change.
+
 ## Security Rules
 - Never use anon key for privileged DB writes.
 - Detector write APIs must return `401` when token is missing/invalid.
