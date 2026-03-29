@@ -1,4 +1,7 @@
+import { Suspense } from "react";
 import { HomeFeedShell } from "@/components/home-feed-shell";
+import { MarketOverviewFallback } from "@/components/market-overview-fallback";
+import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { getCachedRecentFeedRows } from "@/lib/feed-read";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
@@ -31,11 +34,16 @@ export default async function Home({
   const timezone = getTimezone();
 
   return (
-    <HomeFeedShell
-      rows={rows}
-      errorMessage={errorMessage}
-      timezone={timezone}
-      selectedGroupIds={selectedGroupIds}
-    />
+    <>
+      <Suspense fallback={<MarketOverviewFallback />}>
+        <MarketOverviewShell />
+      </Suspense>
+      <HomeFeedShell
+        rows={rows}
+        errorMessage={errorMessage}
+        timezone={timezone}
+        selectedGroupIds={selectedGroupIds}
+      />
+    </>
   );
 }
