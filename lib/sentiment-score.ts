@@ -103,6 +103,16 @@ export const amplifyAggregateSentimentScore = (score: number): number => {
   );
 };
 
+export const sentimentToneFromBand = (band: SentimentBand): "bearish" | "mixed" | "bullish" => {
+  if (band === "extreme_bearish" || band === "bearish") {
+    return "bearish";
+  }
+  if (band === "bullish" || band === "extreme_bullish") {
+    return "bullish";
+  }
+  return "mixed";
+};
+
 export const aggregateSentimentTone = (
   bullishCount: number,
   bearishCount: number
@@ -125,15 +135,16 @@ export const aggregateSentimentBand = (
   }
 ): SentimentBand => {
   const dominantLabel = dominantAggregateSentimentLabel(bullishCount, bearishCount);
-  if (dominantLabel === "neutral") {
+  const scoreBand = sentimentBandFromScore(score);
+
+  if (dominantLabel === "neutral" || scoreBand === "neutral") {
     return "neutral";
   }
 
-  const normalized = clampSentimentScore(score);
   if (dominantLabel === "bearish") {
-    return normalized <= EXTREME_BEARISH_MAX ? "extreme_bearish" : "bearish";
+    return scoreBand === "extreme_bearish" || scoreBand === "bearish" ? scoreBand : "neutral";
   }
-  return normalized > BULLISH_MAX ? "extreme_bullish" : "bullish";
+  return scoreBand === "bullish" || scoreBand === "extreme_bullish" ? scoreBand : "neutral";
 };
 
 export const resolveSentimentScore = (value: unknown, label?: unknown): number => {

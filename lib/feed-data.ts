@@ -2,11 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
 import {
   aggregateSentimentBand,
-  aggregateSentimentTone,
   amplifyAggregateSentimentScore,
   averageSentimentScore,
   resolveSentimentScore,
   sentimentLabelFromScore,
+  sentimentToneFromBand,
   type SentimentBand,
   type SentimentLabel
 } from "@/lib/sentiment-score";
@@ -193,43 +193,47 @@ export const filterRowsBySourceGroups = (rows: FeedRow[], groupIds: SourceGroupI
   return rows.filter((row) => groupIds.some((groupId) => matchesSourceGroup(row.source, groupId)));
 };
 
+const getActionableRows = (rows: FeedRow[]): FeedRow[] => rows.filter((row) => row.label !== "neutral");
+
 export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[] => {
   return SOURCE_GROUPS.map((group) => {
     const groupRows = rows.filter((row) => matchesSourceGroup(row.source, group.id));
-    const bullish = groupRows.filter((row) => row.label === "bullish").length;
-    const bearish = groupRows.filter((row) => row.label === "bearish").length;
-    const neutral = groupRows.length - bullish - bearish;
+    const actionableRows = getActionableRows(groupRows);
+    const bullish = actionableRows.filter((row) => row.label === "bullish").length;
+    const bearish = actionableRows.filter((row) => row.label === "bearish").length;
+    const neutral = groupRows.length - actionableRows.length;
     const score = amplifyAggregateSentimentScore(
-      averageSentimentScore(groupRows.map((row) => row.sentiment_score))
+      averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
     );
-    const tone = aggregateSentimentTone(bullish, bearish);
     const sentimentBand = aggregateSentimentBand(score, {
       bullishCount: bullish,
       bearishCount: bearish
     });
+    const tone = sentimentToneFromBand(sentimentBand);
 
     return {
       id: group.id,
       label: group.label,
       shortLabel: group.shortLabel,
-      mentions: groupRows.length,
+      mentions: actionableRows.length,
       bullish,
       bearish,
       neutral,
       score,
       sentiment_band: sentimentBand,
       tone,
-      rows: groupRows.slice(0, 12)
+      rows: actionableRows.slice(0, 12)
     };
   });
 };
 
 export const buildFeedScoreOverview = (rows: FeedRow[]): FeedScoreOverview => {
+  const actionableRows = getActionableRows(rows);
   const score = amplifyAggregateSentimentScore(
-    averageSentimentScore(rows.map((row) => row.sentiment_score))
+    averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
   );
-  const bullish = rows.filter((row) => row.label === "bullish").length;
-  const bearish = rows.filter((row) => row.label === "bearish").length;
+  const bullish = actionableRows.filter((row) => row.label === "bullish").length;
+  const bearish = actionableRows.filter((row) => row.label === "bearish").length;
   return {
     score,
     sentiment_band: aggregateSentimentBand(score, {
