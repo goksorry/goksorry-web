@@ -2614,8 +2614,12 @@ button:disabled {
     gap: 0.35rem;
   }
 
+  .overview-market-stat .overview-value {
+    font-size: 1rem;
+  }
+
   .overview-market-stat .overview-delta {
-    font-size: 0.68rem;
+    font-size: 0.64rem;
   }
 
   .sentiment-columns {
