@@ -137,14 +137,19 @@ export const aggregateSentimentBand = (
   const dominantLabel = dominantAggregateSentimentLabel(bullishCount, bearishCount);
   const scoreBand = sentimentBandFromScore(score);
 
-  if (dominantLabel === "neutral" || scoreBand === "neutral") {
+  if (scoreBand === "neutral") {
     return "neutral";
   }
 
-  if (dominantLabel === "bearish") {
-    return scoreBand === "extreme_bearish" || scoreBand === "bearish" ? scoreBand : "neutral";
+  if (dominantLabel === "neutral") {
+    return scoreBand;
   }
-  return scoreBand === "bullish" || scoreBand === "extreme_bullish" ? scoreBand : "neutral";
+
+  if (scoreBand === "extreme_bearish" || scoreBand === "bearish") {
+    return dominantLabel === "bearish" ? scoreBand : "neutral";
+  }
+
+  return dominantLabel === "bullish" ? scoreBand : "neutral";
 };
 
 export const resolveSentimentScore = (value: unknown, label?: unknown): number => {

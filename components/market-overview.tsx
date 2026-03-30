@@ -78,6 +78,10 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
 const COMMUNITY_REFRESH_MS = 60_000;
 const COMMUNITY_RETRY_MS = 15_000;
 
+const persistMarketAdjustmentCookie = (enabled: boolean) => {
+  document.cookie = `${MARKET_ADJUSTMENT_COOKIE_NAME}=${getMarketAdjustmentCookieValue(enabled)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+};
+
 export function MarketOverview({ marketOverview, initialCommunityIndicators }: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -96,7 +100,7 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   }, [initialCommunityIndicators]);
 
   useEffect(() => {
-    document.cookie = `${MARKET_ADJUSTMENT_COOKIE_NAME}=${getMarketAdjustmentCookieValue(marketAdjustmentEnabled)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    persistMarketAdjustmentCookie(marketAdjustmentEnabled);
   }, [marketAdjustmentEnabled]);
 
   useEffect(() => {
@@ -206,6 +210,8 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
     const nextParams = new URLSearchParams(searchParams.toString());
     const nextEnabled = !marketAdjustmentEnabled;
     const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(nextEnabled);
+
+    persistMarketAdjustmentCookie(nextEnabled);
 
     if (marketAdjustmentQueryValue) {
       nextParams.set("market_adjustment", marketAdjustmentQueryValue);
