@@ -2,12 +2,11 @@ import { unstable_cache } from "next/cache";
 import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import {
-  buildFeedScoreOverview,
   buildSourceGroupSummaries,
   fetchRecentFeedRows,
   type SourceGroupSummary
 } from "@/lib/feed-data";
-import type { SentimentBand } from "@/lib/sentiment-score";
+import { clampSentimentScore, sentimentBandFromScore, type SentimentBand } from "@/lib/sentiment-score";
 
 type IndicatorTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 
@@ -292,6 +291,39 @@ const buildMarketOverview = async (): Promise<Pick<OverviewPayload, "generated_a
   };
 };
 
+const buildOverallFromCommunityIndicators = (
+  communityIndicators: SourceGroupSummary[]
+): Pick<
+  CommunityIndicatorsPayload,
+  "overall_base_score" | "overall_market_adjustment" | "overall_sentiment_score" | "overall_sentiment_band"
+> => {
+  if (communityIndicators.length === 0) {
+    return {
+      overall_base_score: 5,
+      overall_market_adjustment: 0,
+      overall_sentiment_score: 5,
+      overall_sentiment_band: "neutral"
+    };
+  }
+
+  const sectionCount = communityIndicators.length;
+  const average = (values: number[], digits: number): number => {
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return Number((total / sectionCount).toFixed(digits));
+  };
+
+  const overallBaseScore = clampSentimentScore(average(communityIndicators.map((group) => group.base_score), 1));
+  const overallMarketAdjustment = average(communityIndicators.map((group) => group.market_adjustment), 2);
+  const overallSentimentScore = clampSentimentScore(average(communityIndicators.map((group) => group.score), 1));
+
+  return {
+    overall_base_score: overallBaseScore,
+    overall_market_adjustment: overallMarketAdjustment,
+    overall_sentiment_score: overallSentimentScore,
+    overall_sentiment_band: sentimentBandFromScore(overallSentimentScore)
+  };
+};
+
 export const getCachedMarketOverview = unstable_cache(buildMarketOverview, ["market-overview"], {
   revalidate: MARKET_TTL_SEC
 });
@@ -311,19 +343,15 @@ export const buildCommunityIndicatorsData = async (
     marketAdjustmentSnapshot,
     asOf
   });
-  const overall = buildFeedScoreOverview(rows, {
-    marketAdjustmentEnabled,
-    marketAdjustmentSnapshot,
-    asOf
-  });
+  const overall = buildOverallFromCommunityIndicators(communityIndicators);
 
   return {
     generated_at: asOf.toISOString(),
     market_adjustment_enabled: marketAdjustmentEnabled,
-    overall_base_score: overall.base_score,
-    overall_market_adjustment: overall.market_adjustment,
-    overall_sentiment_score: overall.score,
-    overall_sentiment_band: overall.sentiment_band,
+    overall_base_score: overall.overall_base_score,
+    overall_market_adjustment: overall.overall_market_adjustment,
+    overall_sentiment_score: overall.overall_sentiment_score,
+    overall_sentiment_band: overall.overall_sentiment_band,
     community_indicators: communityIndicators
   };
 };
