@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import {
   buildFeedScoreOverview,
@@ -15,6 +16,8 @@ export type MarketIndicator = {
   label: string;
   value_text: string;
   delta_text: string;
+  change_value: number | null;
+  change_percent: number | null;
   tone: IndicatorTone;
   note: string;
 };
@@ -22,6 +25,9 @@ export type MarketIndicator = {
 export type OverviewPayload = {
   generated_at: string;
   market_indicators: MarketIndicator[];
+  market_adjustment_enabled: boolean;
+  overall_base_score: number;
+  overall_market_adjustment: number;
   overall_sentiment_score: number;
   overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
@@ -29,6 +35,9 @@ export type OverviewPayload = {
 
 export type CommunityIndicatorsPayload = {
   generated_at: string;
+  market_adjustment_enabled: boolean;
+  overall_base_score: number;
+  overall_market_adjustment: number;
   overall_sentiment_score: number;
   overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
@@ -152,6 +161,8 @@ const fallbackIndicator = (id: string, label: string, note: string): MarketIndic
   label,
   value_text: "--",
   delta_text: "데이터 없음",
+  change_value: null,
+  change_percent: null,
   tone: "flat",
   note
 });
@@ -174,6 +185,8 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
       label,
       value_text: formatNumber(value, 2),
       delta_text: `${change >= 0 ? "+" : ""}${formatNumber(change, 2)} (${item.cr >= 0 ? "+" : ""}${item.cr.toFixed(2)}%)`,
+      change_value: change,
+      change_percent: item.cr,
       tone,
       note: item.ms === "CLOSE" ? "장 마감 기준" : ""
     };
@@ -211,6 +224,8 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       label: "NASDAQ",
       value_text: value,
       delta_text: formatDeltaWithPercent(signedDelta, signedPercent),
+      change_value: signedDelta,
+      change_percent: signedPercent,
       tone,
       note: "네이버 해외지수"
     };
@@ -253,6 +268,8 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
           : `${signedChange === null ? "" : `${formatSignedNumber(signedChange, 2)} KRW`}${
               signedPercent === null ? "" : ` (${formatSignedNumber(signedPercent, 2)}%)`
             }`.trim(),
+      change_value: signedChange,
+      change_percent: signedPercent,
       tone,
       note: "네이버 환율"
     };
@@ -279,14 +296,32 @@ export const getCachedMarketOverview = unstable_cache(buildMarketOverview, ["mar
   revalidate: MARKET_TTL_SEC
 });
 
-export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
+export const buildCommunityIndicatorsData = async (
+  marketAdjustmentEnabled = true
+): Promise<CommunityIndicatorsPayload> => {
   const service = getServiceSupabaseClient();
   const { rows } = await fetchRecentFeedRows(service, { hours: COMMUNITY_WINDOW_HOURS, limit: 600 });
-  const communityIndicators = buildSourceGroupSummaries(rows);
-  const overall = buildFeedScoreOverview(rows);
+  const asOf = new Date();
+  const marketOverview = marketAdjustmentEnabled ? await getCachedMarketOverview() : null;
+  const marketAdjustmentSnapshot = marketOverview
+    ? buildMarketAdjustmentSnapshot(marketOverview.generated_at, marketOverview.market_indicators)
+    : null;
+  const communityIndicators = buildSourceGroupSummaries(rows, {
+    marketAdjustmentEnabled,
+    marketAdjustmentSnapshot,
+    asOf
+  });
+  const overall = buildFeedScoreOverview(rows, {
+    marketAdjustmentEnabled,
+    marketAdjustmentSnapshot,
+    asOf
+  });
 
   return {
-    generated_at: new Date().toISOString(),
+    generated_at: asOf.toISOString(),
+    market_adjustment_enabled: marketAdjustmentEnabled,
+    overall_base_score: overall.base_score,
+    overall_market_adjustment: overall.market_adjustment,
     overall_sentiment_score: overall.score,
     overall_sentiment_band: overall.sentiment_band,
     community_indicators: communityIndicators
@@ -297,15 +332,18 @@ export const getCachedCommunityIndicators = unstable_cache(buildCommunityIndicat
   revalidate: COMMUNITY_TTL_SEC
 });
 
-export const buildOverviewData = async (): Promise<OverviewPayload> => {
+export const buildOverviewData = async (marketAdjustmentEnabled = true): Promise<OverviewPayload> => {
   const [marketOverview, communityOverview] = await Promise.all([
     getCachedMarketOverview(),
-    getCachedCommunityIndicators()
+    getCachedCommunityIndicators(marketAdjustmentEnabled)
   ]);
 
   return {
     generated_at: marketOverview.generated_at,
     market_indicators: marketOverview.market_indicators,
+    market_adjustment_enabled: communityOverview.market_adjustment_enabled,
+    overall_base_score: communityOverview.overall_base_score,
+    overall_market_adjustment: communityOverview.overall_market_adjustment,
     overall_sentiment_score: communityOverview.overall_sentiment_score,
     overall_sentiment_band: communityOverview.overall_sentiment_band,
     community_indicators: communityOverview.community_indicators

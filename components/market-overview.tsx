@@ -6,6 +6,12 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
+import {
+  MARKET_ADJUSTMENT_COOKIE_NAME,
+  getMarketAdjustmentCookieValue,
+  getMarketAdjustmentQueryValue,
+  parseMarketAdjustmentParam
+} from "@/lib/community-market-adjustment";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -61,6 +67,8 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
   bullish: 0,
   bearish: 0,
   neutral: 0,
+  base_score: 5,
+  market_adjustment: 0,
   score: 5,
   sentiment_band: "neutral",
   tone: "mixed",
@@ -80,6 +88,16 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
   const [optimisticGroupIds, setOptimisticGroupIds] = useState<SourceGroupId[] | null>(null);
+  const marketAdjustmentEnabled = parseMarketAdjustmentParam(searchParams.get("market_adjustment"));
+
+  useEffect(() => {
+    setPayload(initialCommunityIndicators);
+    setError("");
+  }, [initialCommunityIndicators]);
+
+  useEffect(() => {
+    document.cookie = `${MARKET_ADJUSTMENT_COOKIE_NAME}=${getMarketAdjustmentCookieValue(marketAdjustmentEnabled)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  }, [marketAdjustmentEnabled]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,7 +105,13 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
 
     const fetchIndicators = async () => {
       try {
-        const response = await fetch("/api/community-indicators", {
+        const params = new URLSearchParams();
+        const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(marketAdjustmentEnabled);
+        if (marketAdjustmentQueryValue) {
+          params.set("market_adjustment", marketAdjustmentQueryValue);
+        }
+        const query = params.toString();
+        const response = await fetch(query ? `/api/community-indicators?${query}` : "/api/community-indicators", {
           signal: controller.signal,
           cache: "default"
         });
@@ -123,7 +147,7 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
         window.clearTimeout(refreshTimer);
       }
     };
-  }, [error, payload?.generated_at]);
+  }, [error, marketAdjustmentEnabled, payload?.generated_at]);
 
   useEffect(() => {
     setActiveGroupId(null);
@@ -178,6 +202,22 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
     });
   };
 
+  const onToggleMarketAdjustment = () => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextEnabled = !marketAdjustmentEnabled;
+    const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(nextEnabled);
+
+    if (marketAdjustmentQueryValue) {
+      nextParams.set("market_adjustment", marketAdjustmentQueryValue);
+    } else {
+      nextParams.delete("market_adjustment");
+    }
+
+    startTransition(() => {
+      router.replace(nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname, { scroll: false });
+    });
+  };
+
   const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId) ?? null;
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
@@ -198,12 +238,18 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   })();
   const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
   const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
+  const overallCommunityBaseScore = payload?.overall_base_score ?? 5;
+  const overallCommunityMarketAdjustment = payload?.overall_market_adjustment ?? 0;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading
     ? "계산 중"
     : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
   const overviewArtStyle = payload ? buildOverviewArtStyle(overallCommunityBand) : undefined;
+  const signedMarketAdjustment =
+    overallCommunityMarketAdjustment >= 0
+      ? `+${overallCommunityMarketAdjustment.toFixed(2)}`
+      : overallCommunityMarketAdjustment.toFixed(2);
 
   return (
     <>
@@ -238,13 +284,29 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
               <p className="overview-timestamp">
                 {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
               </p>
+              <p className="overview-market-adjustment-meta">
+                {marketAdjustmentEnabled
+                  ? `원점수 ${overallCommunityBaseScore.toFixed(1)} · 시장보정 ${signedMarketAdjustment}`
+                  : "시장 지수 미반영"}
+              </p>
             </div>
             <div className="overview-overall-score" aria-live="polite">
               <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
-              <strong className="overview-overall-value">
-                {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
-                <span>/10</span>
-              </strong>
+              <div className="overview-overall-value-row">
+                <strong className="overview-overall-value">
+                  {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
+                  <span>/10</span>
+                </strong>
+                <button
+                  type="button"
+                  className={`overview-market-adjustment-button${marketAdjustmentEnabled ? " overview-market-adjustment-button-active" : ""}`}
+                  onClick={onToggleMarketAdjustment}
+                  aria-pressed={marketAdjustmentEnabled}
+                  title={marketAdjustmentEnabled ? "시장 지수 반영 켜짐" : "시장 지수 반영 꺼짐"}
+                >
+                  시장 {marketAdjustmentEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
               <p className="overview-overall-band">{overallCommunityLabel}</p>
             </div>
           </div>

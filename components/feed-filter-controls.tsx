@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFeedSelection } from "@/components/feed-selection-provider";
 import {
   SOURCE_GROUPS,
@@ -10,12 +10,16 @@ import {
 } from "@/lib/feed-source-groups";
 import { serializeSourceGroupSelection } from "@/lib/feed-source-groups";
 
-const buildFeedHref = ({ groupIds }: { groupIds: SourceGroupId[] }): string => {
-  const params = new URLSearchParams();
+const buildFeedHref = ({ groupIds, baseSearch }: { groupIds: SourceGroupId[]; baseSearch: string }): string => {
+  const params = new URLSearchParams(baseSearch);
   const serializedGroups = serializeSourceGroupSelection(groupIds);
   if (serializedGroups) {
     params.set("channels", serializedGroups);
+  } else {
+    params.delete("channels");
   }
+  params.delete("channel");
+  params.delete("source");
   const query = params.toString();
   return query ? `/?${query}` : "/";
 };
@@ -26,6 +30,7 @@ const arraysEqual = (left: SourceGroupId[], right: SourceGroupId[]): boolean => 
 
 export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: SourceGroupId[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [pendingGroupIds, setPendingGroupIds] = useState<SourceGroupId[]>(selectedGroupIds);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,7 +57,7 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
     setOptimisticGroupIds(nextGroupIds);
     debounceRef.current = setTimeout(() => {
       startTransition(() => {
-        router.replace(buildFeedHref({ groupIds: nextGroupIds }), { scroll: false });
+        router.replace(buildFeedHref({ groupIds: nextGroupIds, baseSearch: searchParams.toString() }), { scroll: false });
       });
     }, 500);
   };

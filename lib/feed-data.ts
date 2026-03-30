@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
+import { averageRowMarketAdjustment } from "@/lib/community-market-adjustment";
 import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
 import {
   aggregateSentimentBand,
   amplifyAggregateSentimentScore,
+  clampSentimentScore,
   averageSentimentScore,
   resolveSentimentScore,
   sentimentLabelFromScore,
@@ -22,6 +25,7 @@ export type FeedRow = {
   url: string;
   symbol: string | null;
   symbol_name: string | null;
+  symbol_market: "kr" | "us" | null;
   label: SentimentLabel;
   sentiment_score: number;
   confidence: number;
@@ -53,6 +57,8 @@ export type SourceGroupSummary = {
   bullish: number;
   bearish: number;
   neutral: number;
+  base_score: number;
+  market_adjustment: number;
   score: number;
   sentiment_band: SentimentBand;
   tone: "bullish" | "bearish" | "mixed";
@@ -60,8 +66,16 @@ export type SourceGroupSummary = {
 };
 
 export type FeedScoreOverview = {
+  base_score: number;
+  market_adjustment: number;
   score: number;
   sentiment_band: SentimentBand;
+};
+
+type FeedScoreBuildOptions = {
+  marketAdjustmentEnabled?: boolean;
+  marketAdjustmentSnapshot?: MarketAdjustmentSnapshot | null;
+  asOf?: Date;
 };
 
 const chunk = <T>(items: T[], size: number): T[][] => {
@@ -154,6 +168,7 @@ export const fetchRecentFeedRows = async (
         url: external.url,
         symbol: external.symbol,
         symbol_name: null,
+        symbol_market: null,
         label: row.label,
         sentiment_score: row.sentiment_score,
         confidence: row.confidence,
@@ -168,7 +183,8 @@ export const fetchRecentFeedRows = async (
   );
   const rows = baseRows.map((row) => ({
     ...row,
-    symbol_name: row.symbol ? symbolMetadata.get(row.symbol)?.display_name ?? row.symbol : null
+    symbol_name: row.symbol ? symbolMetadata.get(row.symbol)?.display_name ?? row.symbol : null,
+    symbol_market: row.symbol ? symbolMetadata.get(row.symbol)?.market ?? null : null
   }));
 
   return { rows, errorMessage: "" };
@@ -195,21 +211,48 @@ export const filterRowsBySourceGroups = (rows: FeedRow[], groupIds: SourceGroupI
 
 const getActionableRows = (rows: FeedRow[]): FeedRow[] => rows.filter((row) => row.label !== "neutral");
 
-export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[] => {
+const buildAggregateVisibleScore = (
+  actionableRows: FeedRow[],
+  {
+    marketAdjustmentEnabled = true,
+    marketAdjustmentSnapshot = null,
+    asOf = new Date()
+  }: FeedScoreBuildOptions = {}
+): FeedScoreOverview => {
+  const baseScore = amplifyAggregateSentimentScore(
+    averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
+  );
+  const marketAdjustment =
+    marketAdjustmentEnabled && marketAdjustmentSnapshot
+      ? averageRowMarketAdjustment(actionableRows, marketAdjustmentSnapshot, asOf)
+      : 0;
+  const score = clampSentimentScore(baseScore + marketAdjustment);
+  const bullish = actionableRows.filter((row) => row.label === "bullish").length;
+  const bearish = actionableRows.filter((row) => row.label === "bearish").length;
+
+  return {
+    base_score: baseScore,
+    market_adjustment: marketAdjustment,
+    score,
+    sentiment_band: aggregateSentimentBand(score, {
+      bullishCount: bullish,
+      bearishCount: bearish
+    })
+  };
+};
+
+export const buildSourceGroupSummaries = (
+  rows: FeedRow[],
+  options?: FeedScoreBuildOptions
+): SourceGroupSummary[] => {
   return SOURCE_GROUPS.map((group) => {
     const groupRows = rows.filter((row) => matchesSourceGroup(row.source, group.id));
     const actionableRows = getActionableRows(groupRows);
     const bullish = actionableRows.filter((row) => row.label === "bullish").length;
     const bearish = actionableRows.filter((row) => row.label === "bearish").length;
     const neutral = groupRows.length - actionableRows.length;
-    const score = amplifyAggregateSentimentScore(
-      averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
-    );
-    const sentimentBand = aggregateSentimentBand(score, {
-      bullishCount: bullish,
-      bearishCount: bearish
-    });
-    const tone = sentimentToneFromBand(sentimentBand);
+    const overview = buildAggregateVisibleScore(actionableRows, options);
+    const tone = sentimentToneFromBand(overview.sentiment_band);
 
     return {
       id: group.id,
@@ -219,28 +262,22 @@ export const buildSourceGroupSummaries = (rows: FeedRow[]): SourceGroupSummary[]
       bullish,
       bearish,
       neutral,
-      score,
-      sentiment_band: sentimentBand,
+      base_score: overview.base_score,
+      market_adjustment: overview.market_adjustment,
+      score: overview.score,
+      sentiment_band: overview.sentiment_band,
       tone,
       rows: actionableRows.slice(0, 12)
     };
   });
 };
 
-export const buildFeedScoreOverview = (rows: FeedRow[]): FeedScoreOverview => {
+export const buildFeedScoreOverview = (
+  rows: FeedRow[],
+  options?: FeedScoreBuildOptions
+): FeedScoreOverview => {
   const actionableRows = getActionableRows(rows);
-  const score = amplifyAggregateSentimentScore(
-    averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
-  );
-  const bullish = actionableRows.filter((row) => row.label === "bullish").length;
-  const bearish = actionableRows.filter((row) => row.label === "bearish").length;
-  return {
-    score,
-    sentiment_band: aggregateSentimentBand(score, {
-      bullishCount: bullish,
-      bearishCount: bearish
-    })
-  };
+  return buildAggregateVisibleScore(actionableRows, options);
 };
 
 export const getFeedExactSourceOptions = (rows: FeedRow[]): string[] => {
