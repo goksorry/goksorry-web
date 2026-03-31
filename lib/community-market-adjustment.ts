@@ -1,10 +1,11 @@
-export type MarketAdjustmentTarget = "kr" | "us";
+export type MarketAdjustmentTarget = "all" | "kr" | "us";
 
 export type MarketAdjustmentSnapshot = {
   generated_at: string;
   kospi_change_percent: number | null;
   kosdaq_change_percent: number | null;
   nasdaq_change_percent: number | null;
+  usdkrw_change_percent: number | null;
 };
 
 export type MarketAdjustmentRowLike = {
@@ -18,62 +19,62 @@ const MARKET_ADJUSTMENT_LOG_SCALE = 0.43;
 const MARKET_ADJUSTMENT_CAP = 1.2;
 const KOSPI_WEIGHT = 0.55;
 const KOSDAQ_WEIGHT = 0.45;
-const KOREA_TIMEZONE = "Asia/Seoul";
-const US_TIMEZONE = "America/New_York";
+const KR_FX_RISK_WEIGHT = 0.35;
+const ALL_MARKET_KR_WEIGHT = 0.5;
+const ALL_MARKET_US_WEIGHT = 0.5;
 
-const getTimeParts = (date: Date, timeZone: string): { weekday: string; hour: number; minute: number } => {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-  const parts = formatter.formatToParts(date);
-  const values = new Map(parts.map((part) => [part.type, part.value]));
-
-  return {
-    weekday: values.get("weekday") ?? "",
-    hour: Number(values.get("hour") ?? "0"),
-    minute: Number(values.get("minute") ?? "0")
-  };
-};
-
-const isWeekday = (weekday: string): boolean => !["Sat", "Sun"].includes(weekday);
-
-const toMinutes = (hour: number, minute: number): number => hour * 60 + minute;
-
-const isKoreanCashSessionOpen = (date: Date): boolean => {
-  const { weekday, hour, minute } = getTimeParts(date, KOREA_TIMEZONE);
-  const minutes = toMinutes(hour, minute);
-  return isWeekday(weekday) && minutes >= 9 * 60 && minutes < 15 * 60 + 30;
-};
-
-const isUsCashSessionOpen = (date: Date): boolean => {
-  const { weekday, hour, minute } = getTimeParts(date, US_TIMEZONE);
-  const minutes = toMinutes(hour, minute);
-  return isWeekday(weekday) && minutes >= 9 * 60 + 30 && minutes < 16 * 60;
-};
-
-const getKrCompositeChangePercent = (snapshot: MarketAdjustmentSnapshot): number | null => {
-  const hasKospi = typeof snapshot.kospi_change_percent === "number";
-  const hasKosdaq = typeof snapshot.kosdaq_change_percent === "number";
-
-  if (hasKospi && hasKosdaq) {
-    return snapshot.kospi_change_percent! * KOSPI_WEIGHT + snapshot.kosdaq_change_percent! * KOSDAQ_WEIGHT;
+const weightedAverage = (
+  entries: Array<{ value: number | null; weight: number }>
+): number | null => {
+  const availableEntries = entries.filter((entry) => typeof entry.value === "number");
+  if (availableEntries.length === 0) {
+    return null;
   }
-  if (hasKospi) {
-    return snapshot.kospi_change_percent;
+
+  const totalWeight = availableEntries.reduce((sum, entry) => sum + entry.weight, 0);
+  if (totalWeight <= 0) {
+    return null;
   }
-  if (hasKosdaq) {
-    return snapshot.kosdaq_change_percent;
-  }
-  return null;
+
+  return availableEntries.reduce((sum, entry) => sum + (entry.value ?? 0) * entry.weight, 0) / totalWeight;
 };
 
-const resolveExplicitTarget = (
-  row: MarketAdjustmentRowLike
-): MarketAdjustmentTarget | null => {
+const getKrIndexChangePercent = (snapshot: MarketAdjustmentSnapshot): number | null => {
+  return weightedAverage([
+    { value: snapshot.kospi_change_percent, weight: KOSPI_WEIGHT },
+    { value: snapshot.kosdaq_change_percent, weight: KOSDAQ_WEIGHT }
+  ]);
+};
+
+const getKrMarketChangePercent = (snapshot: MarketAdjustmentSnapshot): number | null => {
+  const krIndexChangePercent = getKrIndexChangePercent(snapshot);
+  const usdkrwChangePercent = snapshot.usdkrw_change_percent;
+
+  if (krIndexChangePercent === null && usdkrwChangePercent === null) {
+    return null;
+  }
+  if (krIndexChangePercent === null) {
+    return -(usdkrwChangePercent ?? 0) * KR_FX_RISK_WEIGHT;
+  }
+  if (usdkrwChangePercent === null) {
+    return krIndexChangePercent;
+  }
+
+  // A rising USDKRW rate usually reflects KR risk-off pressure, so it offsets KR sentiment.
+  return krIndexChangePercent - usdkrwChangePercent * KR_FX_RISK_WEIGHT;
+};
+
+const getAllMarketChangePercent = (snapshot: MarketAdjustmentSnapshot): number | null => {
+  return weightedAverage([
+    { value: getKrMarketChangePercent(snapshot), weight: ALL_MARKET_KR_WEIGHT },
+    { value: snapshot.nasdaq_change_percent, weight: ALL_MARKET_US_WEIGHT }
+  ]);
+};
+
+const resolveExplicitTarget = (row: MarketAdjustmentRowLike): MarketAdjustmentTarget => {
+  if (row.source === "blind_stock_invest") {
+    return "all";
+  }
   if (row.source === "dc_stock" || row.source === "dc_krstock") {
     return "kr";
   }
@@ -81,37 +82,37 @@ const resolveExplicitTarget = (
     return "us";
   }
   if (row.source.startsWith("naver_stock_") || row.source.startsWith("toss_stock_community_")) {
-    return row.symbol_market;
+    if (row.symbol_market === "kr") {
+      return "kr";
+    }
+    if (row.symbol_market === "us") {
+      return "us";
+    }
+    return "all";
   }
-  return null;
-};
-
-const resolveTimeBasedTarget = (date: Date): MarketAdjustmentTarget | null => {
-  if (isKoreanCashSessionOpen(date)) {
+  if (row.source.startsWith("toss_lounge_kr_")) {
     return "kr";
   }
-  if (isUsCashSessionOpen(date)) {
+  if (row.source.startsWith("toss_lounge_us_")) {
     return "us";
   }
-  return null;
+  if (row.source.startsWith("toss_lounge_")) {
+    return "all";
+  }
+  return "all";
 };
 
-const getLiveMarketChangePercent = (
+const getTargetMarketChangePercent = (
   target: MarketAdjustmentTarget,
-  snapshot: MarketAdjustmentSnapshot,
-  date: Date
+  snapshot: MarketAdjustmentSnapshot
 ): number | null => {
   if (target === "kr") {
-    if (!isKoreanCashSessionOpen(date)) {
-      return null;
-    }
-    return getKrCompositeChangePercent(snapshot);
+    return getKrMarketChangePercent(snapshot);
   }
-
-  if (!isUsCashSessionOpen(date)) {
-    return null;
+  if (target === "us") {
+    return snapshot.nasdaq_change_percent;
   }
-  return snapshot.nasdaq_change_percent;
+  return getAllMarketChangePercent(snapshot);
 };
 
 export const parseMarketAdjustmentParam = (value: string | null | undefined): boolean => {
@@ -148,7 +149,8 @@ export const buildMarketAdjustmentSnapshot = (
     generated_at: generatedAt,
     kospi_change_percent: byId.get("kospi") ?? null,
     kosdaq_change_percent: byId.get("kosdaq") ?? null,
-    nasdaq_change_percent: byId.get("nasdaq") ?? null
+    nasdaq_change_percent: byId.get("nasdaq") ?? null,
+    usdkrw_change_percent: byId.get("usdkrw") ?? null
   };
 };
 
@@ -169,18 +171,14 @@ export const calculateContinuousMarketAdjustment = (changePercent: number): numb
 export const calculateRowMarketAdjustment = (
   row: MarketAdjustmentRowLike,
   snapshot: MarketAdjustmentSnapshot | null,
-  date: Date
+  _date: Date
 ): number => {
   if (!snapshot) {
     return 0;
   }
 
-  const target = resolveExplicitTarget(row) ?? resolveTimeBasedTarget(date);
-  if (!target) {
-    return 0;
-  }
-
-  const changePercent = getLiveMarketChangePercent(target, snapshot, date);
+  const target = resolveExplicitTarget(row);
+  const changePercent = getTargetMarketChangePercent(target, snapshot);
   if (changePercent === null) {
     return 0;
   }

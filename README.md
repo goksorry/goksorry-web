@@ -112,9 +112,15 @@ npm run dev
 - 홈 상단 `실시간 체감 지수` 점수 옆 토글 버튼은 같은 `market_adjustment` 쿼리를 사용합니다.
 - 마지막 토글 상태는 쿠키로 저장되며, 홈에 재진입할 때 쿼리가 없으면 마지막 `off` 상태를 URL로 복원합니다.
 - 점수는 홈에서 실제로 보이는 `공포/희망` 샘플 기준으로 계산합니다.
-- 시장 보정은 연속형 로그 곡선으로 계산하며, 장중 실시간 지수 변화율을 점수에 가감합니다.
-- 일반 커뮤니티는 시간대에 따라 한국 장중에는 `KOSPI 55% + KOSDAQ 45%`, 미국 정규장에는 `NASDAQ` 를 참고합니다.
-- 디시는 시간대가 아니라 갤러리 주제 기준으로 참조 시장을 고정합니다.
-  - `dc_stock`, `dc_krstock` → 한국 시장
-  - `dc_usstock`, `dc_tenbagger` → 미국 시장
+- 시장 보정은 연속형 로그 곡선으로 계산하며, 소스 성격에 따라 `시장전체 / 국장 / 나스닥` 중 하나를 참조합니다.
+- `국장` 보정은 `KOSPI 55% + KOSDAQ 45%`에 `원/달러 환율` 리스크를 함께 반영합니다.
+- `시장전체` 보정은 `국장 보정 + NASDAQ` 혼합값을 사용합니다.
+- 소스별 기본 매핑:
+  - `blind_stock_invest` → 시장전체
+  - `dc_stock`, `dc_krstock` → 국장
+  - `dc_usstock`, `dc_tenbagger` → 나스닥
+  - `naver_stock_*`, `toss_stock_community_*` → 종목 시장(`KR/US`) 기준
+  - `toss_lounge_kr_*` → 국장
+  - `toss_lounge_us_*` → 나스닥
+  - 그 외 `toss_lounge_*` → 시장전체
 - 응답에는 `market_adjustment_enabled`, `overall_base_score`, `overall_market_adjustment` 와 각 섹션별 `base_score`, `market_adjustment` 가 함께 포함됩니다.
