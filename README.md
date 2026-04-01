@@ -23,14 +23,6 @@
 - 일반 API 문서에는 브라우저 세션 전용 토큰 API를 노출하지 않습니다.
 - Trading Bot read API는 member-issued token + `X-Client-Id` + `X-Request-Id`를 요구합니다.
 
-## 광고 / CMP 메모
-
-- AdSense 소유권 확인용 메타 태그와 `/ads.txt`는 코드에 연결돼 있습니다.
-- 기본 퍼블리셔 계정은 `ca-pub-0419198986672065`입니다.
-- Google CMP는 AdSense `Privacy & messaging`에서 `European regulations` 메시지를 생성하고 publish해야 실제로 뜹니다.
-- 현재 사이트 하단이나 개인정보처리방침에 별도 동의 설정 재오픈 버튼은 노출하지 않습니다.
-- `robots.txt`는 `/community`, `/community/`, `/ads.txt`만 허용합니다.
-
 ## 환경 변수
 
 기본 예시는 [`.env.example`](./.env.example) 에 있습니다.
@@ -49,8 +41,6 @@
 
 - `APP_VERSION`
 - `DEFAULT_TIMEZONE`
-- `NEXT_PUBLIC_GOOGLE_ADSENSE_ACCOUNT`
-- `GOOGLE_ADSENSE_ADS_TXT`
 - `CHAT_TOKEN_SECRET`
 - `CHAT_WS_BASE_URL`
 

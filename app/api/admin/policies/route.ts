@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
-import { POLICY_DOCUMENT_DEFAULTS, POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
+import { POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 type PolicyVersionRow = {
@@ -81,22 +81,6 @@ const getStatus = ({
   return "historical";
 };
 
-const buildFallbackVersion = (type: PolicyDocumentType): PolicyVersionRow => {
-  const fallback = POLICY_DOCUMENT_DEFAULTS[type];
-  return {
-    id: `fallback-${type}`,
-    type,
-    summary: fallback.summary,
-    body: fallback.body,
-    is_adverse: false,
-    published_at: fallback.effectiveDate,
-    effective_at: fallback.effectiveDate,
-    updated_at: fallback.updatedDate,
-    superseded_at: null,
-    created_at: fallback.updatedDate
-  };
-};
-
 const loadPolicySnapshots = async (): Promise<Record<PolicyDocumentType, Record<string, unknown>>> => {
   const service = getServiceSupabaseClient();
   const { data, error } = await service
@@ -108,9 +92,11 @@ const loadPolicySnapshots = async (): Promise<Record<PolicyDocumentType, Record<
     .returns<PolicyVersionRow[]>();
 
   if (error) {
-    if (!isMissingPolicyDocumentVersionsTableError(error.code, error.message)) {
-      throw new Error(error.message);
+    if (isMissingPolicyDocumentVersionsTableError(error.code, error.message)) {
+      throw new Error("정책 문서 저장소를 확인할 수 없습니다.");
     }
+
+    throw new Error("정책 문서 조회 중 오류가 발생했습니다.");
   }
 
   const now = Date.now();
@@ -124,7 +110,11 @@ const loadPolicySnapshots = async (): Promise<Record<PolicyDocumentType, Record<
   }
 
   return POLICY_TYPES.reduce<Record<PolicyDocumentType, Record<string, unknown>>>((acc, type) => {
-    const rows = grouped[type].length > 0 ? grouped[type] : [buildFallbackVersion(type)];
+    const rows = grouped[type];
+    if (rows.length === 0) {
+      throw new Error(`${POLICY_DOCUMENT_META[type].title} 문서가 등록되어 있지 않습니다.`);
+    }
+
     const current = rows.find((row) => !row.superseded_at && new Date(row.effective_at).getTime() <= now) ?? rows[0];
     const pending =
       rows
@@ -166,7 +156,7 @@ export async function GET(request: Request) {
     return jsonNoStore({ documents });
   } catch (error) {
     logApiError("admin policy snapshot lookup failed", requestId, error);
-    return jsonMessage(requestId, 500, "정책 문서를 불러오지 못했습니다.");
+    return jsonMessage(requestId, 500, error instanceof Error ? error.message : "정책 문서를 불러오지 못했습니다.");
   }
 }
 

@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_noStore as noStore } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
-import { POLICY_DOCUMENT_DEFAULTS, POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
+import { POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
 
 export type PolicyDocumentVersion = {
   id: string;
@@ -40,6 +40,10 @@ const isMissingPolicyDocumentTableError = (code: string | null | undefined, mess
   );
 };
 
+const buildPolicyDocumentLoadError = (type: PolicyDocumentType, detail: string): Error => {
+  return new Error(`${POLICY_DOCUMENT_META[type].title} 문서를 불러오지 못했습니다. ${detail}`);
+};
+
 const mapPolicyDocument = (row: PolicyDocumentVersionRow): PolicyDocumentVersion => {
   return {
     id: String(row.id),
@@ -53,23 +57,6 @@ const mapPolicyDocument = (row: PolicyDocumentVersionRow): PolicyDocumentVersion
     updated_at: String(row.updated_at),
     superseded_at: row.superseded_at ? String(row.superseded_at) : null,
     created_at: String(row.created_at)
-  };
-};
-
-const buildFallbackDocument = (type: PolicyDocumentType): PolicyDocumentVersion => {
-  const fallback = POLICY_DOCUMENT_DEFAULTS[type];
-  return {
-    id: `fallback-${type}`,
-    type,
-    title: fallback.title,
-    summary: fallback.summary,
-    body: fallback.body,
-    is_adverse: false,
-    published_at: fallback.effectiveDate,
-    effective_at: fallback.effectiveDate,
-    updated_at: fallback.updatedDate,
-    superseded_at: null,
-    created_at: fallback.updatedDate
   };
 };
 
@@ -91,14 +78,14 @@ export const getCurrentPolicyDocument = async (type: PolicyDocumentType): Promis
 
   if (error) {
     if (isMissingPolicyDocumentTableError(error.code, error.message)) {
-      return buildFallbackDocument(type);
+      throw buildPolicyDocumentLoadError(type, "정책 문서 저장소를 확인할 수 없습니다.");
     }
 
-    throw new Error(`Failed to load current policy document: ${error.message}`);
+    throw buildPolicyDocumentLoadError(type, "정책 문서 조회 중 오류가 발생했습니다.");
   }
 
   if (!data) {
-    return buildFallbackDocument(type);
+    throw buildPolicyDocumentLoadError(type, "현재 적용 중인 문서가 등록되어 있지 않습니다.");
   }
 
   return mapPolicyDocument(data);
@@ -117,14 +104,14 @@ export const listPolicyDocumentVersions = async (type: PolicyDocumentType): Prom
 
   if (error) {
     if (isMissingPolicyDocumentTableError(error.code, error.message)) {
-      return [buildFallbackDocument(type)];
+      throw buildPolicyDocumentLoadError(type, "정책 문서 저장소를 확인할 수 없습니다.");
     }
 
-    throw new Error(`Failed to list policy document versions: ${error.message}`);
+    throw buildPolicyDocumentLoadError(type, "정책 문서 목록 조회 중 오류가 발생했습니다.");
   }
 
   if (!data || data.length === 0) {
-    return [buildFallbackDocument(type)];
+    throw buildPolicyDocumentLoadError(type, "등록된 문서 이력이 없습니다.");
   }
 
   return data.map(mapPolicyDocument);

@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/community", "/community/", "/ads.txt"],
+        allow: ["/community", "/community/"],
         disallow: "/"
       }
     ]

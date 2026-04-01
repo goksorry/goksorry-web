@@ -17,8 +17,6 @@
 - `ADMIN_EMAIL` (server-only)
 - `DEFAULT_TIMEZONE` (optional, default `Asia/Seoul`)
 - `APP_VERSION` (optional)
-- `NEXT_PUBLIC_GOOGLE_ADSENSE_ACCOUNT` (optional)
-- `GOOGLE_ADSENSE_ADS_TXT` (optional)
 - `CHAT_TOKEN_SECRET` (optional)
 - `CHAT_WS_BASE_URL` (optional)
 

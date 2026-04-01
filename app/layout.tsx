@@ -19,23 +19,15 @@ import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getAdsenseAccount, getAdsenseScriptSrc } from "@/lib/adsense";
 import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 
-const adsenseAccount = getAdsenseAccount();
-const adsenseScriptSrc = getAdsenseScriptSrc();
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
 export const metadata: Metadata = {
   title: "곡소리닷컴",
   description: "외부 종목 커뮤니티 감성 피드와 커뮤니티",
-  metadataBase: new URL("https://goksorry.com"),
-  other: adsenseAccount
-    ? {
-        "google-adsense-account": adsenseAccount
-      }
-    : undefined
+  metadataBase: new URL("https://goksorry.com")
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,20 +47,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           `}
         </Script>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
-        {adsenseAccount ? (
-          <Script id="googlefc-init" strategy="beforeInteractive">
-            {`window.googlefc = window.googlefc || {}; window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];`}
-          </Script>
-        ) : null}
-        {adsenseScriptSrc ? (
-          <Script
-            id="google-adsense"
-            async
-            strategy="afterInteractive"
-            src={adsenseScriptSrc}
-            crossOrigin="anonymous"
-          />
-        ) : null}
         <AuthSessionProvider session={session}>
           <CleanFilterProvider>
             <CleanFilterOverlay />
