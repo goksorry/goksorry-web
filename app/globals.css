@@ -1118,6 +1118,15 @@ a:hover {
   display: block;
 }
 
+@media (min-width: 761px) {
+  .sentiment-clean-toggle {
+    flex-direction: row;
+    gap: 0.18rem;
+    min-width: auto;
+    white-space: nowrap;
+  }
+}
+
 .sentiment-clean-toggle:hover {
   background: var(--surface-hover);
   color: var(--ink-soft);
