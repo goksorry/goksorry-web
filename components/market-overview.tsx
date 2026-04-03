@@ -286,7 +286,7 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
           <div className="overview-heading">
             <div className="overview-heading-copy">
               <p className="overview-kicker">커뮤니티 체감</p>
-              <h2>실시간 체감 지수</h2>
+              <h2>곡소리 지수</h2>
               <p className="overview-timestamp">
                 {marketOverview.generated_at ? `업데이트 ${toLocalTime(marketOverview.generated_at)}` : "캐시 지수 준비 중"}
               </p>

@@ -27,7 +27,7 @@ export function MarketOverviewFallback() {
           <div className="overview-heading">
             <div className="overview-heading-copy">
               <p className="overview-kicker">커뮤니티 체감</p>
-              <h2>실시간 체감 지수</h2>
+              <h2>곡소리 지수</h2>
               <p className="overview-timestamp">캐시 지수 준비 중</p>
             </div>
             <div className="overview-overall-score">
