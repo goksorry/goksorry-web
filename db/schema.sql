@@ -95,7 +95,7 @@ create table if not exists public.community_comments (
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint community_comments_content_plain_text check (content !~ '[<>]')
+  constraint community_comments_content_plain_text check (content !~ '<')
 );
 
 create table if not exists public.votes (

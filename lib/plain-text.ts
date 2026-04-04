@@ -1,7 +1,17 @@
 const ANGLE_BRACKET_PATTERN = /[<>]/;
+const LEFT_ANGLE_BRACKET_PATTERN = /</;
 const HTML_TAG_PATTERN = /<[^>]*>/;
 
-export const sanitizePlainText = (value: unknown, fieldName: string, maxLength: number): string => {
+type SanitizePlainTextOptions = {
+  allowGreaterThan?: boolean;
+};
+
+export const sanitizePlainText = (
+  value: unknown,
+  fieldName: string,
+  maxLength: number,
+  options?: SanitizePlainTextOptions
+): string => {
   if (typeof value !== "string") {
     throw new Error(`${fieldName} must be a string`);
   }
@@ -13,7 +23,8 @@ export const sanitizePlainText = (value: unknown, fieldName: string, maxLength: 
   if (normalized.length > maxLength) {
     throw new Error(`${fieldName} exceeds max length ${maxLength}`);
   }
-  if (ANGLE_BRACKET_PATTERN.test(normalized) || HTML_TAG_PATTERN.test(normalized)) {
+  const forbiddenBracketPattern = options?.allowGreaterThan ? LEFT_ANGLE_BRACKET_PATTERN : ANGLE_BRACKET_PATTERN;
+  if (forbiddenBracketPattern.test(normalized) || HTML_TAG_PATTERN.test(normalized)) {
     throw new Error(`${fieldName} must be plain text only`);
   }
 
@@ -23,10 +34,11 @@ export const sanitizePlainText = (value: unknown, fieldName: string, maxLength: 
 export const sanitizeOptionalPlainText = (
   value: unknown,
   fieldName: string,
-  maxLength: number
+  maxLength: number,
+  options?: SanitizePlainTextOptions
 ): string | null => {
   if (value === undefined || value === null || value === "") {
     return null;
   }
-  return sanitizePlainText(String(value), fieldName, maxLength);
+  return sanitizePlainText(String(value), fieldName, maxLength, options);
 };

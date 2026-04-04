@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   let content: string;
   try {
-    content = sanitizePlainText(body.content, "content", 3000);
+    content = sanitizePlainText(body.content, "content", 3000, { allowGreaterThan: true });
   } catch (error) {
     return jsonMessage(requestId, 400, String(error));
   }
