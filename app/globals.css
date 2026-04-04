@@ -1886,11 +1886,28 @@ button:disabled {
   word-break: break-word;
 }
 
+.community-comment-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .community-comment-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.15rem;
   align-items: baseline;
+  margin-bottom: 0;
+}
+
+.community-comment-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-left: auto;
 }
 
 .comment-id-link,
@@ -1905,6 +1922,13 @@ button:disabled {
 
 .comment-mention {
   font-size: 0.94em;
+}
+
+.comment-mention-button {
+  min-width: 2.25rem;
+  padding: 0.42rem 0.5rem;
+  line-height: 1;
+  font-size: 1rem;
 }
 
 .board-grid {

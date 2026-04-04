@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 
 export type CreatedCommentPayload = {
@@ -12,13 +12,18 @@ export type CreatedCommentPayload = {
 
 export function CommentForm({
   postId,
-  onCreated
+  content,
+  onContentChange,
+  onCreated,
+  textareaRef
 }: {
   postId: string;
+  content: string;
+  onContentChange: (value: string) => void;
   onCreated?: (comment: CreatedCommentPayload) => void;
+  textareaRef?: RefObject<HTMLTextAreaElement>;
 }) {
   const router = useRouter();
-  const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +50,7 @@ export function CommentForm({
         return;
       }
 
-      setContent("");
+      onContentChange("");
       if (payload.comment?.id && payload.comment?.content && payload.comment?.created_at) {
         onCreated?.({
           id: String(payload.comment.id),
@@ -70,9 +75,10 @@ export function CommentForm({
       <label className="form-row">
         <span>댓글 작성</span>
         <textarea
+          ref={textareaRef}
           name="content"
           value={content}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => onContentChange(event.target.value)}
           maxLength={3000}
           placeholder="평문만 입력할 수 있습니다"
           required
@@ -80,7 +86,7 @@ export function CommentForm({
       </label>
       <p className="muted" style={{ margin: "-0.15rem 0 0" }}>
         같은 글의 댓글을 언급하려면 <code>&gt;&gt;댓글ID</code>를 입력하세요. 각 댓글 아래의{" "}
-        <code>ID 1234abcd</code> 값을 쓰면 됩니다.
+        <code>ID 1234abcd</code> 값을 쓰거나 오른쪽 <code>💬</code> 버튼을 누르면 됩니다.
       </p>
 
       {error ? <p className="error">{error}</p> : null}
