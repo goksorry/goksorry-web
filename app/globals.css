@@ -1875,10 +1875,22 @@ button:disabled {
   scroll-margin-top: calc(var(--scroll-anchor-offset) + env(safe-area-inset-top));
 }
 
-.community-comment-card:target {
-  border-color: var(--brand);
-  background: var(--panel-elevated);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 40%, transparent);
+@keyframes community-comment-highlight-fade {
+  0% {
+    border-color: var(--brand);
+    background: var(--panel-elevated);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 40%, transparent);
+  }
+
+  100% {
+    border-color: var(--line);
+    background: var(--panel);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.community-comment-card-highlighted {
+  animation: community-comment-highlight-fade 1s ease-out;
 }
 
 .community-comment-content {
