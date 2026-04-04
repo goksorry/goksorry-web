@@ -78,6 +78,10 @@ export function CommentForm({
           required
         />
       </label>
+      <p className="muted" style={{ margin: "-0.15rem 0 0" }}>
+        같은 글의 댓글을 언급하려면 <code>&gt;&gt;댓글ID</code>를 입력하세요. 각 댓글 아래의{" "}
+        <code>ID 1234abcd</code> 값을 쓰면 됩니다.
+      </p>
 
       {error ? <p className="error">{error}</p> : null}
 

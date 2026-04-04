@@ -1871,6 +1871,42 @@ button:disabled {
   margin-top: 0;
 }
 
+.community-comment-card {
+  scroll-margin-top: calc(var(--scroll-anchor-offset) + env(safe-area-inset-top));
+}
+
+.community-comment-card:target {
+  border-color: var(--brand);
+  background: var(--panel-elevated);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 40%, transparent);
+}
+
+.community-comment-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.community-comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  align-items: baseline;
+}
+
+.comment-id-link,
+.comment-mention {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  text-underline-offset: 0.14em;
+}
+
+.comment-id-link {
+  font-size: 0.84rem;
+}
+
+.comment-mention {
+  font-size: 0.94em;
+}
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
