@@ -43,6 +43,10 @@ type OverviewArtStyle = CSSProperties & {
   "--overview-art-dark": string;
 };
 
+type OverviewCommunityRowStyle = CSSProperties & {
+  "--overview-community-columns": string;
+};
+
 const OVERVIEW_REGIME_ART_SLUG: Record<SentimentBand, string> = {
   extreme_bearish: "extreme-bearish",
   bearish: "bearish",
@@ -252,6 +256,9 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
     ? "계산 중"
     : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
   const overviewArtStyle = payload ? buildOverviewArtStyle(overallCommunityBand) : undefined;
+  const overviewCommunityRowStyle: OverviewCommunityRowStyle = {
+    "--overview-community-columns": String(communityGroups.length || SOURCE_GROUPS.length)
+  };
   const signedMarketAdjustment =
     overallCommunityMarketAdjustment >= 0
       ? `+${overallCommunityMarketAdjustment.toFixed(2)}`
@@ -321,7 +328,7 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
         </div>
 
         <section className="overview-section">
-          <div className="overview-bottom-row">
+          <div className="overview-bottom-row" style={overviewCommunityRowStyle}>
             {communityGroups.map((group) => (
               <button
                 key={group.id}

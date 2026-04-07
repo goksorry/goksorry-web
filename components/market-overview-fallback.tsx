@@ -1,4 +1,9 @@
+import type { CSSProperties } from "react";
 import { SOURCE_GROUPS } from "@/lib/feed-source-groups";
+
+const overviewCommunityRowStyle: CSSProperties & { "--overview-community-columns": string } = {
+  "--overview-community-columns": String(SOURCE_GROUPS.length)
+};
 
 export function MarketOverviewFallback() {
   return (
@@ -42,7 +47,7 @@ export function MarketOverviewFallback() {
           </div>
         </div>
         <section className="overview-section">
-          <div className="overview-bottom-row">
+          <div className="overview-bottom-row" style={overviewCommunityRowStyle}>
             {SOURCE_GROUPS.map((group) => (
               <article key={group.id} className="overview-card overview-card-community overview-tone-mixed">
                 <div className="overview-community-head">
