@@ -5,7 +5,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "@/app/globals.css";
-import { AuthControls } from "@/components/auth-controls";
+import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { ChatDock } from "@/components/chat-dock";
 import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
@@ -81,22 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </div>
                 <div className="header-profile">
                   <SiteShareButton />
-                  <Suspense
-                    fallback={
-                      <button
-                        type="button"
-                        className="btn header-auth-button header-login-button"
-                        disabled
-                        aria-label="구글 로그인 준비 중"
-                        title="구글계정으로 로그인"
-                      >
-                        <Image src="/google-mark.svg" alt="" width={16} height={16} aria-hidden="true" />
-                        <span className="header-auth-emoji" aria-hidden="true">
-                          🔐
-                        </span>
-                      </button>
-                    }
-                  >
+                  <Suspense fallback={<HeaderAuthSkeleton />}>
                     <AuthControls />
                   </Suspense>
                 </div>

@@ -16,6 +16,7 @@ const buildNextPath = (): string => {
 export function AuthControls() {
   const { user, status, authenticated, hinted } = useSessionSnapshot();
   const [pending, setPending] = useState(false);
+  const sessionLoading = status === "loading" && !authenticated && !pending;
   const loading = pending || (status === "loading" && !authenticated);
 
   const handleSignIn = async () => {
@@ -39,6 +40,10 @@ export function AuthControls() {
       setPending(false);
     }
   };
+
+  if (sessionLoading) {
+    return <HeaderAuthSkeleton />;
+  }
 
   if (!authenticated) {
     return (
@@ -78,6 +83,15 @@ export function AuthControls() {
           🚪
         </span>
       </button>
+    </div>
+  );
+}
+
+export function HeaderAuthSkeleton() {
+  return (
+    <div className="header-auth-skeleton" aria-hidden="true">
+      <span className="header-auth-skeleton-icon" />
+      <span className="header-auth-skeleton-pill" />
     </div>
   );
 }
