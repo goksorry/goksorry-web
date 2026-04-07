@@ -1,10 +1,5 @@
 export const SOURCE_GROUPS = [
   {
-    id: "paxnet",
-    label: "팍스넷 종목토론 지수",
-    shortLabel: "팍스넷"
-  },
-  {
     id: "toss",
     label: "토스증권 커뮤니티 지수",
     shortLabel: "토스증권"
@@ -74,9 +69,6 @@ export const getSourceGroupById = (groupId: SourceGroupId): (typeof SOURCE_GROUP
 };
 
 export const matchesSourceGroup = (source: string, groupId: SourceGroupId): boolean => {
-  if (groupId === "paxnet") {
-    return source.startsWith("paxnet_stock_");
-  }
   if (groupId === "toss") {
     return source.startsWith("toss_stock_community_") || source.startsWith("toss_lounge_");
   }

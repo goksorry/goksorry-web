@@ -109,7 +109,7 @@ npm run dev
   - `blind_stock_invest` → 시장전체
   - `dc_stock`, `dc_krstock`, `ppomppu_stock` → 국장
   - `dc_usstock`, `dc_tenbagger` → 나스닥
-  - `paxnet_stock_*`, `toss_stock_community_*` → 종목 시장(`KR/US`) 기준
+  - `toss_stock_community_*` → 종목 시장(`KR/US`) 기준
   - `toss_lounge_kr_*` → 국장
   - `toss_lounge_us_*` → 나스닥
   - 그 외 `toss_lounge_*` → 시장전체

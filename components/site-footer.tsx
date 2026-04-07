@@ -2,10 +2,6 @@ import Link from "next/link";
 
 const SOURCE_LINKS = [
   {
-    label: "팍스넷 종목토론",
-    href: "https://www.paxnet.co.kr/tbbs/list?tbbsType=L&id=005930"
-  },
-  {
     label: "뽐뿌 증권포럼",
     href: "https://www.ppomppu.co.kr/zboard/zboard.php?id=stock"
   },

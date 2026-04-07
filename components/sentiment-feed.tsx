@@ -22,9 +22,6 @@ const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_tenbagger") {
     return "디시 해주갤";
   }
-  if (source.startsWith("paxnet_stock_")) {
-    return "팍스넷 종목토론";
-  }
   if (source.startsWith("toss_lounge_")) {
     return "토스증권 라운지";
   }
