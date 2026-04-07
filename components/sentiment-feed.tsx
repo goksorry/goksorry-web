@@ -22,14 +22,17 @@ const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_tenbagger") {
     return "디시 해주갤";
   }
-  if (source.startsWith("naver_stock_")) {
-    return "네이버 주주오픈톡";
+  if (source.startsWith("paxnet_stock_")) {
+    return "팍스넷 종목토론";
   }
   if (source.startsWith("toss_lounge_")) {
     return "토스증권 라운지";
   }
   if (source.startsWith("toss_stock_community_")) {
     return "토스증권 종목토론";
+  }
+  if (source === "ppomppu_stock") {
+    return "뽐뿌 증권포럼";
   }
   if (source === "blind_stock_invest") {
     return "블라인드";

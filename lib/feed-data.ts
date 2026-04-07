@@ -203,7 +203,7 @@ export const filterRowsBySourceGroups = (rows: FeedRow[], groupIds: SourceGroupI
   }
 
   if (groupIds.length === SOURCE_GROUPS.length) {
-    return rows;
+    return rows.filter((row) => getSourceGroupId(row.source) !== null);
   }
 
   return rows.filter((row) => groupIds.some((groupId) => matchesSourceGroup(row.source, groupId)));

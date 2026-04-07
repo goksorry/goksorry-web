@@ -81,6 +81,9 @@ const resolveExplicitTarget = (row: MarketAdjustmentRowLike): MarketAdjustmentTa
   if (row.source === "dc_usstock" || row.source === "dc_tenbagger") {
     return "us";
   }
+  if (row.source.startsWith("paxnet_stock_")) {
+    return "kr";
+  }
   if (row.source.startsWith("naver_stock_") || row.source.startsWith("toss_stock_community_")) {
     if (row.symbol_market === "kr") {
       return "kr";
@@ -95,6 +98,9 @@ const resolveExplicitTarget = (row: MarketAdjustmentRowLike): MarketAdjustmentTa
   }
   if (row.source.startsWith("toss_lounge_us_")) {
     return "us";
+  }
+  if (row.source === "ppomppu_stock") {
+    return "kr";
   }
   if (row.source.startsWith("toss_lounge_")) {
     return "all";

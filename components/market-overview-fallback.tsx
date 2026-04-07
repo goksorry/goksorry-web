@@ -1,3 +1,5 @@
+import { SOURCE_GROUPS } from "@/lib/feed-source-groups";
+
 export function MarketOverviewFallback() {
   return (
     <>
@@ -41,15 +43,10 @@ export function MarketOverviewFallback() {
         </div>
         <section className="overview-section">
           <div className="overview-bottom-row">
-            {[
-              "네이버 주주오픈톡 지수",
-              "토스증권 커뮤니티 지수",
-              "블라인드 주식투자 지수",
-              "디시 주갤·국장갤·미장갤·해주갤 지수"
-            ].map((label) => (
-              <article key={label} className="overview-card overview-card-community overview-tone-mixed">
+            {SOURCE_GROUPS.map((group) => (
+              <article key={group.id} className="overview-card overview-card-community overview-tone-mixed">
                 <div className="overview-community-head">
-                  <p className="overview-label">{label}</p>
+                  <p className="overview-label">{group.label}</p>
                   <span className="overview-score-badge">로딩중</span>
                 </div>
                 <p className="overview-delta">로딩중</p>

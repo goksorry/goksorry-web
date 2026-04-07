@@ -188,6 +188,10 @@ export const extractSymbolFromSource = (source: string): string | null => {
     return normalizedSource.replace("naver_stock_", "").trim().toUpperCase() || null;
   }
 
+  if (normalizedSource.startsWith("paxnet_stock_")) {
+    return normalizedSource.replace("paxnet_stock_", "").trim().toUpperCase() || null;
+  }
+
   if (normalizedSource.startsWith("toss_stock_community_")) {
     return normalizedSource.replace("toss_stock_community_", "").trim().toUpperCase() || null;
   }

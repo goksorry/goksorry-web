@@ -1,13 +1,18 @@
 export const SOURCE_GROUPS = [
   {
-    id: "naver",
-    label: "네이버 주주오픈톡 지수",
-    shortLabel: "네이버 오픈톡"
+    id: "paxnet",
+    label: "팍스넷 종목토론 지수",
+    shortLabel: "팍스넷"
   },
   {
     id: "toss",
     label: "토스증권 커뮤니티 지수",
     shortLabel: "토스증권"
+  },
+  {
+    id: "ppomppu",
+    label: "뽐뿌 증권포럼 지수",
+    shortLabel: "뽐뿌"
   },
   {
     id: "blind",
@@ -69,11 +74,14 @@ export const getSourceGroupById = (groupId: SourceGroupId): (typeof SOURCE_GROUP
 };
 
 export const matchesSourceGroup = (source: string, groupId: SourceGroupId): boolean => {
-  if (groupId === "naver") {
-    return source.startsWith("naver_stock_");
+  if (groupId === "paxnet") {
+    return source.startsWith("paxnet_stock_");
   }
   if (groupId === "toss") {
     return source.startsWith("toss_stock_community_") || source.startsWith("toss_lounge_");
+  }
+  if (groupId === "ppomppu") {
+    return source === "ppomppu_stock";
   }
   if (groupId === "blind") {
     return source === "blind_stock_invest";
