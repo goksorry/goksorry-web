@@ -2,8 +2,12 @@ import Link from "next/link";
 
 const SOURCE_LINKS = [
   {
-    label: "네이버페이증권 주주오픈톡",
-    href: "https://m.stock.naver.com/"
+    label: "팍스넷 종목토론",
+    href: "https://www.paxnet.co.kr/tbbs/list?tbbsType=L&id=005930"
+  },
+  {
+    label: "뽐뿌 증권포럼",
+    href: "https://www.ppomppu.co.kr/zboard/zboard.php?id=stock"
   },
   {
     label: "토스증권 커뮤니티",
@@ -59,7 +63,18 @@ export function SiteFooter() {
         </section>
 
         <section className="site-footer-block">
-          <h2>출처</h2>
+          <div className="site-footer-heading">
+            <h2>출처</h2>
+            <details className="site-footer-info">
+              <summary className="site-footer-info-trigger" aria-label="출처 기준 안내">
+                <span aria-hidden="true">i</span>
+              </summary>
+              <p className="site-footer-info-copy">
+                외부 커뮤니티 수집 여부는 각 사이트의 robots.txt를 읽고 확인한 뒤 반영합니다. 아래 목록도 그 기준에 맞춰
+                관리합니다.
+              </p>
+            </details>
+          </div>
           <div className="site-footer-links">
             {SOURCE_LINKS.map((source) => (
               <a key={source.href} href={source.href} target="_blank" rel="noreferrer">

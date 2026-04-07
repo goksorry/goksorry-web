@@ -521,6 +521,12 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.site-footer-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .site-footer-block p {
   margin: 0;
   font-size: 0.82rem;
@@ -534,6 +540,54 @@ a:hover {
 
 .site-footer-links a {
   font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.site-footer-info {
+  position: relative;
+}
+
+.site-footer-info summary {
+  list-style: none;
+}
+
+.site-footer-info summary::-webkit-details-marker {
+  display: none;
+}
+
+.site-footer-info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.site-footer-info[open] .site-footer-info-trigger {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.site-footer-info-copy {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 10;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--panel);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
   color: var(--ink-soft);
 }
 
