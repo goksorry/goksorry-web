@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
-import { Diphylleia } from "next/font/google";
+import { Gowun_Batang } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
@@ -25,12 +25,12 @@ import { getChatServerEnv } from "@/lib/env";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
-// next/font metadata for Diphylleia does not expose a korean preload subset.
-const diphylleia = Diphylleia({
-  weight: "400",
+// next/font metadata for Gowun Batang does not expose a korean preload subset.
+const gowunBatang = Gowun_Batang({
+  weight: ["400", "700"],
   display: "swap",
   preload: false,
-  variable: "--font-diphylleia"
+  variable: "--font-gowun-batang"
 });
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className={diphylleia.variable}>
+      <body className={gowunBatang.variable}>
         <Script async strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`} />
         <Script id="google-analytics-init" strategy="afterInteractive">
           {`
