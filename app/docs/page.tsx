@@ -3,6 +3,7 @@ import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth
 import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
+  "홈 공개": "홈 상단 실시간 체감 지수와 시장 개요에 쓰는 공개 API입니다.",
   "트레이딩봇 조회": "자동거래봇이 읽는 커뮤니티 지수 API입니다. 공식 시세와 거시 원데이터는 봇이 별도로 가져가고, 여기서는 커뮤니티 기반 신호만 제공합니다.",
   "토큰 관리": "사용자가 내 프로필에서 토큰을 요청하고, 승인 후 1회 확인하고, 필요시 폐기하는 흐름입니다.",
   "관리자": "관리자가 토큰 요청을 승인하고, 회원 이메일·닉네임·토큰을 운영 관리하는 API입니다.",
@@ -32,7 +33,7 @@ export default async function DocsPage() {
           <p className="docs-kicker">API 문서</p>
           <h1>곡소리닷컴 API 문서</h1>
           <p className="muted">
-            이 API는 공식 시세 제공 서비스가 아니라, 곡소리닷컴의 커뮤니티 기반 주식/거시 체감 지수를 TradingBot에 전달하는 용도입니다.
+            이 문서는 홈 상단 공개 지표 API와, 곡소리닷컴의 커뮤니티 기반 주식/거시 체감 지수를 TradingBot에 전달하는 API를 함께 설명합니다.
           </p>
           <p className="muted">
             트레이딩봇 토큰 요청, 승인 후 확인, 폐기는 API로 직접 호출하지 말고 `내 프로필` 화면에서 브라우저로 처리하세요.

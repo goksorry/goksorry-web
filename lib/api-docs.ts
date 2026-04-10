@@ -5,7 +5,7 @@ type Visibility = "all" | "admin";
 export type ApiEndpointDoc = {
   method: HttpMethod;
   path: string;
-  section: "트레이딩봇 조회" | "토큰 관리" | "관리자" | "내부";
+  section: "홈 공개" | "트레이딩봇 조회" | "토큰 관리" | "관리자" | "내부";
   summary: string;
   auth: AuthMode;
   visibility?: Visibility;
@@ -28,7 +28,7 @@ const tradingBotHeaders = [
 
 const browserHeaders = [{ name: "Origin", required: true, description: "같은 출처 브라우저 요청만 허용" }] satisfies ApiEndpointDoc["headers"];
 
-export const apiSections = ["트레이딩봇 조회", "토큰 관리", "관리자", "내부"] as const;
+export const apiSections = ["홈 공개", "트레이딩봇 조회", "토큰 관리", "관리자", "내부"] as const;
 
 export const authModeDescriptions: Record<AuthMode, string> = {
   public: "인증 없이 호출할 수 있습니다.",
@@ -39,6 +39,136 @@ export const authModeDescriptions: Record<AuthMode, string> = {
 };
 
 export const apiEndpointDocs: ApiEndpointDoc[] = [
+  {
+    method: "GET",
+    path: "/api/community-indicators",
+    section: "홈 공개",
+    summary: "홈 커뮤니티 지수 카드와 최근 6시간 체감 점수를 조회합니다.",
+    auth: "public",
+    query: [
+      { name: "market_adjustment", type: "on|off", description: "시장 보정 적용 여부입니다. 기본값은 `on`입니다." }
+    ],
+    responseExample: {
+      generated_at: "2026-04-08T09:30:00.000Z",
+      market_adjustment_enabled: true,
+      overall_base_score: 5.4,
+      overall_market_adjustment: -0.32,
+      overall_sentiment_score: 5.1,
+      overall_sentiment_band: "neutral",
+      community_indicators: [
+        {
+          id: "ppomppu",
+          label: "뽐뿌 증권포럼 지수",
+          shortLabel: "뽐뿌",
+          mentions: 8,
+          bullish: 5,
+          bearish: 3,
+          neutral: 4,
+          base_score: 5.8,
+          market_adjustment: -0.21,
+          score: 5.6,
+          sentiment_band: "neutral",
+          tone: "mixed",
+          rows: [
+            {
+              post_key: "ppomppu:12345",
+              source: "ppomppu_stock",
+              title: "오늘 국장 반등 보시나요",
+              clean_title: "오늘 국장 반등 보시나요",
+              url: "https://www.ppomppu.co.kr/zboard/view.php?id=stock&no=12345",
+              symbol: null,
+              symbol_name: null,
+              symbol_market: null,
+              label: "bullish",
+              sentiment_score: 7,
+              confidence: 0.82,
+              analyzed_at: "2026-04-08T09:28:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    notes: [
+      "홈 상단 커뮤니티 카드와 동일한 집계 결과입니다.",
+      "소스 그룹은 토스증권, 뽐뿌, 블라인드, 디시 4종으로 고정됩니다."
+    ]
+  },
+  {
+    method: "GET",
+    path: "/api/overview",
+    section: "홈 공개",
+    summary: "홈 상단 시장 지표와 커뮤니티 지수를 함께 조회합니다.",
+    auth: "public",
+    query: [
+      { name: "market_adjustment", type: "on|off", description: "시장 보정 적용 여부입니다. 기본값은 `on`입니다." }
+    ],
+    responseExample: {
+      generated_at: "2026-04-08T09:30:00.000Z",
+      market_indicators: [
+        {
+          id: "kospi",
+          label: "KOSPI",
+          value_text: "2,732.11",
+          delta_text: "+18.42 (+0.68%)",
+          change_value: 18.42,
+          change_percent: 0.68,
+          tone: "up",
+          note: ""
+        },
+        {
+          id: "usdkrw",
+          label: "원/달러 환율",
+          value_text: "1,351.20",
+          delta_text: "+4.10 KRW (+0.30%)",
+          change_value: 4.1,
+          change_percent: 0.3,
+          tone: "up",
+          note: "네이버 환율"
+        }
+      ],
+      market_adjustment_enabled: true,
+      overall_base_score: 5.4,
+      overall_market_adjustment: -0.32,
+      overall_sentiment_score: 5.1,
+      overall_sentiment_band: "neutral",
+      community_indicators: [
+        {
+          id: "ppomppu",
+          label: "뽐뿌 증권포럼 지수",
+          shortLabel: "뽐뿌",
+          mentions: 8,
+          bullish: 5,
+          bearish: 3,
+          neutral: 4,
+          base_score: 5.8,
+          market_adjustment: -0.21,
+          score: 5.6,
+          sentiment_band: "neutral",
+          tone: "mixed",
+          rows: [
+            {
+              post_key: "ppomppu:12345",
+              source: "ppomppu_stock",
+              title: "오늘 국장 반등 보시나요",
+              clean_title: "오늘 국장 반등 보시나요",
+              url: "https://www.ppomppu.co.kr/zboard/view.php?id=stock&no=12345",
+              symbol: null,
+              symbol_name: null,
+              symbol_market: null,
+              label: "bullish",
+              sentiment_score: 7,
+              confidence: 0.82,
+              analyzed_at: "2026-04-08T09:28:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    notes: [
+      "`/api/community-indicators` 응답에 KOSPI, KOSDAQ, NASDAQ, 원/달러 환율 요약을 추가한 형태입니다.",
+      "시장 지표와 커뮤니티 지수를 한 번에 받아야 하는 외부 클라이언트용 요약 엔드포인트입니다."
+    ]
+  },
   {
     method: "GET",
     path: "/api/v1/health",
@@ -545,9 +675,9 @@ export const buildRawTextApiDocs = () => {
   const blocks: string[] = [
     "곡소리닷컴 API 텍스트 문서",
     "",
-    "이 문서는 일반 사용자에게 열려 있는 API만 포함합니다.",
+    "이 문서는 관리자 전용을 제외한 공개 홈 API와 TradingBot 조회 API를 포함합니다.",
     "트레이딩봇 토큰 요청, 승인 후 확인, 폐기는 API로 안내하지 않으며 브라우저의 `/profile` 화면에서 처리합니다.",
-    "관리자 전용 API와 내부 detector API는 포함하지 않습니다.",
+    "브라우저 세션이 필요한 토큰 관리 API와 내부 detector API는 포함하지 않습니다.",
     "",
     buildPlainTextSection(
       "인증 방식",
@@ -664,7 +794,7 @@ export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
       title: "곡소리닷컴 API",
       version: "1.0.0",
       description:
-        "트레이딩봇 연동을 위한 곡소리닷컴 커뮤니티 기반 주식·거시 심리 API입니다. 공식 시세와 지수 원데이터는 봇이 별도로 수집해야 합니다."
+        "곡소리닷컴 홈 공개 지표와 트레이딩봇 연동을 위한 커뮤니티 기반 주식·거시 심리 API입니다. 공식 시세와 지수 원데이터는 봇이 별도로 수집해야 합니다."
     },
     servers: [{ url: "https://goksorry.com" }],
     tags: [...new Set(visibleDocs.map((doc) => doc.section))].map((name) => ({ name })),

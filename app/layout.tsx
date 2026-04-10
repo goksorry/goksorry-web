@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
+import { Diphylleia } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
@@ -24,6 +25,14 @@ import { getChatServerEnv } from "@/lib/env";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
+// next/font metadata for Diphylleia does not expose a korean preload subset.
+const diphylleia = Diphylleia({
+  weight: "400",
+  display: "swap",
+  preload: false,
+  variable: "--font-diphylleia"
+});
+
 export const metadata: Metadata = {
   title: "곡소리닷컴",
   description: "외부 종목 커뮤니티 감성 피드와 커뮤니티",
@@ -36,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body>
+      <body className={diphylleia.variable}>
         <Script async strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`} />
         <Script id="google-analytics-init" strategy="afterInteractive">
           {`
