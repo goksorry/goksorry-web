@@ -66,6 +66,11 @@ export type CommunityPostDetailData = {
   commentsError: string | null;
 };
 
+export type CommunitySitemapEntry = {
+  href: string;
+  lastModified: string | null;
+};
+
 const mapAuthorNickname = (value: any): string | null => {
   const author = Array.isArray(value) ? value[0] : value;
   return typeof author?.nickname === "string" ? author.nickname : null;
@@ -289,5 +294,36 @@ export const getCachedCommunityBoards = unstable_cache(
   {
     revalidate: COMMUNITY_BOARDS_REVALIDATE_SEC,
     tags: [COMMUNITY_CACHE_TAGS.boards]
+  }
+);
+
+export const getCachedCommunitySitemapEntries = unstable_cache(
+  async (): Promise<CommunitySitemapEntry[]> => {
+    const service = getServiceSupabaseClient();
+    const { data } = await service
+      .from("community_posts")
+      .select("id,created_at,boards!inner(slug)")
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false })
+      .range(0, 4999);
+
+    return (data ?? [])
+      .map((post: any) => {
+        const board = Array.isArray(post.boards) ? post.boards[0] : post.boards;
+        if (!board?.slug) {
+          return null;
+        }
+
+        return {
+          href: `/community/${String(board.slug)}/${String(post.id)}`,
+          lastModified: post.created_at ? String(post.created_at) : null
+        };
+      })
+      .filter(Boolean) as CommunitySitemapEntry[];
+  },
+  ["community-sitemap-entries"],
+  {
+    revalidate: COMMUNITY_REVALIDATE_SEC,
+    tags: [COMMUNITY_CACHE_TAGS.boards, COMMUNITY_CACHE_TAGS.recent]
   }
 );

@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCompletedProfileForUser, getUserFromAuthorization } from "@/lib/auth-server";
 import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs";
+import { buildPageMetadata } from "@/lib/seo";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
   "홈 공개": "홈 상단 실시간 체감 지수와 시장 개요에 쓰는 공개 API입니다.",
@@ -13,6 +15,11 @@ const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
 const prettyJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = buildPageMetadata({
+  title: "API 문서",
+  description: "곡소리닷컴 공개 API와 TradingBot 연동 방식을 설명하는 문서입니다.",
+  path: "/docs"
+});
 
 export default async function DocsPage() {
   const user = await getUserFromAuthorization();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
@@ -5,7 +6,10 @@ import { authOptions } from "@/lib/auth";
 import { getUserFromAuthorization } from "@/lib/auth-server";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { NewPostForm } from "@/components/new-post-form";
+import { buildNoIndexMetadata } from "@/lib/seo";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+
+export const metadata: Metadata = buildNoIndexMetadata("글쓰기", "곡소리닷컴 커뮤니티 글 작성 화면입니다.");
 
 export default async function NewPostPage({ params }: { params: { boardSlug: string } }) {
   const service = getServiceSupabaseClient();

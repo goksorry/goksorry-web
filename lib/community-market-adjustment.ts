@@ -135,11 +135,49 @@ export const parseMarketAdjustmentParam = (value: string | null | undefined): bo
 };
 
 export const getMarketAdjustmentQueryValue = (enabled: boolean): string | null => {
-  return enabled ? null : "off";
+  return enabled ? "on" : null;
 };
 
 export const getMarketAdjustmentCookieValue = (enabled: boolean): "on" | "off" => {
   return enabled ? "on" : "off";
+};
+
+export const parseMarketAdjustmentCookieValue = (value: string | null | undefined): boolean | null => {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no") {
+    return false;
+  }
+
+  if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes") {
+    return true;
+  }
+
+  return null;
+};
+
+export const resolveMarketAdjustmentEnabled = ({
+  queryValue,
+  cookieValue,
+  defaultEnabled = false
+}: {
+  queryValue: string | null | undefined;
+  cookieValue?: string | null | undefined;
+  defaultEnabled?: boolean;
+}): boolean => {
+  const normalizedQuery = String(queryValue ?? "").trim();
+  if (normalizedQuery) {
+    return parseMarketAdjustmentParam(normalizedQuery);
+  }
+
+  const cookiePreference = parseMarketAdjustmentCookieValue(cookieValue);
+  return cookiePreference ?? defaultEnabled;
 };
 
 export const buildMarketAdjustmentSnapshot = (

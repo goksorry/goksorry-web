@@ -7,5 +7,11 @@ export async function MarketOverviewShell({ marketAdjustmentEnabled = true }: { 
     getCachedCommunityIndicators(marketAdjustmentEnabled)
   ]);
 
-  return <MarketOverview marketOverview={marketOverview} initialCommunityIndicators={initialCommunityIndicators} />;
+  return (
+    <MarketOverview
+      marketOverview={marketOverview}
+      initialCommunityIndicators={initialCommunityIndicators}
+      initialMarketAdjustmentEnabled={marketAdjustmentEnabled}
+    />
+  );
 }

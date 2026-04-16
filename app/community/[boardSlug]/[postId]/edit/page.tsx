@@ -1,11 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EditPostForm } from "@/components/edit-post-form";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { getUserFromAuthorization } from "@/lib/auth-server";
+import { buildNoIndexMetadata } from "@/lib/seo";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = buildNoIndexMetadata("글 수정", "곡소리닷컴 커뮤니티 글 수정 화면입니다.");
 
 export default async function EditPostPage({
   params

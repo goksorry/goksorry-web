@@ -10,6 +10,7 @@ import {
   MARKET_ADJUSTMENT_COOKIE_NAME,
   getMarketAdjustmentCookieValue,
   getMarketAdjustmentQueryValue,
+  parseMarketAdjustmentCookieValue,
   parseMarketAdjustmentParam
 } from "@/lib/community-market-adjustment";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
@@ -36,6 +37,7 @@ const toLocalTime = (iso: string): string => {
 type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
   initialCommunityIndicators: CommunityIndicatorsPayload;
+  initialMarketAdjustmentEnabled: boolean;
 };
 
 type OverviewArtStyle = CSSProperties & {
@@ -86,7 +88,28 @@ const persistMarketAdjustmentCookie = (enabled: boolean) => {
   document.cookie = `${MARKET_ADJUSTMENT_COOKIE_NAME}=${getMarketAdjustmentCookieValue(enabled)}; Path=/; Max-Age=31536000; SameSite=Lax`;
 };
 
-export function MarketOverview({ marketOverview, initialCommunityIndicators }: MarketOverviewProps) {
+const readMarketAdjustmentCookie = (): boolean | null => {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const cookieEntry = document.cookie
+    .split(";")
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith(`${MARKET_ADJUSTMENT_COOKIE_NAME}=`));
+
+  if (!cookieEntry) {
+    return null;
+  }
+
+  return parseMarketAdjustmentCookieValue(cookieEntry.slice(MARKET_ADJUSTMENT_COOKIE_NAME.length + 1));
+};
+
+export function MarketOverview({
+  marketOverview,
+  initialCommunityIndicators,
+  initialMarketAdjustmentEnabled
+}: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,12 +119,25 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
   const [optimisticGroupIds, setOptimisticGroupIds] = useState<SourceGroupId[] | null>(null);
-  const marketAdjustmentEnabled = parseMarketAdjustmentParam(searchParams.get("market_adjustment"));
+  const [cookieBackedMarketAdjustmentEnabled, setCookieBackedMarketAdjustmentEnabled] = useState(initialMarketAdjustmentEnabled);
+  const explicitMarketAdjustmentParam = searchParams.get("market_adjustment");
+  const marketAdjustmentEnabled =
+    explicitMarketAdjustmentParam === null
+      ? cookieBackedMarketAdjustmentEnabled
+      : parseMarketAdjustmentParam(explicitMarketAdjustmentParam);
 
   useEffect(() => {
     setPayload(initialCommunityIndicators);
     setError("");
   }, [initialCommunityIndicators]);
+
+  useEffect(() => {
+    if (explicitMarketAdjustmentParam !== null) {
+      return;
+    }
+
+    setCookieBackedMarketAdjustmentEnabled(readMarketAdjustmentCookie() ?? initialMarketAdjustmentEnabled);
+  }, [explicitMarketAdjustmentParam, initialMarketAdjustmentEnabled]);
 
   useEffect(() => {
     persistMarketAdjustmentCookie(marketAdjustmentEnabled);
@@ -216,6 +252,7 @@ export function MarketOverview({ marketOverview, initialCommunityIndicators }: M
     const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(nextEnabled);
 
     persistMarketAdjustmentCookie(nextEnabled);
+    setCookieBackedMarketAdjustmentEnabled(nextEnabled);
 
     if (marketAdjustmentQueryValue) {
       nextParams.set("market_adjustment", marketAdjustmentQueryValue);

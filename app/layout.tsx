@@ -22,6 +22,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
@@ -34,9 +35,32 @@ const gowunBatang = Gowun_Batang({
 });
 
 export const metadata: Metadata = {
-  title: "곡소리닷컴",
-  description: "외부 종목 커뮤니티 감성 피드와 커뮤니티",
-  metadataBase: new URL("https://goksorry.com")
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`
+  },
+  description: SITE_DESCRIPTION,
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "ko_KR",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    images: [
+      {
+        url: "/goksorry_logo.png",
+        alt: `${SITE_NAME} 로고`
+      }
+    ]
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: ["/goksorry_logo.png"]
+  }
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

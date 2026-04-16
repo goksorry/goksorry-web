@@ -1,9 +1,41 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostCommentsSection } from "@/components/post-comments-section";
 import { PostDetailActions } from "@/components/post-detail-actions";
 import { formatKstDateTime } from "@/lib/date-time";
 import { getCachedCommunityPostDetailData } from "@/lib/community-read";
+import { buildPageMetadata, summarizeText } from "@/lib/seo";
+
+export async function generateMetadata({
+  params
+}: {
+  params: { boardSlug: string; postId: string };
+}): Promise<Metadata> {
+  const { post } = await getCachedCommunityPostDetailData(params.boardSlug, params.postId);
+
+  if (!post) {
+    return {
+      title: "글을 찾을 수 없습니다",
+      robots: {
+        index: false,
+        follow: false
+      }
+    };
+  }
+
+  const authorText = post.author_nickname ? `${post.author_nickname} 작성` : "커뮤니티 글";
+  const description = summarizeText(`${authorText}. ${post.content}`);
+
+  return buildPageMetadata({
+    title: post.title,
+    description,
+    path: `/community/${post.board.slug}/${post.id}`,
+    openGraphType: "article",
+    publishedTime: post.created_at,
+    modifiedTime: post.created_at
+  });
+}
 
 export default async function PostDetailPage({
   params

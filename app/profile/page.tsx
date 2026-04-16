@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { ProfileForm } from "@/components/profile-form";
 import { ProfileTokenManager } from "@/components/profile-token-manager";
 import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getNicknamePolicy } from "@/lib/profile-sync";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = buildNoIndexMetadata("내 프로필", "곡소리닷컴 계정 및 토큰 관리 화면입니다.");
 
 export default async function ProfilePage({
   searchParams
