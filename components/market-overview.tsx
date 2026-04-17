@@ -337,9 +337,7 @@ export function MarketOverview({
 
       <section className="overview-panel" style={overviewArtStyle} data-art-ready={payload ? "true" : "false"}>
         <div className="overview-goksorry-gauge" aria-hidden="true">
-          <div className="overview-goksorry-gauge-track">
-            <div className="overview-goksorry-gauge-marker" />
-          </div>
+          <div className="overview-goksorry-gauge-track" />
         </div>
         <div className="overview-panel-art" aria-hidden="true" />
         <div className="overview-hero">
