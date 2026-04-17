@@ -38,7 +38,7 @@ export function MarketOverviewFallback() {
               <p className="overview-timestamp">캐시 지수 준비 중</p>
             </div>
             <div className="overview-overall-score">
-              <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
+              <p className="overview-overall-label">최근 6시간 커뮤니티 평균 · 높을수록 곡소리</p>
               <strong className="overview-overall-value">
                 --<span>/10</span>
               </strong>

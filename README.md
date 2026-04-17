@@ -99,9 +99,11 @@ npm run dev
 
 메모:
 
-- 홈 상단 `실시간 체감 지수` 점수 옆 토글 버튼은 같은 `market_adjustment` 쿼리를 사용합니다.
+- 홈 상단 `곡소리 지수` 점수 옆 토글 버튼은 같은 `market_adjustment` 쿼리를 사용합니다.
 - 마지막 토글 상태는 쿠키로 저장되며, 홈에 재진입할 때 쿼리가 없으면 마지막 `off` 상태를 URL로 복원합니다.
-- 점수는 홈에서 실제로 보이는 `공포/희망` 샘플 기준으로 계산합니다.
+- 홈에서 크게 보이는 `곡소리 지수`는 높을수록 절망/곡소리, 낮을수록 희망을 뜻하는 표시용 반전 점수입니다.
+- 응답의 `overall_sentiment_score`, `base_score`, `score` 는 내부 원감성 점수이며 `1..10` 에서 높을수록 희망입니다.
+- 응답의 `overall_goksorry_index`, `goksorry_index` 는 홈 표시용 곡소리 지수이며 `0..10` 에서 높을수록 절망입니다.
 - 시장 보정은 연속형 로그 곡선으로 계산하며, 소스 성격에 따라 `시장전체 / 국장 / 나스닥` 중 하나를 참조합니다.
 - `국장` 보정은 `KOSPI 55% + KOSDAQ 45%`에 `원/달러 환율` 리스크를 함께 반영합니다.
 - `시장전체` 보정은 `국장 보정 + NASDAQ` 혼합값을 사용합니다.
@@ -113,4 +115,4 @@ npm run dev
   - `toss_lounge_kr_*` → 국장
   - `toss_lounge_us_*` → 나스닥
   - 그 외 `toss_lounge_*` → 시장전체
-- 응답에는 `market_adjustment_enabled`, `overall_base_score`, `overall_market_adjustment` 와 각 섹션별 `base_score`, `market_adjustment` 가 함께 포함됩니다.
+- 응답에는 `market_adjustment_enabled`, `overall_base_score`, `overall_market_adjustment`, `overall_sentiment_score`, `overall_goksorry_index` 와 각 섹션별 `base_score`, `market_adjustment`, `score`, `goksorry_index` 가 함께 포함됩니다.

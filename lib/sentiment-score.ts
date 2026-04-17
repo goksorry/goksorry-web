@@ -178,3 +178,7 @@ export const euphoriaIndexFromScore = (score: number): number => {
   const normalized = clampSentimentScore(score);
   return Number((((normalized - SENTIMENT_SCORE_MIN) / (SENTIMENT_SCORE_MAX - SENTIMENT_SCORE_MIN)) * 100).toFixed(2));
 };
+
+export const goksorryIndexFromScore = (score: number): number => {
+  return Number((fearIndexFromScore(score) / 10).toFixed(1));
+};

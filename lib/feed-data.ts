@@ -7,6 +7,7 @@ import {
   amplifyAggregateSentimentScore,
   clampSentimentScore,
   averageSentimentScore,
+  goksorryIndexFromScore,
   resolveSentimentScore,
   sentimentLabelFromScore,
   sentimentToneFromBand,
@@ -60,6 +61,7 @@ export type SourceGroupSummary = {
   base_score: number;
   market_adjustment: number;
   score: number;
+  goksorry_index: number;
   sentiment_band: SentimentBand;
   tone: "bullish" | "bearish" | "mixed";
   rows: FeedRow[];
@@ -69,6 +71,7 @@ export type FeedScoreOverview = {
   base_score: number;
   market_adjustment: number;
   score: number;
+  goksorry_index: number;
   sentiment_band: SentimentBand;
 };
 
@@ -234,6 +237,7 @@ const buildAggregateVisibleScore = (
     base_score: baseScore,
     market_adjustment: marketAdjustment,
     score,
+    goksorry_index: goksorryIndexFromScore(score),
     sentiment_band: aggregateSentimentBand(score, {
       bullishCount: bullish,
       bearishCount: bearish
@@ -265,6 +269,7 @@ export const buildSourceGroupSummaries = (
       base_score: overview.base_score,
       market_adjustment: overview.market_adjustment,
       score: overview.score,
+      goksorry_index: overview.goksorry_index,
       sentiment_band: overview.sentiment_band,
       tone,
       rows: actionableRows.slice(0, 12)

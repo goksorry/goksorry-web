@@ -17,7 +17,7 @@ import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
-import type { SentimentBand } from "@/lib/sentiment-score";
+import { goksorryIndexFromScore, type SentimentBand } from "@/lib/sentiment-score";
 
 const toLocalTime = (iso: string): string => {
   const date = new Date(iso);
@@ -76,6 +76,7 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
   base_score: 5,
   market_adjustment: 0,
   score: 5,
+  goksorry_index: goksorryIndexFromScore(5),
   sentiment_band: "neutral",
   tone: "mixed",
   rows: []
@@ -288,6 +289,7 @@ export function MarketOverview({
   const overallCommunityBaseScore = payload?.overall_base_score ?? 5;
   const overallCommunityMarketAdjustment = payload?.overall_market_adjustment ?? 0;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
+  const overallGoksorryIndex = payload?.overall_goksorry_index ?? goksorryIndexFromScore(overallCommunityScore);
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading
     ? "계산 중"
@@ -336,15 +338,15 @@ export function MarketOverview({
               </p>
               <p className="overview-market-adjustment-meta">
                 {marketAdjustmentEnabled
-                  ? `원점수 ${overallCommunityBaseScore.toFixed(1)} · 시장보정 ${signedMarketAdjustment}`
+                  ? `원감성 ${overallCommunityBaseScore.toFixed(1)} · 시장보정 ${signedMarketAdjustment}`
                   : "시장 지수 미반영"}
               </p>
             </div>
             <div className="overview-overall-score" aria-live="polite">
-              <p className="overview-overall-label">최근 6시간 커뮤니티 평균</p>
+              <p className="overview-overall-label">최근 6시간 커뮤니티 평균 · 높을수록 곡소리</p>
               <div className="overview-overall-value-row">
                 <strong className="overview-overall-value">
-                  {communityLoading ? "--" : overallCommunityScore.toFixed(1)}
+                  {communityLoading ? "--" : overallGoksorryIndex.toFixed(1)}
                   <span>/10</span>
                 </strong>
                 <button
@@ -383,7 +385,7 @@ export function MarketOverview({
                     ) : (
                       <>
                         <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
-                        <span>{group.score.toFixed(1)}</span>
+                        <span>{group.goksorry_index.toFixed(1)}</span>
                       </>
                     )}
                   </span>

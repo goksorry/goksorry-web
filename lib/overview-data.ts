@@ -6,7 +6,12 @@ import {
   fetchRecentFeedRows,
   type SourceGroupSummary
 } from "@/lib/feed-data";
-import { clampSentimentScore, sentimentBandFromScore, type SentimentBand } from "@/lib/sentiment-score";
+import {
+  clampSentimentScore,
+  goksorryIndexFromScore,
+  sentimentBandFromScore,
+  type SentimentBand
+} from "@/lib/sentiment-score";
 
 type IndicatorTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 
@@ -28,6 +33,7 @@ export type OverviewPayload = {
   overall_base_score: number;
   overall_market_adjustment: number;
   overall_sentiment_score: number;
+  overall_goksorry_index: number;
   overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
 };
@@ -38,6 +44,7 @@ export type CommunityIndicatorsPayload = {
   overall_base_score: number;
   overall_market_adjustment: number;
   overall_sentiment_score: number;
+  overall_goksorry_index: number;
   overall_sentiment_band: SentimentBand;
   community_indicators: SourceGroupSummary[];
 };
@@ -295,13 +302,18 @@ const buildOverallFromCommunityIndicators = (
   communityIndicators: SourceGroupSummary[]
 ): Pick<
   CommunityIndicatorsPayload,
-  "overall_base_score" | "overall_market_adjustment" | "overall_sentiment_score" | "overall_sentiment_band"
+  | "overall_base_score"
+  | "overall_market_adjustment"
+  | "overall_sentiment_score"
+  | "overall_goksorry_index"
+  | "overall_sentiment_band"
 > => {
   if (communityIndicators.length === 0) {
     return {
       overall_base_score: 5,
       overall_market_adjustment: 0,
       overall_sentiment_score: 5,
+      overall_goksorry_index: goksorryIndexFromScore(5),
       overall_sentiment_band: "neutral"
     };
   }
@@ -320,6 +332,7 @@ const buildOverallFromCommunityIndicators = (
     overall_base_score: overallBaseScore,
     overall_market_adjustment: overallMarketAdjustment,
     overall_sentiment_score: overallSentimentScore,
+    overall_goksorry_index: goksorryIndexFromScore(overallSentimentScore),
     overall_sentiment_band: sentimentBandFromScore(overallSentimentScore)
   };
 };
@@ -351,6 +364,7 @@ export const buildCommunityIndicatorsData = async (
     overall_base_score: overall.overall_base_score,
     overall_market_adjustment: overall.overall_market_adjustment,
     overall_sentiment_score: overall.overall_sentiment_score,
+    overall_goksorry_index: overall.overall_goksorry_index,
     overall_sentiment_band: overall.overall_sentiment_band,
     community_indicators: communityIndicators
   };
@@ -373,6 +387,7 @@ export const buildOverviewData = async (marketAdjustmentEnabled = true): Promise
     overall_base_score: communityOverview.overall_base_score,
     overall_market_adjustment: communityOverview.overall_market_adjustment,
     overall_sentiment_score: communityOverview.overall_sentiment_score,
+    overall_goksorry_index: communityOverview.overall_goksorry_index,
     overall_sentiment_band: communityOverview.overall_sentiment_band,
     community_indicators: communityOverview.community_indicators
   };
