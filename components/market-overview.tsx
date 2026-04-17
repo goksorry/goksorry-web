@@ -45,6 +45,10 @@ type OverviewArtStyle = CSSProperties & {
   "--overview-art-dark": string;
 };
 
+type OverviewPanelStyle = OverviewArtStyle & {
+  "--overview-gauge-progress": string;
+};
+
 type OverviewCommunityRowStyle = CSSProperties & {
   "--overview-community-columns": string;
 };
@@ -289,19 +293,24 @@ export function MarketOverview({
   const overallCommunityBaseScore = payload?.overall_base_score ?? 5;
   const overallCommunityMarketAdjustment = payload?.overall_market_adjustment ?? 0;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
+  const overallBaseGoksorryIndex = goksorryIndexFromScore(overallCommunityBaseScore);
   const overallGoksorryIndex = payload?.overall_goksorry_index ?? goksorryIndexFromScore(overallCommunityScore);
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading
     ? "계산 중"
     : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
-  const overviewArtStyle = payload ? buildOverviewArtStyle(overallCommunityBand) : undefined;
+  const overviewArtStyle: OverviewPanelStyle = {
+    ...buildOverviewArtStyle(overallCommunityBand),
+    "--overview-gauge-progress": `${Math.max(0, Math.min(100, overallGoksorryIndex * 10))}%`
+  };
   const overviewCommunityRowStyle: OverviewCommunityRowStyle = {
     "--overview-community-columns": String(communityGroups.length || SOURCE_GROUPS.length)
   };
-  const signedMarketAdjustment =
-    overallCommunityMarketAdjustment >= 0
-      ? `+${overallCommunityMarketAdjustment.toFixed(2)}`
-      : overallCommunityMarketAdjustment.toFixed(2);
+  const goksorryMarketAdjustment = Number((overallGoksorryIndex - overallBaseGoksorryIndex).toFixed(2));
+  const signedGoksorryMarketAdjustment =
+    goksorryMarketAdjustment >= 0
+      ? `+${goksorryMarketAdjustment.toFixed(2)}`
+      : goksorryMarketAdjustment.toFixed(2);
 
   return (
     <>
@@ -327,6 +336,11 @@ export function MarketOverview({
       </section>
 
       <section className="overview-panel" style={overviewArtStyle} data-art-ready={payload ? "true" : "false"}>
+        <div className="overview-goksorry-gauge" aria-hidden="true">
+          <div className="overview-goksorry-gauge-track">
+            <div className="overview-goksorry-gauge-marker" />
+          </div>
+        </div>
         <div className="overview-panel-art" aria-hidden="true" />
         <div className="overview-hero">
           <div className="overview-heading">
@@ -338,7 +352,7 @@ export function MarketOverview({
               </p>
               <p className="overview-market-adjustment-meta">
                 {marketAdjustmentEnabled
-                  ? `원감성 ${overallCommunityBaseScore.toFixed(1)} · 시장보정 ${signedMarketAdjustment}`
+                  ? `기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · 시장보정 ${signedGoksorryMarketAdjustment}`
                   : "시장 지수 미반영"}
               </p>
             </div>

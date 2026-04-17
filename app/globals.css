@@ -656,6 +656,8 @@ a:hover {
   --overview-art-light: url("/images/overview-regimes/overview-regime-neutral-light.webp");
   --overview-art-dark: url("/images/overview-regimes/overview-regime-neutral-dark.webp");
   --overview-art-width: clamp(18rem, 31vw, 23rem);
+  --overview-gauge-width: 0.92rem;
+  --overview-gauge-progress: 50%;
   background: var(--panel-soft);
   border: 1px solid var(--overview-line);
   border-radius: 18px;
@@ -665,6 +667,83 @@ a:hover {
   overflow: hidden;
   padding: 0;
   position: relative;
+}
+
+.overview-goksorry-gauge {
+  position: absolute;
+  inset: 0.5rem auto 0.5rem 0.42rem;
+  width: var(--overview-gauge-width);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  justify-items: center;
+  gap: 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.overview-goksorry-gauge-track {
+  position: relative;
+  align-self: stretch;
+  width: 0.34rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--hope) 78%, #6dcc7f) 0%,
+    #f1d26b 52%,
+    color-mix(in srgb, var(--danger) 78%, #cf4338) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 12px 24px rgba(16, 24, 40, 0.16);
+  overflow: hidden;
+}
+
+.overview-goksorry-gauge-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+}
+
+.overview-goksorry-gauge-track::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 var(--overview-gauge-progress) 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel-soft) 84%, rgba(255, 255, 255, 0.14));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  transition: inset 220ms ease;
+}
+
+.overview-goksorry-gauge-marker {
+  position: absolute;
+  left: 50%;
+  bottom: var(--overview-gauge-progress);
+  width: 0.98rem;
+  height: 0.98rem;
+  border-radius: 999px;
+  background: var(--panel-elevated);
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(32, 40, 54, 0.2),
+    0 10px 18px rgba(15, 23, 42, 0.18);
+  transform: translate(-50%, 50%);
+  transition: bottom 220ms ease;
+}
+
+.overview-goksorry-gauge-marker::after {
+  content: "";
+  position: absolute;
+  inset: 0.18rem;
+  border-radius: inherit;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--hope) 82%, #76d486) 0%,
+    #efc95e 52%,
+    color-mix(in srgb, var(--danger) 82%, #d94a3d) 100%
+  );
 }
 
 .overview-market-block {
@@ -2744,7 +2823,6 @@ button:disabled {
   .overview-hero {
     --overview-art-width: clamp(10.75rem, 44vw, 13rem);
     min-height: 8rem;
-    padding-left: 0.8rem;
     padding-right: calc(var(--overview-art-width) + 0.65rem);
     padding-top: 0.8rem;
     padding-bottom: 0.8rem;
@@ -2777,6 +2855,14 @@ button:disabled {
     width: var(--overview-art-width);
     background-position: left top;
     background-size: contain;
+  }
+
+  .overview-goksorry-gauge {
+    inset: 0.44rem auto 0.44rem 0.36rem;
+  }
+
+  .overview-goksorry-gauge-track {
+    width: 0.28rem;
   }
 
   .overview-section {
