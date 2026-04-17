@@ -656,10 +656,11 @@ a:hover {
   --overview-art-light: url("/images/overview-regimes/overview-regime-neutral-light.webp");
   --overview-art-dark: url("/images/overview-regimes/overview-regime-neutral-dark.webp");
   --overview-art-width: clamp(18rem, 31vw, 23rem);
-  --overview-gauge-width: 0.92rem;
+  --overview-gauge-width: 0.56rem;
   --overview-gauge-progress: 50%;
   background: var(--panel-soft);
   border: 1px solid var(--overview-line);
+  border-left-color: transparent;
   border-radius: 18px;
   display: grid;
   gap: 0.8rem;
@@ -671,11 +672,11 @@ a:hover {
 
 .overview-goksorry-gauge {
   position: absolute;
-  inset: 0.5rem auto 0.5rem 0.42rem;
+  inset: 0 auto 0 0;
   width: var(--overview-gauge-width);
   display: grid;
   grid-template-rows: minmax(0, 1fr);
-  justify-items: center;
+  justify-items: stretch;
   gap: 0;
   padding: 0;
   pointer-events: none;
@@ -685,8 +686,8 @@ a:hover {
 .overview-goksorry-gauge-track {
   position: relative;
   align-self: stretch;
-  width: 0.34rem;
-  border-radius: 999px;
+  width: 100%;
+  border-radius: 0;
   background: linear-gradient(
     to top,
     color-mix(in srgb, var(--hope) 78%, #6dcc7f) 0%,
@@ -694,8 +695,8 @@ a:hover {
     color-mix(in srgb, var(--danger) 78%, #cf4338) 100%
   );
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.26),
-    0 12px 24px rgba(16, 24, 40, 0.16);
+    inset -1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
@@ -719,24 +720,24 @@ a:hover {
 
 .overview-goksorry-gauge-marker {
   position: absolute;
-  left: 50%;
+  left: 100%;
   bottom: var(--overview-gauge-progress);
-  width: 0.98rem;
-  height: 0.98rem;
+  width: 0.78rem;
+  height: 0.78rem;
   border-radius: 999px;
   background: var(--panel-elevated);
   border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow:
     0 0 0 1px rgba(32, 40, 54, 0.2),
-    0 10px 18px rgba(15, 23, 42, 0.18);
-  transform: translate(-50%, 50%);
+    0 8px 14px rgba(15, 23, 42, 0.16);
+  transform: translate(-44%, 50%);
   transition: bottom 220ms ease;
 }
 
 .overview-goksorry-gauge-marker::after {
   content: "";
   position: absolute;
-  inset: 0.18rem;
+  inset: 0.14rem;
   border-radius: inherit;
   background: linear-gradient(
     to top,
@@ -2858,11 +2859,11 @@ button:disabled {
   }
 
   .overview-goksorry-gauge {
-    inset: 0.44rem auto 0.44rem 0.36rem;
+    inset: 0 auto 0 0;
   }
 
   .overview-goksorry-gauge-track {
-    width: 0.28rem;
+    width: 100%;
   }
 
   .overview-section {
