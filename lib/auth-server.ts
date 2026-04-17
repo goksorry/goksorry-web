@@ -2,11 +2,20 @@ import "server-only";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { buildStableProfileId, findProfileByIdentity, getProfileSetupState, isAdminEmail, type SyncedProfile } from "@/lib/profile-sync";
+import {
+  buildLegacyProfileIdFromEmail,
+  buildStableProfileIdFromGoogleSub,
+  findProfileByIdentity,
+  getProfileSetupState,
+  isAdminEmail,
+  normalizeGoogleSub,
+  type SyncedProfile
+} from "@/lib/profile-sync";
 
 export type AppAuthUser = {
   id: string;
   email: string | null;
+  google_sub: string | null;
   name: string | null;
   image: string | null;
   nickname: string | null;
@@ -23,13 +32,23 @@ export { isAdminEmail };
 export const getUserFromAuthorization = async (_request?: Request): Promise<AppAuthUser | null> => {
   const session = await getServerSession(authOptions);
   const email = String(session?.user?.email ?? "").trim().toLowerCase();
-  const id = String(session?.user?.id ?? (email ? buildStableProfileId(email) : "")).trim();
+  const googleSub =
+    typeof session?.user?.google_sub === "string" && session.user.google_sub.trim()
+      ? normalizeGoogleSub(session.user.google_sub)
+      : null;
+  const id = String(
+    session?.user?.id ?? (googleSub ? buildStableProfileIdFromGoogleSub(googleSub) : email ? buildLegacyProfileIdFromEmail(email) : "")
+  ).trim();
 
   if (!session?.user || !email || !id) {
     return null;
   }
 
-  const profile = await findProfileByIdentity({ id, email });
+  const profile = await findProfileByIdentity({
+    googleSub,
+    id,
+    email
+  });
 
   if (profile) {
     const profileSetupState = getProfileSetupState({
@@ -42,6 +61,7 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
     return {
       id: String(profile.id),
       email: String(profile.email ?? email),
+      google_sub: profile.google_sub ?? googleSub,
       name: session.user.name ?? null,
       image: session.user.image ?? null,
       nickname: String(profile.nickname ?? ""),
@@ -61,6 +81,7 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
   return {
     id,
     email,
+    google_sub: googleSub,
     name: session.user.name ?? null,
     image: session.user.image ?? null,
     nickname: session.user.nickname ?? null,
@@ -73,20 +94,21 @@ export const getUserFromAuthorization = async (_request?: Request): Promise<AppA
 };
 
 export const getStoredProfileForUser = async (
-  user: Pick<AppAuthUser, "id" | "email">
+  user: Pick<AppAuthUser, "id" | "email" | "google_sub">
 ): Promise<SyncedProfile | null> => {
-  if (!user.email) {
+  if (!user.id && !user.email && !user.google_sub) {
     return null;
   }
 
   return findProfileByIdentity({
     id: user.id,
+    googleSub: user.google_sub,
     email: user.email
   });
 };
 
 export const getCompletedProfileForUser = async (
-  user: Pick<AppAuthUser, "id" | "email">
+  user: Pick<AppAuthUser, "id" | "email" | "google_sub">
 ): Promise<SyncedProfile | null> => {
   const profile = await getStoredProfileForUser(user);
   if (!profile) {

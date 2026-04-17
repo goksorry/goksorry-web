@@ -12,6 +12,7 @@ export const ACCOUNT_REJOIN_COOLDOWN_DAYS = 7;
 export type SyncedProfile = {
   id: string;
   email: string;
+  google_sub: string | null;
   nickname: string;
   role: AppRole;
   created_at: string;
@@ -37,9 +38,12 @@ export type ProfileSetupState = {
 };
 
 export const normalizeEmail = (value: string): string => value.trim().toLowerCase();
+export const normalizeGoogleSub = (value: string): string => value.trim();
 
 const WITHDRAWAL_REJOIN_COOLDOWN_MS = ACCOUNT_REJOIN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 const WITHDRAWAL_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const PROFILE_SELECT =
+  "id,email,google_sub,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at";
 
 const isMissingDetectorStatusFieldError = (code: string | null | undefined, message: string): boolean => {
   return (
@@ -112,58 +116,127 @@ const purgeExpiredWithdrawnAccounts = async (): Promise<void> => {
   await markExpiredWithdrawnAccountsPurged(purgedAtIso);
 };
 
-export const getWithdrawalHoldUntil = async (email: string): Promise<string | null> => {
-  const service = getServiceSupabaseClient();
-  const normalizedEmail = normalizeEmail(email);
-  await purgeExpiredWithdrawnAccounts();
-
-  const { data, error } = await service
-    .from("withdrawn_accounts")
-    .select("withdrawn_at")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data?.withdrawn_at) {
+const getHoldAvailableAt = (withdrawnAt: string | null | undefined): string | null => {
+  if (!withdrawnAt) {
     return null;
   }
 
-  const withdrawnAtMs = new Date(data.withdrawn_at).getTime();
+  const withdrawnAtMs = new Date(withdrawnAt).getTime();
   if (Number.isNaN(withdrawnAtMs)) {
     return null;
   }
 
   const availableAtMs = withdrawnAtMs + WITHDRAWAL_REJOIN_COOLDOWN_MS;
   if (Date.now() >= availableAtMs) {
-    const { error: cleanupError } = await service.from("withdrawn_accounts").delete().eq("email", normalizedEmail);
-    if (cleanupError) {
-      console.error("failed to delete expired withdrawn account hold", cleanupError);
-    }
     return null;
   }
 
   return new Date(availableAtMs).toISOString();
 };
 
+const clearExpiredWithdrawalHold = async ({
+  email,
+  googleSub
+}: {
+  email?: string | null;
+  googleSub?: string | null;
+}): Promise<void> => {
+  const service = getServiceSupabaseClient();
+
+  if (googleSub) {
+    const { error } = await service.from("withdrawn_accounts").delete().eq("google_sub", normalizeGoogleSub(googleSub));
+    if (error) {
+      console.error("failed to delete expired withdrawn account hold by google_sub", error);
+    }
+  }
+
+  if (email) {
+    const { error } = await service.from("withdrawn_accounts").delete().eq("email", normalizeEmail(email));
+    if (error) {
+      console.error("failed to delete expired withdrawn account hold by email", error);
+    }
+  }
+};
+
+export const getWithdrawalHoldUntil = async ({
+  email,
+  googleSub
+}: {
+  email: string;
+  googleSub?: string | null;
+}): Promise<string | null> => {
+  const service = getServiceSupabaseClient();
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedGoogleSub = googleSub ? normalizeGoogleSub(googleSub) : null;
+  await purgeExpiredWithdrawnAccounts();
+
+  if (normalizedGoogleSub) {
+    const { data, error } = await service
+      .from("withdrawn_accounts")
+      .select("withdrawn_at")
+      .eq("google_sub", normalizedGoogleSub)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const availableAt = getHoldAvailableAt(data?.withdrawn_at ? String(data.withdrawn_at) : null);
+    if (availableAt) {
+      return availableAt;
+    }
+
+    if (data?.withdrawn_at) {
+      await clearExpiredWithdrawalHold({
+        email: normalizedEmail,
+        googleSub: normalizedGoogleSub
+      });
+      return null;
+    }
+  }
+
+  const { data, error } = await service.from("withdrawn_accounts").select("withdrawn_at").eq("email", normalizedEmail).maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const availableAt = getHoldAvailableAt(data?.withdrawn_at ? String(data.withdrawn_at) : null);
+  if (availableAt) {
+    return availableAt;
+  }
+
+  if (data?.withdrawn_at) {
+    await clearExpiredWithdrawalHold({
+      email: normalizedEmail,
+      googleSub: normalizedGoogleSub
+    });
+    return null;
+  }
+
+  return null;
+};
+
 export const withdrawAccount = async ({
   id,
   email,
+  googleSub,
   reason
 }: {
   id: string;
   email: string;
+  googleSub?: string | null;
   reason?: string | null;
 }): Promise<void> => {
   const service = getServiceSupabaseClient();
   const normalizedEmail = normalizeEmail(email);
+  const normalizedGoogleSub = googleSub ? normalizeGoogleSub(googleSub) : null;
   const normalizedReason = String(reason ?? "").replace(/[<>]/g, "").trim() || null;
 
   const { error: tombstoneError } = await service.from("withdrawn_accounts").upsert(
     {
       email: normalizedEmail,
+      google_sub: normalizedGoogleSub,
       reason: normalizedReason
     },
     { onConflict: "email" }
@@ -200,9 +273,9 @@ export const buildNickname = (email: string, preferredName?: string | null): str
   return `${base}_${suffix}`;
 };
 
-export const buildStableProfileId = (email: string): string => {
+const buildStableProfileIdFromSeed = (seed: string): string => {
   const bytes = createHash("sha256")
-    .update(`goksorry:${normalizeEmail(email)}`)
+    .update(`goksorry:${seed}`)
     .digest()
     .subarray(0, 16);
 
@@ -212,6 +285,11 @@ export const buildStableProfileId = (email: string): string => {
   const hex = bytes.toString("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 };
+
+export const buildLegacyProfileIdFromEmail = (email: string): string => buildStableProfileIdFromSeed(normalizeEmail(email));
+
+export const buildStableProfileIdFromGoogleSub = (googleSub: string): string =>
+  buildStableProfileIdFromSeed(`google:${normalizeGoogleSub(googleSub)}`);
 
 export const getNicknamePolicy = ({
   role,
@@ -294,37 +372,23 @@ export const getProfileSetupState = ({
   };
 };
 
-export const findProfileByIdentity = async ({
-  id,
-  email
-}: {
-  id?: string | null;
-  email?: string | null;
-}): Promise<SyncedProfile | null> => {
-  const service = getServiceSupabaseClient();
-  let query = service
-    .from("profiles")
-    .select(
-      "id,email,nickname,role,created_at,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at"
-    );
-
-  if (id) {
-    query = query.eq("id", id);
-  } else if (email) {
-    query = query.ilike("email", normalizeEmail(email));
-  } else {
-    return null;
-  }
-
-  const { data, error } = await query.maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
+const serializeProfile = (data: {
+  id: string;
+  email: string;
+  google_sub?: string | null;
+  nickname: string;
+  role: string;
+  created_at: string;
+  nickname_confirmed_at?: string | null;
+  nickname_changed_at?: string | null;
+  age_confirmed_at?: string | null;
+  terms_agreed_at?: string | null;
+  privacy_agreed_at?: string | null;
+}): SyncedProfile => {
   return {
     id: String(data.id),
     email: String(data.email),
+    google_sub: data.google_sub ? String(data.google_sub) : null,
     nickname: String(data.nickname),
     role: data.role === "admin" ? "admin" : "user",
     created_at: String(data.created_at),
@@ -334,4 +398,95 @@ export const findProfileByIdentity = async ({
     terms_agreed_at: data.terms_agreed_at ? String(data.terms_agreed_at) : null,
     privacy_agreed_at: data.privacy_agreed_at ? String(data.privacy_agreed_at) : null
   };
+};
+
+const findProfileByColumn = async (
+  column: "google_sub" | "id" | "email",
+  value: string
+): Promise<SyncedProfile | null> => {
+  const service = getServiceSupabaseClient();
+  const query = service.from("profiles").select(PROFILE_SELECT);
+  const scopedQuery =
+    column === "email" ? query.ilike("email", normalizeEmail(value)) : query.eq(column, column === "google_sub" ? normalizeGoogleSub(value) : value);
+  const { data, error } = await scopedQuery.maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return serializeProfile(data);
+};
+
+export const findProfileByIdentity = async ({
+  googleSub,
+  id,
+  email
+}: {
+  googleSub?: string | null;
+  id?: string | null;
+  email?: string | null;
+}): Promise<SyncedProfile | null> => {
+  if (googleSub) {
+    const profile = await findProfileByColumn("google_sub", googleSub);
+    if (profile) {
+      return profile;
+    }
+  }
+
+  if (id) {
+    const profile = await findProfileByColumn("id", id);
+    if (profile) {
+      return profile;
+    }
+  }
+
+  if (email) {
+    return findProfileByColumn("email", email);
+  }
+
+  return null;
+};
+
+export const syncProfileIdentity = async (
+  profile: SyncedProfile,
+  {
+    googleSub,
+    email
+  }: {
+    googleSub?: string | null;
+    email?: string | null;
+  }
+): Promise<SyncedProfile> => {
+  const normalizedGoogleSub = googleSub ? normalizeGoogleSub(googleSub) : null;
+  const normalizedEmail = email ? normalizeEmail(email) : null;
+  const updates: {
+    google_sub?: string;
+    email?: string;
+  } = {};
+
+  if (normalizedGoogleSub && profile.google_sub !== normalizedGoogleSub) {
+    updates.google_sub = normalizedGoogleSub;
+  }
+
+  if (normalizedEmail && normalizeEmail(profile.email) !== normalizedEmail) {
+    updates.email = normalizedEmail;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return profile;
+  }
+
+  const service = getServiceSupabaseClient();
+  const { data, error } = await service.from("profiles").update(updates).eq("id", profile.id).select(PROFILE_SELECT).maybeSingle();
+
+  if (error) {
+    console.error("failed to sync profile identity", error);
+    return profile;
+  }
+
+  if (!data) {
+    return profile;
+  }
+
+  return serializeProfile(data);
 };

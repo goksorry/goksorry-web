@@ -3,6 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
+  google_sub text,
   nickname text not null,
   nickname_confirmed_at timestamptz,
   nickname_changed_at timestamptz,
@@ -17,6 +18,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.withdrawn_accounts (
   email text primary key,
+  google_sub text,
   withdrawn_at timestamptz not null default now(),
   reason text,
   constraint withdrawn_accounts_email_lowercase check (email = lower(email)),
@@ -150,6 +152,8 @@ create index if not exists external_posts_symbol_fetched_at_idx on public.extern
 create index if not exists sentiment_results_analyzed_at_idx on public.sentiment_results(analyzed_at desc);
 create index if not exists symbol_metadata_status_updated_idx on public.symbol_metadata(status, updated_at desc);
 create unique index if not exists profiles_nickname_unique_ci_idx on public.profiles(lower(nickname));
+create unique index if not exists profiles_google_sub_unique_idx on public.profiles(google_sub) where google_sub is not null;
+create unique index if not exists withdrawn_accounts_google_sub_unique_idx on public.withdrawn_accounts(google_sub) where google_sub is not null;
 create index if not exists withdrawn_accounts_withdrawn_at_idx on public.withdrawn_accounts(withdrawn_at desc);
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
 create index if not exists community_posts_notice_pin_idx on public.community_posts(board_id, is_pinned_notice, created_at desc);

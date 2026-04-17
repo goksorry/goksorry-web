@@ -3,7 +3,15 @@ import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { getUserFromAuthorization } from "@/lib/auth-server";
 import { sanitizePlainText } from "@/lib/plain-text";
-import { buildStableProfileId, getNicknamePolicy, getProfileSetupState, isAdminEmail, normalizeEmail, withdrawAccount } from "@/lib/profile-sync";
+import {
+  buildLegacyProfileIdFromEmail,
+  buildStableProfileIdFromGoogleSub,
+  getNicknamePolicy,
+  getProfileSetupState,
+  isAdminEmail,
+  normalizeEmail,
+  withdrawAccount
+} from "@/lib/profile-sync";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export async function PATCH(request: Request) {
@@ -45,7 +53,7 @@ export async function PATCH(request: Request) {
   const service = getServiceSupabaseClient();
   const { data: profile, error: profileError } = await service
     .from("profiles")
-    .select("id,nickname,role,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at")
+    .select("id,email,google_sub,nickname,role,nickname_confirmed_at,nickname_changed_at,age_confirmed_at,terms_agreed_at,privacy_agreed_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -83,6 +91,7 @@ export async function PATCH(request: Request) {
   const updates: {
     id?: string;
     email?: string;
+    google_sub?: string;
     role?: "admin" | "user";
     nickname: string;
     nickname_confirmed_at: string;
@@ -91,6 +100,8 @@ export async function PATCH(request: Request) {
     terms_agreed_at?: string;
     privacy_agreed_at?: string;
   } = {
+    email: normalizeEmail(user.email),
+    google_sub: user.google_sub ?? undefined,
     nickname,
     nickname_confirmed_at: profile?.nickname_confirmed_at ?? nowIso,
     nickname_changed_at: changed || !profile?.nickname_changed_at ? nowIso : profile.nickname_changed_at
@@ -113,8 +124,9 @@ export async function PATCH(request: Request) {
   }
 
   if (!profile) {
-    updates.id = String(user.id ?? "").trim() || buildStableProfileId(normalizeEmail(user.email));
-    updates.email = normalizeEmail(user.email);
+    updates.id =
+      String(user.id ?? "").trim() ||
+      (user.google_sub ? buildStableProfileIdFromGoogleSub(user.google_sub) : buildLegacyProfileIdFromEmail(normalizeEmail(user.email)));
     updates.role = nextRole;
   }
 
@@ -162,6 +174,7 @@ export async function DELETE(request: Request) {
     await withdrawAccount({
       id: user.id,
       email: user.email,
+      googleSub: user.google_sub,
       reason: "user_requested"
     });
   } catch (error) {

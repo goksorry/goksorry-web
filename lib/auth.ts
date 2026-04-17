@@ -6,12 +6,15 @@ import type { JWT } from "next-auth/jwt";
 import { getServerEnv } from "@/lib/env";
 import {
   ACCOUNT_REJOIN_COOLDOWN_DAYS,
+  buildLegacyProfileIdFromEmail,
   buildNickname,
-  buildStableProfileId,
+  buildStableProfileIdFromGoogleSub,
   findProfileByIdentity,
   getProfileSetupState,
   getWithdrawalHoldUntil,
   isAdminEmail,
+  normalizeGoogleSub,
+  syncProfileIdentity,
   type SyncedProfile
 } from "@/lib/profile-sync";
 
@@ -21,6 +24,7 @@ const applyProfileToToken = (token: JWT, profile: SyncedProfile | null): JWT => 
   }
 
   token.email = profile.email;
+  token.googleSub = profile.google_sub;
   token.name = profile.nickname;
   token.appUserId = profile.id;
   token.role = profile.role;
@@ -37,21 +41,34 @@ const seedTokenIdentity = (
   user?: {
     email?: string | null;
     name?: string | null;
+    googleSub?: string | null;
   }
 ): JWT => {
   const email = String(user?.email ?? token.email ?? "").trim().toLowerCase();
-  if (!email) {
+  const googleSub = (() => {
+    const value = user?.googleSub ?? (typeof token.googleSub === "string" ? token.googleSub : null);
+    return typeof value === "string" && value.trim() ? normalizeGoogleSub(value) : null;
+  })();
+
+  if (!email && !googleSub) {
     return token;
   }
 
-  token.email = email;
+  const nicknameSeed = email || (googleSub ? `google-${googleSub}` : "user");
+  token.email = email || (typeof token.email === "string" ? token.email : null);
+  token.googleSub = googleSub;
   token.name = user?.name ?? (typeof token.name === "string" ? token.name : null);
   token.nickname =
     typeof token.nickname === "string" && token.nickname.trim()
       ? token.nickname
-      : buildNickname(email, user?.name ?? (typeof token.name === "string" ? token.name : null));
+      : buildNickname(nicknameSeed, user?.name ?? (typeof token.name === "string" ? token.name : null));
   token.role = token.role === "admin" || isAdminEmail(email) ? "admin" : "user";
-  token.appUserId = typeof token.appUserId === "string" && token.appUserId.trim() ? token.appUserId : buildStableProfileId(email);
+  token.appUserId =
+    typeof token.appUserId === "string" && token.appUserId.trim()
+      ? token.appUserId
+      : googleSub
+        ? buildStableProfileIdFromGoogleSub(googleSub)
+        : buildLegacyProfileIdFromEmail(email);
   token.profileCreatedAt =
     typeof token.profileCreatedAt === "string" && token.profileCreatedAt.trim()
       ? token.profileCreatedAt
@@ -83,14 +100,22 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       const email = String(user.email ?? "").trim().toLowerCase();
-      if (!email) {
+      const googleSub =
+        account?.provider === "google" && typeof account.providerAccountId === "string" && account.providerAccountId.trim()
+          ? normalizeGoogleSub(account.providerAccountId)
+          : null;
+
+      if (!email || !googleSub) {
         return false;
       }
 
       try {
-        const holdUntil = await getWithdrawalHoldUntil(email);
+        const holdUntil = await getWithdrawalHoldUntil({
+          email,
+          googleSub
+        });
         if (holdUntil) {
           return `/auth/login?error=withdrawn&days=${ACCOUNT_REJOIN_COOLDOWN_DAYS}&until=${encodeURIComponent(holdUntil)}`;
         }
@@ -101,15 +126,24 @@ export const authOptions: NextAuthOptions = {
 
       return true;
     },
-    async jwt({ token, user }) {
-      const seededToken = seedTokenIdentity(token, user);
+    async jwt({ token, user, account }) {
+      const seededToken = seedTokenIdentity(token, {
+        email: user?.email ?? null,
+        name: user?.name ?? null,
+        googleSub: account?.provider === "google" ? account.providerAccountId : null
+      });
 
-      const profileFromDb = await findProfileByIdentity({
+      let profileFromDb = await findProfileByIdentity({
+        googleSub: typeof seededToken.googleSub === "string" ? seededToken.googleSub : null,
         id: typeof seededToken.appUserId === "string" ? seededToken.appUserId : null,
         email: typeof seededToken.email === "string" ? seededToken.email : null
       });
 
       if (profileFromDb) {
+        profileFromDb = await syncProfileIdentity(profileFromDb, {
+          googleSub: typeof seededToken.googleSub === "string" ? seededToken.googleSub : null,
+          email: typeof seededToken.email === "string" ? seededToken.email : null
+        });
         return applyProfileToToken(seededToken, profileFromDb);
       }
 
@@ -121,6 +155,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       session.user.id = String(token.appUserId ?? "");
+      session.user.google_sub = typeof token.googleSub === "string" ? token.googleSub : null;
       session.user.role = token.role === "admin" ? "admin" : "user";
       session.user.nickname = typeof token.nickname === "string" ? token.nickname : null;
       session.user.created_at =
