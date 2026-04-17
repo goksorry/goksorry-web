@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { HomeFeedShell } from "@/components/home-feed-shell";
@@ -7,16 +8,35 @@ import { MARKET_ADJUSTMENT_COOKIE_NAME, resolveMarketAdjustmentEnabled } from "@
 import { getCachedRecentFeedRows } from "@/lib/feed-read";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
-import { buildPageMetadata } from "@/lib/seo";
+import { buildPageMetadata, SITE_NAME } from "@/lib/seo";
 
 type QueryValue = string | string[] | undefined;
 const FEED_WINDOW_HOURS = 6;
 
-export const metadata = buildPageMetadata({
+const homeMetadata = buildPageMetadata({
   title: "홈",
   description: "곡소리 지수, 시장 개요, 커뮤니티 체감 데이터를 한 화면에서 확인할 수 있는 곡소리닷컴 홈입니다.",
   path: "/"
 });
+
+export const metadata: Metadata = {
+  ...homeMetadata,
+  title: {
+    absolute: SITE_NAME
+  },
+  openGraph: homeMetadata.openGraph
+    ? {
+        ...homeMetadata.openGraph,
+        title: SITE_NAME
+      }
+    : undefined,
+  twitter: homeMetadata.twitter
+    ? {
+        ...homeMetadata.twitter,
+        title: SITE_NAME
+      }
+    : undefined
+};
 
 const pickFirst = (value: QueryValue): string => {
   if (Array.isArray(value)) {
