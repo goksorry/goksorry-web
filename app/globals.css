@@ -1243,6 +1243,25 @@ a:hover {
   margin: 0;
 }
 
+.sentiment-title-stack {
+  display: grid;
+  min-width: 0;
+}
+
+.sentiment-title-layer {
+  grid-area: 1 / 1;
+}
+
+.sentiment-title-layer-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sentiment-title-layer-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .sentiment-card-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1734,64 +1753,33 @@ button:disabled {
   pointer-events: none;
 }
 
-.clean-filter-overlay-loading {
-  background: rgba(15, 12, 18, 0.22);
-  backdrop-filter: blur(2px);
+.clean-filter-overlay-active {
   pointer-events: auto;
 }
 
-.clean-filter-overlay-burst {
+.clean-filter-overlay-circle {
   position: absolute;
-  left: var(--burst-x);
-  top: var(--burst-y);
-  width: var(--burst-size);
-  height: var(--burst-size);
+  left: var(--clean-filter-circle-x);
+  top: var(--clean-filter-circle-y);
+  width: var(--clean-filter-circle-size);
+  height: var(--clean-filter-circle-size);
   border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0.48);
-  background: radial-gradient(circle, var(--burst-color) 0%, transparent 70%);
-  pointer-events: none;
+  transform: translate(-50%, -50%) scale(var(--clean-filter-circle-min-scale));
   opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
 }
 
-.clean-filter-overlay-burst-pretty {
-  filter: blur(1px) saturate(1.1);
-  animation: clean-filter-random-burst 1s ease-out forwards;
+.clean-filter-overlay-pretty .clean-filter-overlay-circle {
+  background: rgba(255, 255, 255, 0.5);
+  animation: clean-filter-circle-expand var(--clean-filter-overlay-duration, 600ms) cubic-bezier(0.2, 0.7, 0.2, 1)
+    forwards;
 }
 
-.clean-filter-overlay-burst-grim {
-  filter: blur(1px) saturate(1.08);
-  animation: clean-filter-random-burst 1s ease-out forwards;
-}
-
-.clean-filter-overlay-loader {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(24, 18, 28, 0.82);
-  color: #f4ece6;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
-}
-
-.clean-filter-overlay-spinner {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.24);
-  border-top-color: rgba(255, 255, 255, 0.92);
-  animation: clean-filter-spin 0.7s linear infinite;
-}
-
-.clean-filter-overlay-text {
-  font-size: 0.84rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+.clean-filter-overlay-grim .clean-filter-overlay-circle {
+  background: rgba(0, 0, 0, 0.5);
+  animation: clean-filter-circle-contract var(--clean-filter-overlay-duration, 600ms) cubic-bezier(0.4, 0.02, 0.35, 1)
+    forwards;
 }
 
 .clean-filter-first-visit {
@@ -1838,31 +1826,39 @@ button:disabled {
   gap: 0.45rem;
 }
 
-@keyframes clean-filter-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes clean-filter-random-burst {
+@keyframes clean-filter-circle-expand {
   0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.48);
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(var(--clean-filter-circle-min-scale));
   }
-  18% {
-    opacity: 0.92;
-    transform: translate(-50%, -50%) scale(0.9);
+  72% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1.2);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes clean-filter-circle-contract {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  28% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(var(--clean-filter-circle-min-scale));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .clean-filter-overlay-burst,
-  .clean-filter-overlay-spinner {
-    animation: none;
+  .clean-filter-overlay-circle {
+    animation-duration: 1ms !important;
   }
 }
 

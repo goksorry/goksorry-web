@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { buildCleanFilterCookie } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
@@ -9,13 +9,17 @@ export function CleanFilterToggle() {
   const [showInfo, setShowInfo] = useState(false);
   const { cleanFilterEnabled, isApplying, applyCleanFilter } = useCleanFilter();
 
-  const onToggle = () => {
+  const onToggle = (event: MouseEvent<HTMLButtonElement>) => {
     if (isApplying) {
       return;
     }
 
     const nextValue = !cleanFilterEnabled;
-    applyCleanFilter(nextValue);
+    const rect = event.currentTarget.getBoundingClientRect();
+    applyCleanFilter(nextValue, {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    });
     document.cookie = buildCleanFilterCookie(nextValue);
   };
 

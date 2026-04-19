@@ -1,126 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
+import { CLEAN_FILTER_APPLY_DURATION_MS } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 
-type OverlayBurst = {
-  id: number;
-  x: string;
-  y: string;
-  size: string;
-  color: string;
-  mode: "pretty" | "grim";
-  expiresAt: number;
-};
-
-const FLASH_INTERVAL_MS = 300;
-const FLASH_DURATION_MS = 1000;
-
-const PRETTY_COLORS = [
-  "rgba(255, 210, 236, 0.42)",
-  "rgba(255, 238, 196, 0.34)",
-  "rgba(214, 188, 255, 0.32)",
-  "rgba(209, 244, 255, 0.28)"
-];
-
-const GRIM_COLORS = [
-  "rgba(82, 22, 22, 0.42)",
-  "rgba(34, 18, 46, 0.38)",
-  "rgba(16, 20, 34, 0.4)",
-  "rgba(101, 45, 18, 0.34)"
-];
-
-const randomBetween = (min: number, max: number): number => {
-  return Math.random() * (max - min) + min;
-};
-
-const pickRandom = <T,>(items: T[]): T => {
-  return items[Math.floor(Math.random() * items.length)] as T;
-};
-
 export function CleanFilterOverlay() {
-  const { isApplying, animationMode } = useCleanFilter();
-  const [bursts, setBursts] = useState<OverlayBurst[]>([]);
-  const burstIdRef = useRef(0);
+  const { isApplying, animationMode, animationOrigin } = useCleanFilter();
 
-  useEffect(() => {
-    if (!isApplying || !animationMode) {
-      return;
+  const circleStyle = useMemo(() => {
+    if (!isApplying || !animationMode || !animationOrigin || typeof window === "undefined") {
+      return null;
     }
 
-    const createBurst = () => {
-      const now = Date.now();
-      const palette = animationMode === "pretty" ? PRETTY_COLORS : GRIM_COLORS;
-      const burst: OverlayBurst = {
-        id: burstIdRef.current++,
-        x: `${randomBetween(8, 92).toFixed(2)}%`,
-        y: `${randomBetween(10, 90).toFixed(2)}%`,
-        size: `${Math.round(randomBetween(320, 720))}px`,
-        color: pickRandom(palette),
-        mode: animationMode,
-        expiresAt: now + FLASH_DURATION_MS
-      };
+    const farthestHorizontalDistance = Math.max(animationOrigin.x, window.innerWidth - animationOrigin.x);
+    const farthestVerticalDistance = Math.max(animationOrigin.y, window.innerHeight - animationOrigin.y);
+    const circleSize = Math.ceil(Math.hypot(farthestHorizontalDistance, farthestVerticalDistance) * 2);
+    const minScale = Math.max(12 / circleSize, 0.0001);
 
-      setBursts((current) => [...current.filter((item) => item.expiresAt > now), burst]);
-    };
+    return {
+      "--clean-filter-circle-x": `${animationOrigin.x}px`,
+      "--clean-filter-circle-y": `${animationOrigin.y}px`,
+      "--clean-filter-circle-size": `${circleSize}px`,
+      "--clean-filter-circle-min-scale": minScale.toFixed(5),
+      "--clean-filter-overlay-duration": `${CLEAN_FILTER_APPLY_DURATION_MS}ms`
+    } as CSSProperties;
+  }, [animationMode, animationOrigin, isApplying]);
 
-    createBurst();
-    const interval = window.setInterval(createBurst, FLASH_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [animationMode, isApplying]);
-
-  useEffect(() => {
-    if (bursts.length === 0) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      setBursts((current) => current.filter((item) => item.expiresAt > now));
-    }, 120);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [bursts.length]);
-
-  if (!isApplying && bursts.length === 0) {
+  if (!isApplying || !animationMode || !circleStyle) {
     return null;
   }
 
   return (
-    <div
-      className={`clean-filter-overlay${isApplying ? " clean-filter-overlay-loading" : ""}${
-        animationMode ? ` clean-filter-overlay-${animationMode}` : ""
-      }`}
-      aria-hidden={!isApplying}
-    >
-      {bursts.map((burst) => (
-        <span
-          key={burst.id}
-          className={`clean-filter-overlay-burst clean-filter-overlay-burst-${burst.mode}`}
-          style={
-            {
-              "--burst-x": burst.x,
-              "--burst-y": burst.y,
-              "--burst-size": burst.size,
-              "--burst-color": burst.color
-            } as CSSProperties
-          }
-        />
-      ))}
-
-      {isApplying ? (
-        <div className="clean-filter-overlay-loader" role="status" aria-live="polite">
-          <span className="clean-filter-overlay-spinner" aria-hidden="true" />
-          <span className="clean-filter-overlay-text">
-            {animationMode === "pretty" ? "예쁜말 적용 중..." : "날것으로 되돌리는 중..."}
-          </span>
-        </div>
-      ) : null}
+    <div className={`clean-filter-overlay clean-filter-overlay-active clean-filter-overlay-${animationMode}`} aria-hidden="true">
+      <span className="clean-filter-overlay-circle" style={circleStyle} />
     </div>
   );
 }

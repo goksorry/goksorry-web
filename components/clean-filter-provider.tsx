@@ -3,30 +3,45 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CLEAN_FILTER_APPLY_DURATION_MS,
-  CLEAN_FILTER_SWITCH_DELAY_MS,
   hasCleanFilterCookieInDocument,
   readCleanFilterFromDocument
 } from "@/lib/clean-filter";
 
 type CleanFilterAnimationMode = "pretty" | "grim" | null;
+type CleanFilterAnimationOrigin = {
+  x: number;
+  y: number;
+};
 
 type CleanFilterContextValue = {
   cleanFilterEnabled: boolean;
   isApplying: boolean;
   animationMode: CleanFilterAnimationMode;
+  animationOrigin: CleanFilterAnimationOrigin | null;
   showFirstVisitPrompt: boolean;
-  applyCleanFilter: (enabled: boolean) => void;
+  applyCleanFilter: (enabled: boolean, origin?: CleanFilterAnimationOrigin) => void;
   dismissFirstVisitPrompt: () => void;
 };
 
 const CleanFilterContext = createContext<CleanFilterContextValue | null>(null);
 
+const getFallbackAnimationOrigin = (): CleanFilterAnimationOrigin => {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 0 };
+  }
+
+  return {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2
+  };
+};
+
 export function CleanFilterProvider({ children }: { children: ReactNode }) {
   const [cleanFilterEnabled, setCleanFilterEnabled] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [animationMode, setAnimationMode] = useState<CleanFilterAnimationMode>(null);
+  const [animationOrigin, setAnimationOrigin] = useState<CleanFilterAnimationOrigin | null>(null);
   const [showFirstVisitPrompt, setShowFirstVisitPrompt] = useState(false);
-  const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -40,32 +55,25 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return () => {
-      if (switchTimeoutRef.current) {
-        clearTimeout(switchTimeoutRef.current);
-      }
       if (finishTimeoutRef.current) {
         clearTimeout(finishTimeoutRef.current);
       }
     };
   }, []);
 
-  const applyCleanFilter = (nextEnabled: boolean) => {
-    if (switchTimeoutRef.current) {
-      clearTimeout(switchTimeoutRef.current);
-    }
+  const applyCleanFilter = (nextEnabled: boolean, origin?: CleanFilterAnimationOrigin) => {
     if (finishTimeoutRef.current) {
       clearTimeout(finishTimeoutRef.current);
     }
 
+    setCleanFilterEnabled(nextEnabled);
     setIsApplying(true);
     setAnimationMode(nextEnabled ? "pretty" : "grim");
-    switchTimeoutRef.current = setTimeout(() => {
-      setCleanFilterEnabled(nextEnabled);
-      switchTimeoutRef.current = null;
-    }, CLEAN_FILTER_SWITCH_DELAY_MS);
+    setAnimationOrigin(origin ?? getFallbackAnimationOrigin());
     finishTimeoutRef.current = setTimeout(() => {
       setIsApplying(false);
       setAnimationMode(null);
+      setAnimationOrigin(null);
       finishTimeoutRef.current = null;
     }, CLEAN_FILTER_APPLY_DURATION_MS);
   };
@@ -80,6 +88,7 @@ export function CleanFilterProvider({ children }: { children: ReactNode }) {
         cleanFilterEnabled,
         isApplying,
         animationMode,
+        animationOrigin,
         showFirstVisitPrompt,
         applyCleanFilter,
         dismissFirstVisitPrompt

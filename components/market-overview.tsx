@@ -1,11 +1,10 @@
 "use client";
 
-import { CrossfadeContent } from "@/components/crossfade-content";
 import { startTransition, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
-import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
+import { resolveDisplayTitle } from "@/lib/clean-filter";
 import {
   MARKET_ADJUSTMENT_COOKIE_NAME,
   getMarketAdjustmentCookieValue,
@@ -426,43 +425,38 @@ export function MarketOverview({
               </button>
             </div>
 
-            <CrossfadeContent
-              swapKey={cleanFilterEnabled ? "pretty" : "grim"}
-              durationMs={CLEAN_FILTER_APPLY_DURATION_MS}
-            >
-              <div className="overview-modal-list">
-                {actionableActiveRows.map((row) => {
-                  const displayTitle = resolveDisplayTitle({
-                    title: row.title,
-                    cleanTitle: row.clean_title,
-                    cleanFilterEnabled
-                  });
+            <div className="overview-modal-list">
+              {actionableActiveRows.map((row) => {
+                const displayTitle = resolveDisplayTitle({
+                  title: row.title,
+                  cleanTitle: row.clean_title,
+                  cleanFilterEnabled
+                });
 
-                  return (
-                    <article key={row.post_key} className="overview-modal-item">
-                      <div className="overview-modal-meta">
-                        <span className="tag">{row.source}</span>
-                        <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
-                          {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
-                        </span>
-                        <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
-                        <span className="muted">{toLocalTime(row.analyzed_at)}</span>
-                      </div>
-                      <a
-                        className={displayTitle.usedFallbackFilter ? "fallback-clean-title" : ""}
-                        href={row.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {displayTitle.text}
-                      </a>
-                    </article>
-                  );
-                })}
+                return (
+                  <article key={row.post_key} className="overview-modal-item">
+                    <div className="overview-modal-meta">
+                      <span className="tag">{row.source}</span>
+                      <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
+                        {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
+                      </span>
+                      <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
+                      <span className="muted">{toLocalTime(row.analyzed_at)}</span>
+                    </div>
+                    <a
+                      className={displayTitle.usedFallbackFilter ? "fallback-clean-title" : ""}
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {displayTitle.text}
+                    </a>
+                  </article>
+                );
+              })}
 
-                {actionableActiveRows.length === 0 ? <p className="muted">최근 24시간 기준 공포/희망 감지 글이 없습니다.</p> : null}
-              </div>
-            </CrossfadeContent>
+              {actionableActiveRows.length === 0 ? <p className="muted">최근 24시간 기준 공포/희망 감지 글이 없습니다.</p> : null}
+            </div>
 
             <div className="overview-modal-actions">
               <Link

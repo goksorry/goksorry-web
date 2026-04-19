@@ -1,10 +1,9 @@
 "use client";
 
-import { CrossfadeContent } from "@/components/crossfade-content";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useFeedSelection } from "@/components/feed-selection-provider";
-import { CLEAN_FILTER_APPLY_DURATION_MS, resolveDisplayTitle } from "@/lib/clean-filter";
+import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { useEffect, useState } from "react";
@@ -91,7 +90,6 @@ export function SentimentFeed({
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
-  const cleanFilterModeKey = cleanFilterEnabled ? "pretty" : "grim";
   const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
   const [hoverRevealRowKey, setHoverRevealRowKey] = useState<string | null>(null);
   const [mobileRevealRowKeys, setMobileRevealRowKeys] = useState<string[]>([]);
@@ -146,11 +144,17 @@ export function SentimentFeed({
         ? hoverRevealRowKey === row.post_key
         : mobileRevealRowKeys.includes(row.post_key)
       : false;
-    const displayTitle = resolveDisplayTitle({
+    const originalTitle = resolveDisplayTitle({
       title: row.title,
       cleanTitle: row.clean_title,
-      cleanFilterEnabled: cleanFilterEnabled && !isRowRevealActive
+      cleanFilterEnabled: false
     });
+    const prettyTitle = resolveDisplayTitle({
+      title: row.title,
+      cleanTitle: row.clean_title,
+      cleanFilterEnabled: true
+    });
+    const showPrettyTitle = cleanFilterEnabled && !isRowRevealActive;
 
     return (
       <article key={row.post_key} className={`sentiment-card sentiment-card-${tone}`}>
@@ -164,14 +168,32 @@ export function SentimentFeed({
           </time>
         </div>
         <div className="sentiment-card-body">
-          <a
-            className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
-            href={row.url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {displayTitle.text}
-          </a>
+          <div className="sentiment-title-stack">
+            <a
+              className={`sentiment-title sentiment-title-layer${
+                showPrettyTitle ? " sentiment-title-layer-hidden" : " sentiment-title-layer-visible"
+              }`}
+              href={row.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-hidden={showPrettyTitle}
+              tabIndex={showPrettyTitle ? -1 : undefined}
+            >
+              {originalTitle.text}
+            </a>
+            <a
+              className={`sentiment-title sentiment-title-layer${
+                prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""
+              }${showPrettyTitle ? " sentiment-title-layer-visible" : " sentiment-title-layer-hidden"}`}
+              href={row.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-hidden={!showPrettyTitle}
+              tabIndex={!showPrettyTitle ? -1 : undefined}
+            >
+              {prettyTitle.text}
+            </a>
+          </div>
           {cleanFilterEnabled ? (
             <button
               type="button"
@@ -250,10 +272,7 @@ export function SentimentFeed({
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
-
-            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
-              <div className="sentiment-list">{fearRows.map((row) => renderRow(row, "fear"))}</div>
-            </CrossfadeContent>
+            <div className="sentiment-list">{fearRows.map((row) => renderRow(row, "fear"))}</div>
           </section>
 
           <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
@@ -279,10 +298,7 @@ export function SentimentFeed({
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
-
-            <CrossfadeContent swapKey={cleanFilterModeKey} durationMs={CLEAN_FILTER_APPLY_DURATION_MS}>
-              <div className="sentiment-list">{hopeRows.map((row) => renderRow(row, "hope"))}</div>
-            </CrossfadeContent>
+            <div className="sentiment-list">{hopeRows.map((row) => renderRow(row, "hope"))}</div>
           </section>
         </div>
         <MobileSentimentSwipeHint />
