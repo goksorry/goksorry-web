@@ -1113,10 +1113,16 @@ a:hover {
     0 0 3rem color-mix(in srgb, var(--fear-bg) 96%, transparent),
     inset 1px 0 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
     inset -1px 0 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
+    inset 0 1px 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
+    inset 0 -1px 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
     inset 0.35rem 0 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
     inset -0.35rem 0 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
+    inset 0 0.35rem 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
+    inset 0 -0.35rem 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
     inset 0.95rem 0 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent),
-    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent);
+    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent),
+    inset 0 0.95rem 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent),
+    inset 0 -0.95rem 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent);
 }
 
 .sentiment-lane-clean-glow.sentiment-lane-hope {
@@ -1126,10 +1132,16 @@ a:hover {
     0 0 3rem color-mix(in srgb, var(--hope-bg) 96%, transparent),
     inset 1px 0 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
     inset -1px 0 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
+    inset 0 1px 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
+    inset 0 -1px 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
     inset 0.35rem 0 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
     inset -0.35rem 0 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
+    inset 0 0.35rem 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
+    inset 0 -0.35rem 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
     inset 0.95rem 0 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent),
-    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent);
+    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent),
+    inset 0 0.95rem 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent),
+    inset 0 -0.95rem 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent);
 }
 
 .sentiment-lane-head {
