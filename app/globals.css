@@ -1108,16 +1108,28 @@ a:hover {
 
 .sentiment-lane-clean-glow.sentiment-lane-fear {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--fear-line) 64%, transparent),
-    0 0 1.05rem color-mix(in srgb, var(--fear-line) 50%, transparent),
-    0 0 2rem color-mix(in srgb, var(--fear-bg) 88%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--fear-line) 74%, transparent),
+    0 0 1.5rem color-mix(in srgb, var(--fear-line) 64%, transparent),
+    0 0 3rem color-mix(in srgb, var(--fear-bg) 96%, transparent),
+    inset 1px 0 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
+    inset -1px 0 0 color-mix(in srgb, var(--fear-line) 72%, white 28%),
+    inset 0.35rem 0 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
+    inset -0.35rem 0 0.95rem color-mix(in srgb, var(--fear-line) 66%, transparent),
+    inset 0.95rem 0 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent),
+    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--fear-bg) 98%, transparent);
 }
 
 .sentiment-lane-clean-glow.sentiment-lane-hope {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--hope-line) 64%, transparent),
-    0 0 1.05rem color-mix(in srgb, var(--hope-line) 50%, transparent),
-    0 0 2rem color-mix(in srgb, var(--hope-bg) 88%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--hope-line) 74%, transparent),
+    0 0 1.5rem color-mix(in srgb, var(--hope-line) 64%, transparent),
+    0 0 3rem color-mix(in srgb, var(--hope-bg) 96%, transparent),
+    inset 1px 0 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
+    inset -1px 0 0 color-mix(in srgb, var(--hope-line) 72%, white 28%),
+    inset 0.35rem 0 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
+    inset -0.35rem 0 0.95rem color-mix(in srgb, var(--hope-line) 66%, transparent),
+    inset 0.95rem 0 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent),
+    inset -0.95rem 0 1.7rem color-mix(in srgb, var(--hope-bg) 98%, transparent);
 }
 
 .sentiment-lane-head {
