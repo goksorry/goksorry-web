@@ -163,9 +163,57 @@ export function SentimentFeed({
             <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
             {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
           </div>
-          <time className="sentiment-time" dateTime={row.analyzed_at}>
-            {toLocalTime(row.analyzed_at, timezone)}
-          </time>
+          <div className="sentiment-card-head-meta">
+            {cleanFilterEnabled ? (
+              <button
+                type="button"
+                className={`sentiment-clean-toggle${!supportsHoverReveal && isRowRevealActive ? " sentiment-clean-toggle-active" : ""}`}
+                aria-pressed={!supportsHoverReveal ? isRowRevealActive : undefined}
+                title={supportsHoverReveal ? "마우스를 올리면 원문 보기" : isRowRevealActive ? "이 글만 예쁜말 적용" : "이 글만 원문 보기"}
+                onMouseEnter={
+                  supportsHoverReveal
+                    ? () => {
+                        setHoverRevealRowKey(row.post_key);
+                      }
+                    : undefined
+                }
+                onMouseLeave={
+                  supportsHoverReveal
+                    ? () => {
+                        setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
+                      }
+                    : undefined
+                }
+                onFocus={
+                  supportsHoverReveal
+                    ? () => {
+                        setHoverRevealRowKey(row.post_key);
+                      }
+                    : undefined
+                }
+                onBlur={
+                  supportsHoverReveal
+                    ? () => {
+                        setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
+                      }
+                    : undefined
+                }
+                onClick={
+                  supportsHoverReveal
+                    ? undefined
+                    : () => {
+                        toggleMobileRevealRow(row.post_key);
+                      }
+                }
+              >
+                <span>필터</span>
+                <span>{supportsHoverReveal ? "해제" : isRowRevealActive ? "적용" : "해제"}</span>
+              </button>
+            ) : null}
+            <time className="sentiment-time" dateTime={row.analyzed_at}>
+              {toLocalTime(row.analyzed_at, timezone)}
+            </time>
+          </div>
         </div>
         <div className="sentiment-card-body">
           <div className="sentiment-title-stack">
@@ -194,52 +242,6 @@ export function SentimentFeed({
               {prettyTitle.text}
             </a>
           </div>
-          {cleanFilterEnabled ? (
-            <button
-              type="button"
-              className={`sentiment-clean-toggle${!supportsHoverReveal && isRowRevealActive ? " sentiment-clean-toggle-active" : ""}`}
-              aria-pressed={!supportsHoverReveal ? isRowRevealActive : undefined}
-              title={supportsHoverReveal ? "마우스를 올리면 원문 보기" : isRowRevealActive ? "이 글만 예쁜말 적용" : "이 글만 원문 보기"}
-              onMouseEnter={
-                supportsHoverReveal
-                  ? () => {
-                      setHoverRevealRowKey(row.post_key);
-                    }
-                  : undefined
-              }
-              onMouseLeave={
-                supportsHoverReveal
-                  ? () => {
-                      setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
-                    }
-                  : undefined
-              }
-              onFocus={
-                supportsHoverReveal
-                  ? () => {
-                      setHoverRevealRowKey(row.post_key);
-                    }
-                  : undefined
-              }
-              onBlur={
-                supportsHoverReveal
-                  ? () => {
-                      setHoverRevealRowKey((current) => (current === row.post_key ? null : current));
-                    }
-                  : undefined
-              }
-              onClick={
-                supportsHoverReveal
-                  ? undefined
-                  : () => {
-                      toggleMobileRevealRow(row.post_key);
-                    }
-              }
-            >
-              <span>필터</span>
-              <span>{supportsHoverReveal ? "해제" : isRowRevealActive ? "적용" : "해제"}</span>
-            </button>
-          ) : null}
         </div>
       </article>
     );

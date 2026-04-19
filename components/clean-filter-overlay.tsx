@@ -15,7 +15,7 @@ export function CleanFilterOverlay() {
     const farthestHorizontalDistance = Math.max(animationOrigin.x, window.innerWidth - animationOrigin.x);
     const farthestVerticalDistance = Math.max(animationOrigin.y, window.innerHeight - animationOrigin.y);
     const circleSize = Math.ceil(Math.hypot(farthestHorizontalDistance, farthestVerticalDistance) * 2);
-    const minScale = Math.max(12 / circleSize, 0.0001);
+    const minScale = Math.max(6 / circleSize, 0.0001);
 
     return {
       "--clean-filter-circle-x": `${animationOrigin.x}px`,

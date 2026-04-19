@@ -1229,6 +1229,13 @@ a:hover {
   min-width: 0;
 }
 
+.sentiment-card-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex-shrink: 0;
+}
+
 .sentiment-card-tag {
   padding: 0.14rem 0.36rem;
   font-size: 0.72rem;
@@ -1263,10 +1270,7 @@ a:hover {
 }
 
 .sentiment-card-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 0.55rem;
+  min-width: 0;
 }
 
 .sentiment-clean-toggle {
@@ -1280,25 +1284,17 @@ a:hover {
   line-height: 1.2;
   cursor: pointer;
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.02rem;
-  min-width: 2.1rem;
+  gap: 0.18rem;
+  min-width: auto;
   text-align: center;
+  white-space: nowrap;
 }
 
 .sentiment-clean-toggle span {
   display: block;
-}
-
-@media (min-width: 761px) {
-  .sentiment-clean-toggle {
-    flex-direction: row;
-    gap: 0.18rem;
-    min-width: auto;
-    white-space: nowrap;
-  }
 }
 
 .sentiment-clean-toggle:hover {
@@ -1831,10 +1827,6 @@ button:disabled {
     opacity: 0.5;
     transform: translate(-50%, -50%) scale(var(--clean-filter-circle-min-scale));
   }
-  72% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(1);
-  }
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1);
@@ -1844,10 +1836,6 @@ button:disabled {
 @keyframes clean-filter-circle-contract {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  28% {
-    opacity: 0.5;
     transform: translate(-50%, -50%) scale(1);
   }
   100% {
