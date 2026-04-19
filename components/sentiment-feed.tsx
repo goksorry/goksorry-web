@@ -6,10 +6,9 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 const SENTIMENT_TITLE_FADE_DURATION_MS = 160;
-type SentimentTitleMode = "original" | "pretty";
 
 const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_stock") {
@@ -93,52 +92,8 @@ function SentimentTitleStack({
     cleanTitle: row.clean_title,
     cleanFilterEnabled: true
   });
-  const targetMode: SentimentTitleMode = showPrettyTitle ? "pretty" : "original";
-  const [renderMode, setRenderMode] = useState<SentimentTitleMode>(targetMode);
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    if (renderMode === targetMode) {
-      setIsFadingOut(false);
-      return;
-    }
-
-    setIsFadingOut(true);
-    timeoutRef.current = setTimeout(() => {
-      setRenderMode(targetMode);
-      setIsFadingOut(false);
-      timeoutRef.current = null;
-    }, SENTIMENT_TITLE_FADE_DURATION_MS);
-  }, [renderMode, targetMode]);
-
-  const originalLayerState =
-    renderMode === "original"
-      ? isFadingOut
-        ? " sentiment-title-layer-fading-out"
-        : " sentiment-title-layer-active"
-      : " sentiment-title-layer-idle";
-  const prettyLayerState =
-    renderMode === "pretty"
-      ? isFadingOut
-        ? " sentiment-title-layer-fading-out"
-        : " sentiment-title-layer-active"
-      : " sentiment-title-layer-idle";
-  const originalInteractive = renderMode === "original" && !isFadingOut;
-  const prettyInteractive = renderMode === "pretty" && !isFadingOut;
+  const originalInteractive = !showPrettyTitle;
+  const prettyInteractive = showPrettyTitle;
 
   return (
     <div
@@ -150,7 +105,9 @@ function SentimentTitleStack({
       }
     >
       <a
-        className={`sentiment-title sentiment-title-layer${originalLayerState}`}
+        className={`sentiment-title sentiment-title-layer${
+          showPrettyTitle ? " sentiment-title-layer-hidden" : " sentiment-title-layer-visible"
+        }`}
         href={row.url}
         target="_blank"
         rel="noreferrer"
@@ -160,7 +117,9 @@ function SentimentTitleStack({
         {originalTitle.text}
       </a>
       <a
-        className={`sentiment-title sentiment-title-layer${prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}${prettyLayerState}`}
+        className={`sentiment-title sentiment-title-layer${
+          prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""
+        }${showPrettyTitle ? " sentiment-title-layer-visible" : " sentiment-title-layer-hidden"}`}
         href={row.url}
         target="_blank"
         rel="noreferrer"

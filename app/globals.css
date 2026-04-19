@@ -1260,13 +1260,12 @@ a:hover {
   transition: opacity var(--sentiment-title-fade-duration, 160ms) ease;
 }
 
-.sentiment-title-layer-active {
+.sentiment-title-layer-visible {
   opacity: 1;
   pointer-events: auto;
 }
 
-.sentiment-title-layer-idle,
-.sentiment-title-layer-fading-out {
+.sentiment-title-layer-hidden {
   opacity: 0;
   pointer-events: none;
 }
