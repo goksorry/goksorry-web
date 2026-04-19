@@ -6,7 +6,10 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+
+const SENTIMENT_TITLE_FADE_DURATION_MS = 160;
+type SentimentTitleMode = "original" | "pretty";
 
 const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_stock") {
@@ -72,6 +75,103 @@ const buildSymbolBadges = (rows: FeedRow[]) => {
       count
     }));
 };
+
+function SentimentTitleStack({
+  row,
+  showPrettyTitle
+}: {
+  row: FeedRow;
+  showPrettyTitle: boolean;
+}) {
+  const originalTitle = resolveDisplayTitle({
+    title: row.title,
+    cleanTitle: row.clean_title,
+    cleanFilterEnabled: false
+  });
+  const prettyTitle = resolveDisplayTitle({
+    title: row.title,
+    cleanTitle: row.clean_title,
+    cleanFilterEnabled: true
+  });
+  const targetMode: SentimentTitleMode = showPrettyTitle ? "pretty" : "original";
+  const [renderMode, setRenderMode] = useState<SentimentTitleMode>(targetMode);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (renderMode === targetMode) {
+      setIsFadingOut(false);
+      return;
+    }
+
+    setIsFadingOut(true);
+    timeoutRef.current = setTimeout(() => {
+      setRenderMode(targetMode);
+      setIsFadingOut(false);
+      timeoutRef.current = null;
+    }, SENTIMENT_TITLE_FADE_DURATION_MS);
+  }, [renderMode, targetMode]);
+
+  const originalLayerState =
+    renderMode === "original"
+      ? isFadingOut
+        ? " sentiment-title-layer-fading-out"
+        : " sentiment-title-layer-active"
+      : " sentiment-title-layer-idle";
+  const prettyLayerState =
+    renderMode === "pretty"
+      ? isFadingOut
+        ? " sentiment-title-layer-fading-out"
+        : " sentiment-title-layer-active"
+      : " sentiment-title-layer-idle";
+  const originalInteractive = renderMode === "original" && !isFadingOut;
+  const prettyInteractive = renderMode === "pretty" && !isFadingOut;
+
+  return (
+    <div
+      className="sentiment-title-stack"
+      style={
+        {
+          "--sentiment-title-fade-duration": `${SENTIMENT_TITLE_FADE_DURATION_MS}ms`
+        } as CSSProperties
+      }
+    >
+      <a
+        className={`sentiment-title sentiment-title-layer${originalLayerState}`}
+        href={row.url}
+        target="_blank"
+        rel="noreferrer"
+        aria-hidden={!originalInteractive}
+        tabIndex={originalInteractive ? undefined : -1}
+      >
+        {originalTitle.text}
+      </a>
+      <a
+        className={`sentiment-title sentiment-title-layer${prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}${prettyLayerState}`}
+        href={row.url}
+        target="_blank"
+        rel="noreferrer"
+        aria-hidden={!prettyInteractive}
+        tabIndex={prettyInteractive ? undefined : -1}
+      >
+        {prettyTitle.text}
+      </a>
+    </div>
+  );
+}
 
 export function SentimentFeed({
   rows,
@@ -144,16 +244,6 @@ export function SentimentFeed({
         ? hoverRevealRowKey === row.post_key
         : mobileRevealRowKeys.includes(row.post_key)
       : false;
-    const originalTitle = resolveDisplayTitle({
-      title: row.title,
-      cleanTitle: row.clean_title,
-      cleanFilterEnabled: false
-    });
-    const prettyTitle = resolveDisplayTitle({
-      title: row.title,
-      cleanTitle: row.clean_title,
-      cleanFilterEnabled: true
-    });
     const showPrettyTitle = cleanFilterEnabled && !isRowRevealActive;
 
     return (
@@ -216,32 +306,7 @@ export function SentimentFeed({
           </div>
         </div>
         <div className="sentiment-card-body">
-          <div className="sentiment-title-stack">
-            <a
-              className={`sentiment-title sentiment-title-layer${
-                showPrettyTitle ? " sentiment-title-layer-hidden" : " sentiment-title-layer-visible"
-              }`}
-              href={row.url}
-              target="_blank"
-              rel="noreferrer"
-              aria-hidden={showPrettyTitle}
-              tabIndex={showPrettyTitle ? -1 : undefined}
-            >
-              {originalTitle.text}
-            </a>
-            <a
-              className={`sentiment-title sentiment-title-layer${
-                prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""
-              }${showPrettyTitle ? " sentiment-title-layer-visible" : " sentiment-title-layer-hidden"}`}
-              href={row.url}
-              target="_blank"
-              rel="noreferrer"
-              aria-hidden={!showPrettyTitle}
-              tabIndex={!showPrettyTitle ? -1 : undefined}
-            >
-              {prettyTitle.text}
-            </a>
-          </div>
+          <SentimentTitleStack row={row} showPrettyTitle={showPrettyTitle} />
         </div>
       </article>
     );
