@@ -275,7 +275,12 @@ export function SentimentFeed({
     <>
       <section className="panel feed-lanes-panel">
         <div className="sentiment-columns">
-          <section id="fear-lane" className="sentiment-lane sentiment-lane-fear scroll-anchor">
+          <section
+            id="fear-lane"
+            className={`sentiment-lane sentiment-lane-fear scroll-anchor${
+              cleanFilterEnabled ? " sentiment-lane-clean-glow" : ""
+            }`}
+          >
             <div className="sentiment-lane-head">
               <h2>
                 공포
@@ -301,7 +306,12 @@ export function SentimentFeed({
             <div className="sentiment-list">{fearRows.map((row) => renderRow(row, "fear"))}</div>
           </section>
 
-          <section id="hope-lane" className="sentiment-lane sentiment-lane-hope scroll-anchor">
+          <section
+            id="hope-lane"
+            className={`sentiment-lane sentiment-lane-hope scroll-anchor${
+              cleanFilterEnabled ? " sentiment-lane-clean-glow" : ""
+            }`}
+          >
             <div className="sentiment-lane-head">
               <h2>
                 희망

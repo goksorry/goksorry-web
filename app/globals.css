@@ -1093,6 +1093,7 @@ a:hover {
   min-width: 0;
   position: relative;
   overflow: hidden;
+  transition: border-color 180ms ease, box-shadow 220ms ease;
 }
 
 .sentiment-lane-fear {
@@ -1103,6 +1104,20 @@ a:hover {
 .sentiment-lane-hope {
   background: var(--hope-bg);
   border-color: var(--hope-line);
+}
+
+.sentiment-lane-clean-glow.sentiment-lane-fear {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fear-line) 64%, transparent),
+    0 0 1.05rem color-mix(in srgb, var(--fear-line) 50%, transparent),
+    0 0 2rem color-mix(in srgb, var(--fear-bg) 88%, transparent);
+}
+
+.sentiment-lane-clean-glow.sentiment-lane-hope {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--hope-line) 64%, transparent),
+    0 0 1.05rem color-mix(in srgb, var(--hope-line) 50%, transparent),
+    0 0 2rem color-mix(in srgb, var(--hope-bg) 88%, transparent);
 }
 
 .sentiment-lane-head {
