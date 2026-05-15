@@ -8,9 +8,10 @@ import {
   createGuestChatCookie,
   readGuestChatCookie
 } from "@/lib/chat-token";
+import { normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
 import { CHAT_DEFAULT_FILTER, type ChatSessionViewer } from "@/lib/chat-types";
 import { getChatServerEnv } from "@/lib/env";
-import { SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
+import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 
 type SessionViewer = ChatSessionViewer & {
   id: string;
@@ -27,6 +28,19 @@ const safeDecodeCookieValue = (value: string): string => {
   } catch {
     return "";
   }
+};
+
+const readCookieValue = (cookieHeader: string, name: string): string => {
+  const cookieMatch = cookieHeader.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
+  return cookieMatch?.[1] ? safeDecodeCookieValue(cookieMatch[1]) : "";
+};
+
+const readRequestBody = async (request: Request): Promise<{ guest_nickname?: unknown }> => {
+  if (!request.headers.get("content-type")?.includes("application/json")) {
+    return {};
+  }
+
+  return (await request.json().catch(() => ({}))) as { guest_nickname?: unknown };
 };
 
 export async function POST(request: Request) {
@@ -47,6 +61,7 @@ export async function POST(request: Request) {
   const profileSetupRequired = Boolean(session?.user?.profile_setup_required);
   let viewer: SessionViewer;
   let guestCookie: { value: string; expiresAt: string } | null = null;
+  let guestNicknameCookieValue: string | null = null;
 
   if (memberId) {
     if (profileSetupRequired) {
@@ -66,17 +81,28 @@ export async function POST(request: Request) {
     };
   } else {
     const cookieHeader = request.headers.get("cookie") ?? "";
-    const cookieMatch = cookieHeader.match(new RegExp(`(?:^|; )${SERVER_COOKIE_DEFINITIONS.guestChat.key}=([^;]+)`));
-    const cookieValue = cookieMatch?.[1] ? safeDecodeCookieValue(cookieMatch[1]) : "";
+    const body = await readRequestBody(request);
+    const bodyGuestNickname = normalizeGuestChatNickname(body.guest_nickname);
+    if (typeof body.guest_nickname === "string" && body.guest_nickname.trim() && !bodyGuestNickname) {
+      return jsonMessage(requestId, 400, "비회원 닉네임은 20자 이하의 평문만 사용할 수 있습니다.");
+    }
+
+    const cookieGuestNickname = normalizeGuestChatNickname(
+      readCookieValue(cookieHeader, CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.key)
+    );
+    const requestedDisplayName = bodyGuestNickname ?? cookieGuestNickname;
+    guestNicknameCookieValue = requestedDisplayName;
+
+    const cookieValue = readCookieValue(cookieHeader, SERVER_COOKIE_DEFINITIONS.guestChat.key);
     const guestIdentity = await readGuestChatCookie(cookieValue, chatEnv.CHAT_TOKEN_SECRET);
 
     if (guestIdentity) {
       viewer = {
         id: guestIdentity.guestId,
         kind: "guest",
-        display_name: guestIdentity.displayName,
+        display_name: requestedDisplayName ?? guestIdentity.displayName,
         can_filter_guests: false,
-        can_send: false,
+        can_send: true,
         default_filter: CHAT_DEFAULT_FILTER
       };
     } else {
@@ -89,9 +115,9 @@ export async function POST(request: Request) {
       viewer = {
         id: nextGuestCookie.guestId,
         kind: "guest",
-        display_name: buildGuestChatDisplayName(nextGuestCookie.guestId),
+        display_name: requestedDisplayName ?? buildGuestChatDisplayName(nextGuestCookie.guestId),
         can_filter_guests: false,
-        can_send: false,
+        can_send: true,
         default_filter: CHAT_DEFAULT_FILTER
       };
     }
@@ -102,7 +128,8 @@ export async function POST(request: Request) {
       subject: viewer.id,
       kind: viewer.kind,
       displayName: viewer.display_name,
-      canFilterGuests: viewer.can_filter_guests
+      canFilterGuests: viewer.can_filter_guests,
+      canSend: viewer.can_send
     },
     chatEnv.CHAT_TOKEN_SECRET
   );
@@ -128,6 +155,18 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       path: SERVER_COOKIE_DEFINITIONS.guestChat.path,
       expires: new Date(guestCookie.expiresAt)
+    });
+  }
+
+  if (guestNicknameCookieValue) {
+    response.cookies.set({
+      name: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.key,
+      value: guestNicknameCookieValue,
+      httpOnly: false,
+      sameSite: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.sameSite.toLowerCase() as "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.path,
+      maxAge: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.maxAgeSeconds
     });
   }
 

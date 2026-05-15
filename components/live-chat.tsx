@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   CHAT_MESSAGE_MAX_LENGTH,
+  CHAT_GUEST_NICKNAME_MAX_LENGTH,
   CHAT_RECENT_LIMIT,
   type ChatClientEvent,
   type ChatMessage,
@@ -19,6 +20,13 @@ import {
   type ChatSessionResponse,
   type ChatSessionViewer
 } from "@/lib/chat-types";
+import { cleanGuestChatNicknameInput, normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
+import {
+  readClientCookieValue,
+  removeClientCookie,
+  writeClientCookieValue
+} from "@/lib/browser-persistence";
+import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
 
 type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "error";
 
@@ -86,6 +94,8 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connectionCount, setConnectionCount] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
+  const [guestNickname, setGuestNickname] = useState("");
+  const [guestNicknameReady, setGuestNicknameReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(enabled ? null : "채팅 설정이 아직 배포되지 않았습니다.");
   const [state, setState] = useState<ConnectionState>(enabled ? "connecting" : "idle");
   const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
@@ -95,6 +105,16 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
   const shouldReconnectRef = useRef(enabled);
   const logRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
+  const guestNicknameRef = useRef("");
+
+  const applyViewer = (nextViewer: ChatSessionViewer) => {
+    setViewer(nextViewer);
+    if (nextViewer.kind !== "guest") {
+      return;
+    }
+
+    setGuestNickname((current) => (current.trim() ? current : nextViewer.display_name));
+  };
 
   useEffect(() => {
     if (cooldownRemainingMs <= 0) {
@@ -112,7 +132,22 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
   }, [cooldownRemainingMs]);
 
   useEffect(() => {
-    if (!enabled) {
+    const storedNickname = normalizeGuestChatNickname(
+      readClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname)
+    );
+    if (storedNickname) {
+      setGuestNickname(storedNickname);
+      guestNicknameRef.current = storedNickname;
+    }
+    setGuestNicknameReady(true);
+  }, []);
+
+  useEffect(() => {
+    guestNicknameRef.current = guestNickname;
+  }, [guestNickname]);
+
+  useEffect(() => {
+    if (!enabled || !guestNicknameReady) {
       return;
     }
 
@@ -150,7 +185,10 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
           method: "POST",
           headers: {
             "Content-Type": "application/json"
-          }
+          },
+          body: JSON.stringify({
+            guest_nickname: normalizeGuestChatNickname(guestNicknameRef.current) ?? undefined
+          })
         });
 
         const payload = (await response.json().catch(() => ({}))) as Partial<ChatSessionResponse> & {
@@ -166,7 +204,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
         }
 
         setNotice(null);
-        setViewer(payload.viewer);
+        applyViewer(payload.viewer);
 
         const socket = new WebSocket(payload.ws_url);
         socketRef.current = socket;
@@ -185,7 +223,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
           }
 
           if (serverEvent.type === "session.ready") {
-            setViewer(serverEvent.viewer);
+            applyViewer(serverEvent.viewer);
             setConnectionCount(serverEvent.connections);
             startTransition(() => {
               setMessages((current) => mergeMessages(current, serverEvent.recent));
@@ -251,7 +289,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
       socketRef.current = null;
       socket?.close();
     };
-  }, [enabled]);
+  }, [enabled, guestNicknameReady]);
 
   useEffect(() => {
     if (!stickToBottomRef.current) {
@@ -266,7 +304,10 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     log.scrollTop = log.scrollHeight;
   }, [messages]);
 
-  const canSend = state === "open" && Boolean(viewer?.can_send);
+  const normalizedGuestNickname = viewer?.kind === "guest" ? normalizeGuestChatNickname(guestNickname) : null;
+  const guestNicknameInvalid = viewer?.kind === "guest" && guestNickname.trim().length > 0 && !normalizedGuestNickname;
+  const canSend =
+    state === "open" && Boolean(viewer?.can_send) && (viewer?.kind !== "guest" || Boolean(normalizedGuestNickname));
   const submitDisabled = !canSend || draft.trim().length === 0 || cooldownRemainingMs > 0;
   const cooldownProgressStyle = useMemo(() => {
     const progress = ((SEND_COOLDOWN_MS - cooldownRemainingMs) / SEND_COOLDOWN_MS) * 360;
@@ -279,7 +320,12 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     event.preventDefault();
 
     if (!viewer?.can_send) {
-      setNotice("로그인 사용자만 채팅에 참여할 수 있습니다.");
+      setNotice("채팅에 참여할 수 없습니다.");
+      return;
+    }
+
+    if (viewer.kind === "guest" && !normalizedGuestNickname) {
+      setNotice("비회원 닉네임을 입력하세요.");
       return;
     }
 
@@ -301,12 +347,32 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     const nextEvent: ChatClientEvent = {
       type: "chat.send",
       client_id: crypto.randomUUID(),
-      text: normalizedDraft
+      text: normalizedDraft,
+      ...(viewer.kind === "guest" && normalizedGuestNickname ? { guest_nickname: normalizedGuestNickname } : {})
     };
+
+    if (viewer.kind === "guest" && normalizedGuestNickname) {
+      writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname, normalizedGuestNickname);
+    }
 
     socket.send(JSON.stringify(nextEvent));
     setDraft("");
     setCooldownRemainingMs(SEND_COOLDOWN_MS);
+  };
+
+  const handleGuestNicknameChange = (value: string) => {
+    const nextValue = cleanGuestChatNicknameInput(value);
+    setGuestNickname(nextValue);
+
+    const normalized = normalizeGuestChatNickname(nextValue);
+    if (normalized) {
+      writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname, normalized);
+      return;
+    }
+
+    if (!nextValue.trim()) {
+      removeClientCookie(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname);
+    }
   };
 
   return (
@@ -338,7 +404,14 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
             className={`chat-message ${message.author_kind === "member" ? "chat-message-member" : "chat-message-guest"}`}
           >
             <div className="chat-message-meta">
-              <strong>{message.author_name}</strong>
+              <strong>
+                {message.author_name}
+                {message.author_kind === "guest" ? (
+                  <span className="chat-guest-marker" aria-label="비회원">
+                    *
+                  </span>
+                ) : null}
+              </strong>
               <span className="muted">{formatTime(message.sent_at)}</span>
             </div>
             <p>{message.text}</p>
@@ -348,6 +421,20 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
       </div>
 
       <form className="chat-form" onSubmit={submitMessage}>
+        {viewer?.kind === "guest" ? (
+          <label className="chat-nickname-wrap">
+            <span className="chat-field-label">닉네임</span>
+            <input
+              type="text"
+              value={guestNickname}
+              onChange={(event) => handleGuestNicknameChange(event.target.value)}
+              maxLength={CHAT_GUEST_NICKNAME_MAX_LENGTH}
+              placeholder="닉네임"
+              autoComplete="nickname"
+              aria-invalid={guestNicknameInvalid}
+            />
+          </label>
+        ) : null}
         <label className="chat-input-wrap">
           <span className="sr-only">메시지 입력</span>
           <textarea
@@ -363,7 +450,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
             }}
             maxLength={CHAT_MESSAGE_MAX_LENGTH}
             rows={3}
-            placeholder={viewer?.can_send ? "메시지를 입력하세요." : "로그인하여 채팅에 참여하세요."}
+            placeholder={viewer?.can_send ? "메시지를 입력하세요." : "채팅에 참여할 수 없습니다."}
             disabled={state !== "open" || !viewer?.can_send}
           />
         </label>

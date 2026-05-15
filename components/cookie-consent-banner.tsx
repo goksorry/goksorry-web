@@ -16,7 +16,7 @@ export function CookieConsentBanner() {
         <p className="cookie-consent-kicker">쿠키 안내</p>
         <h2 id="cookie-consent-title">필수 쿠키와 선택 쿠키를 구분해서 사용합니다.</h2>
         <p className="muted">
-          필수 쿠키는 로그인 상태 유지, 보안, 테마, 예쁜말 필터, 시장 보정, 채팅 읽기 세션 같은 서비스 동작에 사용합니다. 선택
+          필수 쿠키는 로그인 상태 유지, 보안, 테마, 예쁜말 필터, 시장 보정, 비회원 채팅 세션과 닉네임 같은 서비스 동작에 사용합니다. 선택
           쿠키는 방문 통계와 서비스 개선에만 사용합니다.
         </p>
         <p className="muted">

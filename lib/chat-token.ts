@@ -24,6 +24,7 @@ export type ChatTokenPayload = SignedPayload & {
   kind: ChatViewerKind;
   display_name: string;
   can_filter_guests: boolean;
+  can_send: boolean;
 };
 
 type GuestCookiePayload = SignedPayload & {
@@ -167,6 +168,7 @@ export const createChatSessionToken = async (
     kind: ChatViewerKind;
     displayName: string;
     canFilterGuests: boolean;
+    canSend: boolean;
   },
   secret: string,
   ttlSeconds: number = CHAT_SESSION_TTL_SECONDS
@@ -177,6 +179,7 @@ export const createChatSessionToken = async (
     kind: input.kind,
     display_name: input.displayName,
     can_filter_guests: input.canFilterGuests,
+    can_send: input.canSend,
     iat: expiry.issuedAt,
     exp: expiry.expiresAt
   };
@@ -197,7 +200,11 @@ export const readChatSessionToken = async (token: string, secret: string): Promi
     return null;
   }
 
-  if (typeof payload.display_name !== "string" || typeof payload.can_filter_guests !== "boolean") {
+  if (
+    typeof payload.display_name !== "string" ||
+    typeof payload.can_filter_guests !== "boolean" ||
+    typeof payload.can_send !== "boolean"
+  ) {
     return null;
   }
 

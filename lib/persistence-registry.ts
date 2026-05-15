@@ -58,6 +58,16 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     path: "/",
     sameSite: "Lax"
   },
+  guestChatNickname: {
+    kind: "cookie",
+    key: "goksorry_guest_chat_nickname",
+    category: "essential",
+    label: "비회원 채팅 닉네임",
+    description: "비회원 채팅 참여 시 입력한 닉네임을 저장합니다.",
+    maxAgeSeconds: ONE_YEAR_IN_SECONDS,
+    path: "/",
+    sameSite: "Lax"
+  },
   themeMode: {
     kind: "localStorage",
     key: "goksorry-theme",
@@ -72,8 +82,8 @@ export const SERVER_COOKIE_DEFINITIONS = {
     kind: "cookie",
     key: "goksorry_guest_chat",
     category: "essential",
-    label: "비회원 채팅 읽기 세션",
-    description: "채팅 읽기 세션을 위한 비회원 식별 쿠키입니다.",
+    label: "비회원 채팅 세션",
+    description: "채팅 세션을 위한 비회원 식별 쿠키입니다.",
     maxAgeSeconds: ONE_WEEK_IN_SECONDS,
     path: "/",
     sameSite: "Lax",

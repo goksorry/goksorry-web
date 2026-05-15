@@ -3,6 +3,7 @@ import { SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 export const CHAT_DEFAULT_FILTER = "all" as const;
 export const CHAT_RECENT_LIMIT = 30;
 export const CHAT_MESSAGE_MAX_LENGTH = 300;
+export const CHAT_GUEST_NICKNAME_MAX_LENGTH = 20;
 export const CHAT_GUEST_COOKIE_TTL_SECONDS = SERVER_COOKIE_DEFINITIONS.guestChat.maxAgeSeconds;
 export const CHAT_SESSION_TTL_SECONDS = 60 * 5;
 
@@ -35,6 +36,7 @@ export type ChatSendEvent = {
   type: "chat.send";
   client_id: string;
   text: string;
+  guest_nickname?: string;
 };
 
 export type ChatFilterSetEvent = {
