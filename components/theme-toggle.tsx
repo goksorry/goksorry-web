@@ -1,24 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type ThemeMode = "light" | "dark" | "system";
-
-const STORAGE_KEY = "goksorry-theme";
-
-const isThemeMode = (value: string | null): value is ThemeMode => {
-  return value === "light" || value === "dark" || value === "system";
-};
-
-const applyTheme = (mode: ThemeMode) => {
-  const root = document.documentElement;
-  if (mode === "system") {
-    root.removeAttribute("data-theme");
-    return;
-  }
-
-  root.setAttribute("data-theme", mode);
-};
+import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib/browser-persistence";
+import { applyThemeMode, isThemeMode, THEME_STORAGE_DEFINITION, type ThemeMode } from "@/lib/theme";
 
 const OPTIONS: Array<{ mode: ThemeMode; emoji: string; label: string }> = [
   { mode: "light", emoji: "☀️", label: "라이트" },
@@ -30,16 +14,16 @@ export function ThemeToggle() {
   const [mode, setMode] = useState<ThemeMode>("system");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const stored = readClientLocalStorageValue(THEME_STORAGE_DEFINITION);
     const nextMode = isThemeMode(stored) ? stored : "system";
     setMode(nextMode);
-    applyTheme(nextMode);
+    applyThemeMode(nextMode);
   }, []);
 
   const onSelect = (nextMode: ThemeMode) => {
     setMode(nextMode);
-    window.localStorage.setItem(STORAGE_KEY, nextMode);
-    applyTheme(nextMode);
+    writeClientLocalStorageValue(THEME_STORAGE_DEFINITION, nextMode);
+    applyThemeMode(nextMode);
   };
 
   return (

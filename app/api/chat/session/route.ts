@@ -8,8 +8,9 @@ import {
   createGuestChatCookie,
   readGuestChatCookie
 } from "@/lib/chat-token";
-import { CHAT_DEFAULT_FILTER, CHAT_GUEST_COOKIE_NAME, type ChatSessionViewer } from "@/lib/chat-types";
+import { CHAT_DEFAULT_FILTER, type ChatSessionViewer } from "@/lib/chat-types";
 import { getChatServerEnv } from "@/lib/env";
+import { SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 
 type SessionViewer = ChatSessionViewer & {
   id: string;
@@ -35,37 +36,37 @@ export async function POST(request: Request) {
     return sameOriginError;
   }
 
-	const chatEnv = getChatServerEnv();
-	if (!chatEnv.enabled) {
-	  return jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다.");
-	}
+  const chatEnv = getChatServerEnv();
+  if (!chatEnv.enabled) {
+    return jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다.");
+  }
 
-	const session = await getServerSession(authOptions);
-	const memberId = String(session?.user?.id ?? "").trim();
-	const memberNickname = String(session?.user?.nickname ?? "").trim();
-	const profileSetupRequired = Boolean(session?.user?.profile_setup_required);
-	let viewer: SessionViewer;
-	let guestCookie: { value: string; expiresAt: string } | null = null;
+  const session = await getServerSession(authOptions);
+  const memberId = String(session?.user?.id ?? "").trim();
+  const memberNickname = String(session?.user?.nickname ?? "").trim();
+  const profileSetupRequired = Boolean(session?.user?.profile_setup_required);
+  let viewer: SessionViewer;
+  let guestCookie: { value: string; expiresAt: string } | null = null;
 
-	if (memberId) {
-	  if (profileSetupRequired) {
-	    return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 가입 설정을 완료해야 합니다.");
-	  }
-	  if (!memberNickname) {
-	    return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
-	  }
+  if (memberId) {
+    if (profileSetupRequired) {
+      return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 가입 설정을 완료해야 합니다.");
+    }
+    if (!memberNickname) {
+      return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
+    }
 
-	  viewer = {
-	    id: memberId,
-	    kind: "member",
-	    display_name: memberNickname,
-	    can_filter_guests: true,
-	    can_send: true,
-	    default_filter: CHAT_DEFAULT_FILTER
-	  };
-	} else {
+    viewer = {
+      id: memberId,
+      kind: "member",
+      display_name: memberNickname,
+      can_filter_guests: true,
+      can_send: true,
+      default_filter: CHAT_DEFAULT_FILTER
+    };
+  } else {
     const cookieHeader = request.headers.get("cookie") ?? "";
-    const cookieMatch = cookieHeader.match(new RegExp(`(?:^|; )${CHAT_GUEST_COOKIE_NAME}=([^;]+)`));
+    const cookieMatch = cookieHeader.match(new RegExp(`(?:^|; )${SERVER_COOKIE_DEFINITIONS.guestChat.key}=([^;]+)`));
     const cookieValue = cookieMatch?.[1] ? safeDecodeCookieValue(cookieMatch[1]) : "";
     const guestIdentity = await readGuestChatCookie(cookieValue, chatEnv.CHAT_TOKEN_SECRET);
 
@@ -120,12 +121,12 @@ export async function POST(request: Request) {
 
   if (guestCookie) {
     response.cookies.set({
-      name: CHAT_GUEST_COOKIE_NAME,
+      name: SERVER_COOKIE_DEFINITIONS.guestChat.key,
       value: guestCookie.value,
-      httpOnly: true,
-      sameSite: "lax",
+      httpOnly: SERVER_COOKIE_DEFINITIONS.guestChat.httpOnly,
+      sameSite: SERVER_COOKIE_DEFINITIONS.guestChat.sameSite.toLowerCase() as "lax",
       secure: process.env.NODE_ENV === "production",
-      path: "/",
+      path: SERVER_COOKIE_DEFINITIONS.guestChat.path,
       expires: new Date(guestCookie.expiresAt)
     });
   }

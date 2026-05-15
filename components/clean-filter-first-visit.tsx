@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { buildCleanFilterCookie } from "@/lib/clean-filter";
+import { persistCleanFilterPreference } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 
 export function CleanFilterFirstVisit() {
@@ -12,7 +12,7 @@ export function CleanFilterFirstVisit() {
   }
 
   const handleEnable = () => {
-    document.cookie = buildCleanFilterCookie(true);
+    persistCleanFilterPreference(true);
     dismissFirstVisitPrompt();
   };
 
@@ -26,7 +26,7 @@ export function CleanFilterFirstVisit() {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2
     });
-    document.cookie = buildCleanFilterCookie(false);
+    persistCleanFilterPreference(false);
     dismissFirstVisitPrompt();
   };
 

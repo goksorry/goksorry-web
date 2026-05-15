@@ -1,3 +1,9 @@
+import {
+  readClientCookieValue,
+  writeClientCookieValue
+} from "@/lib/browser-persistence";
+import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
+
 export type MarketAdjustmentTarget = "all" | "kr" | "us";
 
 export type MarketAdjustmentSnapshot = {
@@ -13,7 +19,7 @@ export type MarketAdjustmentRowLike = {
   symbol_market: "kr" | "us" | null;
 };
 
-export const MARKET_ADJUSTMENT_COOKIE_NAME = "goksorry_market_adjustment";
+export const MARKET_ADJUSTMENT_COOKIE_NAME = CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment.key;
 
 const MARKET_ADJUSTMENT_LOG_SCALE = 0.43;
 const MARKET_ADJUSTMENT_CAP = 1.2;
@@ -142,6 +148,13 @@ export const getMarketAdjustmentCookieValue = (enabled: boolean): "on" | "off" =
   return enabled ? "on" : "off";
 };
 
+export const persistMarketAdjustmentPreference = (enabled: boolean): boolean => {
+  return writeClientCookieValue(
+    CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment,
+    getMarketAdjustmentCookieValue(enabled)
+  );
+};
+
 export const parseMarketAdjustmentCookieValue = (value: string | null | undefined): boolean | null => {
   const normalized = String(value ?? "")
     .trim()
@@ -160,6 +173,11 @@ export const parseMarketAdjustmentCookieValue = (value: string | null | undefine
   }
 
   return null;
+};
+
+export const readMarketAdjustmentPreferenceFromDocument = (): boolean | null => {
+  const value = readClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment);
+  return parseMarketAdjustmentCookieValue(value);
 };
 
 export const resolveMarketAdjustmentEnabled = ({

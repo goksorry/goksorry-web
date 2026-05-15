@@ -1,43 +1,32 @@
-export const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
+import {
+  hasClientCookie,
+  readClientCookieValue,
+  writeClientCookieValue
+} from "@/lib/browser-persistence";
+import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
+
+export const CLEAN_FILTER_COOKIE = CLIENT_PERSISTENCE_DEFINITIONS.cleanFilter.key;
 export const CLEAN_FILTER_APPLY_DURATION_MS = 600;
 
 export const isCleanFilterEnabled = (value: string | null | undefined): boolean => {
   return value !== "off";
 };
 
-export const buildCleanFilterCookie = (enabled: boolean): string => {
-  return `${CLEAN_FILTER_COOKIE}=${enabled ? "on" : "off"}; Path=/; Max-Age=31536000; SameSite=Lax`;
-};
-
-const findCleanFilterCookie = (): string | null => {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  return (
-    document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${CLEAN_FILTER_COOKIE}=`)) ?? null
-  );
+export const persistCleanFilterPreference = (enabled: boolean): boolean => {
+  return writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.cleanFilter, enabled ? "on" : "off");
 };
 
 export const hasCleanFilterCookieInDocument = (): boolean => {
-  return findCleanFilterCookie() !== null;
+  return hasClientCookie(CLIENT_PERSISTENCE_DEFINITIONS.cleanFilter);
 };
 
 export const readCleanFilterFromDocument = (): boolean => {
-  if (typeof document === "undefined") {
+  const cookieValue = readClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.cleanFilter);
+  if (!cookieValue) {
     return true;
   }
 
-  const cookie = findCleanFilterCookie();
-
-  if (!cookie) {
-    return true;
-  }
-
-  return isCleanFilterEnabled(cookie.split("=").slice(1).join("="));
+  return isCleanFilterEnabled(cookieValue);
 };
 
 const CLEAN_FALLBACK_PATTERNS: Array<[RegExp, string]> = [

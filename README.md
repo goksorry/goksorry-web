@@ -23,6 +23,16 @@
 - 일반 API 문서에는 브라우저 세션 전용 토큰 API를 노출하지 않습니다.
 - Trading Bot read API는 member-issued token + `X-Client-Id` + `X-Request-Id`를 요구합니다.
 
+## 쿠키 동의 / 브라우저 저장 규칙
+
+- 모든 신규 쿠키, `localStorage` 기반 기능은 먼저 [`lib/persistence-registry.ts`](./lib/persistence-registry.ts)에 등록해야 합니다.
+- 브라우저 저장 접근은 직접 `document.cookie` / `window.localStorage`를 쓰지 말고 [`lib/browser-persistence.ts`](./lib/browser-persistence.ts)를 통합니다.
+- 카테고리는 `essential` 과 `analytics` 두 가지입니다.
+- `essential` 에는 쿠키 동의 상태, 테마, 예쁜말 필터, 홈 시장 보정, 비회원 채팅 읽기 세션 같은 서비스 동작용 저장이 들어갑니다.
+- `analytics` 는 Google Analytics 같은 방문 통계용 저장만 사용하며, 이용자가 `모두 허용`을 선택한 경우에만 활성화합니다.
+- 이용자에게 쿠키 선택을 다시 열어야 할 때는 [`components/cookie-consent-button.tsx`](./components/cookie-consent-button.tsx) 또는 [`components/cookie-consent-provider.tsx`](./components/cookie-consent-provider.tsx)의 `openConsentSettings`를 사용합니다.
+- NextAuth가 관리하는 로그인/보안 쿠키는 필수 쿠키로 취급합니다.
+
 ## 환경 변수
 
 기본 예시는 [`.env.example`](./.env.example) 에 있습니다.

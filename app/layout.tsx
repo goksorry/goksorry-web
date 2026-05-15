@@ -6,8 +6,11 @@ import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "@/app/globals.css";
+import { AnalyticsScripts } from "@/components/analytics-scripts";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { ChatDock } from "@/components/chat-dock";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { CookieConsentProvider } from "@/components/cookie-consent-provider";
 import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
@@ -23,6 +26,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { getThemeInitScript } from "@/lib/theme";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
@@ -70,66 +74,63 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={gowunBatang.variable}>
-        <Script async strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`} />
-        <Script id="google-analytics-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${googleAnalyticsMeasurementId}');
-          `}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {getThemeInitScript()}
         </Script>
-        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <AuthSessionProvider session={session}>
-          <CleanFilterProvider>
-            <CleanFilterOverlay />
-            <CleanFilterFirstVisit />
-            <div id="page-top" className="layout">
-              <header className="header">
-                <div className="header-main">
-                  <Link className="brand" href="/">
-                    <Image
-                      className="brand-logo"
-                      src="/goksorry_logo.png"
-                      alt="곡소리닷컴"
-                      width={113}
-                      height={50}
-                      priority
-                    />
-                  </Link>
-                  <nav className="nav">
-                    <Link href="/" replace>
-                      피드
+          <CookieConsentProvider>
+            <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
+            <CleanFilterProvider>
+              <CleanFilterOverlay />
+              <CleanFilterFirstVisit />
+              <div id="page-top" className="layout">
+                <header className="header">
+                  <div className="header-main">
+                    <Link className="brand" href="/">
+                      <Image
+                        className="brand-logo"
+                        src="/goksorry_logo.png"
+                        alt="곡소리닷컴"
+                        width={113}
+                        height={50}
+                        priority
+                      />
                     </Link>
-                    <Link href="/community" replace>
-                      커뮤니티
-                    </Link>
-                    <HeaderChatLink />
-                    <HeaderNavExtras />
-                  </nav>
-                </div>
-                <div className="header-controls">
-                  <ThemeToggle />
-                  <CleanFilterToggle />
-                </div>
-                <div className="header-profile">
-                  <SiteShareButton />
-                  <Suspense fallback={<HeaderAuthSkeleton />}>
-                    <AuthControls />
+                    <nav className="nav">
+                      <Link href="/" replace>
+                        피드
+                      </Link>
+                      <Link href="/community" replace>
+                        커뮤니티
+                      </Link>
+                      <HeaderChatLink />
+                      <HeaderNavExtras />
+                    </nav>
+                  </div>
+                  <div className="header-controls">
+                    <ThemeToggle />
+                    <CleanFilterToggle />
+                  </div>
+                  <div className="header-profile">
+                    <SiteShareButton />
+                    <Suspense fallback={<HeaderAuthSkeleton />}>
+                      <AuthControls />
+                    </Suspense>
+                  </div>
+                </header>
+                <PolicyChangeBanner />
+                <main className="main">
+                  <Suspense fallback={null}>
+                    <ProfileSetupRedirect />
                   </Suspense>
-                </div>
-              </header>
-              <PolicyChangeBanner />
-              <main className="main">
-                <Suspense fallback={null}>
-                  <ProfileSetupRedirect />
-                </Suspense>
-                {children}
-              </main>
-              <SiteFooter />
-              <ChatDock enabled={chatEnv.enabled} />
-            </div>
-          </CleanFilterProvider>
+                  {children}
+                </main>
+                <SiteFooter />
+                <ChatDock enabled={chatEnv.enabled} />
+              </div>
+              <CookieConsentBanner />
+            </CleanFilterProvider>
+          </CookieConsentProvider>
         </AuthSessionProvider>
       </body>
     </html>

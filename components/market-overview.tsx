@@ -6,11 +6,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import {
-  MARKET_ADJUSTMENT_COOKIE_NAME,
-  getMarketAdjustmentCookieValue,
   getMarketAdjustmentQueryValue,
-  parseMarketAdjustmentCookieValue,
-  parseMarketAdjustmentParam
+  parseMarketAdjustmentParam,
+  persistMarketAdjustmentPreference,
+  readMarketAdjustmentPreferenceFromDocument
 } from "@/lib/community-market-adjustment";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
@@ -88,27 +87,6 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
 const COMMUNITY_REFRESH_MS = 60_000;
 const COMMUNITY_RETRY_MS = 15_000;
 
-const persistMarketAdjustmentCookie = (enabled: boolean) => {
-  document.cookie = `${MARKET_ADJUSTMENT_COOKIE_NAME}=${getMarketAdjustmentCookieValue(enabled)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-};
-
-const readMarketAdjustmentCookie = (): boolean | null => {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  const cookieEntry = document.cookie
-    .split(";")
-    .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith(`${MARKET_ADJUSTMENT_COOKIE_NAME}=`));
-
-  if (!cookieEntry) {
-    return null;
-  }
-
-  return parseMarketAdjustmentCookieValue(cookieEntry.slice(MARKET_ADJUSTMENT_COOKIE_NAME.length + 1));
-};
-
 export function MarketOverview({
   marketOverview,
   initialCommunityIndicators,
@@ -140,11 +118,11 @@ export function MarketOverview({
       return;
     }
 
-    setCookieBackedMarketAdjustmentEnabled(readMarketAdjustmentCookie() ?? initialMarketAdjustmentEnabled);
+    setCookieBackedMarketAdjustmentEnabled(readMarketAdjustmentPreferenceFromDocument() ?? initialMarketAdjustmentEnabled);
   }, [explicitMarketAdjustmentParam, initialMarketAdjustmentEnabled]);
 
   useEffect(() => {
-    persistMarketAdjustmentCookie(marketAdjustmentEnabled);
+    persistMarketAdjustmentPreference(marketAdjustmentEnabled);
   }, [marketAdjustmentEnabled]);
 
   useEffect(() => {
@@ -255,7 +233,7 @@ export function MarketOverview({
     const nextEnabled = !marketAdjustmentEnabled;
     const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(nextEnabled);
 
-    persistMarketAdjustmentCookie(nextEnabled);
+    persistMarketAdjustmentPreference(nextEnabled);
     setCookieBackedMarketAdjustmentEnabled(nextEnabled);
 
     if (marketAdjustmentQueryValue) {
