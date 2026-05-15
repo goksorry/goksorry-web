@@ -73,7 +73,7 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     key: "goksorry-theme",
     category: "essential",
     label: "테마 설정",
-    description: "라이트/다크/시스템 테마 선택을 저장합니다."
+    description: "사이트 전체 테마 선택을 저장합니다."
   }
 } as const satisfies Record<string, PersistenceDefinition>;
 

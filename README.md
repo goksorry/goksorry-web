@@ -34,6 +34,12 @@
 - 이용자에게 쿠키 선택을 다시 열어야 할 때는 [`components/cookie-consent-button.tsx`](./components/cookie-consent-button.tsx) 또는 [`components/cookie-consent-provider.tsx`](./components/cookie-consent-provider.tsx)의 `openConsentSettings`를 사용합니다.
 - NextAuth가 관리하는 로그인/보안 쿠키는 필수 쿠키로 취급합니다.
 
+## 테마
+
+- 테마 선택은 `goksorry-theme` localStorage에 저장합니다.
+- URL 쿼리 `?theme=vscode-dark`처럼 지정하면 저장값보다 우선 적용합니다.
+- 지원 테마는 `light`, `dark`, `excel-*`, `powerpoint-*`, `blog-*`, `docs-*`, `vscode-*`, `jetbrains-*`, `vs-*` 입니다.
+
 ## 환경 변수
 
 기본 예시는 [`.env.example`](./.env.example) 에 있습니다.

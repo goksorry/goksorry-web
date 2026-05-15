@@ -22,6 +22,8 @@ import { PolicyChangeBanner } from "@/components/policy-change-banner";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
+import { ThemeFirstVisit } from "@/components/theme-first-visit";
+import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
@@ -81,57 +83,60 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CookieConsentProvider>
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
-              <CleanFilterOverlay />
-              <CleanFilterFirstVisit />
-              <div id="page-top" className="layout">
-                <header className="header">
-                  <div className="header-main">
-                    <Link className="brand" href="/">
-                      <Image
-                        className="brand-logo"
-                        src="/goksorry_logo.png"
-                        alt="곡소리닷컴"
-                        width={113}
-                        height={50}
-                        priority
-                      />
-                    </Link>
-                    <nav className="nav">
-                      <Link href="/" replace>
-                        피드
+              <ThemeProvider>
+                <CleanFilterOverlay />
+                <CleanFilterFirstVisit />
+                <ThemeFirstVisit />
+                <div id="page-top" className="layout">
+                  <header className="header">
+                    <div className="header-main">
+                      <Link className="brand" href="/">
+                        <Image
+                          className="brand-logo"
+                          src="/goksorry_logo.png"
+                          alt="곡소리닷컴"
+                          width={113}
+                          height={50}
+                          priority
+                        />
                       </Link>
-                      <Link href="/community" replace>
-                        게시판
-                      </Link>
-                      <Link href="/goksorry-room" replace>
-                        곡소리방
-                      </Link>
-                      <HeaderChatLink />
-                      <HeaderNavExtras />
-                    </nav>
-                  </div>
-                  <div className="header-controls">
-                    <ThemeToggle />
-                    <CleanFilterToggle />
-                  </div>
-                  <div className="header-profile">
-                    <SiteShareButton />
-                    <Suspense fallback={<HeaderAuthSkeleton />}>
-                      <AuthControls />
+                      <nav className="nav">
+                        <Link href="/" replace>
+                          피드
+                        </Link>
+                        <Link href="/community" replace>
+                          게시판
+                        </Link>
+                        <Link href="/goksorry-room" replace>
+                          곡소리방
+                        </Link>
+                        <HeaderChatLink />
+                        <HeaderNavExtras />
+                      </nav>
+                    </div>
+                    <div className="header-controls">
+                      <ThemeToggle />
+                      <CleanFilterToggle />
+                    </div>
+                    <div className="header-profile">
+                      <SiteShareButton />
+                      <Suspense fallback={<HeaderAuthSkeleton />}>
+                        <AuthControls />
+                      </Suspense>
+                    </div>
+                  </header>
+                  <PolicyChangeBanner />
+                  <main className="main">
+                    <Suspense fallback={null}>
+                      <ProfileSetupRedirect />
                     </Suspense>
-                  </div>
-                </header>
-                <PolicyChangeBanner />
-                <main className="main">
-                  <Suspense fallback={null}>
-                    <ProfileSetupRedirect />
-                  </Suspense>
-                  {children}
-                </main>
-                <SiteFooter />
-                <ChatDock enabled={chatEnv.enabled} />
-              </div>
-              <CookieConsentBanner />
+                    {children}
+                  </main>
+                  <SiteFooter />
+                  <ChatDock enabled={chatEnv.enabled} />
+                </div>
+                <CookieConsentBanner />
+              </ThemeProvider>
             </CleanFilterProvider>
           </CookieConsentProvider>
         </AuthSessionProvider>
