@@ -9,7 +9,7 @@ import { NewPostForm } from "@/components/new-post-form";
 import { buildNoIndexMetadata } from "@/lib/seo";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
-export const metadata: Metadata = buildNoIndexMetadata("글쓰기", "곡소리닷컴 커뮤니티 글 작성 화면입니다.");
+export const metadata: Metadata = buildNoIndexMetadata("글쓰기", "곡소리닷컴 게시판 글 작성 화면입니다.");
 
 export default async function NewPostPage({ params }: { params: { boardSlug: string } }) {
   const service = getServiceSupabaseClient();

@@ -599,7 +599,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       member_id: "uuid",
       withdrawn: true
     },
-    notes: ["프로필, 커뮤니티 글/댓글, 투표, 신고, API 토큰이 함께 정리됩니다."]
+    notes: ["프로필, 게시판 글/댓글, 투표, 신고, API 토큰이 함께 정리됩니다."]
   },
   {
     method: "POST",

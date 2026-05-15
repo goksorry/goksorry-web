@@ -88,6 +88,17 @@ export const SERVER_COOKIE_DEFINITIONS = {
     path: "/",
     sameSite: "Lax",
     httpOnly: true
+  },
+  goksorryRoomGuest: {
+    kind: "cookie",
+    key: "goksorry_room_guest",
+    category: "essential",
+    label: "곡소리방 비회원 작성자 세션",
+    description: "곡소리방 비회원 작성자가 본인 의견과 덧글을 삭제할 수 있도록 식별합니다.",
+    maxAgeSeconds: ONE_YEAR_IN_SECONDS,
+    path: "/",
+    sameSite: "Lax",
+    httpOnly: true
   }
 } as const satisfies Record<string, CookiePersistenceDefinition>;
 

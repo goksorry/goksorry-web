@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getCachedCommunityBoards, getCachedCommunitySitemapEntries } from "@/lib/community-read";
 import { SITE_URL } from "@/lib/seo";
 
-const STATIC_PATHS = ["/", "/community", "/docs", "/terms", "/privacy"] as const;
+const STATIC_PATHS = ["/", "/community", "/goksorry-room", "/docs", "/terms", "/privacy"] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [boards, posts] = await Promise.all([getCachedCommunityBoards(), getCachedCommunitySitemapEntries()]);

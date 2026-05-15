@@ -24,7 +24,7 @@ export async function generateMetadata({
     };
   }
 
-  const authorText = post.author_nickname ? `${post.author_nickname} 작성` : "커뮤니티 글";
+  const authorText = post.author_nickname ? `${post.author_nickname} 작성` : "게시판 글";
   const description = summarizeText(`${authorText}. ${post.content}`);
 
   return buildPageMetadata({

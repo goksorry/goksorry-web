@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const SITE_SHARE_TITLE = "곡소리닷컴";
-const SITE_SHARE_TEXT = "외부 종목 커뮤니티 감성 피드와 커뮤니티";
+const SITE_SHARE_TEXT = "외부 종목 커뮤니티 감성 피드와 게시판";
 const SITE_SHARE_URL = "https://goksorry.com";
 const STATUS_RESET_MS = 2200;
 

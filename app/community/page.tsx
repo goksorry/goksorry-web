@@ -5,8 +5,8 @@ import { getCachedCommunityHomeData } from "@/lib/community-read";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "커뮤니티",
-  description: "게시판별 최신 글과 공지, 최근 커뮤니티 반응을 확인할 수 있는 곡소리닷컴 커뮤니티 홈입니다.",
+  title: "게시판",
+  description: "게시판별 최신 글과 공지를 확인할 수 있는 곡소리닷컴 게시판 홈입니다.",
   path: "/community"
 });
 
@@ -16,7 +16,7 @@ export default async function CommunityHomePage() {
   return (
     <>
       <section className="panel">
-        <h1>커뮤니티 게시판</h1>
+        <h1>게시판</h1>
 
         {boardsError ? <p className="error">게시판 조회 실패: {boardsError}</p> : null}
 

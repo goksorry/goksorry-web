@@ -1,11 +1,12 @@
 # goksorry-web
 
-곡소리닷컴 웹 앱입니다. Next.js App Router 기반으로 피드, 커뮤니티, 관리자 화면, Trading Bot read API, 정책 문서 화면을 제공합니다.
+곡소리닷컴 웹 앱입니다. Next.js App Router 기반으로 피드, 게시판, 곡소리방, 관리자 화면, Trading Bot read API, 정책 문서 화면을 제공합니다.
 
 ## 주요 기능
 
 - 외부 투자 커뮤니티 감성 피드 `/`
-- 자체 커뮤니티 `/community`
+- 자체 게시판 `/community`
+- 곡소리방 `/goksorry-room`
 - Trading Bot read API `/api/v1/*`
 - API 문서 `/docs`, `/docs.txt`, `/openapi.json`
 - Google OAuth 로그인과 관리자 기능
@@ -17,7 +18,7 @@
 - 로그인은 NextAuth + Google OAuth를 사용합니다.
 - Google 로그인 직후에는 세션만 생기고, `/profile`에서 `가입 완료`를 눌러야 실제 `profiles` 계정이 생성됩니다.
 - `profile_setup_required = true` 상태에서는 아직 회원 가입이 완료되지 않은 상태입니다.
-- 이 상태에서는 커뮤니티 쓰기, 신고, 채팅 참여, Trading Bot 토큰 기능, 관리자 기능이 차단됩니다.
+- 이 상태에서는 게시판 쓰기, 신고, 채팅 참여, Trading Bot 토큰 기능, 관리자 기능이 차단됩니다.
 - 이 상태에서는 헤더의 `채팅` 탭과 우하단 채팅 독 버튼도 숨깁니다.
 - 브라우저 기반 토큰 요청/claim/revoke는 `/profile`에서 처리합니다.
 - 일반 API 문서에는 브라우저 세션 전용 토큰 API를 노출하지 않습니다.
@@ -28,7 +29,7 @@
 - 모든 신규 쿠키, `localStorage` 기반 기능은 먼저 [`lib/persistence-registry.ts`](./lib/persistence-registry.ts)에 등록해야 합니다.
 - 브라우저 저장 접근은 직접 `document.cookie` / `window.localStorage`를 쓰지 말고 [`lib/browser-persistence.ts`](./lib/browser-persistence.ts)를 통합니다.
 - 카테고리는 `essential` 과 `analytics` 두 가지입니다.
-- `essential` 에는 쿠키 동의 상태, 테마, 예쁜말 필터, 홈 시장 보정, 비회원 채팅 세션 및 닉네임 같은 서비스 동작용 저장이 들어갑니다.
+- `essential` 에는 쿠키 동의 상태, 테마, 예쁜말 필터, 홈 시장 보정, 비회원 채팅 세션 및 닉네임, 곡소리방 비회원 작성자 세션 같은 서비스 동작용 저장이 들어갑니다.
 - `analytics` 는 Google Analytics 같은 방문 통계용 저장만 사용하며, 이용자가 `모두 허용`을 선택한 경우에만 활성화합니다.
 - 이용자에게 쿠키 선택을 다시 열어야 할 때는 [`components/cookie-consent-button.tsx`](./components/cookie-consent-button.tsx) 또는 [`components/cookie-consent-provider.tsx`](./components/cookie-consent-provider.tsx)의 `openConsentSettings`를 사용합니다.
 - NextAuth가 관리하는 로그인/보안 쿠키는 필수 쿠키로 취급합니다.

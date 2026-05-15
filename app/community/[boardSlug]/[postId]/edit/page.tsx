@@ -8,7 +8,7 @@ import { buildNoIndexMetadata } from "@/lib/seo";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = buildNoIndexMetadata("글 수정", "곡소리닷컴 커뮤니티 글 수정 화면입니다.");
+export const metadata: Metadata = buildNoIndexMetadata("글 수정", "곡소리닷컴 게시판 글 수정 화면입니다.");
 
 export default async function EditPostPage({
   params

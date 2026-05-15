@@ -101,7 +101,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         피드
                       </Link>
                       <Link href="/community" replace>
-                        커뮤니티
+                        게시판
+                      </Link>
+                      <Link href="/goksorry-room" replace>
+                        곡소리방
                       </Link>
                       <HeaderChatLink />
                       <HeaderNavExtras />

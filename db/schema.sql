@@ -100,6 +100,47 @@ create table if not exists public.community_comments (
   constraint community_comments_content_plain_text check (content !~ '<')
 );
 
+create table if not exists public.goksorry_room_entries (
+  id uuid primary key default gen_random_uuid(),
+  author_kind text not null check (author_kind in ('member', 'guest')),
+  author_id uuid references public.profiles(id) on delete set null,
+  guest_owner_hash text,
+  author_label text not null default '익명',
+  content text not null,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint goksorry_room_entries_author_identity check (
+    (author_kind = 'member' and guest_owner_hash is null)
+    or
+    (author_kind = 'guest' and author_id is null and guest_owner_hash is not null)
+  ),
+  constraint goksorry_room_entries_author_label_plain_text check (author_label !~ '[<>]' and char_length(author_label) between 1 and 30),
+  constraint goksorry_room_entries_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 160)
+);
+
+create table if not exists public.goksorry_room_replies (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references public.goksorry_room_entries(id) on delete cascade,
+  author_kind text not null check (author_kind in ('member', 'guest')),
+  author_id uuid references public.profiles(id) on delete set null,
+  guest_owner_hash text,
+  author_label text not null default '익명',
+  content text not null,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint goksorry_room_replies_author_identity check (
+    (author_kind = 'member' and guest_owner_hash is null)
+    or
+    (author_kind = 'guest' and author_id is null and guest_owner_hash is not null)
+  ),
+  constraint goksorry_room_replies_author_label_plain_text check (author_label !~ '[<>]' and char_length(author_label) between 1 and 30),
+  constraint goksorry_room_replies_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 300)
+);
+
 create table if not exists public.votes (
   id uuid primary key default gen_random_uuid(),
   post_id uuid references public.community_posts(id) on delete cascade,
@@ -158,6 +199,24 @@ create index if not exists withdrawn_accounts_withdrawn_at_idx on public.withdra
 create index if not exists community_posts_board_created_idx on public.community_posts(board_id, created_at desc);
 create index if not exists community_posts_notice_pin_idx on public.community_posts(board_id, is_pinned_notice, created_at desc);
 create index if not exists community_comments_post_created_idx on public.community_comments(post_id, created_at asc);
+create index if not exists goksorry_room_entries_created_idx
+on public.goksorry_room_entries(created_at desc)
+where is_deleted = false;
+create index if not exists goksorry_room_entries_member_owner_idx
+on public.goksorry_room_entries(author_id, created_at desc)
+where author_id is not null;
+create index if not exists goksorry_room_entries_guest_owner_idx
+on public.goksorry_room_entries(guest_owner_hash, created_at desc)
+where guest_owner_hash is not null;
+create index if not exists goksorry_room_replies_entry_created_idx
+on public.goksorry_room_replies(entry_id, created_at asc)
+where is_deleted = false;
+create index if not exists goksorry_room_replies_member_owner_idx
+on public.goksorry_room_replies(author_id, created_at desc)
+where author_id is not null;
+create index if not exists goksorry_room_replies_guest_owner_idx
+on public.goksorry_room_replies(guest_owner_hash, created_at desc)
+where guest_owner_hash is not null;
 create index if not exists reports_status_created_idx on public.reports(status, created_at desc);
 create index if not exists policy_changes_active_window_idx on public.policy_changes(published_at, effective_at);
 create index if not exists policy_document_versions_type_effective_idx
@@ -228,6 +287,18 @@ before update on public.community_comments
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists goksorry_room_entries_set_updated_at on public.goksorry_room_entries;
+create trigger goksorry_room_entries_set_updated_at
+before update on public.goksorry_room_entries
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists goksorry_room_replies_set_updated_at on public.goksorry_room_replies;
+create trigger goksorry_room_replies_set_updated_at
+before update on public.goksorry_room_replies
+for each row
+execute function public.set_updated_at();
+
 insert into public.boards (slug, name, description, sort_order)
 values
   ('notice', 'Notice', 'Announcements from admins', 10),
@@ -247,6 +318,8 @@ alter table public.profiles enable row level security;
 alter table public.withdrawn_accounts enable row level security;
 alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
+alter table public.goksorry_room_entries enable row level security;
+alter table public.goksorry_room_replies enable row level security;
 alter table public.votes enable row level security;
 alter table public.reports enable row level security;
 alter table public.policy_changes enable row level security;
@@ -338,6 +411,18 @@ for update
 to authenticated
 using (auth.uid() = author_id or public.is_admin(auth.uid()))
 with check (auth.uid() = author_id or public.is_admin(auth.uid()));
+
+drop policy if exists goksorry_room_entries_public_select on public.goksorry_room_entries;
+create policy goksorry_room_entries_public_select
+on public.goksorry_room_entries
+for select
+using (is_deleted = false);
+
+drop policy if exists goksorry_room_replies_public_select on public.goksorry_room_replies;
+create policy goksorry_room_replies_public_select
+on public.goksorry_room_replies
+for select
+using (is_deleted = false);
 
 drop policy if exists reports_insert_auth on public.reports;
 create policy reports_insert_auth

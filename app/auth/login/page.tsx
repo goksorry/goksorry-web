@@ -33,7 +33,7 @@ export default function LoginPage({
         <Link href="/privacy">개인정보처리방침</Link> 동의를 완료해야 서비스 이용이 가능합니다.
       </p>
       <Link className="btn btn-secondary" href="/community">
-        커뮤니티로 돌아가기
+        게시판으로 돌아가기
       </Link>
     </section>
   );
