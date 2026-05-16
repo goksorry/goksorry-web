@@ -379,11 +379,6 @@ export function MarketOverview({
                     )}
                   </span>
                 </div>
-                <p className="overview-delta">
-                  {communityLoading
-                    ? "로딩중"
-                    : `${SENTIMENT_BAND_DISPLAY[group.sentiment_band].label} · 언급 ${group.mentions} · 희망 ${group.bullish} · 공포 ${group.bearish}`}
-                </p>
               </button>
             ))}
           </div>

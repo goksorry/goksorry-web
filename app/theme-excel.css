@@ -746,16 +746,31 @@
 
 @media (max-width: 760px) {
   :root[data-theme-shell="excel"] {
-    --excel-market-block-rows: 9;
-    --excel-overview-panel-rows: 14;
+    --excel-market-block-rows: 5;
+    --excel-overview-panel-rows: 10;
   }
 
   .excel-titlebar {
     grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .excel-titlebar .theme-shell-brand-wrap {
+    min-width: 0;
   }
 
   .excel-title {
     display: none;
+  }
+
+  .excel-titlebar .theme-shell-nav,
+  .excel-titlebar .theme-shell-actions {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
   }
 
   .excel-ribbon-groups {
@@ -772,21 +787,29 @@
   }
 
   .theme-shell-excel .overview-market-block {
-    grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 8);
+    grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 4);
   }
 
   .theme-shell-excel .overview-market-row {
     grid-template-columns: minmax(0, 1fr);
-    height: calc(var(--excel-row-height) * 8);
+    height: calc(var(--excel-row-height) * 4);
     overflow-x: hidden;
   }
 
   .theme-shell-excel .overview-market-stat {
     width: 100%;
+    height: var(--excel-row-height);
+    min-height: var(--excel-row-height);
+    grid-template-columns: minmax(3.2rem, 0.8fr) minmax(0, 1fr) auto;
+    align-content: center;
+    align-items: center;
+    column-gap: var(--excel-cell-padding-x);
+    row-gap: 0;
+    padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
   }
 
   .theme-shell-excel .overview-panel {
-    grid-template-rows: calc(var(--excel-row-height) * 6) calc(var(--excel-row-height) * 8);
+    grid-template-rows: calc(var(--excel-row-height) * 6) calc(var(--excel-row-height) * 4);
   }
 
   .theme-shell-excel .overview-panel-art {
@@ -820,16 +843,118 @@
   }
 
   .theme-shell-excel .overview-section {
-    height: calc(var(--excel-row-height) * 8);
+    height: calc(var(--excel-row-height) * 4);
   }
 
   .theme-shell-excel .overview-bottom-row {
     grid-template-columns: minmax(0, 1fr);
-    height: calc(var(--excel-row-height) * 8);
+    height: calc(var(--excel-row-height) * 4);
     overflow-x: hidden;
   }
 
   .theme-shell-excel .overview-card-community {
     width: 100%;
+    height: var(--excel-row-height);
+    min-height: var(--excel-row-height);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  }
+
+  .theme-shell-excel .overview-market-head,
+  .theme-shell-excel .overview-market-main,
+  .theme-shell-excel .overview-community-head {
+    min-height: 0;
+    min-width: 0;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+  }
+
+  .theme-shell-excel .overview-market-main {
+    display: contents;
+  }
+
+  .theme-shell-excel .overview-market-head,
+  .theme-shell-excel .overview-community-head {
+    display: contents;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-note {
+    display: none;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-label,
+  .theme-shell-excel .overview-market-stat .overview-value,
+  .theme-shell-excel .overview-market-stat .overview-delta,
+  .theme-shell-excel .overview-card-community .overview-label,
+  .theme-shell-excel .overview-card-community .overview-delta,
+  .theme-shell-excel .overview-community-band {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    grid-row: 1;
+    line-height: 1.1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-label {
+    grid-column: 1;
+    justify-content: flex-start;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-label,
+  .theme-shell-excel .overview-market-stat .overview-delta,
+  .theme-shell-excel .overview-card-community .overview-delta {
+    font-size: 0.66rem;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-delta {
+    grid-column: 2;
+    justify-content: flex-end;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .theme-shell-excel .overview-market-stat .overview-value {
+    grid-column: 3;
+    justify-content: flex-end;
+    justify-self: end;
+    font-size: 0.86rem;
+    text-align: right;
+  }
+
+  .theme-shell-excel .overview-card-community .overview-label {
+    grid-column: 1;
+    justify-content: flex-start;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .theme-shell-excel .overview-card-community .overview-delta {
+    grid-column: 2;
+    justify-content: flex-end;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .theme-shell-excel .overview-community-counts {
+    display: none;
+  }
+
+  .theme-shell-excel .overview-score-badge {
+    align-self: center;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    height: calc(var(--excel-row-height) - (var(--excel-cell-padding-y) * 2) - 2px);
+    min-width: 2.55rem;
+    padding: 0 0.34rem;
   }
 }

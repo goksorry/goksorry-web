@@ -54,7 +54,6 @@ export function MarketOverviewFallback() {
                   <p className="overview-label">{group.label}</p>
                   <span className="overview-score-badge">로딩중</span>
                 </div>
-                <p className="overview-delta">로딩중</p>
               </article>
             ))}
           </div>

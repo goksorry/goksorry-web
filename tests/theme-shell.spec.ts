@@ -278,7 +278,7 @@ test.describe("program theme shells", () => {
     await page.screenshot({ path: testInfo.outputPath("excel-light.png"), fullPage: false });
   });
 
-  test("excel theme keeps overview art subtle and stacks indicators on mobile", async ({ page }, testInfo) => {
+  test("excel theme keeps overview art subtle and uses one-cell mobile indicators", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
@@ -297,6 +297,15 @@ test.describe("program theme shells", () => {
       const bottomRow = document.querySelector(".theme-shell-excel .overview-bottom-row") as HTMLElement;
       const communityCards = Array.from(document.querySelectorAll(".theme-shell-excel .overview-card-community")) as HTMLElement[];
       const artStyle = window.getComputedStyle(art);
+      const getRect = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          left: rect.left,
+          right: rect.right,
+          centerY: rect.top + rect.height / 2,
+          width: rect.width
+        };
+      };
 
       const getStackMetrics = (cards: HTMLElement[]) => {
         const rects = cards.map((card) => card.getBoundingClientRect());
@@ -308,6 +317,36 @@ test.describe("program theme shells", () => {
           topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
           heights: rects.map((rect) => rect.height),
           widths: rects.map((rect) => rect.width)
+        };
+      };
+      const getMarketAlignment = (card: HTMLElement) => {
+        const cardRect = getRect(card);
+        const label = card.querySelector(".overview-label") as HTMLElement;
+        const delta = card.querySelector(".overview-delta") as HTMLElement;
+        const value = card.querySelector(".overview-value") as HTMLElement;
+
+        return {
+          cardRight: cardRect.right,
+          cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
+          label: getRect(label),
+          delta: getRect(delta),
+          value: getRect(value),
+          deltaDisplay: window.getComputedStyle(delta).display
+        };
+      };
+      const getCommunityAlignment = (card: HTMLElement) => {
+        const cardRect = getRect(card);
+        const label = card.querySelector(".overview-label") as HTMLElement;
+        const badge = card.querySelector(".overview-score-badge") as HTMLElement;
+
+        return {
+          cardRight: cardRect.right,
+          cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
+          label: getRect(label),
+          badge: getRect(badge),
+          bandCount: card.querySelectorAll(".overview-community-band").length,
+          countsCount: card.querySelectorAll(".overview-community-counts").length,
+          deltaCount: card.querySelectorAll(".overview-delta").length
         };
       };
 
@@ -323,7 +362,9 @@ test.describe("program theme shells", () => {
         overviewPanelHeight: overviewPanel.getBoundingClientRect().height,
         bottomRowClientWidth: bottomRow.clientWidth,
         bottomRowScrollWidth: bottomRow.scrollWidth,
-        communityStack: getStackMetrics(communityCards)
+        communityStack: getStackMetrics(communityCards),
+        marketAlignment: marketCards.map(getMarketAlignment),
+        communityAlignment: communityCards.map(getCommunityAlignment)
       };
     });
 
@@ -331,20 +372,165 @@ test.describe("program theme shells", () => {
     expect(mobileOverview.artOpacity).toBeGreaterThanOrEqual(0.12);
     expect(mobileOverview.artOpacity).toBeLessThanOrEqual(0.18);
     expect(mobileOverview.artBackground).toContain("overview-regime");
-    expect(Math.abs(mobileOverview.marketBlockHeight - mobileOverview.rowHeight * 9)).toBeLessThanOrEqual(1);
-    expect(Math.abs(mobileOverview.overviewPanelHeight - mobileOverview.rowHeight * 14)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mobileOverview.marketBlockHeight - mobileOverview.rowHeight * 5)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mobileOverview.overviewPanelHeight - mobileOverview.rowHeight * 10)).toBeLessThanOrEqual(1);
     expect(mobileOverview.marketRowScrollWidth).toBeLessThanOrEqual(mobileOverview.marketRowClientWidth + 1);
     expect(mobileOverview.bottomRowScrollWidth).toBeLessThanOrEqual(mobileOverview.bottomRowClientWidth + 1);
     expect(mobileOverview.marketStack.count).toBe(4);
     expect(mobileOverview.marketStack.leftSpread).toBeLessThanOrEqual(1);
     expect(mobileOverview.marketStack.topIncreases).toBe(true);
-    expect(mobileOverview.marketStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight * 2) <= 1)).toBe(true);
+    expect(mobileOverview.marketStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight) <= 1)).toBe(true);
+    for (const item of mobileOverview.marketAlignment) {
+      expect(item.deltaDisplay).not.toBe("none");
+      expect(item.label.left).toBeLessThan(item.delta.left);
+      expect(item.delta.left).toBeLessThan(item.value.left);
+      expect(item.value.left - item.delta.right).toBeGreaterThanOrEqual(4);
+      expect(item.value.right).toBeGreaterThanOrEqual(item.cardRight - 16);
+      expect(Math.abs(item.label.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
+      expect(Math.abs(item.delta.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
+      expect(Math.abs(item.value.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
+    }
     expect(mobileOverview.communityStack.count).toBe(4);
     expect(mobileOverview.communityStack.leftSpread).toBeLessThanOrEqual(1);
     expect(mobileOverview.communityStack.topIncreases).toBe(true);
-    expect(mobileOverview.communityStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight * 2) <= 1)).toBe(true);
+    expect(mobileOverview.communityStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight) <= 1)).toBe(true);
+    for (const item of mobileOverview.communityAlignment) {
+      expect(item.bandCount).toBe(0);
+      expect(item.countsCount).toBe(0);
+      expect(item.deltaCount).toBe(0);
+      expect(item.label.left).toBeLessThan(item.badge.left);
+      expect(item.badge.right).toBeGreaterThanOrEqual(item.cardRight - 16);
+      expect(Math.abs(item.label.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
+      expect(Math.abs(item.badge.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
+    }
 
     await page.screenshot({ path: testInfo.outputPath("excel-mobile.png"), fullPage: false });
+  });
+
+  test("mobile overview indicators are full-width single-line rows across themes", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    const cases = [
+      { url: "/", shell: "default" },
+      { url: "/?theme=powerpoint-light", shell: "powerpoint" },
+      { url: "/?theme=docs-light", shell: "docs" },
+      { url: "/?theme=vscode-dark", shell: "vscode" },
+      { url: "/?theme=jetbrains-light", shell: "jetbrains" },
+      { url: "/?theme=vs-dark", shell: "visual-studio" }
+    ];
+
+    for (const item of cases) {
+      await prepareThemePage(page);
+      await page.goto(item.url);
+
+      if (item.shell === "default") {
+        await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+      } else {
+        await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
+      }
+
+      const metrics = await page.evaluate(() => {
+        const marketRow = document.querySelector(".overview-market-row") as HTMLElement;
+        const bottomRow = document.querySelector(".overview-bottom-row") as HTMLElement;
+        const marketCards = Array.from(document.querySelectorAll(".overview-market-stat")) as HTMLElement[];
+        const communityCards = Array.from(document.querySelectorAll(".overview-card-community")) as HTMLElement[];
+        const getRect = (element: Element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            centerY: rect.top + rect.height / 2,
+            width: rect.width
+          };
+        };
+
+        const getStackMetrics = (cards: HTMLElement[]) => {
+          const rects = cards.map((card) => card.getBoundingClientRect());
+          const lefts = rects.map((rect) => rect.left);
+          const widths = rects.map((rect) => rect.width);
+
+          return {
+            count: rects.length,
+            leftSpread: Math.max(...lefts) - Math.min(...lefts),
+            topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
+            maxHeight: Math.max(...rects.map((rect) => rect.height)),
+            minWidth: Math.min(...widths),
+            parentWidth: cards[0]?.parentElement?.getBoundingClientRect().width ?? 0
+          };
+        };
+        const getMarketAlignment = (card: HTMLElement) => {
+          const cardRect = getRect(card);
+          const label = card.querySelector(".overview-label") as HTMLElement;
+          const delta = card.querySelector(".overview-delta") as HTMLElement;
+          const value = card.querySelector(".overview-value") as HTMLElement;
+
+          return {
+            cardRight: cardRect.right,
+            cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
+            label: getRect(label),
+            delta: getRect(delta),
+            value: getRect(value),
+            deltaDisplay: window.getComputedStyle(delta).display
+          };
+        };
+        const getCommunityAlignment = (card: HTMLElement) => {
+          const cardRect = getRect(card);
+          const label = card.querySelector(".overview-label") as HTMLElement;
+          const badge = card.querySelector(".overview-score-badge") as HTMLElement;
+
+          return {
+            cardRight: cardRect.right,
+            cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
+            label: getRect(label),
+            badge: getRect(badge),
+            bandCount: card.querySelectorAll(".overview-community-band").length,
+            countsCount: card.querySelectorAll(".overview-community-counts").length,
+            deltaCount: card.querySelectorAll(".overview-delta").length
+          };
+        };
+
+        return {
+          marketOverflow: marketRow.scrollWidth - marketRow.clientWidth,
+          communityOverflow: bottomRow.scrollWidth - bottomRow.clientWidth,
+          market: getStackMetrics(marketCards),
+          community: getStackMetrics(communityCards),
+          marketAlignment: marketCards.map(getMarketAlignment),
+          communityAlignment: communityCards.map(getCommunityAlignment)
+        };
+      });
+
+      expect(metrics.marketOverflow).toBeLessThanOrEqual(1);
+      expect(metrics.communityOverflow).toBeLessThanOrEqual(1);
+      expect(metrics.market.count).toBe(4);
+      expect(metrics.market.leftSpread).toBeLessThanOrEqual(1);
+      expect(metrics.market.topIncreases).toBe(true);
+      expect(metrics.market.maxHeight).toBeLessThanOrEqual(42);
+      expect(metrics.market.minWidth).toBeGreaterThanOrEqual(metrics.market.parentWidth - 1);
+      for (const metric of metrics.marketAlignment) {
+        expect(metric.deltaDisplay).not.toBe("none");
+        expect(metric.label.left).toBeLessThan(metric.delta.left);
+        expect(metric.delta.left).toBeLessThan(metric.value.left);
+        expect(metric.value.left - metric.delta.right).toBeGreaterThanOrEqual(4);
+        expect(metric.value.right).toBeGreaterThanOrEqual(metric.cardRight - 16);
+        expect(Math.abs(metric.label.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
+        expect(Math.abs(metric.delta.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
+        expect(Math.abs(metric.value.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
+      }
+      expect(metrics.community.count).toBe(4);
+      expect(metrics.community.leftSpread).toBeLessThanOrEqual(1);
+      expect(metrics.community.topIncreases).toBe(true);
+      expect(metrics.community.maxHeight).toBeLessThanOrEqual(42);
+      expect(metrics.community.minWidth).toBeGreaterThanOrEqual(metrics.community.parentWidth - 1);
+      for (const metric of metrics.communityAlignment) {
+        expect(metric.bandCount).toBe(0);
+        expect(metric.countsCount).toBe(0);
+        expect(metric.deltaCount).toBe(0);
+        expect(metric.label.left).toBeLessThan(metric.badge.left);
+        expect(metric.badge.right).toBeGreaterThanOrEqual(metric.cardRight - 16);
+        expect(Math.abs(metric.label.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
+        expect(Math.abs(metric.badge.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
+      }
+    }
   });
 
   test("each concept theme has distinct chrome and no legacy header", async ({ page }, testInfo) => {
