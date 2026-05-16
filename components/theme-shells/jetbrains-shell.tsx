@@ -61,7 +61,7 @@ export function JetBrainsShell({ children, option, chatSidebar }: ThemeShellProp
           </div>
           <div className="jetbrains-editor-body">
             <div className="jetbrains-gutter" aria-hidden="true">
-              {Array.from({ length: 18 }, (_, index) => (
+              {Array.from({ length: 60 }, (_, index) => (
                 <span key={index}>{index + 1}</span>
               ))}
             </div>

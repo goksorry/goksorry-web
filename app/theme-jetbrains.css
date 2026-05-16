@@ -164,26 +164,40 @@
 }
 
 .jetbrains-editor-body {
+  --ide-editor-line-height: 1.62rem;
   min-height: 0;
   display: grid;
   grid-template-columns: 3rem minmax(0, 1fr);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .jetbrains-gutter {
+  position: sticky;
+  top: 0;
   display: grid;
   align-content: start;
-  gap: 0.25rem;
-  padding: 0.75rem 0.45rem;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.9rem 0.45rem 1.1rem;
   border-right: 1px solid var(--theme-shell-line);
   background: var(--jetbrains-gutter-bg);
   color: var(--theme-shell-muted);
   font-family: var(--mono-font);
   font-size: 0.72rem;
+  line-height: var(--ide-editor-line-height);
   text-align: right;
 }
 
+.jetbrains-gutter span {
+  height: var(--ide-editor-line-height);
+  line-height: var(--ide-editor-line-height);
+}
+
 .jetbrains-content-frame {
-  --ide-editor-line-height: 1.62rem;
+  overflow: visible;
   border: 0;
   border-radius: 0;
   background: var(--jetbrains-editor-bg);
@@ -202,6 +216,10 @@
   );
   font-family: var(--mono-font);
   line-height: var(--ide-editor-line-height);
+}
+
+.theme-shell-jetbrains .theme-shell-content-document > .main {
+  flex: 1 0 auto;
 }
 
 .theme-shell-jetbrains .theme-shell-page .main {

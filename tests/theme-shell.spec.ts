@@ -1970,16 +1970,24 @@ test.describe("program theme shells", () => {
 
   test("concept content surfaces adapt to the program family", async ({ page }) => {
     await prepareThemePage(page);
-    await page.goto("/?theme=vscode-dark");
+    await page.goto("/auth/login?theme=vscode-dark");
     const vscodeSurface = await page.getByTestId("theme-content-document").evaluate((element) => {
       const documentStyle = window.getComputedStyle(element);
       const frame = document.querySelector(".vscode-content-frame") as Element;
       const frameStyle = window.getComputedStyle(frame);
-      const lineNumberStyle = window.getComputedStyle(frame, "::before");
+      const lineNumberStyle = window.getComputedStyle(element, "::before");
+      const footer = element.querySelector(".site-footer") as HTMLElement;
+      const documentRect = element.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
 
       return {
         fontFamily: documentStyle.fontFamily.toLowerCase(),
         frameBackground: frameStyle.backgroundImage,
+        footerGap: documentRect.bottom - footerRect.bottom,
+        frameFooterGap: frameRect.bottom - footerRect.bottom,
+        frameScrollHeight: frame.scrollHeight,
+        frameClientHeight: frame.clientHeight,
         lineNumbers: lineNumberStyle.content,
         lineNumberBoxSizing: lineNumberStyle.boxSizing,
         lineNumberPaddingRight: parseFloat(lineNumberStyle.paddingRight)
@@ -1987,12 +1995,87 @@ test.describe("program theme shells", () => {
     });
     expect(vscodeSurface.fontFamily).toContain("monospace");
     expect(vscodeSurface.frameBackground).toContain("linear-gradient");
+    expect(vscodeSurface.footerGap).toBeLessThanOrEqual(32);
+    expect(vscodeSurface.frameFooterGap).toBeLessThanOrEqual(32);
+    expect(vscodeSurface.frameScrollHeight).toBeLessThanOrEqual(vscodeSurface.frameClientHeight + 2);
     expect(vscodeSurface.lineNumberBoxSizing).toBe("border-box");
     expect(vscodeSurface.lineNumberPaddingRight).toBeGreaterThan(8);
     expect(vscodeSurface.lineNumbers).toContain("2");
     expect(vscodeSurface.lineNumbers).toContain("3");
     expect(vscodeSurface.lineNumbers).not.toContain("¢");
     expect(vscodeSurface.lineNumbers).not.toContain("£");
+
+    await page.goto("/docs?theme=vscode-dark");
+    await expect(page.locator(".vscode-content-frame")).toBeVisible();
+    const vscodeScroll = await page.evaluate(() => {
+      const frame = document.querySelector(".vscode-content-frame") as HTMLElement;
+      frame.scrollTop = frame.scrollHeight;
+      return {
+        clientHeight: frame.clientHeight,
+        scrollHeight: frame.scrollHeight,
+        scrollTop: frame.scrollTop
+      };
+    });
+    expect(vscodeScroll.scrollHeight).toBeGreaterThan(vscodeScroll.clientHeight);
+    expect(vscodeScroll.scrollTop).toBeGreaterThan(100);
+
+    await page.goto("/auth/login?theme=jetbrains-light");
+    const jetbrainsSurface = await page.evaluate(() => {
+      const gutter = document.querySelector(".jetbrains-gutter") as HTMLElement;
+      const lineNumbers = [...gutter.querySelectorAll("span")] as HTMLElement[];
+      const firstLine = lineNumbers[0];
+      const secondLine = lineNumbers[1];
+      const documentElement = document.querySelector(".theme-shell-jetbrains .theme-shell-content-document") as HTMLElement;
+      const gutterStyle = window.getComputedStyle(gutter);
+      const documentStyle = window.getComputedStyle(documentElement);
+      const body = document.querySelector(".jetbrains-editor-body") as HTMLElement;
+      const frame = document.querySelector(".jetbrains-content-frame") as HTMLElement;
+      const bodyStyle = window.getComputedStyle(body);
+      const frameStyle = window.getComputedStyle(frame);
+      const firstLineRect = firstLine.getBoundingClientRect();
+      const secondLineRect = secondLine.getBoundingClientRect();
+      const documentRect = documentElement.getBoundingClientRect();
+      const documentLineHeight = parseFloat(documentStyle.lineHeight);
+      const documentPaddingTop = parseFloat(documentStyle.paddingTop);
+
+      return {
+        lineCount: lineNumbers.length,
+        bodyOverflowY: bodyStyle.overflowY,
+        bodyScrollHeight: body.scrollHeight,
+        bodyClientHeight: body.clientHeight,
+        frameOverflowY: frameStyle.overflowY,
+        gutterGap: gutterStyle.gap,
+        gutterLineHeight: parseFloat(gutterStyle.lineHeight),
+        documentLineHeight,
+        firstLineOffset: firstLineRect.top - (documentRect.top + documentPaddingTop),
+        lineStep: secondLineRect.top - firstLineRect.top
+      };
+    });
+    expect(jetbrainsSurface.lineCount).toBeGreaterThanOrEqual(60);
+    expect(jetbrainsSurface.bodyOverflowY).toBe("auto");
+    expect(jetbrainsSurface.bodyScrollHeight).toBeLessThanOrEqual(jetbrainsSurface.bodyClientHeight + 2);
+    expect(jetbrainsSurface.frameOverflowY).toBe("visible");
+    expect(jetbrainsSurface.gutterGap).toBe("0px");
+    expect(Math.abs(jetbrainsSurface.gutterLineHeight - jetbrainsSurface.documentLineHeight)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(jetbrainsSurface.firstLineOffset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(jetbrainsSurface.lineStep - jetbrainsSurface.documentLineHeight)).toBeLessThanOrEqual(1);
+
+    await page.goto("/docs?theme=jetbrains-light");
+    await expect(page.locator(".jetbrains-editor-body")).toBeVisible();
+    const jetbrainsScroll = await page.evaluate(() => {
+      const body = document.querySelector(".jetbrains-editor-body") as HTMLElement;
+      const frame = document.querySelector(".jetbrains-content-frame") as HTMLElement;
+      body.scrollTop = body.scrollHeight;
+      return {
+        bodyClientHeight: body.clientHeight,
+        bodyScrollHeight: body.scrollHeight,
+        bodyScrollTop: body.scrollTop,
+        frameScrollTop: frame.scrollTop
+      };
+    });
+    expect(jetbrainsScroll.bodyScrollHeight).toBeGreaterThan(jetbrainsScroll.bodyClientHeight);
+    expect(jetbrainsScroll.bodyScrollTop).toBeGreaterThan(100);
+    expect(jetbrainsScroll.frameScrollTop).toBe(0);
 
     await page.goto("/?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {
