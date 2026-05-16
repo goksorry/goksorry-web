@@ -13,7 +13,7 @@
   --docs-ruler-bg: #ffffff;
   --docs-ruler-ink: #6f7378;
   --docs-button-ink: #3c4043;
-  --docs-page-width: clamp(34rem, 48vw, 54rem);
+  --docs-page-width: clamp(42.5rem, 60vw, 67.5rem);
   --docs-vertical-ruler-width: 3.2rem;
 }
 
@@ -575,7 +575,7 @@
 
 @media (max-width: 900px) {
   :root[data-theme-shell="docs"] {
-    --docs-page-width: min(100%, 42rem);
+    --docs-page-width: min(100%, 52.5rem);
     --docs-vertical-ruler-width: 2.2rem;
   }
 
