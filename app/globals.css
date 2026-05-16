@@ -1656,21 +1656,21 @@ button:disabled {
   top: calc(100% + 0.5rem);
   right: 0;
   z-index: 80;
-  width: min(23rem, calc(100vw - 1rem));
+  width: min(19rem, calc(100vw - 1rem));
   max-height: min(34rem, calc(100vh - 6rem));
   overflow: auto;
-  padding: 0.75rem;
+  padding: 0.62rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--panel);
   box-shadow: var(--modal-shadow);
   display: grid;
-  gap: 0.72rem;
+  gap: 0.62rem;
 }
 
 .theme-menu-group {
   display: grid;
-  gap: 0.38rem;
+  gap: 0.34rem;
 }
 
 .theme-menu-group-label {
@@ -1684,13 +1684,30 @@ button:disabled {
 
 .theme-menu-options {
   display: grid;
+  gap: 0.34rem;
+}
+
+.theme-menu-family-options {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
+}
+
+.theme-menu-tone-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.theme-menu-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.theme-menu-apply {
+  min-height: 2.1rem;
+  padding: 0.34rem 0.9rem;
 }
 
 .theme-menu-item {
-  min-height: 3rem;
-  padding: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0.34rem 0.38rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: var(--panel-elevated);
@@ -1699,7 +1716,7 @@ button:disabled {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.48rem;
+  gap: 0.34rem;
   text-align: left;
 }
 
@@ -1715,8 +1732,8 @@ button:disabled {
 }
 
 .theme-menu-swatch {
-  width: 1.28rem;
-  height: 1.28rem;
+  width: 1rem;
+  height: 1rem;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
   background:
@@ -1739,7 +1756,7 @@ button:disabled {
 }
 
 .theme-menu-item-copy span {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 800;
 }
 
@@ -1971,7 +1988,7 @@ button:disabled {
 }
 
 .theme-first-visit-panel {
-  width: min(42rem, 100%);
+  width: min(30rem, 100%);
   max-height: min(88vh, 42rem);
   overflow: auto;
   padding: 1.15rem;
@@ -2000,8 +2017,7 @@ button:disabled {
 
 .theme-first-visit-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.62rem;
 }
 
 .cookie-consent-banner {
@@ -3545,15 +3561,10 @@ button:disabled {
     padding: 1rem;
   }
 
-  .theme-first-visit-options,
-  .theme-menu-options {
-    grid-template-columns: 1fr;
-  }
-
   .theme-menu-popover {
     right: auto;
     left: 0;
-    width: min(20rem, calc(100vw - 1.5rem));
+    width: min(19rem, calc(100vw - 1.5rem));
   }
 
   .cookie-consent-banner {

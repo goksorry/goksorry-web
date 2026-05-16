@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { THEME_OPTIONS, getThemeOption, type ThemeId, type ThemeOption } from "@/lib/theme";
+import { THEME_OPTIONS, getThemeOption, type ThemeFamily, type ThemeOption, type ThemeTone } from "@/lib/theme";
 import { useTheme } from "@/components/theme-provider";
 
-type ThemeOptionButtonProps = {
-  option: ThemeOption;
+type ThemeChoiceButtonProps = {
+  label: string;
+  ariaLabel: string;
+  swatchOption: ThemeOption;
   active: boolean;
-  onSelect: (themeId: ThemeId) => void;
+  onSelect: () => void;
 };
 
 const buildSwatchStyle = (option: ThemeOption): CSSProperties =>
@@ -18,19 +20,41 @@ const buildSwatchStyle = (option: ThemeOption): CSSProperties =>
     "--theme-swatch-c": option.swatches[2]
   }) as CSSProperties;
 
-export function ThemeOptionButton({ option, active, onSelect }: ThemeOptionButtonProps) {
+export const TONE_CHOICES: ThemeTone[] = ["light", "dark", "system"];
+export const TONE_LABELS: Record<ThemeTone, string> = {
+  light: "라이트",
+  dark: "다크",
+  system: "시스템"
+};
+
+export const findThemeOption = (family: ThemeFamily, tone: ThemeTone): ThemeOption | undefined =>
+  THEME_OPTIONS.find((option) => option.family === family && option.tone === tone);
+
+export const getThemeFamilyChoices = (): Array<{ family: ThemeFamily; label: string }> => {
+  const seen = new Set<ThemeFamily>();
+  return THEME_OPTIONS.reduce<Array<{ family: ThemeFamily; label: string }>>((acc, option) => {
+    if (seen.has(option.family)) {
+      return acc;
+    }
+
+    seen.add(option.family);
+    return [...acc, { family: option.family, label: option.familyLabel }];
+  }, []);
+};
+
+export function ThemeChoiceButton({ label, ariaLabel, swatchOption, active, onSelect }: ThemeChoiceButtonProps) {
   return (
     <button
       type="button"
-      className={`theme-menu-item${active ? " theme-menu-item-active" : ""}`}
-      style={buildSwatchStyle(option)}
-      onClick={() => onSelect(option.id)}
+      className={`theme-menu-item theme-menu-choice${active ? " theme-menu-item-active" : ""}`}
+      style={buildSwatchStyle(swatchOption)}
+      onClick={onSelect}
       aria-pressed={active}
+      aria-label={ariaLabel}
     >
       <span className="theme-menu-swatch" aria-hidden="true" />
       <span className="theme-menu-item-copy">
-        <span>{option.label}</span>
-        <small>{option.id}</small>
+        <span>{label}</span>
       </span>
     </button>
   );
@@ -40,23 +64,14 @@ export function ThemeToggle() {
   const { themeId, selectTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+  const [draftFamily, setDraftFamily] = useState<ThemeFamily>("default");
+  const [draftTone, setDraftTone] = useState<ThemeTone>("light");
   const shellRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const activeTheme = getThemeOption(themeId);
-  const groups = useMemo(
-    () =>
-      THEME_OPTIONS.reduce<Array<{ label: string; options: ThemeOption[] }>>((acc, option) => {
-        const group = acc.find((item) => item.label === option.familyLabel);
-        if (group) {
-          group.options.push(option);
-          return acc;
-        }
-
-        return [...acc, { label: option.familyLabel, options: [option] }];
-      }, []),
-    []
-  );
+  const familyChoices = useMemo(() => getThemeFamilyChoices(), []);
+  const draftTheme = findThemeOption(draftFamily, draftTone) ?? activeTheme;
   const updatePopoverPosition = useCallback(() => {
     if (typeof window === "undefined" || !buttonRef.current) {
       return;
@@ -67,8 +82,8 @@ export function ThemeToggle() {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const triggerRect = buttonRef.current.getBoundingClientRect();
-    const desktopWidth = 23 * 16;
-    const mobileWidth = 20 * 16;
+    const desktopWidth = 19 * 16;
+    const mobileWidth = 19 * 16;
     const preferredWidth = window.matchMedia("(max-width: 760px)").matches ? mobileWidth : desktopWidth;
     const width = Math.max(0, Math.min(preferredWidth, viewportWidth - edgePadding * 2));
     const top = Math.min(triggerRect.bottom + triggerGap, viewportHeight - edgePadding);
@@ -117,6 +132,8 @@ export function ThemeToggle() {
       return;
     }
 
+    setDraftFamily(activeTheme.family);
+    setDraftTone(activeTheme.tone);
     updatePopoverPosition();
     window.addEventListener("resize", updatePopoverPosition);
     window.addEventListener("scroll", updatePopoverPosition, true);
@@ -128,14 +145,16 @@ export function ThemeToggle() {
       window.visualViewport?.removeEventListener("resize", updatePopoverPosition);
       window.visualViewport?.removeEventListener("scroll", updatePopoverPosition);
     };
-  }, [open, updatePopoverPosition]);
+  }, [activeTheme.family, activeTheme.tone, open, updatePopoverPosition]);
 
-  const onSelect = (nextThemeId: ThemeId) => {
-    selectTheme(nextThemeId);
+  const onApply = () => {
+    selectTheme(draftTheme.id);
     setOpen(false);
   };
   const onToggle = () => {
     if (!open) {
+      setDraftFamily(activeTheme.family);
+      setDraftTone(activeTheme.tone);
       updatePopoverPosition();
     }
 
@@ -145,16 +164,51 @@ export function ThemeToggle() {
     open && typeof document !== "undefined"
       ? createPortal(
           <div ref={popoverRef} className="theme-menu-popover" style={popoverStyle ?? undefined} role="menu" aria-label="테마 선택">
-            {groups.map((group) => (
-              <section key={group.label} className="theme-menu-group">
-                <p className="theme-menu-group-label">{group.label}</p>
-                <div className="theme-menu-options">
-                  {group.options.map((option) => (
-                    <ThemeOptionButton key={option.id} option={option} active={option.id === themeId} onSelect={onSelect} />
-                  ))}
-                </div>
-              </section>
-            ))}
+            <section className="theme-menu-group" aria-labelledby="theme-family-heading">
+              <p id="theme-family-heading" className="theme-menu-group-label">
+                테마
+              </p>
+              <div className="theme-menu-options theme-menu-family-options">
+                {familyChoices.map((choice) => {
+                  const swatchOption = findThemeOption(choice.family, draftTone) ?? draftTheme;
+                  return (
+                    <ThemeChoiceButton
+                      key={choice.family}
+                      label={choice.label}
+                      ariaLabel={`테마 ${choice.label}`}
+                      swatchOption={swatchOption}
+                      active={choice.family === draftFamily}
+                      onSelect={() => setDraftFamily(choice.family)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+            <section className="theme-menu-group" aria-labelledby="theme-tone-heading">
+              <p id="theme-tone-heading" className="theme-menu-group-label">
+                색상
+              </p>
+              <div className="theme-menu-options theme-menu-tone-options">
+                {TONE_CHOICES.map((tone) => {
+                  const swatchOption = findThemeOption(draftFamily, tone) ?? draftTheme;
+                  return (
+                    <ThemeChoiceButton
+                      key={tone}
+                      label={TONE_LABELS[tone]}
+                      ariaLabel={`색상 ${TONE_LABELS[tone]}`}
+                      swatchOption={swatchOption}
+                      active={tone === draftTone}
+                      onSelect={() => setDraftTone(tone)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+            <div className="theme-menu-actions">
+              <button type="button" className="btn theme-menu-apply" onClick={onApply}>
+                적용
+              </button>
+            </div>
           </div>,
           document.body
         )

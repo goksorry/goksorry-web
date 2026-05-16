@@ -1,10 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
+const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
 
 const prepareThemePage = async (page: Page, storedTheme = "light") => {
   await page.context().addCookies([
+    {
+      name: COOKIE_CONSENT_COOKIE,
+      value: "v1:essential",
+      domain: "127.0.0.1",
+      path: "/"
+    },
     {
       name: CLEAN_FILTER_COOKIE,
       value: "on",
@@ -18,6 +25,26 @@ const prepareThemePage = async (page: Page, storedTheme = "light") => {
     },
     [THEME_STORAGE_KEY, storedTheme]
   );
+};
+
+const prepareThemeFirstVisitPage = async (page: Page) => {
+  await page.context().addCookies([
+    {
+      name: COOKIE_CONSENT_COOKIE,
+      value: "v1:essential",
+      domain: "127.0.0.1",
+      path: "/"
+    },
+    {
+      name: CLEAN_FILTER_COOKIE,
+      value: "on",
+      domain: "127.0.0.1",
+      path: "/"
+    }
+  ]);
+  await page.addInitScript((key) => {
+    window.localStorage.removeItem(key);
+  }, THEME_STORAGE_KEY);
 };
 
 const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) => {
@@ -615,6 +642,15 @@ test.describe("program theme shells", () => {
       await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
       const menu = page.getByRole("menu", { name: "테마 선택" });
       await expect(menu).toBeVisible();
+      await expect(menu.getByText("테마", { exact: true })).toBeVisible();
+      await expect(menu.getByText("색상", { exact: true })).toBeVisible();
+      await expect(menu.getByRole("button", { name: "테마 Excel" })).toHaveText("Excel");
+      await expect(menu.getByRole("button", { name: "색상 라이트" })).toHaveText("라이트");
+      await expect(menu.getByRole("button", { name: "색상 다크" })).toHaveText("다크");
+      await expect(menu.getByRole("button", { name: "색상 시스템" })).toHaveText("시스템");
+      await expect(menu.getByRole("button", { name: "적용" })).toBeVisible();
+      await expect(menu.getByText("excel-light")).toHaveCount(0);
+      await expect(menu.getByText("엑셀 라이트")).toHaveCount(0);
 
       const metrics = await menu.evaluate((element) => {
         const rect = element.getBoundingClientRect();
@@ -643,11 +679,45 @@ test.describe("program theme shells", () => {
       await expect(menu).toHaveCount(0);
     }
 
-    await page.goto("/?theme=excel-light");
+    await page.goto("/?theme=excel-dark");
     await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
-    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: /엑셀 다크/ }).click();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "테마 PowerPoint" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
+    await expect(page.getByRole("menu", { name: "테마 선택" })).toBeVisible();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "적용" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-dark");
     await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
+
+    await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "색상 시스템" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-dark");
+    await expect(page.getByRole("menu", { name: "테마 선택" })).toBeVisible();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "적용" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-system");
+    await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
+  });
+
+  test("first visit theme dialog uses family and tone sections", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await prepareThemeFirstVisitPage(page);
+    await page.goto("/");
+
+    const dialog = page.getByRole("dialog", { name: "사이트 분위기를 고르세요." });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText("테마", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("색상", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "테마 Excel" })).toHaveText("Excel");
+    await expect(dialog.getByRole("button", { name: "색상 다크" })).toHaveText("다크");
+    await expect(dialog.getByText("excel-light")).toHaveCount(0);
+    await expect(dialog.getByText("엑셀 라이트")).toHaveCount(0);
+
+    await dialog.getByRole("button", { name: "테마 Excel" }).click();
+    await dialog.getByRole("button", { name: "색상 다크" }).click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "선택 완료" }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
+    await expect(dialog).toHaveCount(0);
   });
 
   test("concept content surfaces adapt to the program family", async ({ page }) => {
