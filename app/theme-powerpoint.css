@@ -1,166 +1,575 @@
 :root[data-theme-shell="powerpoint"] {
-  --theme-shell-bg: color-mix(in srgb, var(--bg) 88%, #000 12%);
-  --theme-shell-chrome: var(--panel-soft);
-  --theme-shell-elevated: var(--panel-elevated);
-  --theme-shell-line: var(--line);
+  --theme-shell-bg: #f3f2f1;
+  --theme-shell-chrome: #ffffff;
+  --theme-shell-elevated: #ffffff;
+  --theme-shell-line: #d2d0ce;
   --theme-shell-accent: var(--brand);
-  --theme-shell-content-padding: 0.7rem;
+  --theme-shell-content-padding: 0;
+  --powerpoint-app-bar-bg: #f8f8f8;
+  --powerpoint-app-bar-hover: #f0f0f0;
+  --powerpoint-app-bar-ink: #242424;
+  --powerpoint-title-muted: #605e5c;
+  --powerpoint-ribbon-bg: #ffffff;
+  --powerpoint-ribbon-hover: #f5f5f5;
+  --powerpoint-workbench-bg: #f3f2f1;
+  --powerpoint-slide-bg: #ffffff;
+  --powerpoint-slide-shadow: 0 0.32rem 1.5rem rgba(0, 0, 0, 0.18);
+  --powerpoint-control-radius: 3px;
+}
+
+:root[data-theme="powerpoint-dark"][data-theme-shell="powerpoint"] {
+  --theme-shell-bg: #1f1f1f;
+  --theme-shell-chrome: #252526;
+  --theme-shell-elevated: #2b2b2b;
+  --theme-shell-line: #3f3f46;
+  --powerpoint-app-bar-bg: #1f1f1f;
+  --powerpoint-app-bar-hover: #2b2b2b;
+  --powerpoint-app-bar-ink: #f5f5f5;
+  --powerpoint-title-muted: #c8c8c8;
+  --powerpoint-ribbon-bg: #252526;
+  --powerpoint-ribbon-hover: #303134;
+  --powerpoint-workbench-bg: #202124;
+  --powerpoint-slide-bg: #1f1f1f;
+  --powerpoint-slide-shadow: 0 0.32rem 1.5rem rgba(0, 0, 0, 0.42);
 }
 
 .theme-shell-powerpoint {
   grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: var(--powerpoint-workbench-bg);
 }
 
 .powerpoint-titlebar {
-  min-height: var(--theme-shell-header-height);
+  min-height: 2.72rem;
   display: grid;
-  grid-template-columns: auto auto minmax(10rem, 1fr) minmax(8rem, 1fr) auto;
+  grid-template-columns: minmax(13rem, 1fr) minmax(10rem, 24rem) max-content;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.34rem 0.7rem;
-  border-bottom: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  gap: 0.62rem;
+  padding: 0.28rem 0.58rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-shell-line) 86%, transparent);
+  background: var(--powerpoint-app-bar-bg);
+  color: var(--powerpoint-app-bar-ink);
+  overflow: visible;
 }
 
-.powerpoint-title {
+.powerpoint-file-identity,
+.powerpoint-top-actions {
   min-width: 0;
-  color: var(--theme-shell-muted);
-  font-size: 0.82rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.powerpoint-app-launcher {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  grid-template-columns: repeat(3, 0.26rem);
+  grid-auto-rows: 0.26rem;
+  place-content: center;
+  gap: 0.18rem;
+  border: 0;
+  border-radius: var(--powerpoint-control-radius);
+  background: transparent;
+  color: var(--powerpoint-app-bar-ink);
+  box-shadow: none;
+}
+
+.powerpoint-app-launcher span {
+  width: 0.26rem;
+  height: 0.26rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.powerpoint-home-link {
+  width: 2rem;
+  height: 2rem;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--powerpoint-control-radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.powerpoint-home-link:hover,
+.powerpoint-app-launcher:hover {
+  background: var(--powerpoint-app-bar-hover);
+  text-decoration: none;
+}
+
+.powerpoint-product-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.18rem;
+  box-shadow: none;
+}
+
+.powerpoint-file-title-stack {
+  min-width: 0;
+  display: grid;
+  gap: 0.04rem;
+}
+
+.powerpoint-file-title {
+  min-width: 0;
+  max-width: 24rem;
   overflow: hidden;
+  color: inherit;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
   text-overflow: ellipsis;
+  text-decoration: none;
   white-space: nowrap;
 }
 
+.powerpoint-file-title:hover {
+  text-decoration: none;
+}
+
+.powerpoint-file-title-stack span {
+  color: var(--powerpoint-title-muted);
+  font-size: 0.68rem;
+}
+
+.powerpoint-search {
+  min-width: 0;
+  height: 2rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.68rem;
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 82%, transparent);
+  border-radius: var(--powerpoint-control-radius);
+  background: var(--powerpoint-ribbon-bg);
+  color: #605e5c;
+}
+
+.powerpoint-search span {
+  color: var(--theme-shell-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.powerpoint-search input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.powerpoint-top-actions {
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+.powerpoint-collaborators {
+  display: flex;
+  align-items: center;
+}
+
+.powerpoint-collaborators span {
+  width: 1.62rem;
+  height: 1.62rem;
+  display: inline-grid;
+  place-items: center;
+  margin-left: -0.26rem;
+  border: 2px solid var(--powerpoint-app-bar-bg);
+  border-radius: 50%;
+  background: #fde7e9;
+  color: #a80000;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.powerpoint-collaborators span:nth-child(2) {
+  background: #cfe4fa;
+  color: #004578;
+}
+
+.powerpoint-header-button,
+.powerpoint-present-button,
+.powerpoint-editing-mode,
+.powerpoint-share-button {
+  min-height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--powerpoint-control-radius);
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.powerpoint-present-button,
+.powerpoint-share-button {
+  padding: 0 0.72rem;
+  background: var(--theme-shell-accent);
+  color: #ffffff;
+}
+
+.powerpoint-header-button:hover,
+.powerpoint-editing-mode:hover,
+.powerpoint-home-link:hover,
+.powerpoint-app-launcher:hover {
+  background: var(--powerpoint-app-bar-hover);
+}
+
+.powerpoint-present-button:hover,
+.powerpoint-share-button:hover {
+  background: color-mix(in srgb, var(--theme-shell-accent) 86%, #000 14%);
+}
+
 .theme-shell-powerpoint .theme-shell-actions {
-  --theme-shell-action-bg: color-mix(in srgb, var(--panel-elevated) 88%, var(--brand) 12%);
-  --theme-shell-action-border: color-mix(in srgb, var(--brand) 44%, var(--line));
-  --theme-shell-action-hover: color-mix(in srgb, var(--brand) 22%, var(--panel-elevated));
-  --theme-shell-action-radius: 6px;
-  --theme-shell-action-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  --theme-shell-action-bg: transparent;
+  --theme-shell-action-border: transparent;
+  --theme-shell-action-hover: var(--powerpoint-app-bar-hover);
+  --theme-shell-action-radius: var(--powerpoint-control-radius);
+  --theme-shell-action-shadow: none;
+  gap: 0.18rem;
+}
+
+.theme-shell-powerpoint .theme-shell-actions .theme-menu-trigger,
+.theme-shell-powerpoint .theme-shell-actions .header-share-button,
+.theme-shell-powerpoint .theme-shell-actions .header-auth-button,
+.theme-shell-powerpoint .theme-shell-actions .header-auth-signout,
+.theme-shell-powerpoint .theme-shell-actions .clean-filter-toggle-group,
+.theme-shell-powerpoint .theme-shell-actions .header-auth-shell {
+  min-height: 1.9rem;
+  border: 0;
+  border-radius: var(--powerpoint-control-radius);
+  box-shadow: none;
+}
+
+.theme-shell-powerpoint .theme-shell-actions .clean-filter-toggle,
+.theme-shell-powerpoint .theme-shell-actions .clean-filter-info-button {
+  border: 0;
 }
 
 .powerpoint-ribbon {
-  border-bottom: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  border-bottom: 1px solid #d2d0ce;
+  background: var(--powerpoint-ribbon-bg);
+  color: var(--ink);
 }
 
 .powerpoint-tabs {
+  min-height: 2.14rem;
   display: flex;
+  align-items: center;
   gap: 0.08rem;
-  padding: 0.18rem 0.5rem 0;
+  padding: 0 0.52rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-shell-line) 70%, transparent);
   overflow-x: auto;
 }
 
 .powerpoint-tabs button {
+  height: 2.12rem;
+  padding: 0 0.7rem;
   border: 0;
-  border-radius: 5px 5px 0 0;
+  border-radius: var(--powerpoint-control-radius);
   background: transparent;
-  color: var(--theme-shell-muted);
-  padding: 0.34rem 0.65rem;
+  color: var(--ink-soft);
   box-shadow: none;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
-.powerpoint-command-strip {
+.powerpoint-tabs button:hover {
+  background: var(--powerpoint-ribbon-hover);
+}
+
+.powerpoint-tabs .theme-shell-active {
+  background: var(--powerpoint-ribbon-bg) !important;
+  color: var(--theme-shell-accent) !important;
+  box-shadow: inset 0 -2px 0 var(--theme-shell-accent);
+}
+
+.powerpoint-single-line-ribbon {
+  min-height: 2.54rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.28rem 0.5rem;
+  background: var(--powerpoint-ribbon-bg);
+}
+
+.powerpoint-single-line-commands {
+  min-width: 0;
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  align-items: center;
+  gap: 0.12rem;
   overflow-x: auto;
 }
 
-.powerpoint-command-group {
-  min-width: max-content;
-  display: grid;
-  gap: 0.32rem;
-  padding-right: 0.5rem;
-  border-right: 1px solid var(--theme-shell-line);
+.powerpoint-ribbon-separator {
+  width: 1px;
+  height: 1.55rem;
+  flex: 0 0 auto;
+  margin: 0 0.16rem;
+  background: color-mix(in srgb, var(--theme-shell-line) 86%, transparent);
 }
 
-.powerpoint-command-group p {
-  margin: 0;
+.powerpoint-ribbon-command,
+.powerpoint-ribbon-display-button {
+  height: 2rem;
+  min-width: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.26rem;
+  flex: 0 0 auto;
+  padding: 0 0.42rem;
+  border: 0;
+  border-radius: var(--powerpoint-control-radius);
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.powerpoint-ribbon-command:hover,
+.powerpoint-ribbon-command-active,
+.powerpoint-ribbon-display-button:hover {
+  background: var(--powerpoint-ribbon-hover);
+  color: var(--ink);
+}
+
+.powerpoint-ribbon-command-button:not(.powerpoint-ribbon-command-icon-only) {
+  min-width: 3.2rem;
+}
+
+.powerpoint-ribbon-command-select {
+  min-width: 4.35rem;
+  justify-content: space-between;
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
+  background: color-mix(in srgb, var(--powerpoint-ribbon-bg) 92%, var(--powerpoint-ribbon-hover));
+  padding-right: 0.3rem;
+}
+
+.powerpoint-ribbon-command-wide {
+  min-width: 5.2rem;
+  justify-content: space-between;
+}
+
+.powerpoint-command-icon {
+  width: 1rem;
+  height: 1rem;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.powerpoint-command-svg {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.powerpoint-command-svg text {
+  fill: currentColor;
+  stroke: none;
+  font-family: var(--sans-font);
+}
+
+.powerpoint-command-text-bold {
+  font-weight: 800;
+}
+
+.powerpoint-command-text-italic {
+  font-style: italic;
+}
+
+.powerpoint-command-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.powerpoint-command-caret {
+  width: 0;
+  height: 0;
+  border-top: 0.25rem solid currentColor;
+  border-right: 0.22rem solid transparent;
+  border-left: 0.22rem solid transparent;
+  opacity: 0.7;
+}
+
+.powerpoint-ribbon-display-button {
   color: var(--theme-shell-muted);
-  font-size: 0.68rem;
-  text-align: center;
-}
-
-.powerpoint-command-group div {
-  display: flex;
-  gap: 0.3rem;
 }
 
 .powerpoint-workspace {
+  min-height: 0;
   display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  padding: 0.75rem;
-}
-
-.powerpoint-slide-rail,
-.powerpoint-format-pane,
-.powerpoint-notes {
-  border: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  grid-template-columns: 11rem minmax(0, 1fr) auto;
+  gap: 0;
+  background: var(--powerpoint-workbench-bg);
+  overflow: hidden;
 }
 
 .powerpoint-slide-rail {
+  min-height: 0;
   display: grid;
   align-content: start;
-  gap: 0.55rem;
-  padding: 0.6rem;
+  gap: 0.58rem;
+  padding: 0.72rem 0.58rem;
+  border-right: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--powerpoint-workbench-bg) 92%, var(--powerpoint-ribbon-bg));
   overflow-y: auto;
 }
 
 .powerpoint-slide-rail a {
-  min-height: 4.8rem;
+  min-width: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.45rem;
-  padding: 0.45rem;
-  border: 1px solid var(--theme-shell-line);
-  border-radius: 3px;
-  background: var(--panel);
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  grid-template-areas:
+    "number thumb"
+    "number label";
+  gap: 0.28rem 0.44rem;
+  padding: 0.36rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--ink);
   text-decoration: none;
 }
 
-.powerpoint-slide-rail span {
+.powerpoint-slide-rail a:hover {
+  background: color-mix(in srgb, var(--powerpoint-ribbon-bg) 82%, transparent);
+  text-decoration: none;
+}
+
+.powerpoint-slide-rail a.theme-shell-active {
+  border-color: var(--theme-shell-accent);
+  background: var(--powerpoint-ribbon-bg);
+}
+
+.powerpoint-slide-number {
+  grid-area: number;
   color: var(--theme-shell-muted);
   font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.powerpoint-slide-thumbnail {
+  grid-area: thumb;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  align-content: center;
+  gap: 0.18rem;
+  padding: 0.42rem;
+  border: 1px solid var(--theme-shell-line);
+  background: var(--powerpoint-slide-bg);
+  box-shadow: 0 0.08rem 0.28rem rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.powerpoint-slide-preview-title,
+.powerpoint-slide-preview-line {
+  display: block;
+  height: 0.22rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-shell-accent) 72%, transparent);
+}
+
+.powerpoint-slide-preview-title {
+  width: 58%;
+  height: 0.34rem;
+}
+
+.powerpoint-slide-preview-line {
+  width: 82%;
+  background: color-mix(in srgb, var(--theme-shell-line) 88%, transparent);
+}
+
+.powerpoint-slide-preview-line:last-child {
+  width: 66%;
+}
+
+.powerpoint-slide-rail strong {
+  grid-area: label;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .powerpoint-stage {
+  min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 0.55rem;
+  background: var(--powerpoint-workbench-bg);
 }
 
 .powerpoint-canvas {
   min-height: 0;
   display: grid;
-  place-items: stretch;
-  padding: clamp(0.65rem, 2vw, 1.4rem);
-  background: color-mix(in srgb, var(--theme-shell-bg) 74%, #000 26%);
+  place-items: center;
+  padding: clamp(1rem, 2.6vw, 2.1rem);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--theme-shell-line) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--theme-shell-line) 30%, transparent) 1px, transparent 1px),
+    var(--powerpoint-workbench-bg);
+  background-size: 1.5rem 1.5rem;
+  overflow: hidden;
+}
+
+.powerpoint-slide-shell {
+  width: min(100%, calc((100vh - 15rem) * 16 / 9));
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  background: var(--powerpoint-slide-bg);
+  box-shadow: var(--powerpoint-slide-shadow);
 }
 
 .powerpoint-content-frame {
-  border: 1px solid var(--theme-shell-line);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--panel) 92%, #fff 8%);
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #c8c6c4;
+  border-radius: 0;
+  background: var(--powerpoint-slide-bg);
+  overflow: auto;
 }
 
 .theme-shell-powerpoint .theme-shell-content-document {
   min-height: 100%;
-  padding: clamp(1rem, 2.5vw, 2.2rem);
+  width: 100%;
+  box-sizing: border-box;
+  padding: clamp(1rem, 2.4vw, 2rem);
   background:
-    radial-gradient(circle at 6% 8%, color-mix(in srgb, var(--theme-shell-accent) 9%, transparent), transparent 24%),
-    var(--panel);
+    radial-gradient(circle at 8% 10%, color-mix(in srgb, var(--theme-shell-accent) 6%, transparent), transparent 24%),
+    var(--powerpoint-slide-bg);
 }
 
 .theme-shell-powerpoint .theme-shell-page .main {
   display: grid;
-  gap: clamp(0.8rem, 1.6vw, 1.3rem);
+  gap: clamp(0.78rem, 1.5vw, 1.15rem);
   padding: 0;
 }
 
@@ -176,7 +585,7 @@
   border-radius: 4px;
   border-color: color-mix(in srgb, var(--theme-shell-line) 76%, var(--line));
   background: color-mix(in srgb, var(--panel) 88%, transparent);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0.22rem 0.7rem rgba(0, 0, 0, 0.08);
 }
 
 .theme-shell-powerpoint .panel,
@@ -185,9 +594,9 @@
 .theme-shell-powerpoint .goksorry-room-panel,
 .theme-shell-powerpoint .docs-shell {
   margin: 0;
-  padding: clamp(0.85rem, 1.7vw, 1.35rem);
+  padding: clamp(0.78rem, 1.45vw, 1.15rem);
   outline: 1px solid color-mix(in srgb, var(--theme-shell-accent) 18%, transparent);
-  outline-offset: -0.45rem;
+  outline-offset: -0.42rem;
 }
 
 .theme-shell-powerpoint .panel h1,
@@ -201,68 +610,114 @@
 }
 
 .theme-shell-powerpoint .tag,
-.theme-shell-powerpoint .btn {
-  border-radius: 999px;
+.theme-shell-powerpoint .btn,
+.theme-shell-powerpoint .feed-symbol-badge {
+  border-radius: var(--powerpoint-control-radius);
+}
+
+.theme-shell-powerpoint button,
+.theme-shell-powerpoint .btn,
+.theme-shell-powerpoint a.btn,
+.theme-shell-powerpoint .clean-filter-toggle-group,
+.theme-shell-powerpoint .header-auth-shell {
+  border-radius: var(--powerpoint-control-radius);
+  box-shadow: none;
 }
 
 .powerpoint-notes {
   min-height: 2.35rem;
-  padding: 0.55rem 0.65rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.65rem;
+  border-top: 1px solid var(--theme-shell-line);
+  background: var(--powerpoint-ribbon-bg);
   color: var(--theme-shell-muted);
   font-size: 0.78rem;
 }
 
-.powerpoint-format-pane {
-  display: grid;
-  align-content: start;
-  gap: 0.55rem;
-  padding: 0.65rem;
-}
-
-.powerpoint-format-pane p {
-  margin: 0;
-  color: var(--theme-shell-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.powerpoint-format-links {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.powerpoint-format-links a {
-  padding: 0.38rem 0.45rem;
-  border-radius: 4px;
+.powerpoint-notes span {
   color: var(--ink-soft);
-  text-decoration: none;
-  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.powerpoint-notes p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-powerpoint .theme-shell-status {
+  background: var(--powerpoint-app-bar-bg);
+  color: var(--theme-shell-muted);
 }
 
 @media (max-width: 900px) {
   .powerpoint-workspace {
-    grid-template-columns: 7.2rem minmax(0, 1fr);
+    grid-template-columns: 8.4rem minmax(0, 1fr);
   }
 }
 
 @media (max-width: 760px) {
   .powerpoint-titlebar {
     grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
-  .powerpoint-title {
+  .powerpoint-file-identity,
+  .powerpoint-top-actions {
+    overflow-x: auto;
+  }
+
+  .powerpoint-collaborators,
+  .powerpoint-header-button,
+  .powerpoint-present-button,
+  .powerpoint-editing-mode,
+  .powerpoint-share-button {
+    display: none;
+  }
+
+  .powerpoint-top-actions {
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .powerpoint-search {
     display: none;
   }
 
   .powerpoint-workspace {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0.5rem;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .powerpoint-slide-rail {
     grid-auto-flow: column;
-    grid-auto-columns: 7rem;
+    grid-auto-columns: 8.2rem;
+    grid-template-columns: none;
+    padding: 0.48rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--theme-shell-line);
     overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .powerpoint-slide-rail a {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .powerpoint-canvas {
+    padding: 0.72rem;
+  }
+
+  .powerpoint-slide-shell {
+    width: 100%;
+  }
+
+  .theme-shell-powerpoint .theme-shell-content-document {
+    padding: 0.86rem;
   }
 }

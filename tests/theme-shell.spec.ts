@@ -109,6 +109,12 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
     await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
     await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "Home" })).toBeVisible();
     await expect(page.getByTestId("excel-sheet-tabs").getByRole("link", { name: "피드" })).toBeVisible();
+  } else if (shell === "powerpoint") {
+    await expect(header.getByRole("link", { name: "피드" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "게시판" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
+    await expect(page.getByTestId("powerpoint-ribbon").getByRole("button", { name: "Home" })).toBeVisible();
+    await expect(page.getByTestId("powerpoint-slide-rail").getByRole("link", { name: "1 피드 slide" })).toBeVisible();
   } else {
     await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
     await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
@@ -659,6 +665,116 @@ test.describe("program theme shells", () => {
     await page.getByRole("button", { name: "Paste mock command" }).click();
     await expect(page).toHaveURL(currentUrl);
     await page.screenshot({ path: testInfo.outputPath("excel-light.png"), fullPage: false });
+  });
+
+  test("powerpoint theme renders an Office web slide editor shell", async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/?theme=powerpoint-light");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "powerpoint");
+    await expectConceptHeaderReplacesSiteHeader(page, "powerpoint");
+    await expectConceptHeaderFixed(page);
+    await expect(page.getByTestId("powerpoint-ribbon")).toBeVisible();
+    await expect(page.getByTestId("powerpoint-single-line-ribbon")).toBeVisible();
+    await expect(page.getByTestId("powerpoint-slide-rail")).toBeVisible();
+    await expect(page.getByTestId("powerpoint-slide-canvas")).toBeVisible();
+    await expect(page.getByTestId("powerpoint-notes")).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Microsoft 365 app launcher mock command" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByText("Saved to Goksorry")).toBeVisible();
+    await expect(page.getByTestId("program-header").getByText("Saved to OneDrive")).toHaveCount(0);
+    await expect(page.getByTestId("program-header").getByRole("search", { name: "PowerPoint 검색" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Comments mock command" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Present mock command" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Editing mode mock command" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Share presentation mock command" })).toBeVisible();
+
+    const powerpointRibbonMetrics = await page.evaluate(() => {
+      const commandButtons = Array.from(document.querySelectorAll(".powerpoint-ribbon-command")) as HTMLElement[];
+      const plainCommandButtons = Array.from(
+        document.querySelectorAll(".powerpoint-ribbon-command:not(.powerpoint-ribbon-command-select)")
+      ) as HTMLElement[];
+      const selectButtons = Array.from(document.querySelectorAll(".powerpoint-ribbon-command-select")) as HTMLElement[];
+      const commandRects = commandButtons.map((button) => button.getBoundingClientRect());
+      const ribbonRect = (document.querySelector("[data-testid='powerpoint-single-line-ribbon']") as HTMLElement).getBoundingClientRect();
+      const commandTops = commandRects.map((rect) => Math.round(rect.top));
+      const plainCommandStyles = plainCommandButtons.map((button) => window.getComputedStyle(button));
+      const selectButtonStyles = selectButtons.map((button) => window.getComputedStyle(button));
+
+      return {
+        tabCount: document.querySelectorAll(".powerpoint-tabs button").length,
+        commandCount: commandButtons.length,
+        iconCount: document.querySelectorAll(".powerpoint-ribbon-command .powerpoint-command-icon").length,
+        groupLabelCount: document.querySelectorAll(".powerpoint-command-group p").length,
+        separatorCount: document.querySelectorAll(".powerpoint-ribbon-separator").length,
+        selectCount: selectButtons.length,
+        commandHeights: commandRects.map((rect) => Math.round(rect.height)),
+        plainCommandBorderWidths: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
+        plainCommandRadii: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
+        selectCommandBorderWidths: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
+        selectCommandRadii: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
+        topSpread: Math.max(...commandTops) - Math.min(...commandTops),
+        ribbonHeight: Math.round(ribbonRect.height)
+      };
+    });
+    expect(powerpointRibbonMetrics.tabCount).toBe(11);
+    expect(powerpointRibbonMetrics.commandCount).toBeGreaterThanOrEqual(14);
+    expect(powerpointRibbonMetrics.iconCount).toBeGreaterThanOrEqual(powerpointRibbonMetrics.commandCount - 2);
+    expect(powerpointRibbonMetrics.groupLabelCount).toBe(0);
+    expect(powerpointRibbonMetrics.separatorCount).toBeGreaterThanOrEqual(3);
+    expect(powerpointRibbonMetrics.selectCount).toBeGreaterThanOrEqual(2);
+    expect(new Set(powerpointRibbonMetrics.commandHeights).size).toBe(1);
+    expect(new Set(powerpointRibbonMetrics.plainCommandBorderWidths)).toEqual(new Set([0]));
+    expect(new Set(powerpointRibbonMetrics.plainCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
+    expect(new Set(powerpointRibbonMetrics.selectCommandBorderWidths)).toEqual(new Set([1]));
+    expect(new Set(powerpointRibbonMetrics.selectCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
+    expect(powerpointRibbonMetrics.topSpread).toBeLessThanOrEqual(1);
+    expect(powerpointRibbonMetrics.ribbonHeight).toBeLessThanOrEqual(52);
+
+    const powerpointSlideMetrics = await page.evaluate(() => {
+      const rail = document.querySelector("[data-testid='powerpoint-slide-rail']") as HTMLElement;
+      const slideLinks = Array.from(rail.querySelectorAll("a")) as HTMLElement[];
+      const thumbnails = Array.from(rail.querySelectorAll(".powerpoint-slide-thumbnail")) as HTMLElement[];
+      const activeSlide = rail.querySelector("a.theme-shell-active") as HTMLElement;
+      const canvas = document.querySelector(".powerpoint-canvas") as HTMLElement;
+      const slide = document.querySelector("[data-testid='powerpoint-slide-canvas']") as HTMLElement;
+      const frame = document.querySelector(".powerpoint-content-frame") as HTMLElement;
+      const notes = document.querySelector("[data-testid='powerpoint-notes']") as HTMLElement;
+      const slideRect = slide.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      const thumbnailRects = thumbnails.map((thumbnail) => thumbnail.getBoundingClientRect());
+      const activeStyle = window.getComputedStyle(activeSlide);
+
+      return {
+        slideCount: slideLinks.length,
+        thumbnailAspectRatios: thumbnailRects.map((rect) => rect.width / rect.height),
+        activeBorderColor: activeStyle.borderTopColor,
+        inactiveBorderColor: window.getComputedStyle(slideLinks[1]).borderTopColor,
+        slideAspectRatio: slideRect.width / slideRect.height,
+        frameWidth: frameRect.width,
+        frameHeight: frameRect.height,
+        slideWidth: slideRect.width,
+        slideHeight: slideRect.height,
+        canvasBackground: window.getComputedStyle(canvas).backgroundColor,
+        slideBackground: window.getComputedStyle(slide).backgroundColor,
+        frameBackground: window.getComputedStyle(frame).backgroundColor,
+        notesDisplay: window.getComputedStyle(notes).display,
+        notesText: notes.textContent ?? ""
+      };
+    });
+    expect(powerpointSlideMetrics.slideCount).toBeGreaterThanOrEqual(6);
+    expect(powerpointSlideMetrics.thumbnailAspectRatios.every((ratio) => Math.abs(ratio - 16 / 9) < 0.04)).toBe(true);
+    expect(powerpointSlideMetrics.activeBorderColor).not.toBe(powerpointSlideMetrics.inactiveBorderColor);
+    expect(Math.abs(powerpointSlideMetrics.slideAspectRatio - 16 / 9)).toBeLessThan(0.03);
+    expect(Math.abs(powerpointSlideMetrics.frameWidth - powerpointSlideMetrics.slideWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(powerpointSlideMetrics.frameHeight - powerpointSlideMetrics.slideHeight)).toBeLessThanOrEqual(1);
+    expect(powerpointSlideMetrics.canvasBackground).not.toBe(powerpointSlideMetrics.slideBackground);
+    expect(powerpointSlideMetrics.frameBackground).toBe(powerpointSlideMetrics.slideBackground);
+    expect(powerpointSlideMetrics.notesDisplay).toBe("grid");
+    expect(powerpointSlideMetrics.notesText).toContain("Click to add notes");
+
+    await page.screenshot({ path: testInfo.outputPath("powerpoint-desktop.png"), fullPage: false });
   });
 
   test("excel theme aligns feed, community, and room content blocks to worksheet cells", async ({ page }) => {
@@ -1340,7 +1456,19 @@ test.describe("program theme shells", () => {
     });
     await expect
       .poll(async () => page.locator(".powerpoint-titlebar").evaluate((element) => getComputedStyle(element).backgroundColor))
-      .toBe("rgb(247, 242, 238)");
+      .toBe("rgb(248, 248, 248)");
+    const powerpointChrome = await page.evaluate(() => ({
+      ribbon: getComputedStyle(document.querySelector(".powerpoint-ribbon") as HTMLElement).backgroundColor,
+      canvas: getComputedStyle(document.querySelector(".powerpoint-canvas") as HTMLElement).backgroundColor,
+      slide: getComputedStyle(document.querySelector("[data-testid='powerpoint-slide-canvas']") as HTMLElement).backgroundColor,
+      frame: getComputedStyle(document.querySelector(".powerpoint-content-frame") as HTMLElement).backgroundColor
+    }));
+    expect(powerpointChrome).toMatchObject({
+      ribbon: "rgb(255, 255, 255)",
+      canvas: "rgb(243, 242, 241)",
+      slide: "rgb(255, 255, 255)",
+      frame: "rgb(255, 255, 255)"
+    });
 
     await page.goto("/?theme=docs-light");
     expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft", "--ink"])).toMatchObject({
