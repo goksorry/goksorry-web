@@ -6,7 +6,6 @@ import { DocsShell } from "@/components/theme-shells/docs-shell";
 import { ExcelShell } from "@/components/theme-shells/excel-shell";
 import { JetBrainsShell } from "@/components/theme-shells/jetbrains-shell";
 import { PowerPointShell } from "@/components/theme-shells/powerpoint-shell";
-import { VisualStudioShell } from "@/components/theme-shells/visual-studio-shell";
 import { VsCodeShell } from "@/components/theme-shells/vscode-shell";
 import { getThemeOption } from "@/lib/theme";
 
@@ -97,8 +96,17 @@ export function ThemeChrome({
   }
 
   return (
-    <VisualStudioShell option={option} chatSidebar={desktopChatSidebar}>
-      {framedContent}
-    </VisualStudioShell>
+    <div id="page-top" className="layout">
+      {defaultHeader}
+      <div className="default-chat-workspace">
+        <div className="default-chat-content">
+          {policyBanner}
+          {children}
+          {footer}
+        </div>
+        {desktopChatSidebar}
+      </div>
+      {mobileChatDock}
+    </div>
   );
 }

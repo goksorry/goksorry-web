@@ -10,8 +10,7 @@ const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
   powerpoint: "/theme-icons/powerpoint.svg",
   docs: "/theme-icons/docs.svg",
   vscode: "/theme-icons/vscode.svg",
-  jetbrains: "/theme-icons/jetbrains.svg",
-  "visual-studio": "/theme-icons/visual-studio.svg"
+  jetbrains: "/theme-icons/jetbrains.svg"
 };
 
 const prepareThemePage = async (page: Page, storedTheme = "light") => {
@@ -917,10 +916,7 @@ test.describe("program theme shells", () => {
     const cases = [
       { url: "/", shell: "default" },
       { url: "/?theme=powerpoint-light", shell: "powerpoint" },
-      { url: "/?theme=docs-light", shell: "docs" },
-      { url: "/?theme=vscode-dark", shell: "vscode" },
-      { url: "/?theme=jetbrains-light", shell: "jetbrains" },
-      { url: "/?theme=vs-dark", shell: "visual-studio" }
+      { url: "/?theme=docs-light", shell: "docs" }
     ];
 
     for (const item of cases) {
@@ -1042,8 +1038,7 @@ test.describe("program theme shells", () => {
       { theme: "powerpoint-dark", shell: "powerpoint", locator: "powerpoint-slide-rail" },
       { theme: "docs-light", shell: "docs", locator: "docs-sidebar" },
       { theme: "vscode-dark", shell: "vscode", locator: "vscode-sidebar" },
-      { theme: "jetbrains-light", shell: "jetbrains", locator: "jetbrains-sidebar" },
-      { theme: "vs-dark", shell: "visual-studio", locator: "visual-studio-sidebar" }
+      { theme: "jetbrains-light", shell: "jetbrains", locator: "jetbrains-sidebar" }
     ];
 
     for (const item of cases) {
@@ -1069,8 +1064,7 @@ test.describe("program theme shells", () => {
       { theme: "powerpoint-dark", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
       { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" },
-      { theme: "vs-dark", shell: "visual-studio" }
+      { theme: "jetbrains-light", shell: "jetbrains" }
     ];
 
     for (const item of cases) {
@@ -1393,32 +1387,6 @@ test.describe("program theme shells", () => {
       editor: "rgb(30, 31, 34)"
     });
 
-    await page.goto("/?theme=vs-dark");
-    expect(
-      await readRootThemeVars(page, [
-        "--brand",
-        "--visual-studio-titlebar-bg",
-        "--visual-studio-toolbar-bg",
-        "--visual-studio-editor-bg"
-      ])
-    ).toMatchObject({
-      "--brand": "#007acc",
-      "--visual-studio-titlebar-bg": "#2d2d30",
-      "--visual-studio-toolbar-bg": "#3f3f46",
-      "--visual-studio-editor-bg": "#1e1e1e"
-    });
-    const visualStudioChrome = await page.evaluate(() => ({
-      titlebar: getComputedStyle(document.querySelector(".visual-studio-titlebar") as HTMLElement).backgroundColor,
-      toolbar: getComputedStyle(document.querySelector(".visual-studio-toolbar") as HTMLElement).backgroundColor,
-      solution: getComputedStyle(document.querySelector(".visual-studio-solution") as HTMLElement).backgroundColor,
-      status: getComputedStyle(document.querySelector("[data-testid='program-status-bar']") as HTMLElement).backgroundColor
-    }));
-    expect(visualStudioChrome).toMatchObject({
-      titlebar: "rgb(45, 45, 48)",
-      toolbar: "rgb(63, 63, 70)",
-      solution: "rgb(45, 45, 48)",
-      status: "rgb(0, 122, 204)"
-    });
   });
 
   test("concept header action buttons use theme-specific chrome", async ({ page }) => {
@@ -1457,8 +1425,7 @@ test.describe("program theme shells", () => {
       { theme: "powerpoint-light", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
       { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" },
-      { theme: "vs-dark", shell: "visual-studio" }
+      { theme: "jetbrains-light", shell: "jetbrains" }
     ];
 
     for (const item of cases) {
@@ -1548,6 +1515,316 @@ test.describe("program theme shells", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("ide concept themes render page content as plain editor text", async ({ page }) => {
+    await prepareThemePage(page);
+
+    const cases = [
+      { theme: "vscode-dark", shell: "vscode", shellClass: "theme-shell-vscode" },
+      { theme: "jetbrains-dark", shell: "jetbrains", shellClass: "theme-shell-jetbrains" }
+    ];
+    const readOverviewEditorLayout = async (shellClass: string) => {
+      return page.evaluate((targetShellClass) => {
+        const root = document.querySelector(`.${targetShellClass} .theme-shell-page .main`) as HTMLElement;
+        const marketBlock = root.querySelector(".overview-market-block") as HTMLElement;
+        const overviewPanel = root.querySelector(".overview-panel") as HTMLElement;
+        const marketRow = root.querySelector(".overview-market-row") as HTMLElement;
+        const bottomRow = root.querySelector(".overview-bottom-row") as HTMLElement;
+        const marketCards = Array.from(root.querySelectorAll(".overview-market-stat")) as HTMLElement[];
+        const communityCards = Array.from(root.querySelectorAll(".overview-card-community")) as HTMLElement[];
+        const lineHeight = Number.parseFloat(window.getComputedStyle(root).lineHeight);
+        const readMarketCardLayout = (card: HTMLElement) => {
+          const cardRect = card.getBoundingClientRect();
+          const label = card.querySelector(".overview-label") as HTMLElement;
+          const note = card.querySelector(".overview-note") as HTMLElement | null;
+          const main = card.querySelector(".overview-market-main") as HTMLElement;
+          const value = card.querySelector(".overview-value") as HTMLElement;
+          const delta = card.querySelector(".overview-delta") as HTMLElement;
+          const labelRect = label.getBoundingClientRect();
+          const valueRect = value.getBoundingClientRect();
+
+          return {
+            height: cardRect.height,
+            labelTopOffset: labelRect.top - cardRect.top,
+            labelLeftOffset: labelRect.left - cardRect.left,
+            valueTopOffset: valueRect.top - cardRect.top,
+            valueRightOffset: cardRect.right - valueRect.right,
+            valueBottomOffset: cardRect.bottom - valueRect.bottom,
+            noteDisplay: note ? window.getComputedStyle(note).display : null,
+            mainDisplay: window.getComputedStyle(main).display,
+            mainJustifyContent: window.getComputedStyle(main).justifyContent,
+            valueOrder: window.getComputedStyle(value).order,
+            deltaOrder: window.getComputedStyle(delta).order
+          };
+        };
+        const readCommunityCardLayout = (card: HTMLElement) => {
+          const cardRect = card.getBoundingClientRect();
+          const label = card.querySelector(".overview-label") as HTMLElement;
+          const head = card.querySelector(".overview-community-head") as HTMLElement;
+          const score = card.querySelector(".overview-score-badge") as HTMLElement;
+          const labelRect = label.getBoundingClientRect();
+          const scoreRect = score.getBoundingClientRect();
+
+          return {
+            height: cardRect.height,
+            labelTopOffset: labelRect.top - cardRect.top,
+            labelLeftOffset: labelRect.left - cardRect.left,
+            scoreTopOffset: scoreRect.top - cardRect.top,
+            scoreRightOffset: cardRect.right - scoreRect.right,
+            scoreBottomOffset: cardRect.bottom - scoreRect.bottom,
+            headDisplay: window.getComputedStyle(head).display,
+            scoreDisplay: window.getComputedStyle(score).display,
+            scoreJustifyContent: window.getComputedStyle(score).justifyContent
+          };
+        };
+        const readRow = (row: HTMLElement, cards: HTMLElement[]) => {
+          const rects = cards.map((card) => card.getBoundingClientRect());
+          const tops = rects.map((rect) => rect.top);
+          const lefts = rects.map((rect) => rect.left);
+          const rowRect = row.getBoundingClientRect();
+
+          return {
+            count: cards.length,
+            rowDisplay: window.getComputedStyle(row).display,
+            rowHeight: rowRect.height,
+            clientWidth: row.clientWidth,
+            scrollWidth: row.scrollWidth,
+            gridColumnCount: window
+              .getComputedStyle(row)
+              .gridTemplateColumns.split(" ")
+              .filter(Boolean).length,
+            topSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : 0,
+            leftSpread: lefts.length ? Math.max(...lefts) - Math.min(...lefts) : 0,
+            topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
+            cardDisplays: cards.map((card) => window.getComputedStyle(card).display),
+            secondSeparator: cards[1] ? window.getComputedStyle(cards[1], "::before").content : ""
+          };
+        };
+
+        return {
+          lineHeight,
+          marketBefore: window.getComputedStyle(marketBlock, "::before").content,
+          marketAfter: window.getComputedStyle(marketBlock, "::after").content,
+          communityBefore: window.getComputedStyle(overviewPanel, "::before").content,
+          communityAfter: window.getComputedStyle(overviewPanel, "::after").content,
+          market: readRow(marketRow, marketCards),
+          marketCards: marketCards.map(readMarketCardLayout),
+          community: readRow(bottomRow, communityCards),
+          communityCards: communityCards.map(readCommunityCardLayout)
+        };
+      }, shellClass);
+    };
+    const readFeedEditorLayout = async (shellClass: string) => {
+      return page.evaluate((targetShellClass) => {
+        const root = document.querySelector(`.${targetShellClass} .theme-shell-page .main`) as HTMLElement;
+        const columns = root.querySelector(".sentiment-columns") as HTMLElement;
+        const lanes = Array.from(root.querySelectorAll(".sentiment-lane")) as HTMLElement[];
+        const laneRects = lanes.map((lane) => lane.getBoundingClientRect());
+        const tops = laneRects.map((rect) => rect.top);
+
+        return {
+          columnsDisplay: window.getComputedStyle(columns).display,
+          gridColumnCount: window
+            .getComputedStyle(columns)
+            .gridTemplateColumns.split(" ")
+            .filter(Boolean).length,
+          laneCount: lanes.length,
+          laneDisplays: lanes.map((lane) => window.getComputedStyle(lane).display),
+          laneTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : 0,
+          secondLaneStartsAfterFirst: laneRects[1] ? laneRects[1].left >= laneRects[0].right - 1 : false,
+          scrollWidth: columns.scrollWidth,
+          clientWidth: columns.clientWidth
+        };
+      }, shellClass);
+    };
+
+    for (const item of cases) {
+      await page.setViewportSize({ width: 1180, height: 760 });
+      await page.goto(`/docs?theme=${item.theme}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+
+      const docsTextMetrics = await page.evaluate((shellClass) => {
+        const root = document.querySelector(`.${shellClass} .theme-shell-page .main`) as HTMLElement;
+        const textElements = [
+          root.querySelector("h1"),
+          root.querySelector("p"),
+          root.querySelector(".table th"),
+          root.querySelector(".table td"),
+          root.querySelector("code"),
+          root.querySelector(".tag")
+        ].filter(Boolean) as HTMLElement[];
+        const card = root.querySelector(".card") as HTMLElement;
+        const panel = root.querySelector(".panel") as HTMLElement;
+        const tableHead = root.querySelector(".table thead") as HTMLElement;
+        const tableHeaderCell = root.querySelector(".table th") as HTMLElement;
+        const tableCell = root.querySelector(".table td") as HTMLElement;
+        const tag = root.querySelector(".tag") as HTMLElement;
+        const link = root.querySelector("a") as HTMLElement;
+        const styles = textElements.map((element) => window.getComputedStyle(element));
+        const cardStyle = window.getComputedStyle(card);
+        const panelStyle = window.getComputedStyle(panel);
+        const tableHeaderCellStyle = window.getComputedStyle(tableHeaderCell);
+        const tableCellStyle = window.getComputedStyle(tableCell);
+        const tagStyle = window.getComputedStyle(tag, "::before");
+        const linkStyle = window.getComputedStyle(link);
+
+        return {
+          fontFamilies: styles.map((style) => style.fontFamily.toLowerCase()),
+          fontSizes: styles.map((style) => style.fontSize),
+          lineHeights: styles.map((style) => style.lineHeight),
+          cardBackground: cardStyle.backgroundColor,
+          cardBorderTopWidth: cardStyle.borderTopWidth,
+          cardBorderRadius: cardStyle.borderTopLeftRadius,
+          cardBoxShadow: cardStyle.boxShadow,
+          panelBackground: panelStyle.backgroundColor,
+          panelBorderTopWidth: panelStyle.borderTopWidth,
+          panelBorderRadius: panelStyle.borderTopLeftRadius,
+          panelBoxShadow: panelStyle.boxShadow,
+          tableHeaderBorderTopWidth: tableHeaderCellStyle.borderTopWidth,
+          tableCellBorderTopWidth: tableCellStyle.borderTopWidth,
+          tableSeparator: window.getComputedStyle(tableHead, "::after").content,
+          tableCellPrefix: window.getComputedStyle(tableCell, "::before").content,
+          tagPrefix: tagStyle.content,
+          linkDecoration: linkStyle.textDecorationLine
+        };
+      }, item.shellClass);
+
+      expect(new Set(docsTextMetrics.fontFamilies).size).toBe(1);
+      expect(docsTextMetrics.fontFamilies[0]).toContain("monospace");
+      expect(new Set(docsTextMetrics.fontSizes).size).toBe(1);
+      expect(new Set(docsTextMetrics.lineHeights).size).toBe(1);
+      expect(docsTextMetrics.cardBackground).toBe("rgba(0, 0, 0, 0)");
+      expect(docsTextMetrics.cardBorderTopWidth).toBe("0px");
+      expect(docsTextMetrics.cardBorderRadius).toBe("0px");
+      expect(docsTextMetrics.cardBoxShadow).toBe("none");
+      expect(docsTextMetrics.panelBackground).toBe("rgba(0, 0, 0, 0)");
+      expect(docsTextMetrics.panelBorderTopWidth).toBe("0px");
+      expect(docsTextMetrics.panelBorderRadius).toBe("0px");
+      expect(docsTextMetrics.panelBoxShadow).toBe("none");
+      expect(docsTextMetrics.tableHeaderBorderTopWidth).toBe("0px");
+      expect(docsTextMetrics.tableCellBorderTopWidth).toBe("0px");
+      expect(docsTextMetrics.tableSeparator).toContain("---");
+      expect(docsTextMetrics.tableCellPrefix).toContain("|");
+      expect(docsTextMetrics.tagPrefix).toContain("[");
+      expect(docsTextMetrics.linkDecoration).toContain("underline");
+
+      await page.goto(`/?theme=${item.theme}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      const overviewTextMetrics = await page.evaluate((shellClass) => {
+        const root = document.querySelector(`.${shellClass} .theme-shell-page .main`) as HTMLElement;
+        const overviewPanel = root.querySelector(".overview-panel") as HTMLElement;
+        const overviewCard = root.querySelector(".overview-card") as HTMLElement;
+        const overviewArt = root.querySelector(".overview-panel-art") as HTMLElement | null;
+        const overviewGauge = root.querySelector(".overview-goksorry-gauge") as HTMLElement | null;
+        const overviewPanelStyle = window.getComputedStyle(overviewPanel);
+        const overviewCardStyle = window.getComputedStyle(overviewCard);
+
+        return {
+          overviewPanelBackground: overviewPanelStyle.backgroundColor,
+          overviewPanelBorderTopWidth: overviewPanelStyle.borderTopWidth,
+          overviewPanelBoxShadow: overviewPanelStyle.boxShadow,
+          overviewCardBackground: overviewCardStyle.backgroundColor,
+          overviewCardBorderTopWidth: overviewCardStyle.borderTopWidth,
+          overviewCardBoxShadow: overviewCardStyle.boxShadow,
+          artDisplay: overviewArt ? window.getComputedStyle(overviewArt).display : null,
+          gaugeDisplay: overviewGauge ? window.getComputedStyle(overviewGauge).display : null
+        };
+      }, item.shellClass);
+
+      expect(overviewTextMetrics.overviewPanelBackground).toBe("rgba(0, 0, 0, 0)");
+      expect(overviewTextMetrics.overviewPanelBorderTopWidth).toBe("0px");
+      expect(overviewTextMetrics.overviewPanelBoxShadow).toBe("none");
+      expect(overviewTextMetrics.overviewCardBackground).toBe("rgba(0, 0, 0, 0)");
+      expect(overviewTextMetrics.overviewCardBorderTopWidth).toBe("0px");
+      expect(overviewTextMetrics.overviewCardBoxShadow).toBe("none");
+      expect(overviewTextMetrics.artDisplay).toBe("none");
+      expect([null, "none"]).toContain(overviewTextMetrics.gaugeDisplay);
+
+      const desktopOverviewLayout = await readOverviewEditorLayout(item.shellClass);
+      expect(desktopOverviewLayout.marketBefore).toContain("--- market ---");
+      expect(desktopOverviewLayout.marketAfter).toContain("--- /market ---");
+      expect(desktopOverviewLayout.communityBefore).toContain("--- community ---");
+      expect(desktopOverviewLayout.communityAfter).toContain("--- /community ---");
+      expect(desktopOverviewLayout.market.count).toBe(4);
+      expect(desktopOverviewLayout.market.rowDisplay).toBe("grid");
+      expect(desktopOverviewLayout.market.gridColumnCount).toBe(4);
+      expect(desktopOverviewLayout.market.topSpread).toBeLessThanOrEqual(1);
+      expect(desktopOverviewLayout.market.rowHeight).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight * 1.8);
+      expect(desktopOverviewLayout.market.rowHeight).toBeLessThanOrEqual(desktopOverviewLayout.lineHeight * 2.25);
+      expect(desktopOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.market.clientWidth + 1);
+      expect(desktopOverviewLayout.market.cardDisplays.every((display) => display === "grid")).toBe(true);
+      expect(desktopOverviewLayout.market.secondSeparator).toContain("|");
+      for (const card of desktopOverviewLayout.marketCards) {
+        expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
+        expect(card.labelTopOffset).toBeLessThanOrEqual(2);
+        expect(card.labelLeftOffset).toBeGreaterThanOrEqual(-1);
+        expect(card.labelLeftOffset).toBeLessThanOrEqual(24);
+        expect(card.valueTopOffset).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight - 2);
+        expect(card.valueRightOffset).toBeLessThanOrEqual(1);
+        expect(card.valueBottomOffset).toBeLessThanOrEqual(1);
+        expect(card.noteDisplay).toBe("none");
+        expect(card.mainDisplay).toBe("flex");
+        expect(card.mainJustifyContent).toBe("flex-end");
+        expect(Number(card.valueOrder)).toBeGreaterThan(Number(card.deltaOrder));
+      }
+      expect(desktopOverviewLayout.community.count).toBe(4);
+      expect(desktopOverviewLayout.community.rowDisplay).toBe("grid");
+      expect(desktopOverviewLayout.community.gridColumnCount).toBe(4);
+      expect(desktopOverviewLayout.community.topSpread).toBeLessThanOrEqual(1);
+      expect(desktopOverviewLayout.community.rowHeight).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight * 1.8);
+      expect(desktopOverviewLayout.community.rowHeight).toBeLessThanOrEqual(desktopOverviewLayout.lineHeight * 2.25);
+      expect(desktopOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.community.clientWidth + 1);
+      expect(desktopOverviewLayout.community.cardDisplays.every((display) => display === "grid")).toBe(true);
+      expect(desktopOverviewLayout.community.secondSeparator).toContain("|");
+      for (const card of desktopOverviewLayout.communityCards) {
+        expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
+        expect(card.labelTopOffset).toBeLessThanOrEqual(2);
+        expect(card.labelLeftOffset).toBeGreaterThanOrEqual(-1);
+        expect(card.labelLeftOffset).toBeLessThanOrEqual(24);
+        expect(card.scoreTopOffset).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight - 2);
+        expect(card.scoreRightOffset).toBeLessThanOrEqual(1);
+        expect(card.scoreBottomOffset).toBeLessThanOrEqual(1);
+        expect(card.headDisplay).toBe("contents");
+        expect(card.scoreDisplay).toBe("flex");
+        expect(card.scoreJustifyContent).toBe("flex-end");
+      }
+
+      const desktopFeedLayout = await readFeedEditorLayout(item.shellClass);
+      expect(desktopFeedLayout.columnsDisplay).toBe("grid");
+      expect(desktopFeedLayout.gridColumnCount).toBe(2);
+      expect(desktopFeedLayout.laneCount).toBe(2);
+      expect(desktopFeedLayout.laneDisplays.every((display) => display === "grid")).toBe(true);
+      expect(desktopFeedLayout.laneTopSpread).toBeLessThanOrEqual(1);
+      expect(desktopFeedLayout.secondLaneStartsAfterFirst).toBe(true);
+      expect(desktopFeedLayout.scrollWidth).toBeLessThanOrEqual(desktopFeedLayout.clientWidth + 1);
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`/?theme=${item.theme}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      const mobileOverviewLayout = await readOverviewEditorLayout(item.shellClass);
+      expect(mobileOverviewLayout.market.count).toBe(4);
+      expect(mobileOverviewLayout.market.gridColumnCount).toBe(1);
+      expect(mobileOverviewLayout.market.leftSpread).toBeLessThanOrEqual(1);
+      expect(mobileOverviewLayout.market.topIncreases).toBe(true);
+      expect(mobileOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.market.clientWidth + 1);
+      expect(mobileOverviewLayout.market.secondSeparator).not.toContain("|");
+      for (const card of mobileOverviewLayout.marketCards) {
+        expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
+        expect(card.valueRightOffset).toBeLessThanOrEqual(1);
+        expect(card.noteDisplay).toBe("none");
+      }
+      expect(mobileOverviewLayout.community.count).toBe(4);
+      expect(mobileOverviewLayout.community.gridColumnCount).toBe(1);
+      expect(mobileOverviewLayout.community.leftSpread).toBeLessThanOrEqual(1);
+      expect(mobileOverviewLayout.community.topIncreases).toBe(true);
+      expect(mobileOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.community.clientWidth + 1);
+      expect(mobileOverviewLayout.community.secondSeparator).not.toContain("|");
+      for (const card of mobileOverviewLayout.communityCards) {
+        expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
+        expect(card.scoreRightOffset).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
   test("concept content surfaces adapt to the program family", async ({ page }) => {
     await prepareThemePage(page);
     await page.goto("/?theme=vscode-dark");
@@ -1573,23 +1850,6 @@ test.describe("program theme shells", () => {
     expect(vscodeSurface.lineNumbers).toContain("3");
     expect(vscodeSurface.lineNumbers).not.toContain("¢");
     expect(vscodeSurface.lineNumbers).not.toContain("£");
-
-    await page.goto("/?theme=vs-dark");
-    const visualStudioLineNumberStyle = await page.locator(".visual-studio-content-frame").evaluate((element) => {
-      const lineNumberStyle = window.getComputedStyle(element, "::before");
-
-      return {
-        lineNumbers: lineNumberStyle.content,
-        boxSizing: lineNumberStyle.boxSizing,
-        paddingRight: parseFloat(lineNumberStyle.paddingRight)
-      };
-    });
-    expect(visualStudioLineNumberStyle.boxSizing).toBe("border-box");
-    expect(visualStudioLineNumberStyle.paddingRight).toBeGreaterThan(8);
-    expect(visualStudioLineNumberStyle.lineNumbers).toContain("2");
-    expect(visualStudioLineNumberStyle.lineNumbers).toContain("3");
-    expect(visualStudioLineNumberStyle.lineNumbers).not.toContain("¢");
-    expect(visualStudioLineNumberStyle.lineNumbers).not.toContain("£");
 
     await page.goto("/?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {
@@ -1659,7 +1919,6 @@ test.describe("program theme shells", () => {
       { theme: "excel-dark", iconPath: "/theme-icons/excel.svg" },
       { theme: "excel-system", iconPath: "/theme-icons/excel.svg" },
       { theme: "powerpoint-dark", iconPath: "/theme-icons/powerpoint.svg" },
-      { theme: "vs-dark", iconPath: "/theme-icons/visual-studio.svg" },
       { theme: "light", iconPath: "/favicon.ico" }
     ];
 
@@ -1682,6 +1941,23 @@ test.describe("program theme shells", () => {
     await prepareThemePage(page, "blog-dark");
     await page.goto("/?theme=unknown");
 
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+    await expect(page.getByTestId("program-shell")).toHaveCount(0);
+    await expect(page.locator(".header")).toBeVisible();
+
+    await page.goto("/?theme=vs-dark");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+    await expect(page.getByTestId("program-shell")).toHaveCount(0);
+    await expect(page.locator(".header")).toBeVisible();
+
+    await page.evaluate((key) => {
+      window.localStorage.setItem(key, "vs-dark");
+    }, THEME_STORAGE_KEY);
+    await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");

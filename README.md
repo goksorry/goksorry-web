@@ -39,7 +39,7 @@
 - 테마 선택은 `goksorry-theme` localStorage에 저장합니다.
 - URL 쿼리 `?theme=vscode-dark`처럼 지정하면 저장값보다 우선 적용합니다.
 - 모든 테마는 `light`, `dark`, `system` 톤을 지원합니다. `system`은 기기 다크/라이트 설정에 맞춰 같은 테마의 실제 톤을 적용합니다.
-- 지원 테마는 `light`, `dark`, `system`, `excel-*`, `powerpoint-*`, `docs-*`, `vscode-*`, `jetbrains-*`, `vs-*` 입니다.
+- 지원 테마는 `light`, `dark`, `system`, `excel-*`, `powerpoint-*`, `docs-*`, `vscode-*`, `jetbrains-*` 입니다.
 - 기본 테마는 기존 사이트 레이아웃을 유지하고, 컨셉 테마는 기존 헤더를 각 프로그램형 shell 헤더로 대체합니다.
 
 ## 환경 변수

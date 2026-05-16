@@ -11,7 +11,6 @@ import "@/app/theme-powerpoint.css";
 import "@/app/theme-docs.css";
 import "@/app/theme-vscode.css";
 import "@/app/theme-jetbrains.css";
-import "@/app/theme-visual-studio.css";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
 import { ChatDock } from "@/components/chat-dock";
 import { ChatSidebar } from "@/components/chat-sidebar";

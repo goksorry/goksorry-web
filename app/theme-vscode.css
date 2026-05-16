@@ -13,6 +13,7 @@
   --vscode-activity-inactive: rgba(255, 255, 255, 0.4);
   --vscode-editor-bg: #1e1e1e;
   --vscode-gutter-bg: #252526;
+  --ide-editor-font-size: 0.82rem;
 }
 
 :root[data-theme="vscode-light"] {
@@ -339,6 +340,567 @@
 .theme-shell-vscode select,
 .theme-shell-vscode textarea {
   border-radius: 2px;
+}
+
+.theme-shell-vscode .theme-shell-page .main,
+.theme-shell-vscode .theme-shell-page .main :where(
+  a,
+  button,
+  code,
+  em,
+  h1,
+  h2,
+  h3,
+  h4,
+  input,
+  label,
+  li,
+  p,
+  pre,
+  select,
+  span,
+  strong,
+  table,
+  tbody,
+  td,
+  textarea,
+  tfoot,
+  th,
+  thead,
+  tr
+) {
+  font-family: var(--mono-font) !important;
+  font-size: var(--ide-editor-font-size) !important;
+  line-height: var(--ide-editor-line-height) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(
+  .actions,
+  .board-grid,
+  .card,
+  .community-post-list,
+  .community-post-row,
+  .docs-endpoint-head,
+  .docs-group,
+  .docs-group-head,
+  .docs-hero,
+  .docs-shell,
+  .docs-top-grid,
+  .feed-lanes-panel,
+  .goksorry-room-actions,
+  .goksorry-room-entry,
+  .goksorry-room-entry-main,
+  .goksorry-room-list,
+  .goksorry-room-panel,
+  .goksorry-room-replies,
+  .goksorry-room-reply,
+  .list,
+  .overview-bottom-row,
+  .overview-card,
+  .overview-community-head,
+  .overview-heading,
+  .overview-hero,
+  .overview-market-block,
+  .overview-market-head,
+  .overview-market-main,
+  .overview-market-row,
+  .overview-overall-score,
+  .overview-panel,
+  .overview-section,
+  .overview-section-head,
+  .panel,
+  .sentiment-card,
+  .sentiment-card-body,
+  .sentiment-card-head,
+  .sentiment-columns,
+  .sentiment-lane,
+  .sentiment-lane-head,
+  .sentiment-list,
+  .table-wrap
+) {
+  display: block !important;
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(
+  .btn,
+  .docs-code,
+  .docs-method,
+  .docs-path,
+  .feed-symbol-badge,
+  .overview-score-badge,
+  .tag,
+  button,
+  code,
+  input,
+  pre,
+  select,
+  textarea
+) {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(h1, h2, h3, h4, p, ul, ol, pre) {
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+  padding: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(ul, ol) {
+  list-style-position: inside;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(a, .btn, button) {
+  color: var(--theme-shell-accent) !important;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(.tag, .docs-method, .overview-score-badge, .feed-symbol-badge)::before {
+  content: "[";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(.tag, .docs-method, .overview-score-badge, .feed-symbol-badge)::after {
+  content: "]";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(
+  .mobile-sentiment-swipe-hint,
+  .overview-community-band,
+  .overview-community-counts,
+  .overview-goksorry-gauge,
+  .overview-goksorry-gauge-track,
+  .overview-panel-art,
+  .sentiment-lane-watermark,
+  canvas,
+  img,
+  svg
+) {
+  display: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table-wrap {
+  overflow: visible !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table,
+.theme-shell-vscode .theme-shell-page .main .table :where(thead, tbody, tfoot, tr) {
+  display: block !important;
+  width: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table thead::after {
+  content: "| --- | --- | --- |";
+  display: block;
+  color: var(--theme-shell-muted);
+  white-space: pre;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table :where(th, td) {
+  display: inline !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  vertical-align: baseline;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table :where(th, td):first-child::before {
+  content: "| ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table :where(th, td) + :where(th, td)::before {
+  content: " | ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .table :where(th, td):last-child::after {
+  content: " |";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main {
+  gap: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(h1, h2, h3, h4, p, ul, ol, pre) {
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main :where(
+  .card,
+  .community-post-row,
+  .docs-group,
+  .feed-lanes-panel,
+  .goksorry-room-entry,
+  .goksorry-room-panel,
+  .goksorry-room-reply,
+  .overview-panel,
+  .panel,
+  .sentiment-card,
+  .sentiment-lane
+) {
+  margin-bottom: calc(var(--ide-editor-line-height) * 0.5) !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-block,
+.theme-shell-vscode .theme-shell-page .main .overview-panel {
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-block::before {
+  content: "--- market ---";
+  display: block;
+  color: var(--theme-shell-muted);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-block::after {
+  content: "--- /market ---";
+  display: block;
+  color: var(--theme-shell-muted);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-panel::before {
+  content: "--- community ---";
+  display: block;
+  color: var(--theme-shell-muted);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-panel::after {
+  content: "--- /community ---";
+  display: block;
+  color: var(--theme-shell-muted);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-section-head {
+  display: flex !important;
+  align-items: baseline;
+  gap: 1ch;
+  margin: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-section-head :where(h3, p) {
+  display: inline !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-section-head h3::after {
+  content: " -";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row,
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 2ch;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card,
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card {
+  min-width: 0;
+  display: flex !important;
+  align-items: baseline;
+  gap: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before,
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before {
+  content: "|";
+  flex: 0 0 auto;
+  margin-right: 1ch;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row :where(.overview-market-head, .overview-market-main),
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-community-head {
+  display: contents !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row :where(.overview-label, .overview-note, .overview-value, .overview-delta),
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row :where(.overview-label, .overview-score-badge, .overview-score-badge span) {
+  display: inline !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row :where(.overview-label, .overview-note, .overview-value)::after,
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-label::after {
+  content: " ";
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card {
+  position: relative;
+  display: grid !important;
+  grid-template-rows: var(--ide-editor-line-height) var(--ide-editor-line-height);
+  align-items: start;
+  min-height: calc(var(--ide-editor-line-height) * 2);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card {
+  padding-left: 1.5ch !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-right: 0;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-market-head {
+  min-width: 0;
+  display: block !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-market-main {
+  min-width: 0;
+  display: flex !important;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 1ch;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row :where(.overview-label, .overview-value, .overview-delta) {
+  display: block !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-note {
+  display: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-delta {
+  order: 1;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-value {
+  order: 2;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-value::after {
+  content: "";
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card {
+  position: relative;
+  display: grid !important;
+  grid-template-rows: var(--ide-editor-line-height) var(--ide-editor-line-height);
+  align-items: start;
+  min-height: calc(var(--ide-editor-line-height) * 2);
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card {
+  padding-left: 1.5ch !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-right: 0;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-community-head {
+  min-width: 0;
+  display: contents !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-label {
+  display: block !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-label::after {
+  content: "";
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-score-badge {
+  display: flex !important;
+  align-items: baseline;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 1ch;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-score-badge span {
+  display: block !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .feed-lanes-panel {
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-columns {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 2ch;
+  align-items: start;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-lane {
+  min-width: 0;
+  display: grid !important;
+  align-content: start;
+  gap: calc(var(--ide-editor-line-height) * 0.5);
+  margin: 0 !important;
+  overflow: hidden;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-lane-head {
+  display: flex !important;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1ch;
+  margin: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-list {
+  display: grid !important;
+  gap: 0;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .feed-symbol-badges {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0 1ch;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-heading {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-heading :where(
+  .overview-heading-copy,
+  .overview-overall-score,
+  .overview-overall-value-row
+) {
+  display: contents !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-heading :where(button, h2, p, span, strong) {
+  display: inline !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-heading :where(
+  .overview-kicker,
+  .overview-market-adjustment-meta,
+  .overview-overall-band,
+  .overview-overall-label,
+  .overview-overall-value,
+  .overview-timestamp
+)::after {
+  content: " ";
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-row,
+.theme-shell-vscode .theme-shell-page .main .sentiment-card,
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry,
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-reply {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0 1ch;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-row :where(span, strong, time),
+.theme-shell-vscode .theme-shell-page .main .sentiment-card :where(div, p, span, time),
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry :where(div, p, span, button),
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-reply :where(div, p, span, button) {
+  display: inline !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .theme-shell-vscode .theme-shell-page .main .overview-market-row,
+  .theme-shell-vscode .theme-shell-page .main .overview-bottom-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .sentiment-columns {
+    display: flex !important;
+    width: 100%;
+    max-width: 100%;
+    gap: 1ch;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .sentiment-columns::-webkit-scrollbar {
+    display: none;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .sentiment-columns .sentiment-lane {
+    width: calc(100% - 0.2rem);
+    min-width: calc(100% - 0.2rem);
+    max-width: calc(100% - 0.2rem);
+    flex: 0 0 calc(100% - 0.2rem);
+    scroll-snap-align: start;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before,
+  .theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before {
+    content: "";
+    margin-right: 0;
+  }
 }
 
 .theme-shell-vscode .theme-shell-status {

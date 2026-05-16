@@ -360,66 +360,6 @@
   --radius-control: 5px;
 }
 
-:root[data-theme="vs-light"] {
-  color-scheme: light;
-  --bg: #f5f5f5;
-  --panel: #ffffff;
-  --panel-soft: #ececf0;
-  --panel-elevated: #f6f6f6;
-  --ink: #1e1e1e;
-  --ink-soft: #3b3b3b;
-  --muted: #717171;
-  --line: #cccedb;
-  --brand: #007acc;
-  --brand-strong: #005a9e;
-  --danger: #c2410c;
-  --hope: #2563eb;
-  --shadow: rgba(0, 122, 204, 0.1);
-  --header-bg: rgba(236, 236, 240, 0.94);
-  --button-bg: #007acc;
-  --button-line: #005a9e;
-  --button-ink: #ffffff;
-  --chip-active-bg: #007acc;
-  --chip-active-line: #005a9e;
-  --chip-active-ink: #ffffff;
-  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: none;
-  --panel-shadow: 0 12px 30px rgba(0, 122, 204, 0.1);
-  --radius-panel: 4px;
-  --radius-card: 4px;
-  --radius-control: 4px;
-}
-
-:root[data-theme="vs-dark"] {
-  color-scheme: dark;
-  --bg: #1e1e1e;
-  --panel: #1e1e1e;
-  --panel-soft: #2d2d30;
-  --panel-elevated: #3f3f46;
-  --ink: #f1f1f1;
-  --ink-soft: #cccccc;
-  --muted: #a2a4a5;
-  --line: #434346;
-  --brand: #007acc;
-  --brand-strong: #3399ff;
-  --danger: #ce9178;
-  --hope: #569cd6;
-  --shadow: rgba(0, 0, 0, 0.36);
-  --header-bg: rgba(45, 45, 48, 0.94);
-  --button-bg: #007acc;
-  --button-line: #3399ff;
-  --button-ink: #ffffff;
-  --chip-active-bg: #007acc;
-  --chip-active-line: #3399ff;
-  --chip-active-ink: #ffffff;
-  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: none;
-  --panel-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
-  --radius-panel: 4px;
-  --radius-card: 4px;
-  --radius-control: 4px;
-}
-
 :root[data-theme-shell="excel"] {
   --layout-gap: 0.62rem;
   --layout-padding: 0.62rem;
@@ -446,8 +386,7 @@
 }
 
 :root[data-theme-shell="vscode"],
-:root[data-theme-shell="jetbrains"],
-:root[data-theme-shell="visual-studio"] {
+:root[data-theme-shell="jetbrains"] {
   --layout-gap: 0.58rem;
   --layout-padding: 0.58rem;
   --panel-padding: 0.62rem;

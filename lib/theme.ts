@@ -2,7 +2,7 @@ import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
 
 export type ThemeTone = "light" | "dark" | "system";
 export type ThemeEffectiveTone = Exclude<ThemeTone, "system">;
-export type ThemeFamily = "default" | "excel" | "powerpoint" | "docs" | "vscode" | "jetbrains" | "visual-studio";
+export type ThemeFamily = "default" | "excel" | "powerpoint" | "docs" | "vscode" | "jetbrains";
 export type ThemeShellType = ThemeFamily;
 
 export type ThemeId =
@@ -23,10 +23,7 @@ export type ThemeId =
   | "vscode-system"
   | "jetbrains-light"
   | "jetbrains-dark"
-  | "jetbrains-system"
-  | "vs-light"
-  | "vs-dark"
-  | "vs-system";
+  | "jetbrains-system";
 
 export type ThemeMode = ThemeId;
 
@@ -127,33 +124,6 @@ export const THEME_OPTIONS: ThemeOption[] = [
     "system",
     "jetbrains",
     ["#f4f4f4", "#1e1f22", "#3574f0"]
-  ),
-  buildThemeOption(
-    "vs-light",
-    "Visual Studio 라이트",
-    "visual-studio",
-    "Visual Studio",
-    "light",
-    "visual-studio",
-    ["#f5f5f5", "#007acc", "#68217a"]
-  ),
-  buildThemeOption(
-    "vs-dark",
-    "Visual Studio 다크",
-    "visual-studio",
-    "Visual Studio",
-    "dark",
-    "visual-studio",
-    ["#1e1e1e", "#007acc", "#2d2d30"]
-  ),
-  buildThemeOption(
-    "vs-system",
-    "Visual Studio 시스템",
-    "visual-studio",
-    "Visual Studio",
-    "system",
-    "visual-studio",
-    ["#f5f5f5", "#1e1e1e", "#007acc"]
   )
 ];
 
@@ -190,11 +160,6 @@ export const THEME_FAMILY_ICONS: Record<ThemeFamily, ThemeFamilyIcon> = {
     href: "/theme-icons/jetbrains.svg",
     label: "JetBrains",
     mimeType: "image/svg+xml"
-  },
-  "visual-studio": {
-    href: "/theme-icons/visual-studio.svg",
-    label: "Visual Studio",
-    mimeType: "image/svg+xml"
   }
 };
 
@@ -228,11 +193,6 @@ const FAMILY_TONE_THEME_IDS: Record<ThemeFamily, Record<ThemeTone, ThemeId>> = {
     light: "jetbrains-light",
     dark: "jetbrains-dark",
     system: "jetbrains-system"
-  },
-  "visual-studio": {
-    light: "vs-light",
-    dark: "vs-dark",
-    system: "vs-system"
   }
 };
 
@@ -251,13 +211,7 @@ const THEME_ALIASES: Record<string, ThemeId> = {
   vscode: "vscode-system",
   "vs-code": "vscode-system",
   jetbrain: "jetbrains-system",
-  jetbrains: "jetbrains-system",
-  vs: "vs-system",
-  visualstudio: "vs-system",
-  "visual-studio": "vs-system",
-  "visual-studio-light": "vs-light",
-  "visual-studio-dark": "vs-dark",
-  "visual-studio-system": "vs-system"
+  jetbrains: "jetbrains-system"
 };
 
 export const normalizeThemeId = (value: string | null | undefined): ThemeId | null => {
