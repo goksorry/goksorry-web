@@ -159,7 +159,7 @@ export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
     <div className="theme-shell theme-shell-excel" data-testid="program-shell" data-program-shell="excel">
       <div className="excel-titlebar" data-testid="program-header">
         <WindowDots />
-        <ShellBrand productName="Excel" />
+        <ShellBrand family={option.family} productName="Excel" />
         <ShellNavLinks />
         <div className="excel-title">{currentRoute.fileName}</div>
         <ShellHeaderActions />

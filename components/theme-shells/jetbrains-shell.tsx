@@ -28,7 +28,7 @@ export function JetBrainsShell({ children, option, chatSidebar }: ThemeShellProp
   return (
     <div className="theme-shell theme-shell-jetbrains" data-testid="program-shell" data-program-shell="jetbrains">
       <div className="jetbrains-toolbar" data-testid="program-header">
-        <ShellBrand productName="JetBrains" />
+        <ShellBrand family={option.family} productName="JetBrains" />
         <ShellNavLinks />
         <div className="jetbrains-run-widget">
           <ShellCommandButton label="Run" icon="play" active />

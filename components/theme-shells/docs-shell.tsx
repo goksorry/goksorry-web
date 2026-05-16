@@ -25,7 +25,7 @@ export function DocsShell({ children, option, chatSidebar }: ThemeShellProps) {
   return (
     <div className="theme-shell theme-shell-docs" data-testid="program-shell" data-program-shell="docs">
       <div className="docs-app-header" data-testid="program-header">
-        <ShellBrand productName="Docs" />
+        <ShellBrand family={option.family} productName="Docs" />
         <ShellNavLinks />
         <div className="docs-search" role="search">
           <ShellIcon name="search" />

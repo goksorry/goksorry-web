@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Docs concept icon">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <path d="M154 84h156l78 78v266H154z" fill="#eef6ff"/>
+  <path d="M310 84v78h78" fill="#bfdbfe"/>
+  <path d="M198 220h150M198 270h150M198 320h112" fill="none" stroke="#60a5fa" stroke-width="22" stroke-linecap="round"/>
+  <path d="m203 383-43-43 43-43M309 297l43 43-43 43" fill="none" stroke="#10b981" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

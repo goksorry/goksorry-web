@@ -29,7 +29,7 @@ export function VsCodeShell({ children, option, chatSidebar }: ThemeShellProps) 
   return (
     <div className="theme-shell theme-shell-vscode" data-testid="program-shell" data-program-shell="vscode">
       <div className="vscode-titlebar" data-testid="program-header">
-        <ShellBrand productName="VS Code" />
+        <ShellBrand family={option.family} productName="VS Code" />
         <ShellNavLinks />
         <div className="vscode-command-center">
           <ShellIcon name="search" />

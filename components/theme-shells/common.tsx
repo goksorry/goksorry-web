@@ -10,7 +10,7 @@ import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
-import type { ThemeOption, ThemeShellType } from "@/lib/theme";
+import { getThemeFamilyIcon, type ThemeFamily, type ThemeOption, type ThemeShellType } from "@/lib/theme";
 
 export type ShellRoute = {
   href: string;
@@ -252,9 +252,21 @@ export function ShellIcon({ name }: { name: IconName }) {
   );
 }
 
-export function ShellBrand({ productName }: { productName: string }) {
+export function ShellBrand({ family, productName }: { family: ThemeFamily; productName: string }) {
+  const icon = family === "default" ? null : getThemeFamilyIcon(family);
+
   return (
     <div className="theme-shell-brand-wrap">
+      {icon ? (
+        <img
+          className="theme-shell-brand-icon"
+          src={icon.href}
+          alt={`${icon.label} 컨셉 아이콘`}
+          width={20}
+          height={20}
+          data-testid="theme-shell-brand-icon"
+        />
+      ) : null}
       <Link className="theme-shell-brand" href="/" aria-label="곡소리닷컴 홈">
         곡소리닷컴
       </Link>

@@ -26,6 +26,7 @@ import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeChrome } from "@/components/theme-shells";
+import { ThemeFavicon } from "@/components/theme-favicon";
 import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { authOptions } from "@/lib/auth";
@@ -87,6 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
               <ThemeProvider>
+                <ThemeFavicon />
                 <CleanFilterOverlay />
                 <CleanFilterFirstVisit />
                 <ThemeFirstVisit />

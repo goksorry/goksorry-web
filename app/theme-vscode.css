@@ -1,15 +1,44 @@
 :root[data-theme-shell="vscode"] {
-  --theme-shell-bg: #1e1e1e;
-  --theme-shell-chrome: var(--panel-soft);
-  --theme-shell-elevated: var(--panel-elevated);
+  --theme-shell-bg: var(--vscode-workbench-bg, var(--bg));
+  --theme-shell-chrome: var(--vscode-side-bar-bg, var(--panel-soft));
+  --theme-shell-elevated: var(--vscode-activity-bg, var(--panel-elevated));
   --theme-shell-line: var(--line);
   --theme-shell-accent: #007acc;
   --theme-shell-content-padding: 0;
+  --vscode-workbench-bg: #1e1e1e;
+  --vscode-titlebar-bg: #252526;
+  --vscode-side-bar-bg: #252526;
+  --vscode-activity-bg: #333333;
+  --vscode-activity-foreground: #ffffff;
+  --vscode-activity-inactive: rgba(255, 255, 255, 0.4);
+  --vscode-editor-bg: #1e1e1e;
+  --vscode-gutter-bg: #252526;
 }
 
 :root[data-theme="vscode-light"] {
   --theme-shell-bg: #f3f3f3;
   --theme-shell-accent: #007acc;
+  --vscode-workbench-bg: #f3f3f3;
+  --vscode-titlebar-bg: #f3f3f3;
+  --vscode-side-bar-bg: #f3f3f3;
+  --vscode-activity-bg: #2c2c2c;
+  --vscode-activity-foreground: #ffffff;
+  --vscode-activity-inactive: rgba(255, 255, 255, 0.4);
+  --vscode-editor-bg: #ffffff;
+  --vscode-gutter-bg: #f3f3f3;
+}
+
+:root[data-theme="vscode-dark"] {
+  --theme-shell-bg: #1e1e1e;
+  --theme-shell-accent: #007acc;
+  --vscode-workbench-bg: #1e1e1e;
+  --vscode-titlebar-bg: #252526;
+  --vscode-side-bar-bg: #252526;
+  --vscode-activity-bg: #333333;
+  --vscode-activity-foreground: #ffffff;
+  --vscode-activity-inactive: rgba(255, 255, 255, 0.4);
+  --vscode-editor-bg: #1e1e1e;
+  --vscode-gutter-bg: #252526;
 }
 
 .theme-shell-vscode {
@@ -24,7 +53,7 @@
   gap: 0.7rem;
   padding: 0.28rem 0.55rem;
   border-bottom: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--vscode-titlebar-bg);
 }
 
 .vscode-command-center {
@@ -84,7 +113,7 @@
   gap: 0.25rem;
   padding: 0.4rem 0.32rem;
   border-right: 1px solid var(--theme-shell-line);
-  background: color-mix(in srgb, var(--theme-shell-chrome) 70%, #000 30%);
+  background: var(--vscode-activity-bg);
 }
 
 .vscode-activity-bar button {
@@ -96,15 +125,26 @@
   border: 0;
   border-radius: 3px;
   background: transparent;
-  color: var(--theme-shell-muted);
+  color: var(--vscode-activity-inactive);
   box-shadow: none;
+}
+
+.vscode-activity-bar button:hover {
+  background: color-mix(in srgb, var(--theme-shell-accent) 18%, transparent);
+  color: var(--vscode-activity-foreground);
+}
+
+.vscode-activity-bar button.theme-shell-active {
+  background: color-mix(in srgb, var(--theme-shell-accent) 14%, transparent) !important;
+  color: var(--vscode-activity-foreground) !important;
+  box-shadow: inset 3px 0 0 var(--theme-shell-accent);
 }
 
 .vscode-explorer {
   min-height: 0;
   padding: 0.58rem;
   border-right: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--vscode-side-bar-bg);
   overflow: auto;
 }
 
@@ -140,7 +180,7 @@
   display: flex;
   gap: 0;
   border-bottom: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--vscode-side-bar-bg);
   overflow-x: auto;
 }
 
@@ -160,19 +200,20 @@
   border: 0;
   border-radius: 0;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--panel) 74%, #000 26%) 0 var(--ide-editor-gutter-width), transparent var(--ide-editor-gutter-width)),
-    var(--panel);
+    linear-gradient(90deg, var(--vscode-gutter-bg) 0 var(--ide-editor-gutter-width), transparent var(--ide-editor-gutter-width)),
+    var(--vscode-editor-bg);
   font-family: var(--mono-font);
 }
 
 .vscode-content-frame::before {
-  content: "1\A2\A3\A4\A5\A6\A7\A8\A9\A10\A11\A12\A13\A14\A15\A16\A17\A18\A19\A20\A21\A22\A23\A24\A25\A26\A27\A28\A29\A30\A31\A32\A33\A34\A35\A36\A37\A38\A39\A40\A41\A42\A43\A44\A45\A46\A47\A48\A49\A50\A51\A52\A53\A54\A55\A56\A57\A58\A59\A60";
+  content: "1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9\A 10\A 11\A 12\A 13\A 14\A 15\A 16\A 17\A 18\A 19\A 20\A 21\A 22\A 23\A 24\A 25\A 26\A 27\A 28\A 29\A 30\A 31\A 32\A 33\A 34\A 35\A 36\A 37\A 38\A 39\A 40\A 41\A 42\A 43\A 44\A 45\A 46\A 47\A 48\A 49\A 50\A 51\A 52\A 53\A 54\A 55\A 56\A 57\A 58\A 59\A 60";
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
   width: var(--ide-editor-gutter-width);
   min-height: 100%;
+  box-sizing: border-box;
   padding: 0.92rem 0.7rem 2rem 0;
   border-right: 1px solid var(--theme-shell-line);
   color: color-mix(in srgb, var(--theme-shell-muted) 70%, transparent);
@@ -209,7 +250,7 @@
   gap: 0.3rem;
   padding: 0.35rem 0.5rem;
   border-top: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--vscode-side-bar-bg);
 }
 
 .theme-shell-vscode .panel,

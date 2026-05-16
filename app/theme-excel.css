@@ -1,9 +1,9 @@
 :root[data-theme-shell="excel"] {
-  --theme-shell-bg: #d7eadf;
-  --theme-shell-chrome: #f3fbf6;
-  --theme-shell-elevated: #ffffff;
-  --theme-shell-line: #b6d8c5;
-  --theme-shell-accent: #107c41;
+  --theme-shell-bg: var(--bg);
+  --theme-shell-chrome: var(--panel-soft);
+  --theme-shell-elevated: var(--panel-elevated);
+  --theme-shell-line: var(--line);
+  --theme-shell-accent: var(--brand);
   --theme-shell-content-padding: 0.45rem;
   --excel-row-header-width: 3rem;
   --excel-row-height: 2.2rem;
@@ -14,14 +14,6 @@
   --excel-market-block-rows: 3;
   --excel-overview-panel-rows: 7;
   --excel-feed-filter-rows: 6;
-}
-
-:root[data-theme="excel-dark"] {
-  --theme-shell-bg: #07130e;
-  --theme-shell-chrome: #0d1b15;
-  --theme-shell-elevated: #183329;
-  --theme-shell-line: #28513f;
-  --theme-shell-accent: #21a366;
 }
 
 .theme-shell-excel {

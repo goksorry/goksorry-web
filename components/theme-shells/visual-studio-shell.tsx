@@ -29,7 +29,7 @@ export function VisualStudioShell({ children, option, chatSidebar }: ThemeShellP
   return (
     <div className="theme-shell theme-shell-visual-studio" data-testid="program-shell" data-program-shell="visual-studio">
       <div className="visual-studio-titlebar" data-testid="program-header">
-        <ShellBrand productName="Visual Studio" />
+        <ShellBrand family={option.family} productName="Visual Studio" />
         <ShellNavLinks />
         <div className="visual-studio-search">
           <ShellIcon name="search" />

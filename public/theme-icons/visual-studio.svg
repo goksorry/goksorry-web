@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Visual Studio concept icon">
+  <rect width="512" height="512" rx="112" fill="#68217a"/>
+  <path d="m96 190 76-48 126 114-126 114-76-48 101-66z" fill="#d8b4fe"/>
+  <path d="M298 142 418 96v320l-120-46z" fill="#b180d7"/>
+  <path d="M298 142v228L198 256z" fill="#8b5cf6"/>
+  <text x="142" y="286" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="900" letter-spacing="-6">VS</text>
+</svg>

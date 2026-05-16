@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PowerPoint concept icon">
+  <rect width="512" height="512" rx="112" fill="#c43e1c"/>
+  <rect x="128" y="118" width="292" height="230" rx="32" fill="#fff3ed"/>
+  <path d="M164 180h112v34H164zm0 66h194v28H164zm0 54h146v28H164z" fill="#e57a52"/>
+  <circle cx="352" cy="198" r="54" fill="#f5a787"/>
+  <path d="M352 144a54 54 0 0 1 54 54h-54z" fill="#c43e1c"/>
+  <rect x="84" y="164" width="176" height="198" rx="36" fill="#7a2b19"/>
+  <path d="M142 222h49c35 0 56 18 56 49 0 33-22 52-58 52h-12v34h-35zm35 31v40h13c14 0 22-7 22-21 0-13-8-19-22-19z" fill="#fff"/>
+</svg>

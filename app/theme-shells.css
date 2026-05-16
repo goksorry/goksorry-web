@@ -44,6 +44,14 @@
   white-space: nowrap;
 }
 
+.theme-shell-brand-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  border-radius: 0.28rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-shell-line) 70%, transparent);
+}
+
 .theme-shell-brand {
   display: inline-flex;
   align-items: center;

@@ -27,7 +27,7 @@ export function PowerPointShell({ children, option, chatSidebar }: ThemeShellPro
     <div className="theme-shell theme-shell-powerpoint" data-testid="program-shell" data-program-shell="powerpoint">
       <div className="powerpoint-titlebar" data-testid="program-header">
         <WindowDots />
-        <ShellBrand productName="PowerPoint" />
+        <ShellBrand family={option.family} productName="PowerPoint" />
         <ShellNavLinks />
         <div className="powerpoint-title">{currentRoute.label} Deck</div>
         <ShellHeaderActions />

@@ -1,14 +1,36 @@
 :root[data-theme-shell="jetbrains"] {
-  --theme-shell-bg: #15151b;
-  --theme-shell-chrome: var(--panel-soft);
-  --theme-shell-elevated: var(--panel-elevated);
+  --theme-shell-bg: var(--jetbrains-workspace-bg, var(--bg));
+  --theme-shell-chrome: var(--jetbrains-panel-bg, var(--panel-soft));
+  --theme-shell-elevated: var(--jetbrains-tool-window-bar-bg, var(--panel-elevated));
   --theme-shell-line: var(--line);
   --theme-shell-accent: var(--brand);
   --theme-shell-content-padding: 0;
+  --jetbrains-workspace-bg: #1e1f22;
+  --jetbrains-toolbar-bg: #2b2d30;
+  --jetbrains-panel-bg: #2b2d30;
+  --jetbrains-tool-window-bar-bg: #303236;
+  --jetbrains-editor-bg: #1e1f22;
+  --jetbrains-gutter-bg: #2b2d30;
 }
 
 :root[data-theme="jetbrains-light"] {
-  --theme-shell-bg: #f5f4fb;
+  --theme-shell-bg: #f4f4f4;
+  --jetbrains-workspace-bg: #f4f4f4;
+  --jetbrains-toolbar-bg: #f2f3f5;
+  --jetbrains-panel-bg: #f2f3f5;
+  --jetbrains-tool-window-bar-bg: #e9ebef;
+  --jetbrains-editor-bg: #ffffff;
+  --jetbrains-gutter-bg: #f2f3f5;
+}
+
+:root[data-theme="jetbrains-dark"] {
+  --theme-shell-bg: #1e1f22;
+  --jetbrains-workspace-bg: #1e1f22;
+  --jetbrains-toolbar-bg: #2b2d30;
+  --jetbrains-panel-bg: #2b2d30;
+  --jetbrains-tool-window-bar-bg: #303236;
+  --jetbrains-editor-bg: #1e1f22;
+  --jetbrains-gutter-bg: #2b2d30;
 }
 
 .theme-shell-jetbrains {
@@ -23,7 +45,7 @@
   gap: 0.65rem;
   padding: 0.38rem 0.68rem;
   border-bottom: 1px solid var(--theme-shell-line);
-  background: linear-gradient(90deg, var(--theme-shell-chrome), color-mix(in srgb, var(--theme-shell-chrome) 88%, var(--theme-shell-accent)));
+  background: var(--jetbrains-toolbar-bg);
 }
 
 .jetbrains-toolbar .theme-shell-nav {
@@ -36,9 +58,9 @@
 }
 
 .theme-shell-jetbrains .theme-shell-actions {
-  --theme-shell-action-bg: color-mix(in srgb, var(--theme-shell-chrome) 76%, var(--theme-shell-accent) 10%);
-  --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-line) 74%, var(--theme-shell-accent));
-  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 22%, var(--theme-shell-chrome));
+  --theme-shell-action-bg: var(--jetbrains-panel-bg);
+  --theme-shell-action-border: var(--theme-shell-line);
+  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 14%, var(--theme-shell-chrome));
   --theme-shell-action-radius: 7px;
   --theme-shell-action-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
@@ -61,7 +83,7 @@
   gap: 0.35rem;
   padding: 0.45rem 0.34rem;
   border-right: 1px solid var(--theme-shell-line);
-  background: color-mix(in srgb, var(--theme-shell-bg) 74%, #000 26%);
+  background: var(--jetbrains-tool-window-bar-bg);
 }
 
 .jetbrains-tool-window-bar button {
@@ -72,15 +94,26 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--theme-shell-muted);
+  color: var(--ink-soft);
   box-shadow: none;
   font-size: 0.62rem;
+}
+
+.jetbrains-tool-window-bar button:hover {
+  background: color-mix(in srgb, var(--theme-shell-accent) 18%, transparent);
+  color: var(--ink);
+}
+
+.jetbrains-tool-window-bar button.theme-shell-active {
+  background: color-mix(in srgb, var(--theme-shell-accent) 15%, transparent) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 3px 0 0 var(--theme-shell-accent);
 }
 
 .jetbrains-project-pane {
   min-height: 0;
   border-right: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--jetbrains-panel-bg);
   overflow: auto;
 }
 
@@ -116,7 +149,7 @@
 .jetbrains-tabs {
   display: flex;
   border-bottom: 1px solid var(--theme-shell-line);
-  background: var(--theme-shell-chrome);
+  background: var(--jetbrains-panel-bg);
   overflow-x: auto;
 }
 
@@ -141,7 +174,7 @@
   gap: 0.25rem;
   padding: 0.75rem 0.45rem;
   border-right: 1px solid var(--theme-shell-line);
-  background: color-mix(in srgb, var(--panel) 80%, var(--theme-shell-chrome));
+  background: var(--jetbrains-gutter-bg);
   color: var(--theme-shell-muted);
   font-family: var(--mono-font);
   font-size: 0.72rem;
@@ -152,9 +185,7 @@
   --ide-editor-line-height: 1.62rem;
   border: 0;
   border-radius: 0;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--theme-shell-accent) 8%, transparent), transparent 32%),
-    var(--panel);
+  background: var(--jetbrains-editor-bg);
   font-family: var(--mono-font);
 }
 
@@ -188,9 +219,9 @@
 .theme-shell-jetbrains .goksorry-room-entry,
 .theme-shell-jetbrains .goksorry-room-reply {
   border-radius: 5px;
-  border-color: color-mix(in srgb, var(--theme-shell-line) 82%, var(--theme-shell-accent));
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--theme-shell-accent) 72%, transparent);
+  border-color: var(--theme-shell-line);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: none;
 }
 
 .theme-shell-jetbrains .panel,
@@ -207,14 +238,14 @@
 .theme-shell-jetbrains h3,
 .theme-shell-jetbrains h4 {
   font-family: var(--mono-font);
-  color: color-mix(in srgb, var(--theme-shell-accent) 72%, var(--ink));
+  color: var(--ink);
 }
 
 .theme-shell-jetbrains .panel h1::before,
 .theme-shell-jetbrains .panel h2::before,
 .theme-shell-jetbrains .panel h3::before {
   content: "fun ";
-  color: #f59e0b;
+  color: #c1914f;
   font-weight: 700;
 }
 
@@ -233,7 +264,7 @@
 .theme-shell-jetbrains .table-wrap,
 .theme-shell-jetbrains .table {
   border-radius: 5px;
-  border-color: color-mix(in srgb, var(--theme-shell-line) 70%, var(--theme-shell-accent));
+  border-color: var(--theme-shell-line);
   background: color-mix(in srgb, var(--panel) 78%, transparent);
 }
 

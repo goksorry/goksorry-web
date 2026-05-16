@@ -4,6 +4,14 @@ const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
 const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
 const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
+const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
+  excel: "/theme-icons/excel.svg",
+  powerpoint: "/theme-icons/powerpoint.svg",
+  docs: "/theme-icons/docs.svg",
+  vscode: "/theme-icons/vscode.svg",
+  jetbrains: "/theme-icons/jetbrains.svg",
+  "visual-studio": "/theme-icons/visual-studio.svg"
+};
 
 const prepareThemePage = async (page: Page, storedTheme = "light") => {
   await page.context().addCookies([
@@ -48,14 +56,23 @@ const prepareThemeFirstVisitPage = async (page: Page) => {
   }, THEME_STORAGE_KEY);
 };
 
+const readRootThemeVars = async (page: Page, names: string[]) => {
+  return page.evaluate((varNames) => {
+    const style = window.getComputedStyle(document.documentElement);
+    return Object.fromEntries(varNames.map((name) => [name, style.getPropertyValue(name).trim()]));
+  }, names);
+};
+
 const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) => {
   const header = page.getByTestId("program-header");
+  const iconPath = THEME_ICON_PATH_BY_SHELL[shell];
   await expect(page.locator(".header")).toHaveCount(0);
   await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", shell);
   await expect(header).toBeVisible();
   await expect(page.getByTestId("concept-header-actions")).toBeVisible();
   await expect(header.locator(".theme-shell-logo")).toHaveCount(0);
   await expect(header.locator('img[src*="goksorry_logo"]')).toHaveCount(0);
+  await expect(header.getByTestId("theme-shell-brand-icon")).toHaveAttribute("src", iconPath);
   await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
   await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
   await expect(header.getByRole("link", { name: "게시판" })).toBeVisible();
@@ -65,6 +82,14 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
   await expect(page.getByTestId("program-content-area")).toBeVisible();
   await expect(page.getByTestId("program-status-bar")).toBeVisible();
   await expect(page.getByTestId("theme-content-document")).toBeVisible();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
+        return link ? new URL(link.href, window.location.href).pathname : null;
+      })
+    )
+    .toBe(iconPath);
 };
 
 const expectConceptHeaderFixed = async (page: Page) => {
@@ -94,8 +119,17 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
     await expect(page.getByTestId("program-shell")).toHaveCount(0);
     await expect(page.locator(".header")).toBeVisible();
+    await expect(page.getByTestId("theme-shell-brand-icon")).toHaveCount(0);
     await expect(page.locator(".header").getByRole("link", { name: "채팅" })).toHaveCount(0);
     await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
+          return link ? new URL(link.href, window.location.href).pathname : null;
+        })
+      )
+      .toBe("/favicon.ico");
   });
 
   test("default system follows the device color scheme", async ({ page }) => {
@@ -758,6 +792,180 @@ test.describe("program theme shells", () => {
     await expect(header.getByRole("button", { name: "Debug mock command" })).toBeVisible();
   });
 
+  test("ide left rail buttons use brighter restrained chrome", async ({ page }) => {
+    await prepareThemePage(page);
+    await page.goto("/?theme=vscode-dark");
+
+    const vscodeRailChrome = await page.locator(".vscode-activity-bar").evaluate((bar) => {
+      const active = bar.querySelector(".theme-shell-active") as HTMLElement;
+      const inactive = Array.from(bar.querySelectorAll("button")).find((button) => button !== active) as HTMLElement;
+      const activeStyle = window.getComputedStyle(active);
+      const inactiveStyle = window.getComputedStyle(inactive);
+      const barStyle = window.getComputedStyle(bar);
+      const shellStyle = window.getComputedStyle(document.querySelector(".theme-shell-vscode") as Element);
+      const brightness = (value: string) => {
+        const channels = value.match(/\d+(\.\d+)?/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+        return channels.reduce((sum, channel) => sum + channel, 0);
+      };
+
+      return {
+        barBackgroundImage: barStyle.backgroundImage,
+        barBrightness: brightness(barStyle.backgroundColor),
+        shellBrightness: brightness(shellStyle.backgroundColor),
+        activeBackground: activeStyle.backgroundColor,
+        activeColor: activeStyle.color,
+        activeShadow: activeStyle.boxShadow,
+        inactiveBackground: inactiveStyle.backgroundColor,
+        inactiveColor: inactiveStyle.color
+      };
+    });
+    expect(vscodeRailChrome.barBackgroundImage).toBe("none");
+    expect(vscodeRailChrome.barBrightness).toBeGreaterThan(vscodeRailChrome.shellBrightness);
+    expect(vscodeRailChrome.activeBackground).not.toBe(vscodeRailChrome.inactiveBackground);
+    expect(vscodeRailChrome.activeColor).not.toBe(vscodeRailChrome.inactiveColor);
+    expect(vscodeRailChrome.activeShadow).not.toBe("none");
+
+    await page.goto("/?theme=jetbrains-dark");
+    const jetbrainsRailChrome = await page.locator(".jetbrains-tool-window-bar").evaluate((bar) => {
+      const active = bar.querySelector(".theme-shell-active") as HTMLElement;
+      const inactive = Array.from(bar.querySelectorAll("button")).find((button) => button !== active) as HTMLElement;
+      const activeStyle = window.getComputedStyle(active);
+      const inactiveStyle = window.getComputedStyle(inactive);
+      const barStyle = window.getComputedStyle(bar);
+      const shellStyle = window.getComputedStyle(document.querySelector(".theme-shell-jetbrains") as Element);
+      const brightness = (value: string) => {
+        const channels = value.match(/\d+(\.\d+)?/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+        return channels.reduce((sum, channel) => sum + channel, 0);
+      };
+
+      return {
+        barBackgroundImage: barStyle.backgroundImage,
+        barBrightness: brightness(barStyle.backgroundColor),
+        shellBrightness: brightness(shellStyle.backgroundColor),
+        activeBackground: activeStyle.backgroundColor,
+        activeColor: activeStyle.color,
+        activeShadow: activeStyle.boxShadow,
+        inactiveBackground: inactiveStyle.backgroundColor,
+        inactiveColor: inactiveStyle.color
+      };
+    });
+    expect(jetbrainsRailChrome.barBackgroundImage).toBe("none");
+    expect(jetbrainsRailChrome.barBrightness).toBeGreaterThan(jetbrainsRailChrome.shellBrightness);
+    expect(jetbrainsRailChrome.activeBackground).not.toBe(jetbrainsRailChrome.inactiveBackground);
+    expect(jetbrainsRailChrome.activeColor).not.toBe(jetbrainsRailChrome.inactiveColor);
+    expect(jetbrainsRailChrome.activeShadow).not.toBe("none");
+  });
+
+  test("concept theme section colors follow product chrome references", async ({ page }) => {
+    await prepareThemePage(page);
+
+    await page.goto("/?theme=excel-light");
+    expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft"])).toMatchObject({
+      "--brand": "#217346",
+      "--bg": "#f3f2f1",
+      "--panel-soft": "#f6f8f7"
+    });
+    await expect.poll(async () => page.locator(".excel-titlebar").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      "rgb(246, 248, 247)"
+    );
+    await expect.poll(async () => page.locator(".excel-content-frame").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      "rgb(255, 255, 255)"
+    );
+
+    await page.goto("/?theme=powerpoint-light");
+    expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft"])).toMatchObject({
+      "--brand": "#b7472a",
+      "--bg": "#f4f3f2",
+      "--panel-soft": "#f7f2ee"
+    });
+    await expect
+      .poll(async () => page.locator(".powerpoint-titlebar").evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe("rgb(247, 242, 238)");
+
+    await page.goto("/?theme=docs-light");
+    expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft", "--ink"])).toMatchObject({
+      "--brand": "#1a73e8",
+      "--bg": "#f8fafd",
+      "--panel-soft": "#edf2fa",
+      "--ink": "#202124"
+    });
+    const docsChrome = await page.evaluate(() => ({
+      header: getComputedStyle(document.querySelector(".docs-app-header") as HTMLElement).backgroundColor,
+      outline: getComputedStyle(document.querySelector(".docs-outline") as HTMLElement).backgroundColor,
+      document: getComputedStyle(document.querySelector(".docs-content-frame") as HTMLElement).backgroundColor
+    }));
+    expect(docsChrome).toMatchObject({
+      header: "rgb(255, 255, 255)",
+      outline: "rgb(237, 242, 250)",
+      document: "rgb(255, 255, 255)"
+    });
+
+    await page.goto("/?theme=vscode-light");
+    expect(await readRootThemeVars(page, ["--brand", "--vscode-activity-bg", "--vscode-side-bar-bg", "--vscode-editor-bg"])).toMatchObject({
+      "--brand": "#007acc",
+      "--vscode-activity-bg": "#2c2c2c",
+      "--vscode-side-bar-bg": "#f3f3f3",
+      "--vscode-editor-bg": "#ffffff"
+    });
+    const vscodeChrome = await page.evaluate(() => ({
+      activity: getComputedStyle(document.querySelector(".vscode-activity-bar") as HTMLElement).backgroundColor,
+      explorer: getComputedStyle(document.querySelector(".vscode-explorer") as HTMLElement).backgroundColor,
+      status: getComputedStyle(document.querySelector("[data-testid='program-status-bar']") as HTMLElement).backgroundColor
+    }));
+    expect(vscodeChrome).toMatchObject({
+      activity: "rgb(44, 44, 44)",
+      explorer: "rgb(243, 243, 243)",
+      status: "rgb(0, 122, 204)"
+    });
+
+    await page.goto("/?theme=jetbrains-dark");
+    expect(await readRootThemeVars(page, ["--brand", "--jetbrains-toolbar-bg", "--jetbrains-tool-window-bar-bg", "--jetbrains-editor-bg"])).toMatchObject({
+      "--brand": "#3574f0",
+      "--jetbrains-toolbar-bg": "#2b2d30",
+      "--jetbrains-tool-window-bar-bg": "#303236",
+      "--jetbrains-editor-bg": "#1e1f22"
+    });
+    const jetbrainsChrome = await page.evaluate(() => ({
+      toolbarImage: getComputedStyle(document.querySelector(".jetbrains-toolbar") as HTMLElement).backgroundImage,
+      toolbar: getComputedStyle(document.querySelector(".jetbrains-toolbar") as HTMLElement).backgroundColor,
+      toolWindow: getComputedStyle(document.querySelector(".jetbrains-tool-window-bar") as HTMLElement).backgroundColor,
+      editor: getComputedStyle(document.querySelector(".jetbrains-content-frame") as HTMLElement).backgroundColor
+    }));
+    expect(jetbrainsChrome).toMatchObject({
+      toolbarImage: "none",
+      toolbar: "rgb(43, 45, 48)",
+      toolWindow: "rgb(48, 50, 54)",
+      editor: "rgb(30, 31, 34)"
+    });
+
+    await page.goto("/?theme=vs-dark");
+    expect(
+      await readRootThemeVars(page, [
+        "--brand",
+        "--visual-studio-titlebar-bg",
+        "--visual-studio-toolbar-bg",
+        "--visual-studio-editor-bg"
+      ])
+    ).toMatchObject({
+      "--brand": "#007acc",
+      "--visual-studio-titlebar-bg": "#2d2d30",
+      "--visual-studio-toolbar-bg": "#3f3f46",
+      "--visual-studio-editor-bg": "#1e1e1e"
+    });
+    const visualStudioChrome = await page.evaluate(() => ({
+      titlebar: getComputedStyle(document.querySelector(".visual-studio-titlebar") as HTMLElement).backgroundColor,
+      toolbar: getComputedStyle(document.querySelector(".visual-studio-toolbar") as HTMLElement).backgroundColor,
+      solution: getComputedStyle(document.querySelector(".visual-studio-solution") as HTMLElement).backgroundColor,
+      status: getComputedStyle(document.querySelector("[data-testid='program-status-bar']") as HTMLElement).backgroundColor
+    }));
+    expect(visualStudioChrome).toMatchObject({
+      titlebar: "rgb(45, 45, 48)",
+      toolbar: "rgb(63, 63, 70)",
+      solution: "rgb(45, 45, 48)",
+      status: "rgb(0, 122, 204)"
+    });
+  });
+
   test("concept header action buttons use theme-specific chrome", async ({ page }) => {
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
@@ -870,9 +1078,11 @@ test.describe("program theme shells", () => {
     await expect(dialog.getByText("테마", { exact: true })).toBeVisible();
     await expect(dialog.getByText("색상", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "테마 Excel" })).toHaveText("Excel");
+    await expect(dialog.getByRole("button", { name: "테마 Docs" })).toHaveText("Docs");
     await expect(dialog.getByRole("button", { name: "색상 다크" })).toHaveText("다크");
     await expect(dialog.getByText("excel-light")).toHaveCount(0);
     await expect(dialog.getByText("엑셀 라이트")).toHaveCount(0);
+    await expect(dialog.getByText("기술문서")).toHaveCount(0);
 
     await dialog.getByRole("button", { name: "테마 Excel" }).click();
     await dialog.getByRole("button", { name: "색상 다크" }).click();
@@ -888,15 +1098,43 @@ test.describe("program theme shells", () => {
     await page.goto("/?theme=vscode-dark");
     const vscodeSurface = await page.getByTestId("theme-content-document").evaluate((element) => {
       const documentStyle = window.getComputedStyle(element);
-      const frameStyle = window.getComputedStyle(document.querySelector(".vscode-content-frame") as Element);
+      const frame = document.querySelector(".vscode-content-frame") as Element;
+      const frameStyle = window.getComputedStyle(frame);
+      const lineNumberStyle = window.getComputedStyle(frame, "::before");
 
       return {
         fontFamily: documentStyle.fontFamily.toLowerCase(),
-        frameBackground: frameStyle.backgroundImage
+        frameBackground: frameStyle.backgroundImage,
+        lineNumbers: lineNumberStyle.content,
+        lineNumberBoxSizing: lineNumberStyle.boxSizing,
+        lineNumberPaddingRight: parseFloat(lineNumberStyle.paddingRight)
       };
     });
     expect(vscodeSurface.fontFamily).toContain("monospace");
     expect(vscodeSurface.frameBackground).toContain("linear-gradient");
+    expect(vscodeSurface.lineNumberBoxSizing).toBe("border-box");
+    expect(vscodeSurface.lineNumberPaddingRight).toBeGreaterThan(8);
+    expect(vscodeSurface.lineNumbers).toContain("2");
+    expect(vscodeSurface.lineNumbers).toContain("3");
+    expect(vscodeSurface.lineNumbers).not.toContain("¢");
+    expect(vscodeSurface.lineNumbers).not.toContain("£");
+
+    await page.goto("/?theme=vs-dark");
+    const visualStudioLineNumberStyle = await page.locator(".visual-studio-content-frame").evaluate((element) => {
+      const lineNumberStyle = window.getComputedStyle(element, "::before");
+
+      return {
+        lineNumbers: lineNumberStyle.content,
+        boxSizing: lineNumberStyle.boxSizing,
+        paddingRight: parseFloat(lineNumberStyle.paddingRight)
+      };
+    });
+    expect(visualStudioLineNumberStyle.boxSizing).toBe("border-box");
+    expect(visualStudioLineNumberStyle.paddingRight).toBeGreaterThan(8);
+    expect(visualStudioLineNumberStyle.lineNumbers).toContain("2");
+    expect(visualStudioLineNumberStyle.lineNumbers).toContain("3");
+    expect(visualStudioLineNumberStyle.lineNumbers).not.toContain("¢");
+    expect(visualStudioLineNumberStyle.lineNumbers).not.toContain("£");
 
     await page.goto("/?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {
@@ -942,6 +1180,31 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme-tone", "system");
     await expect(page.locator("html")).toHaveAttribute("data-theme-effective-tone", "dark");
     await expectConceptHeaderReplacesSiteHeader(page, "vscode");
+  });
+
+  test("theme favicon follows the concept family across tones", async ({ page }) => {
+    const cases = [
+      { theme: "excel-light", iconPath: "/theme-icons/excel.svg" },
+      { theme: "excel-dark", iconPath: "/theme-icons/excel.svg" },
+      { theme: "excel-system", iconPath: "/theme-icons/excel.svg" },
+      { theme: "powerpoint-dark", iconPath: "/theme-icons/powerpoint.svg" },
+      { theme: "vs-dark", iconPath: "/theme-icons/visual-studio.svg" },
+      { theme: "light", iconPath: "/favicon.ico" }
+    ];
+
+    await prepareThemePage(page);
+
+    for (const item of cases) {
+      await page.goto(`/?theme=${item.theme}`);
+      await expect
+        .poll(async () =>
+          page.evaluate(() => {
+            const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
+            return link ? new URL(link.href, window.location.href).pathname : null;
+          })
+        )
+        .toBe(item.iconPath);
+    }
   });
 
   test("blog and unknown theme values always fall back to the default theme", async ({ page }) => {

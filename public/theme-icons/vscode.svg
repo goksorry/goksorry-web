@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="VS Code concept icon">
+  <rect width="512" height="512" rx="112" fill="#007acc"/>
+  <path d="M123 166 216 256l-93 90 43 43 134-133-134-133z" fill="#ccecff"/>
+  <path d="m386 106-126 52v196l126 52z" fill="#e6f7ff"/>
+  <path d="M386 106v300l-86-72V178z" fill="#88d7ff"/>
+  <path d="m166 123 134 133-134 133-43-43 93-90-93-90z" fill="#fff"/>
+</svg>
