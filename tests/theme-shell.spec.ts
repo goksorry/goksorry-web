@@ -380,6 +380,9 @@ test.describe("program theme shells", () => {
       const formulaInput = document.querySelector(".excel-formula-bar input") as HTMLElement;
       const rowHeaderCell = document.querySelector(".excel-row-headers span") as HTMLElement;
       const columnHeaders = document.querySelector("[data-testid='excel-column-headers']") as HTMLElement;
+      const overviewArt = document.querySelector(".theme-shell-excel .overview-panel-art") as HTMLElement;
+      const overviewHeadingCopy = document.querySelector(".theme-shell-excel .overview-heading-copy") as HTMLElement;
+      const overviewScore = document.querySelector(".theme-shell-excel .overview-overall-score") as HTMLElement;
       const documentStyle = window.getComputedStyle(documentElement);
       const frameStyle = window.getComputedStyle(frame);
       const columnHeadersStyle = window.getComputedStyle(columnHeaders);
@@ -400,6 +403,9 @@ test.describe("program theme shells", () => {
       const selection = document.querySelector("[data-testid='excel-selection-box']") as HTMLElement;
       const contentLink = frame.querySelector("a") as HTMLElement | null;
       const selectionStyle = window.getComputedStyle(selection);
+      const overviewArtRect = overviewArt.getBoundingClientRect();
+      const overviewHeadingCopyRect = overviewHeadingCopy.getBoundingClientRect();
+      const overviewScoreRect = overviewScore.getBoundingClientRect();
 
       return {
         columnWidth: Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width")),
@@ -443,7 +449,13 @@ test.describe("program theme shells", () => {
         selectedRowBackground: window.getComputedStyle(selectedRow).backgroundColor,
         selectionBorderColor: selectionStyle.borderTopColor,
         contentCursor: frameStyle.cursor,
-        contentLinkCursor: contentLink ? window.getComputedStyle(contentLink).cursor : null
+        contentLinkCursor: contentLink ? window.getComputedStyle(contentLink).cursor : null,
+        overviewArtLeft: overviewArtRect.left,
+        overviewArtRight: overviewArtRect.right,
+        overviewHeadingCopyLeft: overviewHeadingCopyRect.left,
+        overviewHeadingCopyRight: overviewHeadingCopyRect.right,
+        overviewScoreLeft: overviewScoreRect.left,
+        overviewScoreRight: overviewScoreRect.right
       };
     });
     expect(excelContentChrome.paddingTop).toBe(0);
@@ -455,6 +467,10 @@ test.describe("program theme shells", () => {
     expect(excelContentChrome.marketBlockRows).toBe(3);
     expect(excelContentChrome.overviewPanelRows).toBe(7);
     expect(excelContentChrome.feedFilterRows).toBe(6);
+    expect(Math.abs(excelContentChrome.overviewArtRight - excelContentChrome.overviewHeadingCopyRight)).toBeLessThanOrEqual(1);
+    expect(Math.abs(excelContentChrome.overviewArtRight - excelContentChrome.overviewScoreLeft)).toBeLessThanOrEqual(1);
+    expect(excelContentChrome.overviewArtLeft).toBeGreaterThan(excelContentChrome.overviewHeadingCopyLeft);
+    expect(excelContentChrome.overviewArtRight).toBeLessThanOrEqual(excelContentChrome.overviewScoreRight);
     if (excelContentChrome.tableCellHeight !== null) {
       expect(Math.abs(excelContentChrome.tableCellHeight - excelContentChrome.rowHeight)).toBeLessThanOrEqual(1);
     }
@@ -781,7 +797,7 @@ test.describe("program theme shells", () => {
     expectExcelGridAligned(roomMetrics);
   });
 
-  test("excel theme keeps overview art subtle and uses one-cell mobile indicators", async ({ page }, testInfo) => {
+  test("excel theme keeps overview art visible and uses one-cell mobile indicators", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
@@ -872,8 +888,7 @@ test.describe("program theme shells", () => {
     });
 
     expect(mobileOverview.artDisplay).toBe("block");
-    expect(mobileOverview.artOpacity).toBeGreaterThanOrEqual(0.12);
-    expect(mobileOverview.artOpacity).toBeLessThanOrEqual(0.18);
+    expect(mobileOverview.artOpacity).toBe(1);
     expect(mobileOverview.artBackground).toContain("overview-regime");
     expect(Math.abs(mobileOverview.marketBlockHeight - mobileOverview.rowHeight * 5)).toBeLessThanOrEqual(1);
     expect(Math.abs(mobileOverview.overviewPanelHeight - mobileOverview.rowHeight * 10)).toBeLessThanOrEqual(1);

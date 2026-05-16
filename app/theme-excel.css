@@ -839,7 +839,7 @@
 
 .theme-shell-excel .overview-panel-art {
   display: block;
-  inset: 0 0 auto auto;
+  inset: 0 calc(var(--excel-column-width) * 3) auto auto;
   width: calc(var(--excel-column-width) * 3);
   height: calc(var(--excel-row-height) * 5);
   background-position: right center;
@@ -848,7 +848,7 @@
 }
 
 .theme-shell-excel .overview-panel[data-art-ready="true"] .overview-panel-art {
-  opacity: 0.16;
+  opacity: 1;
 }
 
 .theme-shell-excel .overview-heading {
@@ -1720,6 +1720,7 @@
   }
 
   .theme-shell-excel .overview-panel-art {
+    inset: 0 0 auto auto;
     width: min(calc(var(--excel-column-width) * 2.6), 58vw);
     height: calc(var(--excel-row-height) * 6);
     background-position: right top;
