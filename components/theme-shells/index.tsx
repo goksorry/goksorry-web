@@ -35,7 +35,7 @@ export function ThemeChrome({ children, defaultHeader, policyBanner, footer, cha
   }
 
   const framedContent = (
-    <div id="page-top" className="layout theme-shell-page">
+    <div id="page-top" className="layout theme-shell-page theme-shell-content-document" data-testid="theme-content-document">
       {policyBanner}
       {children}
       {footer}

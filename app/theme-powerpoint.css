@@ -150,17 +150,59 @@
   background: color-mix(in srgb, var(--panel) 92%, #fff 8%);
 }
 
+.theme-shell-powerpoint .theme-shell-content-document {
+  min-height: 100%;
+  padding: clamp(1rem, 2.5vw, 2.2rem);
+  background:
+    radial-gradient(circle at 6% 8%, color-mix(in srgb, var(--theme-shell-accent) 9%, transparent), transparent 24%),
+    var(--panel);
+}
+
+.theme-shell-powerpoint .theme-shell-page .main {
+  display: grid;
+  gap: clamp(0.8rem, 1.6vw, 1.3rem);
+  padding: 0;
+}
+
 .theme-shell-powerpoint .panel,
 .theme-shell-powerpoint .card,
+.theme-shell-powerpoint .overview-panel,
+.theme-shell-powerpoint .overview-card,
+.theme-shell-powerpoint .sentiment-lane,
+.theme-shell-powerpoint .sentiment-card,
 .theme-shell-powerpoint .community-post-row,
-.theme-shell-powerpoint .goksorry-room-entry {
+.theme-shell-powerpoint .goksorry-room-entry,
+.theme-shell-powerpoint .goksorry-room-reply {
   border-radius: 4px;
   border-color: color-mix(in srgb, var(--theme-shell-line) 76%, var(--line));
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.theme-shell-powerpoint .panel,
+.theme-shell-powerpoint .overview-panel,
+.theme-shell-powerpoint .feed-lanes-panel,
+.theme-shell-powerpoint .goksorry-room-panel,
+.theme-shell-powerpoint .docs-shell {
+  margin: 0;
+  padding: clamp(0.85rem, 1.7vw, 1.35rem);
+  outline: 1px solid color-mix(in srgb, var(--theme-shell-accent) 18%, transparent);
+  outline-offset: -0.45rem;
 }
 
 .theme-shell-powerpoint .panel h1,
 .theme-shell-powerpoint .panel h2 {
   color: var(--theme-shell-accent);
+}
+
+.theme-shell-powerpoint .table-wrap,
+.theme-shell-powerpoint .table {
+  border-radius: 4px;
+}
+
+.theme-shell-powerpoint .tag,
+.theme-shell-powerpoint .btn {
+  border-radius: 999px;
 }
 
 .powerpoint-notes {

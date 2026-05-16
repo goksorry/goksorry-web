@@ -110,8 +110,54 @@
 }
 
 .visual-studio-content-frame {
+  --ide-editor-gutter-width: 3.1rem;
+  --ide-editor-line-height: 1.62rem;
+  position: relative;
   border: 0;
   border-radius: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--theme-shell-chrome) 82%, #000 18%) 0 var(--ide-editor-gutter-width), transparent var(--ide-editor-gutter-width)),
+    var(--panel);
+  font-family: var(--mono-font);
+}
+
+.visual-studio-content-frame::before {
+  content: "1\A2\A3\A4\A5\A6\A7\A8\A9\A10\A11\A12\A13\A14\A15\A16\A17\A18\A19\A20\A21\A22\A23\A24\A25\A26\A27\A28\A29\A30\A31\A32\A33\A34\A35\A36\A37\A38\A39\A40\A41\A42\A43\A44\A45\A46\A47\A48";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: var(--ide-editor-gutter-width);
+  min-height: 100%;
+  padding: 0.9rem 0.68rem 2rem 0;
+  border-right: 1px solid var(--theme-shell-line);
+  color: color-mix(in srgb, var(--theme-shell-muted) 70%, transparent);
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  line-height: var(--ide-editor-line-height);
+  pointer-events: none;
+  text-align: right;
+  white-space: pre;
+}
+
+.theme-shell-visual-studio .theme-shell-content-document {
+  min-height: 100%;
+  padding: 0.9rem 1rem 1.1rem calc(var(--ide-editor-gutter-width) + 1rem);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 28%, transparent) calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 28%, transparent) var(--ide-editor-line-height)
+  );
+  font-family: var(--mono-font);
+  line-height: var(--ide-editor-line-height);
+}
+
+.theme-shell-visual-studio .theme-shell-page .main {
+  display: grid;
+  gap: 0.58rem;
+  padding: 0;
 }
 
 .visual-studio-solution,
@@ -165,10 +211,66 @@
 
 .theme-shell-visual-studio .panel,
 .theme-shell-visual-studio .card,
+.theme-shell-visual-studio .overview-panel,
+.theme-shell-visual-studio .overview-card,
+.theme-shell-visual-studio .sentiment-lane,
+.theme-shell-visual-studio .sentiment-card,
 .theme-shell-visual-studio .community-post-row,
-.theme-shell-visual-studio .goksorry-room-entry {
+.theme-shell-visual-studio .goksorry-room-entry,
+.theme-shell-visual-studio .goksorry-room-reply {
   border-radius: 3px;
-  border-color: var(--theme-shell-line);
+  border-color: color-mix(in srgb, var(--theme-shell-line) 84%, var(--theme-shell-accent));
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--theme-shell-accent) 64%, transparent);
+}
+
+.theme-shell-visual-studio .panel,
+.theme-shell-visual-studio .overview-panel,
+.theme-shell-visual-studio .feed-lanes-panel,
+.theme-shell-visual-studio .goksorry-room-panel,
+.theme-shell-visual-studio .docs-shell {
+  margin: 0;
+  padding: 0.5rem 0.72rem;
+}
+
+.theme-shell-visual-studio h1,
+.theme-shell-visual-studio h2,
+.theme-shell-visual-studio h3,
+.theme-shell-visual-studio h4 {
+  font-family: var(--mono-font);
+  color: color-mix(in srgb, var(--theme-shell-accent) 70%, var(--ink));
+}
+
+.theme-shell-visual-studio .panel h1::before,
+.theme-shell-visual-studio .panel h2::before,
+.theme-shell-visual-studio .panel h3::before {
+  content: "public ";
+  color: #569cd6;
+  font-weight: 600;
+}
+
+.theme-shell-visual-studio p,
+.theme-shell-visual-studio li,
+.theme-shell-visual-studio td,
+.theme-shell-visual-studio th,
+.theme-shell-visual-studio input,
+.theme-shell-visual-studio textarea,
+.theme-shell-visual-studio select,
+.theme-shell-visual-studio code,
+.theme-shell-visual-studio pre {
+  font-family: var(--mono-font);
+}
+
+.theme-shell-visual-studio .table-wrap,
+.theme-shell-visual-studio .table {
+  border-radius: 3px;
+  border-color: color-mix(in srgb, var(--theme-shell-line) 70%, var(--theme-shell-accent));
+  background: transparent;
+}
+
+.theme-shell-visual-studio .table th,
+.theme-shell-visual-studio .table td {
+  border-color: color-mix(in srgb, var(--theme-shell-line) 58%, transparent);
 }
 
 .theme-shell-visual-studio .theme-shell-status {

@@ -5,6 +5,15 @@
   --theme-shell-line: #b6d8c5;
   --theme-shell-accent: #107c41;
   --theme-shell-content-padding: 0.45rem;
+  --excel-row-header-width: 3rem;
+  --excel-row-height: 2.2rem;
+  --excel-column-count: 8;
+  --excel-column-width: 100px;
+  --excel-cell-padding-x: 0.55rem;
+  --excel-cell-padding-y: 0.28rem;
+  --excel-market-block-rows: 3;
+  --excel-overview-panel-rows: 7;
+  --excel-feed-filter-rows: 6;
 }
 
 :root[data-theme="excel-dark"] {
@@ -154,13 +163,42 @@
 
 .excel-workspace {
   display: grid;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.excel-workspace .theme-shell-content-area {
+  display: grid;
+  min-height: 0;
+  padding: var(--theme-shell-content-padding);
+}
+
+.excel-grid-shell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--excel-row-header-width) minmax(0, 1fr);
+  grid-template-rows: 1.55rem minmax(0, 1fr);
+}
+
+.excel-grid-corner {
+  grid-column: 1;
+  grid-row: 1;
+  border: 1px solid var(--theme-shell-line);
+  border-right: 0;
+  background: var(--theme-shell-chrome);
 }
 
 .excel-column-headers {
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(8, minmax(4rem, 1fr));
+  grid-column: 2;
+  grid-row: 1;
+  grid-template-columns: repeat(var(--excel-column-count), minmax(0, var(--excel-column-width)));
   border: 1px solid var(--theme-shell-line);
   border-bottom: 0;
+  border-left: 0;
+  overflow: hidden;
   background: var(--theme-shell-chrome);
   color: var(--theme-shell-muted);
   font-size: 0.72rem;
@@ -168,27 +206,505 @@
 }
 
 .excel-column-headers span {
-  padding: 0.22rem;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.22rem;
   border-right: 1px solid var(--theme-shell-line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.excel-row-header-viewport {
+  min-width: 0;
+  min-height: 0;
+  grid-column: 1;
+  grid-row: 2;
+  border: 1px solid var(--theme-shell-line);
+  border-right: 0;
+  overflow: hidden;
+  background: var(--theme-shell-chrome);
+  color: var(--theme-shell-muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.excel-row-headers {
+  will-change: transform;
+}
+
+.excel-row-headers span {
+  height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--theme-shell-line);
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
 }
 
 .excel-content-frame {
+  grid-column: 2;
+  grid-row: 2;
   border: 1px solid var(--theme-shell-line);
   border-radius: 0;
+  background: var(--panel);
+}
+
+.theme-shell-excel .theme-shell-content-document {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 0;
   background-image:
     linear-gradient(var(--theme-shell-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--theme-shell-line) 1px, transparent 1px);
-  background-size: 6rem 2.2rem;
+  background-position: 0 0;
+  background-size: var(--excel-column-width) var(--excel-row-height);
+}
+
+.theme-shell-excel .theme-shell-page .main {
+  display: grid;
+  gap: var(--excel-row-height);
+  padding: 0;
 }
 
 .theme-shell-excel .panel,
 .theme-shell-excel .card,
+.theme-shell-excel .overview-panel,
+.theme-shell-excel .overview-card,
+.theme-shell-excel .sentiment-lane,
+.theme-shell-excel .sentiment-card,
 .theme-shell-excel .community-post-row,
 .theme-shell-excel .goksorry-room-entry,
+.theme-shell-excel .goksorry-room-reply,
 .theme-shell-excel .chat-message {
   border-radius: 0;
   border-color: color-mix(in srgb, var(--theme-shell-line) 86%, var(--line));
   background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-shell-line) 36%, transparent);
+  box-sizing: border-box;
+}
+
+.theme-shell-excel .panel,
+.theme-shell-excel .overview-panel,
+.theme-shell-excel .feed-lanes-panel,
+.theme-shell-excel .goksorry-room-panel,
+.theme-shell-excel .docs-shell {
+  padding: 0;
+  margin: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.theme-shell-excel .panel h1,
+.theme-shell-excel .panel h2,
+.theme-shell-excel .panel h3 {
+  min-height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 86%, transparent);
+  background: color-mix(in srgb, var(--theme-shell-accent) 9%, transparent);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.theme-shell-excel .overview-market-block {
+  display: grid;
+  grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 2);
+  height: calc(var(--excel-row-height) * var(--excel-market-block-rows));
+  gap: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-section-head {
+  min-height: var(--excel-row-height);
+  display: grid;
+  grid-template-columns: var(--excel-column-width) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+}
+
+.theme-shell-excel .overview-section-head h3,
+.theme-shell-excel .overview-section-copy {
+  min-height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 86%, transparent);
+  background: color-mix(in srgb, var(--theme-shell-accent) 8%, transparent);
+  line-height: 1.2;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-section-head h3 {
+  justify-content: flex-start;
+  font-size: 0.88rem;
+}
+
+.theme-shell-excel .overview-section-copy {
+  justify-content: flex-start;
+  margin-right: 0;
+  text-align: left;
+}
+
+.theme-shell-excel .overview-market-row {
+  grid-template-columns: repeat(4, calc(var(--excel-column-width) * 2));
+  gap: 0;
+  height: calc(var(--excel-row-height) * 2);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.theme-shell-excel .overview-card {
+  border-color: var(--theme-shell-line);
+}
+
+.theme-shell-excel .overview-market-stat {
+  width: calc(var(--excel-column-width) * 2);
+  height: calc(var(--excel-row-height) * 2);
+  min-height: calc(var(--excel-row-height) * 2);
+  display: grid;
+  align-content: center;
+  gap: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-market-head,
+.theme-shell-excel .overview-market-main {
+  min-height: calc(var(--excel-row-height) - 1px);
+  align-items: center;
+  gap: var(--excel-cell-padding-x);
+}
+
+.theme-shell-excel .overview-market-stat .overview-value,
+.theme-shell-excel .overview-market-stat .overview-delta,
+.theme-shell-excel .overview-market-stat .overview-note,
+.theme-shell-excel .overview-label {
+  margin: 0;
+}
+
+.theme-shell-excel .overview-panel {
+  height: calc(var(--excel-row-height) * var(--excel-overview-panel-rows));
+  display: grid;
+  grid-template-rows: calc(var(--excel-row-height) * 5) calc(var(--excel-row-height) * 2);
+  border-left-color: var(--theme-shell-line);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-hero {
+  height: calc(var(--excel-row-height) * 5);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-goksorry-gauge {
+  display: none;
+}
+
+.theme-shell-excel .overview-panel-art {
+  display: block;
+  inset: 0 0 auto auto;
+  width: calc(var(--excel-column-width) * 3);
+  height: calc(var(--excel-row-height) * 5);
+  background-position: right center;
+  background-size: contain;
+  opacity: 0;
+}
+
+.theme-shell-excel .overview-panel[data-art-ready="true"] .overview-panel-art {
+  opacity: 0.16;
+}
+
+.theme-shell-excel .overview-heading {
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr) calc(var(--excel-column-width) * 3);
+  align-items: stretch;
+  gap: 0;
+}
+
+.theme-shell-excel .overview-heading-copy,
+.theme-shell-excel .overview-overall-score {
+  min-width: 0;
+  height: calc(var(--excel-row-height) * 5);
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-overall-score {
+  justify-items: end;
+  text-align: right;
+}
+
+.theme-shell-excel .overview-heading h2,
+.theme-shell-excel .overview-timestamp,
+.theme-shell-excel .overview-market-adjustment-meta,
+.theme-shell-excel .overview-kicker,
+.theme-shell-excel .overview-overall-label,
+.theme-shell-excel .overview-overall-band {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-shell-excel .overview-section {
+  height: calc(var(--excel-row-height) * 2);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-bottom-row {
+  grid-template-columns: repeat(var(--overview-community-columns, 4), calc(var(--excel-column-width) * 2));
+  gap: 0;
+  height: calc(var(--excel-row-height) * 2);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.theme-shell-excel .overview-card-community {
+  width: calc(var(--excel-column-width) * 2);
+  height: calc(var(--excel-row-height) * 2);
+  min-height: calc(var(--excel-row-height) * 2);
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  align-content: center;
+  overflow: hidden;
+}
+
+.theme-shell-excel .overview-market-adjustment-button,
+.theme-shell-excel .overview-score-badge {
+  border-radius: 0;
+}
+
+.theme-shell-excel .feed-filter-panel {
+  display: grid;
+  grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 2) calc(var(--excel-row-height) * 3);
+  height: calc(var(--excel-row-height) * var(--excel-feed-filter-rows));
+  gap: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .feed-filter-panel > .muted,
+.theme-shell-excel .feed-filter-toolbar {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 78%, transparent);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.theme-shell-excel .feed-filter-panel h1 {
+  height: var(--excel-row-height);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .feed-filter-panel > .muted {
+  height: calc(var(--excel-row-height) * 2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
+  white-space: normal;
+  text-overflow: ellipsis;
+}
+
+.theme-shell-excel .feed-filter-toolbar {
+  height: calc(var(--excel-row-height) * 3);
+  display: grid;
+  grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 2);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.theme-shell-excel .feed-selection-actions,
+.theme-shell-excel .feed-channel-buttons {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  overflow: hidden;
+}
+
+.theme-shell-excel .feed-selection-actions {
+  height: var(--excel-row-height);
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
+}
+
+.theme-shell-excel .feed-channel-buttons {
+  height: calc(var(--excel-row-height) * 2);
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.theme-shell-excel .filter-chip {
+  min-height: calc(var(--excel-row-height) - (var(--excel-cell-padding-y) * 2) - 2px);
+  padding: 0.16rem 0.42rem;
+}
+
+.theme-shell-excel .sentiment-columns {
+  grid-template-columns: repeat(2, calc(var(--excel-column-width) * 4));
+  gap: 0;
+  overflow-x: auto;
+}
+
+.theme-shell-excel .sentiment-lane {
+  width: calc(var(--excel-column-width) * 4);
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--theme-shell-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.theme-shell-excel .sentiment-lane-head {
+  min-height: calc(var(--excel-row-height) * 2);
+  display: flex;
+  align-items: center;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--theme-shell-accent) 8%, transparent);
+  box-sizing: border-box;
+}
+
+.theme-shell-excel .sentiment-lane-head h2 {
+  min-height: 0;
+  align-items: center;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.theme-shell-excel .sentiment-count-tag {
+  border-radius: 0;
+}
+
+.theme-shell-excel .sentiment-lane-watermark {
+  display: none;
+}
+
+.theme-shell-excel .sentiment-list {
+  border-top: 0;
+}
+
+.theme-shell-excel .sentiment-card {
+  min-height: calc(var(--excel-row-height) * 2);
+  display: grid;
+  align-content: center;
+  gap: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid var(--theme-shell-line);
+  border-top: 0;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+
+.theme-shell-excel .sentiment-card-head {
+  min-height: calc(var(--excel-row-height) * 0.72);
+  align-items: center;
+  margin: 0;
+}
+
+.theme-shell-excel .sentiment-card-body {
+  min-height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
+}
+
+.theme-shell-excel .sentiment-title {
+  line-height: 1.28;
+}
+
+.theme-shell-excel .community-post-list,
+.theme-shell-excel .goksorry-room-list {
+  gap: 0;
+  border-top: 1px solid var(--theme-shell-line);
+}
+
+.theme-shell-excel .community-post-row,
+.theme-shell-excel .goksorry-room-entry,
+.theme-shell-excel .goksorry-room-reply {
+  min-height: calc(var(--excel-row-height) * 2);
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid var(--theme-shell-line);
+  border-top: 0;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+
+.theme-shell-excel .goksorry-room-entry-form,
+.theme-shell-excel .goksorry-room-reply-form {
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+
+.theme-shell-excel .table-wrap {
+  border: 1px solid var(--theme-shell-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.theme-shell-excel .table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  background: transparent;
+}
+
+.theme-shell-excel .table th,
+.theme-shell-excel .table td {
+  height: var(--excel-row-height);
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 1px solid var(--theme-shell-line);
+  background: transparent;
+  box-sizing: border-box;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.theme-shell-excel .table th {
+  background: color-mix(in srgb, var(--theme-shell-accent) 12%, var(--theme-shell-chrome));
+  color: var(--ink);
+}
+
+.theme-shell-excel .btn,
+.theme-shell-excel .tag,
+.theme-shell-excel .feed-symbol-badge,
+.theme-shell-excel button,
+.theme-shell-excel a.btn,
+.theme-shell-excel .clean-filter-toggle-group,
+.theme-shell-excel .header-auth-shell {
+  border-radius: 0;
+  border-color: var(--theme-shell-line);
+  box-shadow: none;
+}
+
+.theme-shell-excel .board-grid,
+.theme-shell-excel .docs-top-grid {
+  gap: var(--excel-row-height);
 }
 
 .theme-shell-excel .btn,
@@ -215,7 +731,7 @@
   padding: 0.36rem 0.7rem;
   border: 1px solid var(--theme-shell-line);
   border-bottom: 0;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
   background: var(--theme-shell-chrome);
   color: var(--ink-soft);
   font-size: 0.78rem;
@@ -229,6 +745,11 @@
 }
 
 @media (max-width: 760px) {
+  :root[data-theme-shell="excel"] {
+    --excel-market-block-rows: 9;
+    --excel-overview-panel-rows: 14;
+  }
+
   .excel-titlebar {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -244,5 +765,71 @@
   .excel-formula-bar {
     grid-template-columns: 4.4rem auto minmax(8rem, 1fr);
     overflow-x: auto;
+  }
+
+  .excel-grid-shell {
+    --excel-row-header-width: 2.55rem;
+  }
+
+  .theme-shell-excel .overview-market-block {
+    grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 8);
+  }
+
+  .theme-shell-excel .overview-market-row {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(var(--excel-row-height) * 8);
+    overflow-x: hidden;
+  }
+
+  .theme-shell-excel .overview-market-stat {
+    width: 100%;
+  }
+
+  .theme-shell-excel .overview-panel {
+    grid-template-rows: calc(var(--excel-row-height) * 6) calc(var(--excel-row-height) * 8);
+  }
+
+  .theme-shell-excel .overview-panel-art {
+    width: min(calc(var(--excel-column-width) * 2.6), 58vw);
+    height: calc(var(--excel-row-height) * 6);
+    background-position: right top;
+  }
+
+  .theme-shell-excel .overview-hero {
+    height: calc(var(--excel-row-height) * 6);
+  }
+
+  .theme-shell-excel .overview-heading {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: calc(var(--excel-row-height) * 3) calc(var(--excel-row-height) * 3);
+  }
+
+  .theme-shell-excel .overview-heading-copy,
+  .theme-shell-excel .overview-overall-score {
+    height: calc(var(--excel-row-height) * 3);
+    align-content: center;
+  }
+
+  .theme-shell-excel .overview-overall-score {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .theme-shell-excel .overview-overall-value-row {
+    justify-content: flex-start;
+  }
+
+  .theme-shell-excel .overview-section {
+    height: calc(var(--excel-row-height) * 8);
+  }
+
+  .theme-shell-excel .overview-bottom-row {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(var(--excel-row-height) * 8);
+    overflow-x: hidden;
+  }
+
+  .theme-shell-excel .overview-card-community {
+    width: 100%;
   }
 }

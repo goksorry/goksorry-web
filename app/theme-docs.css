@@ -149,10 +149,100 @@
 .docs-content-frame {
   border: 1px solid var(--theme-shell-line);
   border-radius: 0;
+  background:
+    linear-gradient(90deg, transparent 0, transparent 3.2rem, color-mix(in srgb, var(--theme-shell-line) 18%, transparent) 3.2rem, transparent 3.25rem),
+    var(--panel);
+}
+
+.theme-shell-docs .theme-shell-content-document {
+  max-width: 74rem;
+  margin: 0 auto;
+  padding: clamp(1.15rem, 2.8vw, 2.6rem);
+  color: var(--ink);
+  line-height: 1.75;
+}
+
+.theme-shell-docs .theme-shell-page .main {
+  display: grid;
+  gap: 1.7rem;
+  padding: 0;
 }
 
 .theme-shell-docs .panel,
 .theme-shell-docs .card {
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.theme-shell-docs .panel {
+  margin: 0;
+  padding: 0 0 1.4rem;
+  border: 0;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: transparent;
+}
+
+.theme-shell-docs .panel:last-child {
+  border-bottom: 0;
+}
+
+.theme-shell-docs .card,
+.theme-shell-docs .docs-endpoint,
+.theme-shell-docs .overview-card,
+.theme-shell-docs .sentiment-card,
+.theme-shell-docs .community-post-row,
+.theme-shell-docs .goksorry-room-entry,
+.theme-shell-docs .goksorry-room-reply {
+  border-color: color-mix(in srgb, var(--theme-shell-line) 82%, var(--theme-shell-accent));
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.theme-shell-docs h1,
+.theme-shell-docs h2,
+.theme-shell-docs h3 {
+  letter-spacing: 0;
+  line-height: 1.28;
+}
+
+.theme-shell-docs .panel h1::before {
+  content: "# ";
+  color: var(--theme-shell-accent);
+  font-family: var(--mono-font);
+}
+
+.theme-shell-docs .panel h2::before {
+  content: "## ";
+  color: var(--theme-shell-accent);
+  font-family: var(--mono-font);
+}
+
+.theme-shell-docs .panel h3::before {
+  content: "### ";
+  color: var(--theme-shell-accent);
+  font-family: var(--mono-font);
+}
+
+.theme-shell-docs .muted {
+  color: color-mix(in srgb, var(--ink-soft) 82%, transparent);
+}
+
+.theme-shell-docs .table-wrap {
+  border: 1px solid var(--theme-shell-line);
+  border-radius: 4px;
+}
+
+.theme-shell-docs .table {
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.theme-shell-docs .table th,
+.theme-shell-docs .table td {
+  border-color: color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
+}
+
+.theme-shell-docs .tag,
+.theme-shell-docs .btn {
   border-radius: 4px;
 }
 
@@ -160,6 +250,10 @@
 .theme-shell-docs code {
   border-radius: 3px;
   font-family: var(--mono-font);
+}
+
+.theme-shell-docs .docs-code {
+  border-left: 3px solid var(--theme-shell-accent);
 }
 
 @media (max-width: 960px) {

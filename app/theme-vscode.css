@@ -148,9 +148,54 @@
 }
 
 .vscode-content-frame {
+  --ide-editor-gutter-width: 3.25rem;
+  --ide-editor-line-height: 1.62rem;
+  position: relative;
   border: 0;
   border-radius: 0;
-  background: var(--panel);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--panel) 74%, #000 26%) 0 var(--ide-editor-gutter-width), transparent var(--ide-editor-gutter-width)),
+    var(--panel);
+  font-family: var(--mono-font);
+}
+
+.vscode-content-frame::before {
+  content: "1\A2\A3\A4\A5\A6\A7\A8\A9\A10\A11\A12\A13\A14\A15\A16\A17\A18\A19\A20\A21\A22\A23\A24\A25\A26\A27\A28\A29\A30\A31\A32\A33\A34\A35\A36\A37\A38\A39\A40\A41\A42\A43\A44\A45\A46\A47\A48\A49\A50\A51\A52\A53\A54\A55\A56\A57\A58\A59\A60";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: var(--ide-editor-gutter-width);
+  min-height: 100%;
+  padding: 0.92rem 0.7rem 2rem 0;
+  border-right: 1px solid var(--theme-shell-line);
+  color: color-mix(in srgb, var(--theme-shell-muted) 70%, transparent);
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  line-height: var(--ide-editor-line-height);
+  pointer-events: none;
+  text-align: right;
+  white-space: pre;
+}
+
+.theme-shell-vscode .theme-shell-content-document {
+  min-height: 100%;
+  padding: 0.92rem 1rem 1.1rem calc(var(--ide-editor-gutter-width) + 1rem);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 30%, transparent) calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 30%, transparent) var(--ide-editor-line-height)
+  );
+  font-family: var(--mono-font);
+  line-height: var(--ide-editor-line-height);
+}
+
+.theme-shell-vscode .theme-shell-page .main {
+  display: grid;
+  gap: 0.58rem;
+  padding: 0;
 }
 
 .vscode-panel {
@@ -163,11 +208,83 @@
 
 .theme-shell-vscode .panel,
 .theme-shell-vscode .card,
+.theme-shell-vscode .overview-panel,
+.theme-shell-vscode .overview-card,
+.theme-shell-vscode .sentiment-lane,
+.theme-shell-vscode .sentiment-card,
 .theme-shell-vscode .community-post-row,
 .theme-shell-vscode .goksorry-room-entry,
+.theme-shell-vscode .goksorry-room-reply,
 .theme-shell-vscode .chat-message {
   border-radius: 0;
-  border-color: var(--theme-shell-line);
+  border: 0;
+  border-left: 2px solid color-mix(in srgb, var(--theme-shell-accent) 78%, transparent);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  box-shadow: none;
+}
+
+.theme-shell-vscode .panel,
+.theme-shell-vscode .overview-panel,
+.theme-shell-vscode .feed-lanes-panel,
+.theme-shell-vscode .goksorry-room-panel,
+.theme-shell-vscode .docs-shell {
+  margin: 0;
+  padding: 0.28rem 0 0.28rem 0.72rem;
+}
+
+.theme-shell-vscode h1,
+.theme-shell-vscode h2,
+.theme-shell-vscode h3,
+.theme-shell-vscode h4 {
+  font-family: var(--mono-font);
+  color: #569cd6;
+}
+
+.theme-shell-vscode .panel h1::before,
+.theme-shell-vscode .panel h2::before,
+.theme-shell-vscode .panel h3::before {
+  content: "// ";
+  color: #6a9955;
+  font-weight: 400;
+}
+
+.theme-shell-vscode p,
+.theme-shell-vscode li,
+.theme-shell-vscode td,
+.theme-shell-vscode th,
+.theme-shell-vscode input,
+.theme-shell-vscode textarea,
+.theme-shell-vscode select {
+  font-family: var(--mono-font);
+}
+
+.theme-shell-vscode .table-wrap,
+.theme-shell-vscode .table {
+  border-radius: 0;
+  border-color: color-mix(in srgb, var(--theme-shell-line) 70%, transparent);
+  background: transparent;
+}
+
+.theme-shell-vscode .table th,
+.theme-shell-vscode .table td {
+  border-color: color-mix(in srgb, var(--theme-shell-line) 54%, transparent);
+  background: transparent;
+}
+
+.theme-shell-vscode .docs-code,
+.theme-shell-vscode pre,
+.theme-shell-vscode code,
+.theme-shell-vscode .tag,
+.theme-shell-vscode .btn {
+  border-radius: 2px;
+  font-family: var(--mono-font);
+}
+
+.theme-shell-vscode .overview-card,
+.theme-shell-vscode .sentiment-card,
+.theme-shell-vscode .community-post-row,
+.theme-shell-vscode .goksorry-room-entry {
+  padding: 0.38rem 0.58rem;
 }
 
 .theme-shell-vscode .btn,

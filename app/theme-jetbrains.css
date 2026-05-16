@@ -143,16 +143,97 @@
 }
 
 .jetbrains-content-frame {
+  --ide-editor-line-height: 1.62rem;
   border: 0;
   border-radius: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--theme-shell-accent) 8%, transparent), transparent 32%),
+    var(--panel);
+  font-family: var(--mono-font);
+}
+
+.theme-shell-jetbrains .theme-shell-content-document {
+  min-height: 100%;
+  padding: 0.9rem 1.05rem 1.1rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 26%, transparent) calc(var(--ide-editor-line-height) - 1px),
+    color-mix(in srgb, var(--theme-shell-line) 26%, transparent) var(--ide-editor-line-height)
+  );
+  font-family: var(--mono-font);
+  line-height: var(--ide-editor-line-height);
+}
+
+.theme-shell-jetbrains .theme-shell-page .main {
+  display: grid;
+  gap: 0.62rem;
+  padding: 0;
 }
 
 .theme-shell-jetbrains .panel,
 .theme-shell-jetbrains .card,
+.theme-shell-jetbrains .overview-panel,
+.theme-shell-jetbrains .overview-card,
+.theme-shell-jetbrains .sentiment-lane,
+.theme-shell-jetbrains .sentiment-card,
 .theme-shell-jetbrains .community-post-row,
-.theme-shell-jetbrains .goksorry-room-entry {
+.theme-shell-jetbrains .goksorry-room-entry,
+.theme-shell-jetbrains .goksorry-room-reply {
   border-radius: 5px;
-  border-color: var(--theme-shell-line);
+  border-color: color-mix(in srgb, var(--theme-shell-line) 82%, var(--theme-shell-accent));
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--theme-shell-accent) 72%, transparent);
+}
+
+.theme-shell-jetbrains .panel,
+.theme-shell-jetbrains .overview-panel,
+.theme-shell-jetbrains .feed-lanes-panel,
+.theme-shell-jetbrains .goksorry-room-panel,
+.theme-shell-jetbrains .docs-shell {
+  margin: 0;
+  padding: 0.54rem 0.74rem;
+}
+
+.theme-shell-jetbrains h1,
+.theme-shell-jetbrains h2,
+.theme-shell-jetbrains h3,
+.theme-shell-jetbrains h4 {
+  font-family: var(--mono-font);
+  color: color-mix(in srgb, var(--theme-shell-accent) 72%, var(--ink));
+}
+
+.theme-shell-jetbrains .panel h1::before,
+.theme-shell-jetbrains .panel h2::before,
+.theme-shell-jetbrains .panel h3::before {
+  content: "fun ";
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.theme-shell-jetbrains p,
+.theme-shell-jetbrains li,
+.theme-shell-jetbrains td,
+.theme-shell-jetbrains th,
+.theme-shell-jetbrains input,
+.theme-shell-jetbrains textarea,
+.theme-shell-jetbrains select,
+.theme-shell-jetbrains code,
+.theme-shell-jetbrains pre {
+  font-family: var(--mono-font);
+}
+
+.theme-shell-jetbrains .table-wrap,
+.theme-shell-jetbrains .table {
+  border-radius: 5px;
+  border-color: color-mix(in srgb, var(--theme-shell-line) 70%, var(--theme-shell-accent));
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+}
+
+.theme-shell-jetbrains .table th,
+.theme-shell-jetbrains .table td {
+  border-color: color-mix(in srgb, var(--theme-shell-line) 58%, transparent);
 }
 
 .theme-shell-jetbrains .theme-shell-status {
