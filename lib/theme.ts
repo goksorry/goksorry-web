@@ -1,31 +1,41 @@
 import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
 
+export type ThemeTone = "light" | "dark" | "system";
+export type ThemeEffectiveTone = Exclude<ThemeTone, "system">;
+export type ThemeFamily = "default" | "excel" | "powerpoint" | "docs" | "vscode" | "jetbrains" | "visual-studio";
+export type ThemeShellType = ThemeFamily;
+
 export type ThemeId =
   | "light"
   | "dark"
+  | "system"
   | "excel-light"
   | "excel-dark"
+  | "excel-system"
   | "powerpoint-light"
   | "powerpoint-dark"
-  | "blog-light"
-  | "blog-dark"
+  | "powerpoint-system"
   | "docs-light"
   | "docs-dark"
+  | "docs-system"
   | "vscode-light"
   | "vscode-dark"
+  | "vscode-system"
   | "jetbrains-light"
   | "jetbrains-dark"
+  | "jetbrains-system"
   | "vs-light"
-  | "vs-dark";
+  | "vs-dark"
+  | "vs-system";
 
 export type ThemeMode = ThemeId;
-export type ThemeShellType = "default" | "excel" | "ide" | "presentation" | "blog" | "docs";
 
 export type ThemeOption = {
   id: ThemeId;
   label: string;
+  family: ThemeFamily;
   familyLabel: string;
-  tone: "light" | "dark";
+  tone: ThemeTone;
   shellType: ThemeShellType;
   swatches: [string, string, string];
 };
@@ -34,44 +44,175 @@ export const THEME_STORAGE_DEFINITION = CLIENT_PERSISTENCE_DEFINITIONS.themeMode
 export const THEME_PARAM_NAME = "theme";
 export const DEFAULT_THEME_ID: ThemeId = "light";
 
+const buildThemeOption = (
+  id: ThemeId,
+  label: string,
+  family: ThemeFamily,
+  familyLabel: string,
+  tone: ThemeTone,
+  shellType: ThemeShellType,
+  swatches: [string, string, string]
+): ThemeOption => ({ id, label, family, familyLabel, tone, shellType, swatches });
+
 export const THEME_OPTIONS: ThemeOption[] = [
-  { id: "light", label: "라이트", familyLabel: "기본", tone: "light", shellType: "default", swatches: ["#eef1f4", "#58606a", "#a25852"] },
-  { id: "dark", label: "다크", familyLabel: "기본", tone: "dark", shellType: "default", swatches: ["#181c22", "#aeb7c1", "#c56b64"] },
-  { id: "excel-light", label: "엑셀 라이트", familyLabel: "Excel", tone: "light", shellType: "excel", swatches: ["#f4fbf7", "#107c41", "#d6ede1"] },
-  { id: "excel-dark", label: "엑셀 다크", familyLabel: "Excel", tone: "dark", shellType: "excel", swatches: ["#0f1f19", "#21a366", "#335b48"] },
-  { id: "powerpoint-light", label: "파워포인트 라이트", familyLabel: "PowerPoint", tone: "light", shellType: "presentation", swatches: ["#fff5ef", "#c43e1c", "#f4c7b5"] },
-  { id: "powerpoint-dark", label: "파워포인트 다크", familyLabel: "PowerPoint", tone: "dark", shellType: "presentation", swatches: ["#24150f", "#f26f42", "#7a3322"] },
-  { id: "blog-light", label: "블로그 라이트", familyLabel: "Blog", tone: "light", shellType: "blog", swatches: ["#fbf6ee", "#8b5e3c", "#d9a441"] },
-  { id: "blog-dark", label: "블로그 다크", familyLabel: "Blog", tone: "dark", shellType: "blog", swatches: ["#1d1814", "#d7a35b", "#755840"] },
-  { id: "docs-light", label: "기술문서 라이트", familyLabel: "Docs", tone: "light", shellType: "docs", swatches: ["#f7f9fc", "#2563eb", "#10b981"] },
-  { id: "docs-dark", label: "기술문서 다크", familyLabel: "Docs", tone: "dark", shellType: "docs", swatches: ["#0f172a", "#60a5fa", "#34d399"] },
-  { id: "vscode-light", label: "VS Code 라이트", familyLabel: "VS Code", tone: "light", shellType: "ide", swatches: ["#f3f3f3", "#007acc", "#c586c0"] },
-  { id: "vscode-dark", label: "VS Code 다크", familyLabel: "VS Code", tone: "dark", shellType: "ide", swatches: ["#1e1e1e", "#007acc", "#ce9178"] },
-  { id: "jetbrains-light", label: "JetBrains 라이트", familyLabel: "JetBrains", tone: "light", shellType: "ide", swatches: ["#fafafa", "#6b21a8", "#f97316"] },
-  { id: "jetbrains-dark", label: "JetBrains 다크", familyLabel: "JetBrains", tone: "dark", shellType: "ide", swatches: ["#19191f", "#a855f7", "#f59e0b"] },
-  { id: "vs-light", label: "Visual Studio 라이트", familyLabel: "Visual Studio", tone: "light", shellType: "ide", swatches: ["#f7f4fb", "#68217a", "#2b579a"] },
-  { id: "vs-dark", label: "Visual Studio 다크", familyLabel: "Visual Studio", tone: "dark", shellType: "ide", swatches: ["#1e1e2f", "#b180d7", "#569cd6"] }
+  buildThemeOption("light", "기본 라이트", "default", "기본", "light", "default", ["#eef1f4", "#58606a", "#a25852"]),
+  buildThemeOption("dark", "기본 다크", "default", "기본", "dark", "default", ["#181c22", "#aeb7c1", "#c56b64"]),
+  buildThemeOption("system", "기본 시스템", "default", "기본", "system", "default", ["#eef1f4", "#181c22", "#58606a"]),
+  buildThemeOption("excel-light", "엑셀 라이트", "excel", "Excel", "light", "excel", ["#f4fbf7", "#107c41", "#d6ede1"]),
+  buildThemeOption("excel-dark", "엑셀 다크", "excel", "Excel", "dark", "excel", ["#0f1f19", "#21a366", "#335b48"]),
+  buildThemeOption("excel-system", "엑셀 시스템", "excel", "Excel", "system", "excel", ["#f4fbf7", "#0f1f19", "#107c41"]),
+  buildThemeOption(
+    "powerpoint-light",
+    "파워포인트 라이트",
+    "powerpoint",
+    "PowerPoint",
+    "light",
+    "powerpoint",
+    ["#fff5ef", "#c43e1c", "#f4c7b5"]
+  ),
+  buildThemeOption(
+    "powerpoint-dark",
+    "파워포인트 다크",
+    "powerpoint",
+    "PowerPoint",
+    "dark",
+    "powerpoint",
+    ["#24150f", "#f26f42", "#7a3322"]
+  ),
+  buildThemeOption(
+    "powerpoint-system",
+    "파워포인트 시스템",
+    "powerpoint",
+    "PowerPoint",
+    "system",
+    "powerpoint",
+    ["#fff5ef", "#24150f", "#c43e1c"]
+  ),
+  buildThemeOption("docs-light", "기술문서 라이트", "docs", "Docs", "light", "docs", ["#f7f9fc", "#2563eb", "#10b981"]),
+  buildThemeOption("docs-dark", "기술문서 다크", "docs", "Docs", "dark", "docs", ["#0f172a", "#60a5fa", "#34d399"]),
+  buildThemeOption("docs-system", "기술문서 시스템", "docs", "Docs", "system", "docs", ["#f7f9fc", "#0f172a", "#2563eb"]),
+  buildThemeOption("vscode-light", "VS Code 라이트", "vscode", "VS Code", "light", "vscode", ["#f3f3f3", "#007acc", "#c586c0"]),
+  buildThemeOption("vscode-dark", "VS Code 다크", "vscode", "VS Code", "dark", "vscode", ["#1e1e1e", "#007acc", "#ce9178"]),
+  buildThemeOption("vscode-system", "VS Code 시스템", "vscode", "VS Code", "system", "vscode", ["#f3f3f3", "#1e1e1e", "#007acc"]),
+  buildThemeOption(
+    "jetbrains-light",
+    "JetBrains 라이트",
+    "jetbrains",
+    "JetBrains",
+    "light",
+    "jetbrains",
+    ["#fafafa", "#6b21a8", "#f97316"]
+  ),
+  buildThemeOption(
+    "jetbrains-dark",
+    "JetBrains 다크",
+    "jetbrains",
+    "JetBrains",
+    "dark",
+    "jetbrains",
+    ["#19191f", "#a855f7", "#f59e0b"]
+  ),
+  buildThemeOption(
+    "jetbrains-system",
+    "JetBrains 시스템",
+    "jetbrains",
+    "JetBrains",
+    "system",
+    "jetbrains",
+    ["#fafafa", "#19191f", "#a855f7"]
+  ),
+  buildThemeOption(
+    "vs-light",
+    "Visual Studio 라이트",
+    "visual-studio",
+    "Visual Studio",
+    "light",
+    "visual-studio",
+    ["#f7f4fb", "#68217a", "#2b579a"]
+  ),
+  buildThemeOption(
+    "vs-dark",
+    "Visual Studio 다크",
+    "visual-studio",
+    "Visual Studio",
+    "dark",
+    "visual-studio",
+    ["#1e1e2f", "#b180d7", "#569cd6"]
+  ),
+  buildThemeOption(
+    "vs-system",
+    "Visual Studio 시스템",
+    "visual-studio",
+    "Visual Studio",
+    "system",
+    "visual-studio",
+    ["#f7f4fb", "#1e1e2f", "#68217a"]
+  )
 ];
 
 const THEME_IDS = new Set<string>(THEME_OPTIONS.map((option) => option.id));
+const THEME_BY_ID = new Map<ThemeId, ThemeOption>(THEME_OPTIONS.map((option) => [option.id, option]));
+
+const FAMILY_TONE_THEME_IDS: Record<ThemeFamily, Record<ThemeTone, ThemeId>> = {
+  default: {
+    light: "light",
+    dark: "dark",
+    system: "system"
+  },
+  excel: {
+    light: "excel-light",
+    dark: "excel-dark",
+    system: "excel-system"
+  },
+  powerpoint: {
+    light: "powerpoint-light",
+    dark: "powerpoint-dark",
+    system: "powerpoint-system"
+  },
+  docs: {
+    light: "docs-light",
+    dark: "docs-dark",
+    system: "docs-system"
+  },
+  vscode: {
+    light: "vscode-light",
+    dark: "vscode-dark",
+    system: "vscode-system"
+  },
+  jetbrains: {
+    light: "jetbrains-light",
+    dark: "jetbrains-dark",
+    system: "jetbrains-system"
+  },
+  "visual-studio": {
+    light: "vs-light",
+    dark: "vs-dark",
+    system: "vs-system"
+  }
+};
 
 const THEME_ALIASES: Record<string, ThemeId> = {
   default: "light",
-  system: "light",
-  excel: "excel-light",
-  powerpoint: "powerpoint-light",
-  ppt: "powerpoint-light",
-  blog: "blog-light",
-  docs: "docs-light",
-  document: "docs-light",
-  techdocs: "docs-light",
-  vscode: "vscode-dark",
-  "vs-code": "vscode-dark",
-  jetbrain: "jetbrains-dark",
-  jetbrains: "jetbrains-dark",
-  vs: "vs-dark",
-  visualstudio: "vs-dark",
-  "visual-studio": "vs-dark"
+  "default-light": "light",
+  "default-dark": "dark",
+  "default-system": "system",
+  system: "system",
+  excel: "excel-system",
+  powerpoint: "powerpoint-system",
+  ppt: "powerpoint-system",
+  docs: "docs-system",
+  document: "docs-system",
+  techdocs: "docs-system",
+  vscode: "vscode-system",
+  "vs-code": "vscode-system",
+  jetbrain: "jetbrains-system",
+  jetbrains: "jetbrains-system",
+  vs: "vs-system",
+  visualstudio: "vs-system",
+  "visual-studio": "vs-system",
+  "visual-studio-light": "vs-light",
+  "visual-studio-dark": "vs-dark",
+  "visual-studio-system": "vs-system"
 };
 
 export const normalizeThemeId = (value: string | null | undefined): ThemeId | null => {
@@ -92,18 +233,10 @@ export const isThemeMode = (value: string | null): value is ThemeMode => {
 };
 
 export const getThemeOption = (themeId: ThemeId): ThemeOption => {
-  return THEME_OPTIONS.find((option) => option.id === themeId) ?? THEME_OPTIONS[0];
+  return THEME_BY_ID.get(themeId) ?? THEME_OPTIONS[0];
 };
 
-export const applyThemeAttributes = (root: HTMLElement, themeId: ThemeId): void => {
-  const option = getThemeOption(themeId);
-  root.setAttribute("data-theme", option.id);
-  root.setAttribute("data-theme-shell", option.shellType);
-  root.setAttribute("data-theme-family", option.familyLabel.toLowerCase().replace(/\s+/g, "-"));
-  root.setAttribute("data-theme-tone", option.tone);
-};
-
-export const resolveLegacySystemTheme = (): ThemeId => {
+export const resolveSystemTone = (): ThemeEffectiveTone => {
   if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
     return "dark";
   }
@@ -111,35 +244,72 @@ export const resolveLegacySystemTheme = (): ThemeId => {
   return "light";
 };
 
+export const resolveLegacySystemTheme = (): ThemeId => {
+  return resolveSystemTone();
+};
+
+export const getEffectiveThemeId = (themeId: ThemeId, systemTone: ThemeEffectiveTone = resolveSystemTone()): ThemeId => {
+  const option = getThemeOption(themeId);
+  if (option.tone !== "system") {
+    return themeId;
+  }
+
+  return FAMILY_TONE_THEME_IDS[option.family][systemTone];
+};
+
+export const applyThemeAttributes = (
+  root: HTMLElement,
+  themeId: ThemeId,
+  systemTone: ThemeEffectiveTone = resolveSystemTone()
+): void => {
+  const option = getThemeOption(themeId);
+  const effectiveTone = option.tone === "system" ? systemTone : option.tone;
+  const effectiveThemeId = getEffectiveThemeId(themeId, effectiveTone);
+
+  root.setAttribute("data-theme-id", option.id);
+  root.setAttribute("data-theme", effectiveThemeId);
+  root.setAttribute("data-theme-shell", option.shellType);
+  root.setAttribute("data-theme-family", option.family);
+  root.setAttribute("data-theme-tone", option.tone);
+  root.setAttribute("data-theme-effective-tone", effectiveTone);
+};
+
 export const readThemeParamFromLocation = (): ThemeId | null => {
   if (typeof window === "undefined") {
     return null;
   }
 
-  return normalizeThemeId(new URLSearchParams(window.location.search).get(THEME_PARAM_NAME));
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has(THEME_PARAM_NAME)) {
+    return null;
+  }
+
+  return normalizeThemeId(params.get(THEME_PARAM_NAME)) ?? DEFAULT_THEME_ID;
 };
 
 export const applyThemeMode = (mode: ThemeMode): void => {
-  const root = document.documentElement;
-  applyThemeAttributes(root, mode);
+  applyThemeAttributes(document.documentElement, mode);
 };
 
 export const getThemeInitScript = (): string => {
   return `(() => {
     try {
       const key = ${JSON.stringify(THEME_STORAGE_DEFINITION.key)};
+      const defaultTheme = ${JSON.stringify(DEFAULT_THEME_ID)};
+      const paramName = ${JSON.stringify(THEME_PARAM_NAME)};
       const themes = ${JSON.stringify(
         Object.fromEntries(
           THEME_OPTIONS.map((option) => [
             option.id,
             {
-              family: option.familyLabel.toLowerCase().replace(/\s+/g, "-"),
+              family: option.family,
               shell: option.shellType,
               tone: option.tone
             }
           ])
         )
       )};
+      const familyToneThemeIds = ${JSON.stringify(FAMILY_TONE_THEME_IDS)};
       const valid = new Set(Object.keys(themes));
       const aliases = ${JSON.stringify(THEME_ALIASES)};
       const normalize = (value) => {
@@ -148,25 +318,32 @@ export const getThemeInitScript = (): string => {
         if (valid.has(normalized)) return normalized;
         return aliases[normalized] || null;
       };
-      const paramTheme = normalize(new URLSearchParams(window.location.search).get(${JSON.stringify(THEME_PARAM_NAME)}));
+      const params = new URLSearchParams(window.location.search);
+      const hasThemeParam = params.has(paramName);
+      const paramTheme = hasThemeParam ? normalize(params.get(paramName)) || defaultTheme : null;
       const storedRaw = window.localStorage.getItem(key);
-      const storedTheme = normalize(storedRaw);
-      const legacySystemTheme =
-        storedRaw === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-      const value = paramTheme || storedTheme || (storedRaw === "system" ? legacySystemTheme : ${JSON.stringify(DEFAULT_THEME_ID)});
+      const storedTheme = storedRaw ? normalize(storedRaw) || defaultTheme : null;
+      const value = paramTheme || storedTheme || defaultTheme;
+      const option = themes[value] || themes[defaultTheme];
+      const systemTone =
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      const effectiveTone = option.tone === "system" ? systemTone : option.tone;
+      const effectiveTheme = familyToneThemeIds[option.family][effectiveTone] || defaultTheme;
       const root = document.documentElement;
-      root.setAttribute("data-theme", value);
-      root.setAttribute("data-theme-shell", themes[value].shell);
-      root.setAttribute("data-theme-family", themes[value].family);
-      root.setAttribute("data-theme-tone", themes[value].tone);
+      root.setAttribute("data-theme-id", value);
+      root.setAttribute("data-theme", effectiveTheme);
+      root.setAttribute("data-theme-shell", option.shell);
+      root.setAttribute("data-theme-family", option.family);
+      root.setAttribute("data-theme-tone", option.tone);
+      root.setAttribute("data-theme-effective-tone", effectiveTone);
     } catch {
       const root = document.documentElement;
+      root.setAttribute("data-theme-id", ${JSON.stringify(DEFAULT_THEME_ID)});
       root.setAttribute("data-theme", ${JSON.stringify(DEFAULT_THEME_ID)});
       root.setAttribute("data-theme-shell", "default");
       root.setAttribute("data-theme-family", "default");
       root.setAttribute("data-theme-tone", "light");
+      root.setAttribute("data-theme-effective-tone", "light");
     }
   })();`;
 };

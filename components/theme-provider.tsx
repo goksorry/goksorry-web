@@ -4,11 +4,12 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib/browser-persistence";
 import {
   DEFAULT_THEME_ID,
+  THEME_PARAM_NAME,
   THEME_STORAGE_DEFINITION,
   applyThemeMode,
+  getThemeOption,
   normalizeThemeId,
   readThemeParamFromLocation,
-  resolveLegacySystemTheme,
   type ThemeId
 } from "@/lib/theme";
 import { useCleanFilter } from "@/components/clean-filter-provider";
@@ -24,17 +25,17 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: boolean } => {
   const stored = readClientLocalStorageValue(THEME_STORAGE_DEFINITION);
-  if (stored === "system") {
+  if (!stored) {
     return {
-      themeId: resolveLegacySystemTheme(),
-      hasStoredPreference: true
+      themeId: null,
+      hasStoredPreference: false
     };
   }
 
   const themeId = normalizeThemeId(stored);
   return {
-    themeId,
-    hasStoredPreference: Boolean(themeId)
+    themeId: themeId ?? DEFAULT_THEME_ID,
+    hasStoredPreference: true
   };
 };
 
@@ -46,13 +47,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const syncThemeFromLocation = () => {
+      const hasThemeParam = new URLSearchParams(window.location.search).has(THEME_PARAM_NAME);
       const paramTheme = readThemeParamFromLocation();
       const stored = readStoredThemeId();
       const nextTheme = paramTheme ?? stored.themeId ?? DEFAULT_THEME_ID;
 
       setThemeId(nextTheme);
       applyThemeMode(nextTheme);
-      setPromptPending(!paramTheme && !stored.hasStoredPreference);
+      setPromptPending(!hasThemeParam && !stored.hasStoredPreference);
       setShowThemePrompt(false);
     };
 
@@ -62,6 +64,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("popstate", syncThemeFromLocation);
     };
   }, []);
+
+  useEffect(() => {
+    const option = getThemeOption(themeId);
+    if (option.tone !== "system" || typeof window === "undefined" || !window.matchMedia) {
+      return;
+    }
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      applyThemeMode(themeId);
+    };
+
+    media.addEventListener("change", handleChange);
+    return () => {
+      media.removeEventListener("change", handleChange);
+    };
+  }, [themeId]);
 
   useEffect(() => {
     if (!promptPending) {

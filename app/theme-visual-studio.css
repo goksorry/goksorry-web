@@ -1,0 +1,197 @@
+:root[data-theme-shell="visual-studio"] {
+  --theme-shell-bg: #151521;
+  --theme-shell-chrome: var(--panel-soft);
+  --theme-shell-elevated: var(--panel-elevated);
+  --theme-shell-line: var(--line);
+  --theme-shell-accent: var(--brand);
+  --theme-shell-content-padding: 0;
+}
+
+:root[data-theme="vs-light"] {
+  --theme-shell-bg: #f5f1fa;
+}
+
+.theme-shell-visual-studio {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.visual-studio-titlebar {
+  min-height: 2.6rem;
+  display: grid;
+  grid-template-columns: auto minmax(10rem, 1fr) minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.34rem 0.68rem;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-chrome);
+}
+
+.visual-studio-search {
+  min-width: 0;
+  max-width: 30rem;
+  display: flex;
+  align-items: center;
+  justify-self: center;
+  gap: 0.45rem;
+  padding: 0.34rem 0.65rem;
+  border: 1px solid var(--theme-shell-line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--theme-shell-muted);
+  font-size: 0.78rem;
+}
+
+.visual-studio-search span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visual-studio-menu-bar,
+.visual-studio-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.12rem;
+  padding: 0.22rem 0.55rem;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-elevated);
+  overflow-x: auto;
+}
+
+.visual-studio-menu-bar button {
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--theme-shell-muted);
+  padding: 0.24rem 0.48rem;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.visual-studio-menu-bar button:hover {
+  background: color-mix(in srgb, var(--theme-shell-accent) 13%, transparent);
+  color: var(--theme-shell-ink);
+}
+
+.visual-studio-ide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem 11rem;
+  min-height: 0;
+}
+
+.visual-studio-editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.visual-studio-document-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-chrome);
+  overflow-x: auto;
+}
+
+.visual-studio-document-tabs a {
+  min-width: 8rem;
+  padding: 0.48rem 0.7rem;
+  border-right: 1px solid var(--theme-shell-line);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.visual-studio-content-frame {
+  border: 0;
+  border-radius: 0;
+}
+
+.visual-studio-solution,
+.visual-studio-properties {
+  min-height: 0;
+  border-left: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-chrome);
+  overflow: auto;
+}
+
+.visual-studio-pane-title {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--theme-shell-line);
+  color: var(--theme-shell-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.visual-studio-solution-tree {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.55rem;
+}
+
+.visual-studio-solution-tree a {
+  padding: 0.34rem 0.42rem;
+  border-radius: 3px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.visual-studio-properties {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.65rem;
+}
+
+.visual-studio-properties p {
+  margin: 0;
+  color: var(--theme-shell-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.visual-studio-properties span {
+  color: var(--theme-shell-muted);
+  font-size: 0.72rem;
+}
+
+.theme-shell-visual-studio .panel,
+.theme-shell-visual-studio .card,
+.theme-shell-visual-studio .community-post-row,
+.theme-shell-visual-studio .goksorry-room-entry {
+  border-radius: 3px;
+  border-color: var(--theme-shell-line);
+}
+
+.theme-shell-visual-studio .theme-shell-status {
+  background: var(--theme-shell-accent);
+}
+
+@media (max-width: 980px) {
+  .visual-studio-ide {
+    grid-template-columns: minmax(0, 1fr) 14rem;
+  }
+
+  .visual-studio-properties {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .visual-studio-titlebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .visual-studio-search {
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .visual-studio-ide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .visual-studio-solution {
+    display: none;
+  }
+}

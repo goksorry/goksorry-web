@@ -1,0 +1,463 @@
+:root[data-theme="excel-light"] {
+  color-scheme: light;
+  --bg: #eef7f0;
+  --panel: #fbfefc;
+  --panel-soft: #e6f4ec;
+  --panel-elevated: #ffffff;
+  --ink: #173b2b;
+  --ink-soft: #315a45;
+  --muted: #64796d;
+  --line: #bddac9;
+  --brand: #107c41;
+  --brand-strong: #0b5f31;
+  --danger: #b7472a;
+  --hope: #168a52;
+  --shadow: rgba(16, 124, 65, 0.12);
+  --header-bg: rgba(246, 252, 248, 0.94);
+  --overview-line: rgba(16, 124, 65, 0.2);
+  --overview-card-line: rgba(16, 124, 65, 0.18);
+  --overview-card-inset: rgba(255, 255, 255, 0.75);
+  --overview-card-hover-shadow: 0 10px 22px rgba(16, 124, 65, 0.16);
+  --overview-card-hover-line: rgba(16, 124, 65, 0.34);
+  --score-badge-bg: rgba(16, 124, 65, 0.12);
+  --score-badge-line: rgba(16, 124, 65, 0.2);
+  --fear-bg: #f9e5dc;
+  --fear-line: rgba(183, 71, 42, 0.28);
+  --hope-bg: #dff2e8;
+  --hope-line: rgba(16, 124, 65, 0.28);
+  --lane-line-soft: rgba(16, 124, 65, 0.2);
+  --fear-divider: rgba(183, 71, 42, 0.2);
+  --hope-divider: rgba(16, 124, 65, 0.2);
+  --surface-hover: rgba(16, 124, 65, 0.08);
+  --modal-backdrop: rgba(15, 48, 31, 0.22);
+  --modal-line: rgba(16, 124, 65, 0.24);
+  --modal-shadow: 0 20px 48px rgba(16, 124, 65, 0.18);
+  --button-bg: #107c41;
+  --button-line: #0f6f3b;
+  --button-ink: #ffffff;
+  --button-danger-line: #9d3b24;
+  --chip-line: rgba(16, 124, 65, 0.22);
+  --chip-hover-bg: rgba(16, 124, 65, 0.1);
+  --chip-hover-line: rgba(16, 124, 65, 0.32);
+  --chip-active-bg: #107c41;
+  --chip-active-line: #0f6f3b;
+  --chip-active-ink: #ffffff;
+  --tag-bg: rgba(16, 124, 65, 0.1);
+  --tag-line: rgba(16, 124, 65, 0.18);
+  --site-font: Arial, "Aptos", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern:
+    linear-gradient(rgba(16, 124, 65, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 124, 65, 0.055) 1px, transparent 1px);
+  --bg-pattern-size: 28px 28px, 28px 28px;
+  --panel-shadow: 0 8px 22px rgba(16, 124, 65, 0.12);
+  --radius-panel: 2px;
+  --radius-card: 2px;
+  --radius-control: 2px;
+  --radius-modal: 6px;
+  --header-blur: 2px;
+}
+
+:root[data-theme="excel-dark"] {
+  color-scheme: dark;
+  --bg: #07130e;
+  --panel: #0f1f19;
+  --panel-soft: #142b21;
+  --panel-elevated: #1b382b;
+  --ink: #edf8f1;
+  --ink-soft: #c5ddcf;
+  --muted: #8fab9a;
+  --line: #28513f;
+  --brand: #21a366;
+  --brand-strong: #33c481;
+  --danger: #e07155;
+  --hope: #52c98a;
+  --shadow: rgba(0, 0, 0, 0.34);
+  --header-bg: rgba(7, 19, 14, 0.94);
+  --overview-line: rgba(33, 163, 102, 0.2);
+  --overview-card-line: rgba(33, 163, 102, 0.18);
+  --overview-card-inset: rgba(255, 255, 255, 0.04);
+  --overview-card-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  --overview-card-hover-line: rgba(33, 163, 102, 0.34);
+  --score-badge-bg: rgba(33, 163, 102, 0.16);
+  --score-badge-line: rgba(33, 163, 102, 0.22);
+  --fear-bg: #301a15;
+  --fear-line: rgba(224, 113, 85, 0.28);
+  --hope-bg: #132c20;
+  --hope-line: rgba(82, 201, 138, 0.26);
+  --lane-line-soft: rgba(33, 163, 102, 0.18);
+  --fear-divider: rgba(224, 113, 85, 0.18);
+  --hope-divider: rgba(82, 201, 138, 0.18);
+  --surface-hover: rgba(33, 163, 102, 0.08);
+  --modal-backdrop: rgba(2, 10, 7, 0.58);
+  --modal-line: rgba(33, 163, 102, 0.22);
+  --modal-shadow: 0 28px 72px rgba(0, 0, 0, 0.42);
+  --button-bg: #107c41;
+  --button-line: #21a366;
+  --button-ink: #ffffff;
+  --button-danger-line: #aa3d2c;
+  --chip-line: rgba(33, 163, 102, 0.2);
+  --chip-hover-bg: rgba(33, 163, 102, 0.1);
+  --chip-hover-line: rgba(33, 163, 102, 0.3);
+  --chip-active-bg: #21a366;
+  --chip-active-line: #48c486;
+  --chip-active-ink: #07130e;
+  --tag-bg: rgba(33, 163, 102, 0.13);
+  --tag-line: rgba(33, 163, 102, 0.18);
+  --site-font: Arial, "Aptos", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern:
+    linear-gradient(rgba(33, 163, 102, 0.065) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(33, 163, 102, 0.065) 1px, transparent 1px);
+  --bg-pattern-size: 28px 28px, 28px 28px;
+  --panel-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+  --radius-panel: 2px;
+  --radius-card: 2px;
+  --radius-control: 2px;
+  --radius-modal: 6px;
+  --header-blur: 2px;
+}
+
+:root[data-theme="powerpoint-light"] {
+  color-scheme: light;
+  --bg: #f7efe8;
+  --panel: #fff8f3;
+  --panel-soft: #f2dfd1;
+  --panel-elevated: #fffdf9;
+  --ink: #34251f;
+  --ink-soft: #5b4036;
+  --muted: #826b61;
+  --line: #e0bba6;
+  --brand: #c43e1c;
+  --brand-strong: #8f2e18;
+  --danger: #a12c1b;
+  --hope: #2f7d6f;
+  --shadow: rgba(137, 56, 28, 0.14);
+  --header-bg: rgba(255, 248, 243, 0.94);
+  --button-bg: #c43e1c;
+  --button-line: #9f321a;
+  --button-ink: #ffffff;
+  --chip-active-bg: #c43e1c;
+  --chip-active-line: #9f321a;
+  --chip-active-ink: #ffffff;
+  --site-font: "Aptos", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: radial-gradient(circle at 12% 18%, rgba(196, 62, 28, 0.1), transparent 22rem);
+  --panel-shadow: 0 18px 38px rgba(137, 56, 28, 0.14);
+  --radius-panel: 6px;
+  --radius-card: 5px;
+  --radius-control: 5px;
+}
+
+:root[data-theme="powerpoint-dark"] {
+  color-scheme: dark;
+  --bg: #160d0a;
+  --panel: #24150f;
+  --panel-soft: #351d14;
+  --panel-elevated: #43261a;
+  --ink: #fff2ea;
+  --ink-soft: #f1c9b7;
+  --muted: #b89382;
+  --line: #603324;
+  --brand: #f26f42;
+  --brand-strong: #ff9a73;
+  --danger: #ff7b6e;
+  --hope: #62c7b6;
+  --shadow: rgba(0, 0, 0, 0.36);
+  --header-bg: rgba(22, 13, 10, 0.94);
+  --button-bg: #cf4f2d;
+  --button-line: #f26f42;
+  --button-ink: #ffffff;
+  --chip-active-bg: #f26f42;
+  --chip-active-line: #ff9a73;
+  --chip-active-ink: #160d0a;
+  --site-font: "Aptos", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: radial-gradient(circle at 86% 10%, rgba(242, 111, 66, 0.14), transparent 23rem);
+  --panel-shadow: 0 20px 46px rgba(0, 0, 0, 0.38);
+  --radius-panel: 6px;
+  --radius-card: 5px;
+  --radius-control: 5px;
+}
+
+:root[data-theme="docs-light"] {
+  color-scheme: light;
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --panel-soft: #edf3fa;
+  --panel-elevated: #f8fbff;
+  --ink: #172033;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --line: #cbd5e1;
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --danger: #dc2626;
+  --hope: #059669;
+  --shadow: rgba(37, 99, 235, 0.1);
+  --header-bg: rgba(248, 251, 255, 0.94);
+  --button-bg: #2563eb;
+  --button-line: #1d4ed8;
+  --button-ink: #ffffff;
+  --chip-active-bg: #2563eb;
+  --chip-active-line: #1d4ed8;
+  --chip-active-ink: #ffffff;
+  --site-font: "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(rgba(37, 99, 235, 0.035) 1px, transparent 1px);
+  --bg-pattern-size: 100% 26px;
+  --panel-shadow: 0 8px 24px rgba(37, 99, 235, 0.1);
+  --radius-panel: 4px;
+  --radius-card: 4px;
+  --radius-control: 4px;
+}
+
+:root[data-theme="docs-dark"] {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #111827;
+  --panel-soft: #172033;
+  --panel-elevated: #1f2937;
+  --ink: #f8fafc;
+  --ink-soft: #cbd5e1;
+  --muted: #94a3b8;
+  --line: #334155;
+  --brand: #60a5fa;
+  --brand-strong: #93c5fd;
+  --danger: #f87171;
+  --hope: #34d399;
+  --shadow: rgba(0, 0, 0, 0.34);
+  --header-bg: rgba(11, 16, 32, 0.94);
+  --button-bg: #2563eb;
+  --button-line: #60a5fa;
+  --button-ink: #ffffff;
+  --chip-active-bg: #60a5fa;
+  --chip-active-line: #93c5fd;
+  --chip-active-ink: #0b1020;
+  --site-font: "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(rgba(96, 165, 250, 0.04) 1px, transparent 1px);
+  --bg-pattern-size: 100% 26px;
+  --panel-shadow: 0 12px 32px rgba(0, 0, 0, 0.36);
+  --radius-panel: 4px;
+  --radius-card: 4px;
+  --radius-control: 4px;
+}
+
+:root[data-theme="vscode-light"] {
+  color-scheme: light;
+  --bg: #f3f3f3;
+  --panel: #ffffff;
+  --panel-soft: #ececec;
+  --panel-elevated: #f8f8f8;
+  --ink: #1f1f1f;
+  --ink-soft: #3c3c3c;
+  --muted: #6a737d;
+  --line: #d4d4d4;
+  --brand: #007acc;
+  --brand-strong: #005a9e;
+  --danger: #a31515;
+  --hope: #098658;
+  --shadow: rgba(0, 122, 204, 0.1);
+  --header-bg: rgba(243, 243, 243, 0.96);
+  --button-bg: #007acc;
+  --button-line: #005a9e;
+  --button-ink: #ffffff;
+  --chip-active-bg: #007acc;
+  --chip-active-line: #005a9e;
+  --chip-active-ink: #ffffff;
+  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(90deg, rgba(0, 122, 204, 0.065) 0 3px, transparent 3px 100%);
+  --bg-pattern-size: 24px 100%;
+  --panel-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  --radius-panel: 3px;
+  --radius-card: 3px;
+  --radius-control: 3px;
+}
+
+:root[data-theme="vscode-dark"] {
+  color-scheme: dark;
+  --bg: #1e1e1e;
+  --panel: #252526;
+  --panel-soft: #2d2d30;
+  --panel-elevated: #333333;
+  --ink: #d4d4d4;
+  --ink-soft: #cccccc;
+  --muted: #858585;
+  --line: #3c3c3c;
+  --brand: #4fc1ff;
+  --brand-strong: #9cdcfe;
+  --danger: #f48771;
+  --hope: #b5cea8;
+  --shadow: rgba(0, 0, 0, 0.34);
+  --header-bg: rgba(30, 30, 30, 0.96);
+  --button-bg: #0e639c;
+  --button-line: #1177bb;
+  --button-ink: #ffffff;
+  --chip-active-bg: #0e639c;
+  --chip-active-line: #4fc1ff;
+  --chip-active-ink: #ffffff;
+  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(90deg, rgba(79, 193, 255, 0.07) 0 3px, transparent 3px 100%);
+  --bg-pattern-size: 24px 100%;
+  --panel-shadow: 0 10px 26px rgba(0, 0, 0, 0.34);
+  --radius-panel: 3px;
+  --radius-card: 3px;
+  --radius-control: 3px;
+}
+
+:root[data-theme="jetbrains-light"] {
+  color-scheme: light;
+  --bg: #f7f7fb;
+  --panel: #ffffff;
+  --panel-soft: #f0edf9;
+  --panel-elevated: #fbfbff;
+  --ink: #1f1b2d;
+  --ink-soft: #3d3753;
+  --muted: #716b84;
+  --line: #d7d0e8;
+  --brand: #6b21a8;
+  --brand-strong: #581c87;
+  --danger: #dc2626;
+  --hope: #0f766e;
+  --shadow: rgba(107, 33, 168, 0.12);
+  --header-bg: rgba(251, 251, 255, 0.94);
+  --button-bg: #6b21a8;
+  --button-line: #581c87;
+  --button-ink: #ffffff;
+  --chip-active-bg: #6b21a8;
+  --chip-active-line: #581c87;
+  --chip-active-ink: #ffffff;
+  --site-font: "JetBrains Sans", "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern:
+    radial-gradient(circle at 0 0, rgba(249, 115, 22, 0.12), transparent 17rem),
+    radial-gradient(circle at 100% 0, rgba(107, 33, 168, 0.12), transparent 19rem);
+  --panel-shadow: 0 12px 30px rgba(107, 33, 168, 0.12);
+  --radius-panel: 6px;
+  --radius-card: 6px;
+  --radius-control: 5px;
+}
+
+:root[data-theme="jetbrains-dark"] {
+  color-scheme: dark;
+  --bg: #121217;
+  --panel: #19191f;
+  --panel-soft: #24232d;
+  --panel-elevated: #2d2b38;
+  --ink: #f4f4f5;
+  --ink-soft: #d7d4df;
+  --muted: #9a94a8;
+  --line: #3d394a;
+  --brand: #a855f7;
+  --brand-strong: #c084fc;
+  --danger: #fb7185;
+  --hope: #2dd4bf;
+  --shadow: rgba(0, 0, 0, 0.36);
+  --header-bg: rgba(18, 18, 23, 0.94);
+  --button-bg: #7c3aed;
+  --button-line: #a855f7;
+  --button-ink: #ffffff;
+  --chip-active-bg: #a855f7;
+  --chip-active-line: #c084fc;
+  --chip-active-ink: #121217;
+  --site-font: "JetBrains Sans", "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern:
+    radial-gradient(circle at 0 0, rgba(245, 158, 11, 0.16), transparent 17rem),
+    radial-gradient(circle at 100% 0, rgba(168, 85, 247, 0.16), transparent 19rem);
+  --panel-shadow: 0 16px 42px rgba(0, 0, 0, 0.38);
+  --radius-panel: 6px;
+  --radius-card: 6px;
+  --radius-control: 5px;
+}
+
+:root[data-theme="vs-light"] {
+  color-scheme: light;
+  --bg: #f5f1fa;
+  --panel: #ffffff;
+  --panel-soft: #ede4f5;
+  --panel-elevated: #fbf8ff;
+  --ink: #23172b;
+  --ink-soft: #44304f;
+  --muted: #756482;
+  --line: #d9c7e4;
+  --brand: #68217a;
+  --brand-strong: #4b145d;
+  --danger: #c2410c;
+  --hope: #2563eb;
+  --shadow: rgba(104, 33, 122, 0.12);
+  --header-bg: rgba(251, 248, 255, 0.94);
+  --button-bg: #68217a;
+  --button-line: #4b145d;
+  --button-ink: #ffffff;
+  --chip-active-bg: #68217a;
+  --chip-active-line: #4b145d;
+  --chip-active-ink: #ffffff;
+  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(135deg, rgba(104, 33, 122, 0.1), transparent 38%);
+  --panel-shadow: 0 12px 30px rgba(104, 33, 122, 0.12);
+  --radius-panel: 4px;
+  --radius-card: 4px;
+  --radius-control: 4px;
+}
+
+:root[data-theme="vs-dark"] {
+  color-scheme: dark;
+  --bg: #151521;
+  --panel: #1e1e2f;
+  --panel-soft: #292940;
+  --panel-elevated: #33334f;
+  --ink: #f2eff6;
+  --ink-soft: #d7cfe3;
+  --muted: #9f93ad;
+  --line: #464061;
+  --brand: #b180d7;
+  --brand-strong: #d7b6f4;
+  --danger: #ce9178;
+  --hope: #569cd6;
+  --shadow: rgba(0, 0, 0, 0.36);
+  --header-bg: rgba(21, 21, 33, 0.94);
+  --button-bg: #68217a;
+  --button-line: #b180d7;
+  --button-ink: #ffffff;
+  --chip-active-bg: #b180d7;
+  --chip-active-line: #d7b6f4;
+  --chip-active-ink: #151521;
+  --site-font: "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --bg-pattern: linear-gradient(135deg, rgba(177, 128, 215, 0.12), transparent 36%);
+  --panel-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
+  --radius-panel: 4px;
+  --radius-card: 4px;
+  --radius-control: 4px;
+}
+
+:root[data-theme-shell="excel"] {
+  --layout-gap: 0.62rem;
+  --layout-padding: 0.62rem;
+  --panel-padding: 0.66rem;
+  --card-padding: 0.55rem;
+  --control-padding-y: 0.42rem;
+  --control-padding-x: 0.5rem;
+  --button-padding-y: 0.38rem;
+  --button-padding-x: 0.56rem;
+}
+
+:root[data-theme-shell="powerpoint"] {
+  --layout-gap: 0.8rem;
+  --layout-padding: 0.8rem;
+  --panel-padding: 0.8rem;
+  --card-padding: 0.68rem;
+}
+
+:root[data-theme-shell="docs"] {
+  --layout-gap: 0.72rem;
+  --layout-padding: 0.72rem;
+  --panel-padding: 0.74rem;
+  --card-padding: 0.62rem;
+}
+
+:root[data-theme-shell="vscode"],
+:root[data-theme-shell="jetbrains"],
+:root[data-theme-shell="visual-studio"] {
+  --layout-gap: 0.58rem;
+  --layout-padding: 0.58rem;
+  --panel-padding: 0.62rem;
+  --card-padding: 0.55rem;
+  --control-padding-y: 0.38rem;
+  --control-padding-x: 0.5rem;
+  --button-padding-y: 0.35rem;
+  --button-padding-x: 0.55rem;
+}

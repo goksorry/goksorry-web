@@ -1,0 +1,185 @@
+:root[data-theme-shell="jetbrains"] {
+  --theme-shell-bg: #15151b;
+  --theme-shell-chrome: var(--panel-soft);
+  --theme-shell-elevated: var(--panel-elevated);
+  --theme-shell-line: var(--line);
+  --theme-shell-accent: var(--brand);
+  --theme-shell-content-padding: 0;
+}
+
+:root[data-theme="jetbrains-light"] {
+  --theme-shell-bg: #f5f4fb;
+}
+
+.theme-shell-jetbrains {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.jetbrains-toolbar {
+  min-height: 2.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(10rem, 1fr) minmax(12rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.38rem 0.68rem;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: linear-gradient(90deg, var(--theme-shell-chrome), color-mix(in srgb, var(--theme-shell-chrome) 88%, var(--theme-shell-accent)));
+}
+
+.jetbrains-main-menu {
+  min-width: 0;
+  display: flex;
+  gap: 0.1rem;
+  overflow-x: auto;
+}
+
+.jetbrains-main-menu button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--theme-shell-muted);
+  padding: 0.3rem 0.5rem;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.jetbrains-main-menu button:hover {
+  background: color-mix(in srgb, var(--theme-shell-accent) 12%, transparent);
+  color: var(--theme-shell-ink);
+}
+
+.jetbrains-run-widget {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.jetbrains-window {
+  display: grid;
+  grid-template-columns: 3.4rem 16rem minmax(0, 1fr);
+  min-height: 0;
+}
+
+.jetbrains-tool-window-bar {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.45rem 0.34rem;
+  border-right: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--theme-shell-bg) 74%, #000 26%);
+}
+
+.jetbrains-tool-window-bar button {
+  min-height: 3.4rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.18rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-shell-muted);
+  box-shadow: none;
+  font-size: 0.62rem;
+}
+
+.jetbrains-project-pane {
+  min-height: 0;
+  border-right: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-chrome);
+  overflow: auto;
+}
+
+.jetbrains-pane-title,
+.jetbrains-breadcrumbs {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--theme-shell-line);
+  color: var(--theme-shell-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.jetbrains-project-tree {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.55rem;
+}
+
+.jetbrains-project-tree a {
+  padding: 0.34rem 0.42rem;
+  border-radius: 5px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.jetbrains-editor {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.jetbrains-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--theme-shell-line);
+  background: var(--theme-shell-chrome);
+  overflow-x: auto;
+}
+
+.jetbrains-tabs a {
+  min-width: 8rem;
+  padding: 0.48rem 0.7rem;
+  border-right: 1px solid var(--theme-shell-line);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.jetbrains-editor-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+}
+
+.jetbrains-gutter {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  padding: 0.75rem 0.45rem;
+  border-right: 1px solid var(--theme-shell-line);
+  background: color-mix(in srgb, var(--panel) 80%, var(--theme-shell-chrome));
+  color: var(--theme-shell-muted);
+  font-family: var(--mono-font);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.jetbrains-content-frame {
+  border: 0;
+  border-radius: 0;
+}
+
+.theme-shell-jetbrains .panel,
+.theme-shell-jetbrains .card,
+.theme-shell-jetbrains .community-post-row,
+.theme-shell-jetbrains .goksorry-room-entry {
+  border-radius: 5px;
+  border-color: var(--theme-shell-line);
+}
+
+.theme-shell-jetbrains .theme-shell-status {
+  background: var(--theme-shell-chrome);
+  color: var(--theme-shell-muted);
+}
+
+@media (max-width: 880px) {
+  .jetbrains-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .jetbrains-window {
+    grid-template-columns: 3.2rem minmax(0, 1fr);
+  }
+
+  .jetbrains-project-pane {
+    display: none;
+  }
+}

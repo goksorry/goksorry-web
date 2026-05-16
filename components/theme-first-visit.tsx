@@ -7,13 +7,13 @@ import { useTheme } from "@/components/theme-provider";
 const FEATURED_THEME_IDS: ThemeId[] = [
   "light",
   "dark",
-  "excel-light",
-  "powerpoint-dark",
-  "blog-light",
-  "docs-dark",
-  "vscode-dark",
-  "jetbrains-dark",
-  "vs-dark"
+  "system",
+  "excel-system",
+  "powerpoint-system",
+  "docs-system",
+  "vscode-system",
+  "jetbrains-system",
+  "vs-system"
 ];
 
 export function ThemeFirstVisit() {

@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Image from "next/image";
 import { Gowun_Batang } from "next/font/google";
-import Link from "next/link";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "@/app/globals.css";
+import "@/app/theme-tokens.css";
+import "@/app/theme-shells.css";
+import "@/app/theme-excel.css";
+import "@/app/theme-powerpoint.css";
+import "@/app/theme-docs.css";
+import "@/app/theme-vscode.css";
+import "@/app/theme-jetbrains.css";
+import "@/app/theme-visual-studio.css";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
-import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { ChatDock } from "@/components/chat-dock";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { CookieConsentProvider } from "@/components/cookie-consent-provider";
@@ -15,17 +20,13 @@ import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
-import { CleanFilterToggle } from "@/components/clean-filter-toggle";
-import { HeaderChatLink } from "@/components/header-chat-link";
-import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { PolicyChangeBanner } from "@/components/policy-change-banner";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
-import { ThemeChrome } from "@/components/program-shell";
-import { SiteShareButton } from "@/components/site-share-button";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { ThemeChrome } from "@/components/theme-shells";
 import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -88,55 +89,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <CleanFilterOverlay />
                 <CleanFilterFirstVisit />
                 <ThemeFirstVisit />
-                <ThemeChrome>
-                  <div id="page-top" className="layout">
-                    <header className="header">
-                      <div className="header-main">
-                        <Link className="brand" href="/">
-                          <Image
-                            className="brand-logo"
-                            src="/goksorry_logo.png"
-                            alt="곡소리닷컴"
-                            width={113}
-                            height={50}
-                            priority
-                          />
-                        </Link>
-                        <nav className="nav">
-                          <Link href="/" replace>
-                            피드
-                          </Link>
-                          <Link href="/community" replace>
-                            게시판
-                          </Link>
-                          <Link href="/goksorry-room" replace>
-                            곡소리방
-                          </Link>
-                          <HeaderChatLink />
-                          <HeaderNavExtras />
-                        </nav>
-                      </div>
-                      <div className="header-controls">
-                        <ThemeToggle />
-                        <CleanFilterToggle />
-                      </div>
-                      <div className="header-profile">
-                        <SiteShareButton />
-                        <Suspense fallback={<HeaderAuthSkeleton />}>
-                          <AuthControls />
-                        </Suspense>
-                      </div>
-                    </header>
-                    <PolicyChangeBanner />
-                    <main className="main">
-                      <Suspense fallback={null}>
-                        <ProfileSetupRedirect />
-                      </Suspense>
-                      {children}
-                    </main>
-                    <SiteFooter />
-                    <ChatDock enabled={chatEnv.enabled} />
-                  </div>
+                <ThemeChrome
+                  defaultHeader={<SiteHeader />}
+                  policyBanner={<PolicyChangeBanner />}
+                  footer={<SiteFooter />}
+                  chatDock={<ChatDock enabled={chatEnv.enabled} />}
+                >
+                  <main className="main">
+                    <Suspense fallback={null}>
+                      <ProfileSetupRedirect />
+                    </Suspense>
+                    {children}
+                  </main>
                 </ThemeChrome>
                 <CookieConsentBanner />
               </ThemeProvider>
