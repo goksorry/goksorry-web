@@ -39,6 +39,7 @@
 - 테마 선택은 `goksorry-theme` localStorage에 저장합니다.
 - URL 쿼리 `?theme=vscode-dark`처럼 지정하면 저장값보다 우선 적용합니다.
 - 지원 테마는 `light`, `dark`, `excel-*`, `powerpoint-*`, `blog-*`, `docs-*`, `vscode-*`, `jetbrains-*`, `vs-*` 입니다.
+- 기본 테마는 기존 사이트 레이아웃을 유지하고, 컨셉 테마는 `ProgramShell` 래퍼 안에 기존 사이트를 넣는 방식으로 표시합니다.
 
 ## 환경 변수
 
@@ -66,6 +67,7 @@
 ```bash
 npm install
 npm run dev
+npm run test:e2e
 ```
 
 기본 개발 주소는 `http://localhost:3000`입니다.
