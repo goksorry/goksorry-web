@@ -23,7 +23,7 @@ const VS_TOOLBAR = [
   ["Options", "settings"]
 ] as const;
 
-export function VisualStudioShell({ children, option }: ThemeShellProps) {
+export function VisualStudioShell({ children, option, chatSidebar }: ThemeShellProps) {
   const { pathname, currentRoute } = useShellRoute();
 
   return (
@@ -65,11 +65,7 @@ export function VisualStudioShell({ children, option }: ThemeShellProps) {
           <div className="visual-studio-pane-title">Solution Explorer</div>
           <RouteLinks pathname={pathname} className="visual-studio-solution-tree" fileNames />
         </aside>
-        <aside className="visual-studio-properties">
-          <p>Properties</p>
-          <span>Name</span>
-          <strong>{currentRoute.fileName}</strong>
-        </aside>
+        {chatSidebar}
       </section>
 
       <ShellStatusBar option={option} shellType="visual-studio" currentRoute={currentRoute} />

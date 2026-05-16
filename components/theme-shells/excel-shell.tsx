@@ -44,7 +44,7 @@ const getExcelColumnLabel = (index: number): string => {
   return label;
 };
 
-export function ExcelShell({ children, option }: ThemeShellProps) {
+export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
   const { pathname, currentRoute } = useShellRoute();
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const rowHeadersRef = useRef<HTMLDivElement>(null);
@@ -214,6 +214,7 @@ export function ExcelShell({ children, option }: ThemeShellProps) {
             </div>
           </div>
         </div>
+        {chatSidebar}
       </section>
 
       <div className="excel-sheet-tabs" data-testid="excel-sheet-tabs">

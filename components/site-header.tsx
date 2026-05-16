@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
-import { HeaderChatLink } from "@/components/header-chat-link";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,7 +24,6 @@ export function SiteHeader() {
           <Link href="/goksorry-room" replace>
             곡소리방
           </Link>
-          <HeaderChatLink />
           <HeaderNavExtras />
         </nav>
       </div>

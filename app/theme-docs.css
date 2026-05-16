@@ -60,7 +60,7 @@
 
 .docs-workspace {
   display: grid;
-  grid-template-columns: 14rem minmax(0, 1fr) 11rem;
+  grid-template-columns: 14rem minmax(0, 1fr) auto;
   min-height: 0;
 }
 
@@ -256,13 +256,9 @@
   border-left: 3px solid var(--theme-shell-accent);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 900px) {
   .docs-workspace {
     grid-template-columns: 12rem minmax(0, 1fr);
-  }
-
-  .docs-meta-pane {
-    display: none;
   }
 }
 

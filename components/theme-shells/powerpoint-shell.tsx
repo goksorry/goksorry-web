@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  RouteLinks,
   SHELL_ROUTES,
   ShellBrand,
   ShellCommandButton,
@@ -21,8 +20,8 @@ const POWERPOINT_GROUPS = [
   { label: "Present", commands: [["From Start", "play"], ["Notes", "document"], ["Record", "archive"]] }
 ] as const;
 
-export function PowerPointShell({ children, option }: ThemeShellProps) {
-  const { pathname, currentRoute } = useShellRoute();
+export function PowerPointShell({ children, option, chatSidebar }: ThemeShellProps) {
+  const { currentRoute } = useShellRoute();
 
   return (
     <div className="theme-shell theme-shell-powerpoint" data-testid="program-shell" data-program-shell="powerpoint">
@@ -71,10 +70,7 @@ export function PowerPointShell({ children, option }: ThemeShellProps) {
           </div>
           <div className="powerpoint-notes">Notes: {currentRoute.fileName}</div>
         </div>
-        <aside className="powerpoint-format-pane">
-          <p>Format</p>
-          <RouteLinks pathname={pathname} className="powerpoint-format-links" numbered />
-        </aside>
+        {chatSidebar}
       </section>
 
       <ShellStatusBar option={option} shellType="powerpoint" currentRoute={currentRoute} />

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LiveChat } from "@/components/live-chat";
+import { useMediaQuery } from "@/components/use-media-query";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 export function ChatDock({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const { user } = useSessionSnapshot();
+  const isMobileChatViewport = useMediaQuery("(max-width: 900px)");
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
@@ -15,7 +17,7 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
     setOpen(false);
   }, [pathname]);
 
-  if (!enabled || pathname === "/chat" || user?.profile_setup_required) {
+  if (isMobileChatViewport !== true || !enabled || pathname === "/chat" || user?.profile_setup_required) {
     return null;
   }
 
@@ -43,7 +45,7 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
         <button
           type="button"
           className="chat-dock-toggle"
-          aria-expanded={false}
+          aria-expanded={open}
           aria-controls="global-chat-dock"
           onClick={() => {
             setHasOpened(true);

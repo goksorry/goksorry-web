@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
-import { HeaderChatLink } from "@/components/header-chat-link";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -24,6 +23,7 @@ export type ShellRoute = {
 export type ThemeShellProps = {
   children: ReactNode;
   option: ThemeOption;
+  chatSidebar: ReactNode;
 };
 
 export const SHELL_ROUTES: ShellRoute[] = [
@@ -275,7 +275,6 @@ export function ShellNavLinks({ className = "theme-shell-nav" }: { className?: s
       <Link href="/goksorry-room" replace>
         곡소리방
       </Link>
-      <HeaderChatLink />
       <HeaderNavExtras />
     </nav>
   );

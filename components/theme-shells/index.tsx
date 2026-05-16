@@ -15,10 +15,18 @@ type ThemeChromeProps = {
   defaultHeader: ReactNode;
   policyBanner: ReactNode;
   footer: ReactNode;
-  chatDock: ReactNode;
+  mobileChatDock: ReactNode;
+  desktopChatSidebar: ReactNode;
 };
 
-export function ThemeChrome({ children, defaultHeader, policyBanner, footer, chatDock }: ThemeChromeProps) {
+export function ThemeChrome({
+  children,
+  defaultHeader,
+  policyBanner,
+  footer,
+  mobileChatDock,
+  desktopChatSidebar
+}: ThemeChromeProps) {
   const { themeId } = useTheme();
   const option = getThemeOption(themeId);
 
@@ -26,10 +34,15 @@ export function ThemeChrome({ children, defaultHeader, policyBanner, footer, cha
     return (
       <div id="page-top" className="layout">
         {defaultHeader}
-        {policyBanner}
-        {children}
-        {footer}
-        {chatDock}
+        <div className="default-chat-workspace">
+          <div className="default-chat-content">
+            {policyBanner}
+            {children}
+            {footer}
+          </div>
+          {desktopChatSidebar}
+        </div>
+        {mobileChatDock}
       </div>
     );
   }
@@ -39,29 +52,53 @@ export function ThemeChrome({ children, defaultHeader, policyBanner, footer, cha
       {policyBanner}
       {children}
       {footer}
-      {chatDock}
+      {mobileChatDock}
     </div>
   );
 
   if (option.shellType === "excel") {
-    return <ExcelShell option={option}>{framedContent}</ExcelShell>;
+    return (
+      <ExcelShell option={option} chatSidebar={desktopChatSidebar}>
+        {framedContent}
+      </ExcelShell>
+    );
   }
 
   if (option.shellType === "powerpoint") {
-    return <PowerPointShell option={option}>{framedContent}</PowerPointShell>;
+    return (
+      <PowerPointShell option={option} chatSidebar={desktopChatSidebar}>
+        {framedContent}
+      </PowerPointShell>
+    );
   }
 
   if (option.shellType === "docs") {
-    return <DocsShell option={option}>{framedContent}</DocsShell>;
+    return (
+      <DocsShell option={option} chatSidebar={desktopChatSidebar}>
+        {framedContent}
+      </DocsShell>
+    );
   }
 
   if (option.shellType === "vscode") {
-    return <VsCodeShell option={option}>{framedContent}</VsCodeShell>;
+    return (
+      <VsCodeShell option={option} chatSidebar={desktopChatSidebar}>
+        {framedContent}
+      </VsCodeShell>
+    );
   }
 
   if (option.shellType === "jetbrains") {
-    return <JetBrainsShell option={option}>{framedContent}</JetBrainsShell>;
+    return (
+      <JetBrainsShell option={option} chatSidebar={desktopChatSidebar}>
+        {framedContent}
+      </JetBrainsShell>
+    );
   }
 
-  return <VisualStudioShell option={option}>{framedContent}</VisualStudioShell>;
+  return (
+    <VisualStudioShell option={option} chatSidebar={desktopChatSidebar}>
+      {framedContent}
+    </VisualStudioShell>
+  );
 }

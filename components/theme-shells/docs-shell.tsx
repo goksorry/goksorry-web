@@ -19,7 +19,7 @@ const DOCS_ACTIONS = [
   ["Export", "archive"]
 ] as const;
 
-export function DocsShell({ children, option }: ThemeShellProps) {
+export function DocsShell({ children, option, chatSidebar }: ThemeShellProps) {
   const { pathname, currentRoute } = useShellRoute();
 
   return (
@@ -53,12 +53,7 @@ export function DocsShell({ children, option }: ThemeShellProps) {
           </div>
           <article className="theme-shell-content-frame docs-content-frame">{children}</article>
         </main>
-        <aside className="docs-meta-pane">
-          <p>On this page</p>
-          <a href="#page-top">Top</a>
-          <a href="/docs">API</a>
-          <a href="/terms">Terms</a>
-        </aside>
+        {chatSidebar}
       </section>
 
       <ShellStatusBar option={option} shellType="docs" currentRoute={currentRoute} />

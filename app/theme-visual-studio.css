@@ -83,7 +83,7 @@
 
 .visual-studio-ide {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 16rem 11rem;
+  grid-template-columns: minmax(0, 1fr) 16rem auto;
   min-height: 0;
 }
 
@@ -279,11 +279,13 @@
 
 @media (max-width: 980px) {
   .visual-studio-ide {
-    grid-template-columns: minmax(0, 1fr) 14rem;
+    grid-template-columns: minmax(0, 1fr) 14rem auto;
   }
+}
 
-  .visual-studio-properties {
-    display: none;
+@media (max-width: 900px) {
+  .visual-studio-ide {
+    grid-template-columns: minmax(0, 1fr) 14rem;
   }
 }
 

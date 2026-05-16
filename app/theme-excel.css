@@ -163,6 +163,7 @@
 
 .excel-workspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 0;
   overflow: hidden;
 }

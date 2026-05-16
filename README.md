@@ -88,7 +88,7 @@ npm run test:e2e
 - 웹 앱은 `POST /api/chat/session` 에서 member/guest 세션을 발급합니다.
 - 계정 생성 전 상태(`profile_setup_required = true`)에서는 채팅 진입 UI를 숨깁니다.
 - 실시간 WebSocket 허브는 별도 Cloudflare Worker/Durable Object를 전제로 합니다.
-- 메시지는 영구 저장하지 않고 최근 20개만 유지하는 전제입니다.
+- 메시지는 영구 저장하지 않고 최근 30개만 유지하는 전제입니다.
 
 ## API 요약
 

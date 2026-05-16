@@ -22,7 +22,7 @@ const TOOL_WINDOWS = [
   ["Services", "grid"]
 ] as const;
 
-export function JetBrainsShell({ children, option }: ThemeShellProps) {
+export function JetBrainsShell({ children, option, chatSidebar }: ThemeShellProps) {
   const { pathname, currentRoute } = useShellRoute();
 
   return (
@@ -68,6 +68,7 @@ export function JetBrainsShell({ children, option }: ThemeShellProps) {
             <div className="theme-shell-content-frame jetbrains-content-frame">{children}</div>
           </div>
         </main>
+        {chatSidebar}
       </section>
 
       <ShellStatusBar option={option} shellType="jetbrains" currentRoute={currentRoute} />

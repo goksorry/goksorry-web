@@ -14,6 +14,7 @@ import "@/app/theme-jetbrains.css";
 import "@/app/theme-visual-studio.css";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
 import { ChatDock } from "@/components/chat-dock";
+import { ChatSidebar } from "@/components/chat-sidebar";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { CookieConsentProvider } from "@/components/cookie-consent-provider";
 import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
@@ -93,7 +94,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   defaultHeader={<SiteHeader />}
                   policyBanner={<PolicyChangeBanner />}
                   footer={<SiteFooter />}
-                  chatDock={<ChatDock enabled={chatEnv.enabled} />}
+                  mobileChatDock={<ChatDock enabled={chatEnv.enabled} />}
+                  desktopChatSidebar={<ChatSidebar enabled={chatEnv.enabled} />}
                 >
                   <main className="main">
                     <Suspense fallback={null}>

@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
 const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
+const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
 
 const prepareThemePage = async (page: Page, storedTheme = "light") => {
   await page.context().addCookies([
@@ -59,6 +60,7 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
   await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
   await expect(header.getByRole("link", { name: "게시판" })).toBeVisible();
   await expect(header.getByRole("link", { name: "곡소리방" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "채팅" })).toHaveCount(0);
   await expect(page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
   await expect(page.getByTestId("program-content-area")).toBeVisible();
   await expect(page.getByTestId("program-status-bar")).toBeVisible();
@@ -92,6 +94,7 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
     await expect(page.getByTestId("program-shell")).toHaveCount(0);
     await expect(page.locator(".header")).toBeVisible();
+    await expect(page.locator(".header").getByRole("link", { name: "채팅" })).toHaveCount(0);
     await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
   });
 
@@ -125,7 +128,7 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Undo mock command" })).toHaveCount(0);
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Analyze mock command" })).toHaveCount(0);
 
-    await expect.poll(async () => page.getByTestId("excel-column-headers").locator("span").count()).toBeGreaterThan(8);
+    await expect.poll(async () => page.getByTestId("excel-column-headers").locator("span").count()).toBeGreaterThanOrEqual(8);
 
     const sheetMetrics = await page.evaluate(() => {
       const frame = document.querySelector(".excel-content-frame") as HTMLElement;
@@ -140,9 +143,11 @@ test.describe("program theme shells", () => {
       };
     });
     const expectedColumnCount = Math.max(1, Math.floor(sheetMetrics.contentWidth / 100));
-    expect(expectedColumnCount).toBeGreaterThan(8);
+    expect(expectedColumnCount).toBeGreaterThanOrEqual(8);
     expect(sheetMetrics.columnCount).toBe(expectedColumnCount);
-    expect(sheetMetrics.lastColumn).not.toBe("H");
+    if (expectedColumnCount > 8) {
+      expect(sheetMetrics.lastColumn).not.toBe("H");
+    }
     expect(Math.abs(sheetMetrics.firstHeaderWidth - sheetMetrics.contentWidth / expectedColumnCount)).toBeLessThanOrEqual(1);
 
     const excelContentChrome = await page.evaluate(() => {
@@ -580,6 +585,164 @@ test.describe("program theme shells", () => {
       await expect(page.getByTestId(item.locator)).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`${item.theme}.png`), fullPage: false });
     }
+  });
+
+  test("chat moves to a collapsible desktop right sidebar when chat env is enabled", async ({ page }) => {
+    test.skip(!CHAT_LAYOUT_ENABLED, "desktop chat sidebar requires CHAT_WS_BASE_URL in the test server env");
+
+    const cases = [
+      { theme: "light", shell: "default" },
+      { theme: "excel-light", shell: "excel" },
+      { theme: "powerpoint-dark", shell: "powerpoint" },
+      { theme: "docs-light", shell: "docs" },
+      { theme: "vscode-dark", shell: "vscode" },
+      { theme: "jetbrains-light", shell: "jetbrains" },
+      { theme: "vs-dark", shell: "visual-studio" }
+    ];
+
+    for (const item of cases) {
+      await page.setViewportSize({ width: 1180, height: 760 });
+      await prepareThemePage(page);
+      await page.goto(`/?theme=${item.theme}`);
+
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      await expect(page.getByRole("link", { name: "채팅" })).toHaveCount(0);
+      await expect(page.getByTestId("desktop-chat-sidebar")).toBeVisible();
+      await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
+      await expect(page.getByTestId("desktop-chat-sidebar").getByText("전체 채팅")).toBeVisible();
+
+      const chatScroll = await page.evaluate(() => {
+        const sidebar = document.querySelector("[data-testid='desktop-chat-sidebar']") as HTMLElement;
+        const panel = document.querySelector(".chat-sidebar-panel") as HTMLElement;
+        const live = document.querySelector(".chat-sidebar-live") as HTMLElement;
+        const log = document.querySelector(".chat-sidebar-live .chat-log") as HTMLElement;
+
+        return {
+          sidebarOverflowY: window.getComputedStyle(sidebar).overflowY,
+          panelOverflowY: window.getComputedStyle(panel).overflowY,
+          liveOverflowY: window.getComputedStyle(live).overflowY,
+          logOverflowY: window.getComputedStyle(log).overflowY,
+          liveHeight: live.getBoundingClientRect().height,
+          logHeight: log.getBoundingClientRect().height
+        };
+      });
+      expect(chatScroll.sidebarOverflowY).toBe("hidden");
+      expect(chatScroll.panelOverflowY).toBe("hidden");
+      expect(chatScroll.liveOverflowY).toBe("hidden");
+      expect(chatScroll.logOverflowY).toBe("auto");
+      expect(chatScroll.logHeight).toBeGreaterThan(0);
+      expect(chatScroll.logHeight).toBeLessThan(chatScroll.liveHeight);
+
+      const layoutSeparation = await page.evaluate((shell) => {
+        const sidebar = document.querySelector("[data-testid='desktop-chat-sidebar']") as HTMLElement;
+
+        if (shell === "default") {
+          const workspace = document.querySelector(".default-chat-workspace") as HTMLElement;
+          const content = document.querySelector(".default-chat-content") as HTMLElement;
+          const scrollingElement = document.scrollingElement as HTMLElement;
+          const sidebarTopBefore = sidebar.getBoundingClientRect().top;
+          scrollingElement.scrollTop = Math.min(400, scrollingElement.scrollHeight - scrollingElement.clientHeight);
+          content.scrollTop = Math.min(400, content.scrollHeight - content.clientHeight);
+          const sidebarTopAfter = sidebar.getBoundingClientRect().top;
+
+          return {
+            contentContainsSidebar: content.contains(sidebar),
+            sidebarParentIsWorkspace: sidebar.parentElement === workspace,
+            documentScrollable: scrollingElement.scrollHeight > scrollingElement.clientHeight + 1,
+            documentScrollTopAfter: scrollingElement.scrollTop,
+            contentScrollable: content.scrollHeight > content.clientHeight + 1,
+            contentScrollTopAfter: content.scrollTop,
+            workspaceOverflowY: window.getComputedStyle(workspace).overflowY,
+            contentOverflowY: window.getComputedStyle(content).overflowY,
+            contentFrameContainsSidebar: false,
+            sidebarTopDelta: sidebarTopAfter - sidebarTopBefore
+          };
+        }
+
+        const workspace = sidebar.closest(".theme-shell-workspace") as HTMLElement;
+        const contentFrame = document.querySelector(".theme-shell-content-frame") as HTMLElement;
+
+        return {
+          contentContainsSidebar: false,
+          sidebarParentIsWorkspace: sidebar.parentElement === workspace,
+          documentScrollable: false,
+          documentScrollTopAfter: 0,
+          contentScrollable: false,
+          contentScrollTopAfter: 0,
+          workspaceOverflowY: window.getComputedStyle(workspace).overflowY,
+          contentOverflowY: window.getComputedStyle(contentFrame).overflowY,
+          contentFrameContainsSidebar: contentFrame.contains(sidebar),
+          sidebarTopDelta: 0
+        };
+      }, item.shell);
+      expect(layoutSeparation.contentContainsSidebar).toBe(false);
+      expect(layoutSeparation.contentFrameContainsSidebar).toBe(false);
+      expect(layoutSeparation.sidebarParentIsWorkspace).toBe(true);
+      if (item.shell === "default") {
+        expect(layoutSeparation.documentScrollable).toBe(false);
+        expect(layoutSeparation.documentScrollTopAfter).toBe(0);
+        expect(layoutSeparation.contentScrollable).toBe(true);
+        expect(layoutSeparation.contentScrollTopAfter).toBeGreaterThan(0);
+        expect(layoutSeparation.workspaceOverflowY).toBe("hidden");
+        expect(layoutSeparation.contentOverflowY).toBe("auto");
+        expect(Math.abs(layoutSeparation.sidebarTopDelta)).toBeLessThanOrEqual(1);
+      } else {
+        expect(layoutSeparation.documentScrollable).toBe(false);
+        expect(layoutSeparation.workspaceOverflowY).toBe("hidden");
+        expect(layoutSeparation.contentOverflowY).toBe("auto");
+      }
+    }
+
+    const sidebar = page.getByTestId("desktop-chat-sidebar");
+    await sidebar.getByRole("button", { name: "채팅 사이드바 닫기" }).click({ force: true });
+    await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+    await expect
+      .poll(async () => page.evaluate(() => window.localStorage.getItem("goksorry-chat-sidebar-state")))
+      .toBe("collapsed");
+    await page.reload();
+    await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "collapsed");
+
+    await sidebar.getByRole("button", { name: "채팅 사이드바 열기" }).click({ force: true });
+    await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
+    await expect
+      .poll(async () => page.evaluate(() => window.localStorage.getItem("goksorry-chat-sidebar-state")))
+      .toBe("open");
+    await page.reload();
+    await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
+  });
+
+  test("chat keeps the bottom tab overlay at 900px and below", async ({ page }) => {
+    test.skip(!CHAT_LAYOUT_ENABLED, "mobile chat dock requires CHAT_WS_BASE_URL in the test server env");
+
+    await page.setViewportSize({ width: 900, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/?theme=docs-light");
+
+    await expect(page.getByTestId("desktop-chat-sidebar")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "실시간 채팅" })).toBeVisible();
+
+    await page.getByRole("button", { name: "실시간 채팅" }).click();
+    await expect(page.locator("#global-chat-dock")).toBeVisible();
+    await expect(page.locator("#global-chat-dock").getByText("전체 채팅")).toBeVisible();
+
+    const mobileChatScroll = await page.evaluate(() => {
+      const panel = document.querySelector("#global-chat-dock") as HTMLElement;
+      const live = document.querySelector(".chat-dock-live") as HTMLElement;
+      const log = document.querySelector(".chat-dock-live .chat-log") as HTMLElement;
+
+      return {
+        panelOverflowY: window.getComputedStyle(panel).overflowY,
+        liveOverflowY: window.getComputedStyle(live).overflowY,
+        logOverflowY: window.getComputedStyle(log).overflowY,
+        panelHeight: panel.getBoundingClientRect().height,
+        logHeight: log.getBoundingClientRect().height
+      };
+    });
+    expect(mobileChatScroll.panelOverflowY).toBe("hidden");
+    expect(mobileChatScroll.liveOverflowY).toBe("hidden");
+    expect(mobileChatScroll.logOverflowY).toBe("auto");
+    expect(mobileChatScroll.logHeight).toBeGreaterThan(0);
+    expect(mobileChatScroll.logHeight).toBeLessThan(mobileChatScroll.panelHeight);
   });
 
   test("jetbrains header uses site navigation as the main menu and keeps run controls", async ({ page }) => {

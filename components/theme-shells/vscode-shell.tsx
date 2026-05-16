@@ -23,7 +23,7 @@ const ACTIVITY_ITEMS = [
   ["Extensions", "grid"]
 ] as const;
 
-export function VsCodeShell({ children, option }: ThemeShellProps) {
+export function VsCodeShell({ children, option, chatSidebar }: ThemeShellProps) {
   const { pathname, currentRoute } = useShellRoute();
 
   return (
@@ -65,6 +65,7 @@ export function VsCodeShell({ children, option }: ThemeShellProps) {
             <ShellCommandButton label="Terminal" icon="code" />
           </div>
         </main>
+        {chatSidebar}
       </section>
 
       <ShellStatusBar option={option} shellType="vscode" currentRoute={currentRoute} />

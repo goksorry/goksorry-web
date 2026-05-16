@@ -68,6 +68,13 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     path: "/",
     sameSite: "Lax"
   },
+  chatSidebarState: {
+    kind: "localStorage",
+    key: "goksorry-chat-sidebar-state",
+    category: "essential",
+    label: "채팅 사이드바 상태",
+    description: "데스크탑 채팅 사이드바의 열림/접힘 상태를 저장합니다."
+  },
   themeMode: {
     kind: "localStorage",
     key: "goksorry-theme",

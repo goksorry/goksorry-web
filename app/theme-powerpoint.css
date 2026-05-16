@@ -91,7 +91,7 @@
 
 .powerpoint-workspace {
   display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr) 13rem;
+  grid-template-columns: 10rem minmax(0, 1fr) auto;
   gap: 0.75rem;
   padding: 0.75rem;
 }
@@ -243,10 +243,6 @@
 @media (max-width: 900px) {
   .powerpoint-workspace {
     grid-template-columns: 7.2rem minmax(0, 1fr);
-  }
-
-  .powerpoint-format-pane {
-    display: none;
   }
 }
 
