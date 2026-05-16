@@ -54,7 +54,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       overall_base_score: 5.4,
       overall_market_adjustment: -0.32,
       overall_sentiment_score: 5.1,
-      overall_goksorry_index: 5.4,
+      overall_goksorry_index: 4.9,
       overall_sentiment_band: "neutral",
       community_indicators: [
         {
@@ -68,7 +68,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           base_score: 5.6,
           market_adjustment: -0.21,
           score: 5.4,
-          goksorry_index: 5.1,
+          goksorry_index: 4.6,
           sentiment_band: "neutral",
           tone: "mixed",
           rows: [
@@ -92,8 +92,8 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     },
     notes: [
       "홈 상단 커뮤니티 카드와 동일한 집계 결과입니다.",
-      "`overall_sentiment_score` 와 각 섹션의 `score` 는 내부 원감성 점수이며 높을수록 희망입니다.",
-      "`overall_goksorry_index` 와 각 섹션의 `goksorry_index` 는 홈 표시용 반전 점수이며 높을수록 곡소리입니다.",
+      "`overall_sentiment_score` 와 각 섹션의 `score` 는 0~10 내부 원감성 점수이며 높을수록 희망입니다.",
+      "`overall_goksorry_index` 와 각 섹션의 `goksorry_index` 는 0~10 홈 표시용 반전 점수이며 높을수록 곡소리입니다.",
       "소스 그룹은 토스증권, 뽐뿌, 블라인드, 디시 4종으로 고정됩니다."
     ]
   },
@@ -134,7 +134,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       overall_base_score: 5.4,
       overall_market_adjustment: -0.32,
       overall_sentiment_score: 5.1,
-      overall_goksorry_index: 5.4,
+      overall_goksorry_index: 4.9,
       overall_sentiment_band: "neutral",
       community_indicators: [
         {
@@ -148,7 +148,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           base_score: 5.6,
           market_adjustment: -0.21,
           score: 5.4,
-          goksorry_index: 5.1,
+          goksorry_index: 4.6,
           sentiment_band: "neutral",
           tone: "mixed",
           rows: [
@@ -172,7 +172,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     },
     notes: [
       "`/api/community-indicators` 응답에 KOSPI, KOSDAQ, NASDAQ, 원/달러 환율 요약을 추가한 형태입니다.",
-      "`overall_sentiment_score`/`score` 는 원감성 점수, `overall_goksorry_index`/`goksorry_index` 는 홈 표시용 곡소리 지수입니다.",
+      "`overall_sentiment_score`/`score` 는 0~10 원감성 점수, `overall_goksorry_index`/`goksorry_index` 는 0~10 홈 표시용 곡소리 지수입니다.",
       "시장 지표와 커뮤니티 지수를 한 번에 받아야 하는 외부 클라이언트용 요약 엔드포인트입니다."
     ]
   },
