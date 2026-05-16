@@ -18,7 +18,7 @@
 .jetbrains-toolbar {
   min-height: 2.75rem;
   display: grid;
-  grid-template-columns: auto minmax(10rem, 1fr) minmax(12rem, 1fr) auto auto;
+  grid-template-columns: auto minmax(18rem, 1fr) auto auto;
   align-items: center;
   gap: 0.65rem;
   padding: 0.38rem 0.68rem;
@@ -26,31 +26,21 @@
   background: linear-gradient(90deg, var(--theme-shell-chrome), color-mix(in srgb, var(--theme-shell-chrome) 88%, var(--theme-shell-accent)));
 }
 
-.jetbrains-main-menu {
-  min-width: 0;
-  display: flex;
-  gap: 0.1rem;
-  overflow-x: auto;
-}
-
-.jetbrains-main-menu button {
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--theme-shell-muted);
-  padding: 0.3rem 0.5rem;
-  box-shadow: none;
-  white-space: nowrap;
-}
-
-.jetbrains-main-menu button:hover {
-  background: color-mix(in srgb, var(--theme-shell-accent) 12%, transparent);
-  color: var(--theme-shell-ink);
+.jetbrains-toolbar .theme-shell-nav {
+  justify-self: start;
 }
 
 .jetbrains-run-widget {
   display: inline-flex;
   gap: 0.25rem;
+}
+
+.theme-shell-jetbrains .theme-shell-actions {
+  --theme-shell-action-bg: color-mix(in srgb, var(--theme-shell-chrome) 76%, var(--theme-shell-accent) 10%);
+  --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-line) 74%, var(--theme-shell-accent));
+  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 22%, var(--theme-shell-chrome));
+  --theme-shell-action-radius: 7px;
+  --theme-shell-action-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
 
 .jetbrains-window {

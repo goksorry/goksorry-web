@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
@@ -255,10 +254,12 @@ export function ShellIcon({ name }: { name: IconName }) {
 
 export function ShellBrand({ productName }: { productName: string }) {
   return (
-    <Link className="theme-shell-brand" href="/" aria-label="곡소리닷컴 홈">
-      <Image className="theme-shell-logo" src="/goksorry_logo.png" alt="" width={113} height={50} priority />
-      <span>{productName}</span>
-    </Link>
+    <div className="theme-shell-brand-wrap">
+      <Link className="theme-shell-brand" href="/" aria-label="곡소리닷컴 홈">
+        곡소리닷컴
+      </Link>
+      <span className="theme-shell-product-name">{productName}</span>
+    </div>
   );
 }
 

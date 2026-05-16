@@ -42,6 +42,22 @@
   white-space: nowrap;
 }
 
+.theme-shell-docs .theme-shell-actions {
+  --theme-shell-action-bg: var(--panel);
+  --theme-shell-action-border: color-mix(in srgb, var(--brand) 30%, var(--line));
+  --theme-shell-action-hover: color-mix(in srgb, var(--brand) 10%, var(--panel));
+  --theme-shell-action-radius: 4px;
+  --theme-shell-action-shadow: none;
+}
+
+.theme-shell-docs .theme-shell-actions .theme-menu-trigger,
+.theme-shell-docs .theme-shell-actions .header-share-button,
+.theme-shell-docs .theme-shell-actions .header-auth-button,
+.theme-shell-docs .theme-shell-actions .clean-filter-toggle-group,
+.theme-shell-docs .theme-shell-actions .header-auth-shell {
+  min-height: 2rem;
+}
+
 .docs-workspace {
   display: grid;
   grid-template-columns: 14rem minmax(0, 1fr) 11rem;

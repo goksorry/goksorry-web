@@ -35,11 +35,6 @@ export function ExcelShell({ children, option }: ThemeShellProps) {
         <WindowDots />
         <ShellBrand productName="Excel" />
         <ShellNavLinks />
-        <div className="excel-quick-access" aria-label="빠른 실행 도구">
-          <ShellCommandButton label="Save" icon="archive" />
-          <ShellCommandButton label="Undo" icon="settings" />
-          <ShellCommandButton label="Analyze" icon="chart" />
-        </div>
         <div className="excel-title">{currentRoute.fileName}</div>
         <ShellHeaderActions />
       </div>

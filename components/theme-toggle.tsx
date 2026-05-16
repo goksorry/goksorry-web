@@ -96,7 +96,7 @@ export function ThemeToggle() {
         aria-expanded={open}
         title={`테마: ${activeTheme.label}`}
       >
-        <span aria-hidden="true">...</span>
+        <span aria-hidden="true">🎨</span>
       </button>
 
       {open ? (

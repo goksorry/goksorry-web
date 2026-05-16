@@ -32,6 +32,14 @@
   white-space: nowrap;
 }
 
+.theme-shell-powerpoint .theme-shell-actions {
+  --theme-shell-action-bg: color-mix(in srgb, var(--panel-elevated) 88%, var(--brand) 12%);
+  --theme-shell-action-border: color-mix(in srgb, var(--brand) 44%, var(--line));
+  --theme-shell-action-hover: color-mix(in srgb, var(--brand) 22%, var(--panel-elevated));
+  --theme-shell-action-radius: 6px;
+  --theme-shell-action-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
+}
+
 .powerpoint-ribbon {
   border-bottom: 1px solid var(--theme-shell-line);
   background: var(--theme-shell-chrome);

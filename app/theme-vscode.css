@@ -49,6 +49,23 @@
   white-space: nowrap;
 }
 
+.theme-shell-vscode .theme-shell-actions {
+  --theme-shell-action-bg: color-mix(in srgb, var(--theme-shell-chrome) 84%, #000 16%);
+  --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-line) 80%, transparent);
+  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 24%, transparent);
+  --theme-shell-action-radius: 2px;
+  --theme-shell-action-shadow: none;
+  gap: 0.22rem;
+}
+
+.theme-shell-vscode .theme-shell-actions .theme-menu-trigger,
+.theme-shell-vscode .theme-shell-actions .header-share-button,
+.theme-shell-vscode .theme-shell-actions .header-auth-button,
+.theme-shell-vscode .theme-shell-actions .clean-filter-toggle-group,
+.theme-shell-vscode .theme-shell-actions .header-auth-shell {
+  min-height: 1.82rem;
+}
+
 .vscode-workbench {
   display: grid;
   grid-template-columns: 3rem 15rem minmax(0, 1fr);

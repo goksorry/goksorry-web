@@ -47,6 +47,14 @@
   white-space: nowrap;
 }
 
+.theme-shell-visual-studio .theme-shell-actions {
+  --theme-shell-action-bg: color-mix(in srgb, var(--theme-shell-chrome) 82%, var(--theme-shell-accent) 12%);
+  --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-accent) 48%, var(--theme-shell-line));
+  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 24%, var(--theme-shell-chrome));
+  --theme-shell-action-radius: 3px;
+  --theme-shell-action-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-shell-accent) 14%, transparent);
+}
+
 .visual-studio-menu-bar,
 .visual-studio-toolbar {
   display: flex;

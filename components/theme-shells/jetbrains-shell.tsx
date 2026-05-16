@@ -30,15 +30,8 @@ export function JetBrainsShell({ children, option }: ThemeShellProps) {
       <div className="jetbrains-toolbar" data-testid="program-header">
         <ShellBrand productName="JetBrains" />
         <ShellNavLinks />
-        <div className="jetbrains-main-menu">
-          {["File", "Edit", "View", "Navigate", "Code", "Run", "Tools", "Git"].map((item) => (
-            <button key={item} type="button">
-              {item}
-            </button>
-          ))}
-        </div>
         <div className="jetbrains-run-widget">
-          <ShellCommandButton label="main" icon="play" active />
+          <ShellCommandButton label="Run" icon="play" active />
           <ShellCommandButton label="Debug" icon="debug" />
         </div>
         <ShellHeaderActions />

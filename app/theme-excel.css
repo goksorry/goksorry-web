@@ -22,7 +22,7 @@
 .excel-titlebar {
   min-height: var(--theme-shell-header-height);
   display: grid;
-  grid-template-columns: auto auto minmax(10rem, 1fr) auto minmax(8rem, 1fr) auto;
+  grid-template-columns: auto auto minmax(18rem, 1fr) minmax(8rem, 0.8fr) auto;
   align-items: center;
   gap: 0.62rem;
   padding: 0.28rem 0.6rem;
@@ -30,15 +30,25 @@
   background: var(--theme-shell-chrome);
 }
 
-.excel-quick-access {
-  display: inline-flex;
-  gap: 0.16rem;
-  padding-left: 0.35rem;
-  border-left: 1px solid var(--theme-shell-line);
+.excel-titlebar .theme-shell-nav {
+  justify-self: start;
 }
 
-.excel-quick-access .theme-shell-command {
-  min-width: 1.9rem;
+.theme-shell-excel .theme-shell-actions {
+  --theme-shell-action-bg: var(--theme-shell-elevated);
+  --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-line) 92%, var(--theme-shell-accent));
+  --theme-shell-action-hover: color-mix(in srgb, var(--theme-shell-accent) 13%, var(--theme-shell-elevated));
+  --theme-shell-action-radius: 0;
+  --theme-shell-action-shadow: inset 0 -1px 0 color-mix(in srgb, var(--theme-shell-accent) 18%, transparent);
+  gap: 0.18rem;
+}
+
+.theme-shell-excel .theme-shell-actions .theme-menu-trigger,
+.theme-shell-excel .theme-shell-actions .header-share-button,
+.theme-shell-excel .theme-shell-actions .header-auth-button,
+.theme-shell-excel .theme-shell-actions .clean-filter-toggle-group,
+.theme-shell-excel .theme-shell-actions .header-auth-shell {
+  min-height: 1.78rem;
 }
 
 .excel-title {
@@ -223,8 +233,7 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .excel-title,
-  .excel-quick-access {
+  .excel-title {
     display: none;
   }
 
