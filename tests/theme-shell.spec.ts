@@ -73,10 +73,19 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
   await expect(header.locator(".theme-shell-logo")).toHaveCount(0);
   await expect(header.locator('img[src*="goksorry_logo"]')).toHaveCount(0);
   await expect(header.getByTestId("theme-shell-brand-icon")).toHaveAttribute("src", iconPath);
-  await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
-  await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
-  await expect(header.getByRole("link", { name: "게시판" })).toBeVisible();
-  await expect(header.getByRole("link", { name: "곡소리방" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toBeVisible();
+  if (shell === "docs") {
+    await expect(header.getByRole("link", { name: "피드" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "게시판" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
+    await expect(page.getByTestId("docs-menu-bar").getByRole("button", { name: "File" })).toBeVisible();
+    await expect(page.getByTestId("docs-sidebar").getByRole("link", { name: "feed.goksorry" })).toBeVisible();
+  } else {
+    await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
+    await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "게시판" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "곡소리방" })).toBeVisible();
+  }
   await expect(header.getByRole("link", { name: "채팅" })).toHaveCount(0);
   await expect(page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
   await expect(page.getByTestId("program-content-area")).toBeVisible();
@@ -891,13 +900,17 @@ test.describe("program theme shells", () => {
     });
     const docsChrome = await page.evaluate(() => ({
       header: getComputedStyle(document.querySelector(".docs-app-header") as HTMLElement).backgroundColor,
+      toolbarPill: getComputedStyle(document.querySelector(".docs-tool-finder") as HTMLElement).backgroundColor,
       outline: getComputedStyle(document.querySelector(".docs-outline") as HTMLElement).backgroundColor,
-      document: getComputedStyle(document.querySelector(".docs-content-frame") as HTMLElement).backgroundColor
+      editor: getComputedStyle(document.querySelector(".docs-content-frame") as HTMLElement).backgroundColor,
+      page: getComputedStyle(document.querySelector(".theme-shell-docs .theme-shell-content-document") as HTMLElement).backgroundColor
     }));
     expect(docsChrome).toMatchObject({
       header: "rgb(255, 255, 255)",
-      outline: "rgb(237, 242, 250)",
-      document: "rgb(255, 255, 255)"
+      toolbarPill: "rgb(237, 242, 250)",
+      outline: "rgb(255, 255, 255)",
+      editor: "rgb(241, 243, 244)",
+      page: "rgb(255, 255, 255)"
     });
 
     await page.goto("/?theme=vscode-light");
@@ -1164,10 +1177,26 @@ test.describe("program theme shells", () => {
     expect(excelTableChrome.borderRadius).toBe("0px");
 
     await page.goto("/docs?theme=docs-light");
-    const docsHeadingMarker = await page.locator(".theme-shell-docs .docs-shell h1").first().evaluate((element) => {
-      return window.getComputedStyle(element, "::before").content;
+    await expect(page.getByTestId("docs-titlebar")).toBeVisible();
+    await expect(page.getByTestId("docs-menu-bar").getByRole("button", { name: "File" })).toBeVisible();
+    await expect(page.getByTestId("docs-toolbar").getByRole("button", { name: "Search the menus mock command" })).toBeVisible();
+    await expect(page.getByTestId("docs-ruler")).toBeVisible();
+    const docsEditorChrome = await page.evaluate(() => {
+      const frame = document.querySelector(".docs-content-frame") as HTMLElement;
+      const page = document.querySelector(".theme-shell-docs .theme-shell-content-document") as HTMLElement;
+      const heading = document.querySelector(".theme-shell-docs .docs-shell h1") as HTMLElement;
+
+      return {
+        frameBackground: window.getComputedStyle(frame).backgroundColor,
+        pageBackground: window.getComputedStyle(page).backgroundColor,
+        pageShadow: window.getComputedStyle(page).boxShadow,
+        headingMarker: window.getComputedStyle(heading, "::before").content
+      };
     });
-    expect(docsHeadingMarker).toContain("#");
+    expect(docsEditorChrome.frameBackground).toBe("rgb(241, 243, 244)");
+    expect(docsEditorChrome.pageBackground).toBe("rgb(255, 255, 255)");
+    expect(docsEditorChrome.pageShadow).not.toBe("none");
+    expect(docsEditorChrome.headingMarker).toBe("none");
   });
 
   test("concept system themes resolve to the current device tone", async ({ page }) => {
