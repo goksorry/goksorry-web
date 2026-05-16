@@ -124,6 +124,74 @@ const expectConceptHeaderFixed = async (page: Page) => {
   });
 };
 
+type ExcelGridMetric = {
+  selector: string;
+  present: boolean;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  columnWidth: number;
+  rowHeight: number;
+};
+
+const distanceToGridLine = (value: number, cellSize: number) => {
+  const remainder = Math.abs(value % cellSize);
+  return Math.min(remainder, Math.abs(cellSize - remainder));
+};
+
+const readExcelGridMetrics = async (page: Page, selectors: string[]) => {
+  return page.evaluate((targetSelectors) => {
+    const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
+    const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
+    const documentStyle = window.getComputedStyle(documentElement);
+    const documentRect = documentElement.getBoundingClientRect();
+    const columnWidth = Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width"));
+    const rowHeight = rowHeader.getBoundingClientRect().height;
+
+    return targetSelectors.map((selector) => {
+      const element = document.querySelector(selector) as HTMLElement | null;
+      if (!element) {
+        return {
+          selector,
+          present: false,
+          left: 0,
+          top: 0,
+          width: 0,
+          height: 0,
+          columnWidth,
+          rowHeight
+        };
+      }
+
+      const rect = element.getBoundingClientRect();
+      return {
+        selector,
+        present: true,
+        left: rect.left - documentRect.left,
+        top: rect.top - documentRect.top,
+        width: rect.width,
+        height: rect.height,
+        columnWidth,
+        rowHeight
+      };
+    });
+  }, selectors) as Promise<ExcelGridMetric[]>;
+};
+
+const expectExcelGridAligned = (
+  metrics: ExcelGridMetric[],
+  fields: Array<"left" | "top" | "width" | "height"> = ["left", "top", "width", "height"]
+) => {
+  for (const metric of metrics) {
+    expect(metric.present, `${metric.selector} should exist`).toBe(true);
+    for (const field of fields) {
+      const cellSize = field === "left" || field === "width" ? metric.columnWidth : metric.rowHeight;
+      expect(distanceToGridLine(metric[field], cellSize), `${metric.selector}.${field}`).toBeLessThanOrEqual(1.5);
+    }
+  }
+};
+
 test.describe("program theme shells", () => {
   test("default light theme keeps the original site shell", async ({ page }) => {
     await prepareThemePage(page);
@@ -463,6 +531,137 @@ test.describe("program theme shells", () => {
     await page.getByRole("button", { name: "Paste mock command" }).click();
     await expect(page).toHaveURL(currentUrl);
     await page.screenshot({ path: testInfo.outputPath("excel-light.png"), fullPage: false });
+  });
+
+  test("excel theme aligns feed, community, and room content blocks to worksheet cells", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/?theme=excel-light");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    const feedMetrics = await readExcelGridMetrics(page, [
+      ".theme-shell-excel .feed-filter-panel",
+      ".theme-shell-excel .feed-filter-panel h1",
+      ".theme-shell-excel .feed-filter-panel > .muted",
+      ".theme-shell-excel .feed-filter-toolbar",
+      ".theme-shell-excel .feed-selection-actions",
+      ".theme-shell-excel .feed-channel-buttons",
+      ".theme-shell-excel .sentiment-lane",
+      ".theme-shell-excel .sentiment-lane-head",
+      ".theme-shell-excel .sentiment-lane > .error, .theme-shell-excel .sentiment-lane > .muted, .theme-shell-excel .sentiment-list > .error, .theme-shell-excel .sentiment-list > .muted"
+    ]);
+    expectExcelGridAligned(feedMetrics);
+
+    const optionalSentimentCardMetrics = await readExcelGridMetrics(page, [".theme-shell-excel .sentiment-card"]);
+    if (optionalSentimentCardMetrics[0].present) {
+      expectExcelGridAligned(optionalSentimentCardMetrics);
+    }
+
+    await page.goto("/community?theme=excel-light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    await page.locator(".theme-shell-excel .theme-shell-page .main").evaluate((main) => {
+      main.insertAdjacentHTML(
+        "afterbegin",
+        `<section class="panel excel-grid-fixture">
+          <h2>셀 정렬 fixture</h2>
+          <div class="board-grid">
+            <a href="/community/free" class="card board-card"><h3>자유게시판</h3></a>
+            <a href="/community/notice" class="card board-card"><h3>공지</h3></a>
+            <a href="/community/market" class="card board-card"><h3>시장 이야기</h3></a>
+          </div>
+          <div class="actions">
+            <a href="/community/free/new" class="btn">글쓰기</a>
+            <a href="/community" class="btn btn-secondary">게시판 목록</a>
+          </div>
+          <div class="community-post-list">
+            <a href="/community/free/post-1" class="community-post-row community-post-row-board">
+              <span class="community-post-board">자유</span>
+              <strong class="community-post-title">
+                <span>엑셀 셀 정렬 검증용 게시글입니다</span>
+                <span class="community-post-comment-count">[3]</span>
+              </strong>
+              <span class="community-post-meta community-post-meta-board">
+                <span class="community-post-board-mobile">자유</span>
+                <span class="community-post-author">테스터</span>
+                <time class="community-post-time" datetime="2026-05-16T00:00:00.000Z">2026.05.16</time>
+              </span>
+            </a>
+          </div>
+        </section>`
+      );
+    });
+    const communityMetrics = await readExcelGridMetrics(page, [
+      ".theme-shell-excel .excel-grid-fixture",
+      ".theme-shell-excel .excel-grid-fixture h2",
+      ".theme-shell-excel .excel-grid-fixture .board-grid",
+      ".theme-shell-excel .excel-grid-fixture .board-card",
+      ".theme-shell-excel .excel-grid-fixture .actions",
+      ".theme-shell-excel .excel-grid-fixture .community-post-list",
+      ".theme-shell-excel .excel-grid-fixture .community-post-row",
+      ".theme-shell-excel .excel-grid-fixture .community-post-board",
+      ".theme-shell-excel .excel-grid-fixture .community-post-title",
+      ".theme-shell-excel .excel-grid-fixture .community-post-meta",
+      ".theme-shell-excel .excel-grid-fixture .community-post-author",
+      ".theme-shell-excel .excel-grid-fixture .community-post-time"
+    ]);
+    expectExcelGridAligned(communityMetrics);
+
+    await page.route("**/api/goksorry-room**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          entries: [
+            {
+              id: "entry-1",
+              content: "엑셀 셀 경계에 맞춘 곡소리방 의견입니다.",
+              author_kind: "guest",
+              author_label: "테스터",
+              created_at: "2026-05-16T00:00:00.000Z",
+              reply_count: 1,
+              can_delete: false,
+              replies: [
+                {
+                  id: "reply-1",
+                  entry_id: "entry-1",
+                  content: "덧글도 같은 셀 높이에 맞습니다.",
+                  author_kind: "guest",
+                  author_label: "응답자",
+                  created_at: "2026-05-16T00:01:00.000Z",
+                  can_delete: false
+                }
+              ]
+            }
+          ],
+          next_cursor: null
+        })
+      });
+    });
+    await page.goto("/goksorry-room?theme=excel-light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry")).toHaveCount(1);
+    await page.getByRole("button", { name: "덧글 1" }).click();
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form")).toBeVisible();
+
+    const roomMetrics = await readExcelGridMetrics(page, [
+      ".theme-shell-excel .goksorry-room-panel",
+      ".theme-shell-excel .goksorry-room-panel > h1",
+      ".theme-shell-excel .goksorry-room-entry-form",
+      ".theme-shell-excel .goksorry-room-entry-form .form-row",
+      ".theme-shell-excel .goksorry-room-entry-form textarea",
+      ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-form-footer",
+      ".theme-shell-excel .goksorry-room-list",
+      ".theme-shell-excel .goksorry-room-entry",
+      ".theme-shell-excel .goksorry-room-entry-main",
+      ".theme-shell-excel .goksorry-room-actions",
+      ".theme-shell-excel .goksorry-room-replies",
+      ".theme-shell-excel .goksorry-room-reply",
+      ".theme-shell-excel .goksorry-room-reply-form",
+      ".theme-shell-excel .goksorry-room-reply-form .form-row",
+      ".theme-shell-excel .goksorry-room-reply-form textarea",
+      ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-form-footer"
+    ]);
+    expectExcelGridAligned(roomMetrics);
   });
 
   test("excel theme keeps overview art subtle and uses one-cell mobile indicators", async ({ page }, testInfo) => {
