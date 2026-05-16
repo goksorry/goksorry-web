@@ -595,6 +595,61 @@ test.describe("program theme shells", () => {
     expect(excelChrome.backgroundColor).not.toBe(vscodeChrome.backgroundColor);
   });
 
+  test("mobile concept theme menu opens outside header overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await prepareThemePage(page);
+
+    const cases = [
+      { theme: "excel-light", shell: "excel" },
+      { theme: "powerpoint-light", shell: "powerpoint" },
+      { theme: "docs-light", shell: "docs" },
+      { theme: "vscode-dark", shell: "vscode" },
+      { theme: "jetbrains-light", shell: "jetbrains" },
+      { theme: "vs-dark", shell: "visual-studio" }
+    ];
+
+    for (const item of cases) {
+      await page.goto(`/?theme=${item.theme}`);
+      await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
+
+      await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
+      const menu = page.getByRole("menu", { name: "테마 선택" });
+      await expect(menu).toBeVisible();
+
+      const metrics = await menu.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const hitX = rect.left + Math.min(24, rect.width / 2);
+        const hitY = rect.top + Math.min(24, rect.height / 2);
+        const hit = document.elementFromPoint(hitX, hitY);
+
+        return {
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          left: rect.left,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          hitInside: hit ? element.contains(hit) : false
+        };
+      });
+
+      expect(metrics.left).toBeGreaterThanOrEqual(0);
+      expect(metrics.top).toBeGreaterThanOrEqual(0);
+      expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth);
+      expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight);
+      expect(metrics.hitInside).toBe(true);
+
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+    }
+
+    await page.goto("/?theme=excel-light");
+    await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: /엑셀 다크/ }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
+    await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
+  });
+
   test("concept content surfaces adapt to the program family", async ({ page }) => {
     await prepareThemePage(page);
     await page.goto("/?theme=vscode-dark");
