@@ -80,6 +80,12 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
     await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
     await expect(page.getByTestId("docs-menu-bar").getByRole("button", { name: "File" })).toBeVisible();
     await expect(page.getByTestId("docs-sidebar").getByRole("link", { name: "feed.goksorry" })).toBeVisible();
+  } else if (shell === "excel") {
+    await expect(header.getByRole("link", { name: "피드" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "게시판" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
+    await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "Home" })).toBeVisible();
+    await expect(page.getByTestId("excel-sheet-tabs").getByRole("link", { name: "피드" })).toBeVisible();
   } else {
     await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
     await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
@@ -152,7 +158,7 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
   });
 
-  test("excel theme renders a full ribbon shell and replaces the site header", async ({ page }, testInfo) => {
+  test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
@@ -167,9 +173,53 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("excel-column-headers")).toBeVisible();
     await expect(page.getByTestId("excel-row-headers")).toBeVisible();
     await expect(page.getByTestId("excel-row-headers").locator("span").first()).toHaveText("1");
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Microsoft 365 app launcher mock command" })).toBeVisible();
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Share workbook mock command" })).toBeVisible();
+    await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "Automate" })).toBeVisible();
+    await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "AutoSum mock command" })).toBeVisible();
+    await expect(page.getByTestId("excel-single-line-ribbon")).toBeVisible();
+    await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "Ribbon display options mock command" })).toBeVisible();
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Save mock command" })).toHaveCount(0);
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Undo mock command" })).toHaveCount(0);
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Analyze mock command" })).toHaveCount(0);
+
+    const excelRibbonMetrics = await page.evaluate(() => {
+      const commandButtons = Array.from(document.querySelectorAll(".excel-ribbon-command")) as HTMLElement[];
+      const selectButtons = Array.from(document.querySelectorAll(".excel-ribbon-command-select")) as HTMLElement[];
+      const commandRects = commandButtons.map((button) => button.getBoundingClientRect());
+      const ribbonRect = (document.querySelector("[data-testid='excel-single-line-ribbon']") as HTMLElement).getBoundingClientRect();
+      const commandTops = commandRects.map((rect) => Math.round(rect.top));
+
+      return {
+        commandCount: commandButtons.length,
+        iconCount: document.querySelectorAll(".excel-ribbon-command .excel-command-icon").length,
+        groupLabelCount: document.querySelectorAll(".excel-ribbon-group p").length,
+        legacyLargeCount: document.querySelectorAll(".excel-ribbon-command-large").length,
+        separatorCount: document.querySelectorAll(".excel-ribbon-separator").length,
+        selectCount: selectButtons.length,
+        commandHeights: commandRects.map((rect) => Math.round(rect.height)),
+        topSpread: Math.max(...commandTops) - Math.min(...commandTops),
+        ribbonHeight: Math.round(ribbonRect.height)
+      };
+    });
+    expect(excelRibbonMetrics.commandCount).toBeGreaterThanOrEqual(18);
+    expect(excelRibbonMetrics.iconCount).toBeGreaterThanOrEqual(excelRibbonMetrics.commandCount - 1);
+    expect(excelRibbonMetrics.groupLabelCount).toBe(0);
+    expect(excelRibbonMetrics.legacyLargeCount).toBe(0);
+    expect(excelRibbonMetrics.separatorCount).toBeGreaterThanOrEqual(4);
+    expect(excelRibbonMetrics.selectCount).toBeGreaterThanOrEqual(5);
+    expect(new Set(excelRibbonMetrics.commandHeights).size).toBe(1);
+    expect(excelRibbonMetrics.topSpread).toBeLessThanOrEqual(1);
+    expect(excelRibbonMetrics.ribbonHeight).toBeLessThanOrEqual(52);
+
+    const excelFormulaMetrics = await page.evaluate(() => {
+      const controls = Array.from(
+        document.querySelectorAll(".excel-name-box, .excel-formula-action, .excel-fx, .excel-formula-bar input")
+      ) as HTMLElement[];
+
+      return controls.map((control) => Math.round(control.getBoundingClientRect().height));
+    });
+    expect(new Set(excelFormulaMetrics).size).toBe(1);
 
     await expect.poll(async () => page.getByTestId("excel-column-headers").locator("span").count()).toBeGreaterThanOrEqual(8);
 
@@ -200,15 +250,23 @@ test.describe("program theme shells", () => {
       const sheetTab = document.querySelector(".excel-sheet-tabs a") as HTMLElement;
       const headerButton = document.querySelector(".theme-shell-excel .theme-menu-trigger") as HTMLElement;
       const rowHeaderCell = document.querySelector(".excel-row-headers span") as HTMLElement;
+      const columnHeaders = document.querySelector("[data-testid='excel-column-headers']") as HTMLElement;
       const documentStyle = window.getComputedStyle(documentElement);
       const frameStyle = window.getComputedStyle(frame);
+      const columnHeadersStyle = window.getComputedStyle(columnHeaders);
       const tableCellStyle = tableCell ? window.getComputedStyle(tableCell) : null;
       const sheetTabStyle = window.getComputedStyle(sheetTab);
       const headerButtonStyle = window.getComputedStyle(headerButton);
+      const selectedColumn = document.querySelector(".excel-column-headers .excel-header-active") as HTMLElement;
+      const selectedRow = document.querySelector(".excel-row-headers .excel-header-active") as HTMLElement;
+      const selection = document.querySelector("[data-testid='excel-selection-box']") as HTMLElement;
+      const contentLink = frame.querySelector("a") as HTMLElement | null;
+      const selectionStyle = window.getComputedStyle(selection);
 
       return {
         columnWidth: Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width")),
         rowHeight: rowHeaderCell.getBoundingClientRect().height,
+        columnHeaderBorderLeft: Number.parseFloat(columnHeadersStyle.borderLeftWidth),
         marketBlockRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-market-block-rows")),
         overviewPanelRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-overview-panel-rows")),
         feedFilterRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-feed-filter-rows")),
@@ -220,7 +278,13 @@ test.describe("program theme shells", () => {
         frameBackground: frameStyle.backgroundImage,
         tableCellHeight: tableCellStyle ? Number.parseFloat(tableCellStyle.height) : null,
         sheetTabRadius: sheetTabStyle.borderRadius,
-        headerButtonRadius: headerButtonStyle.borderRadius
+        headerButtonRadius: headerButtonStyle.borderRadius,
+        selectedColumnBackground: window.getComputedStyle(selectedColumn).backgroundColor,
+        selectedColumnColor: window.getComputedStyle(selectedColumn).color,
+        selectedRowBackground: window.getComputedStyle(selectedRow).backgroundColor,
+        selectionBorderColor: selectionStyle.borderTopColor,
+        contentCursor: frameStyle.cursor,
+        contentLinkCursor: contentLink ? window.getComputedStyle(contentLink).cursor : null
       };
     });
     expect(excelContentChrome.paddingTop).toBe(0);
@@ -235,8 +299,56 @@ test.describe("program theme shells", () => {
     if (excelContentChrome.tableCellHeight !== null) {
       expect(Math.abs(excelContentChrome.tableCellHeight - excelContentChrome.rowHeight)).toBeLessThanOrEqual(1);
     }
-    expect(excelContentChrome.sheetTabRadius).toBe("0px");
-    expect(excelContentChrome.headerButtonRadius).toBe("0px");
+    expect(Number.parseFloat(excelContentChrome.sheetTabRadius)).toBeGreaterThan(0);
+    expect(Number.parseFloat(excelContentChrome.headerButtonRadius)).toBeGreaterThan(0);
+    expect(excelContentChrome.columnHeaderBorderLeft).toBeGreaterThan(0);
+    expect(excelContentChrome.contentCursor).toBe("cell");
+    if (excelContentChrome.contentLinkCursor !== null) {
+      expect(excelContentChrome.contentLinkCursor).toBe("pointer");
+    }
+    expect(excelContentChrome.selectedColumnBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(excelContentChrome.selectedRowBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(excelContentChrome.selectedColumnColor).toBe(excelContentChrome.selectionBorderColor);
+
+    const selectedCellTarget = await page.evaluate(() => {
+      const frame = document.querySelector(".excel-content-frame") as HTMLElement;
+      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
+      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
+      const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
+      const rowHeight = rowHeader.getBoundingClientRect().height;
+      const columnIndex = 2;
+      const rowIndex = 3;
+      const frameRect = frame.getBoundingClientRect();
+
+      frame.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          clientX: frameRect.left + columnWidth * columnIndex + 8,
+          clientY: frameRect.top + rowHeight * rowIndex + 8
+        })
+      );
+
+      return {
+        name: "C4",
+        column: "C",
+        row: "4",
+        left: columnWidth * columnIndex,
+        top: rowHeight * rowIndex
+      };
+    });
+    await expect(page.locator(".excel-name-box")).toHaveText(selectedCellTarget.name);
+    await expect(page.locator(`[data-excel-column="${selectedCellTarget.column}"]`)).toHaveClass(/excel-header-active/);
+    await expect(page.locator(`[data-excel-row="${selectedCellTarget.row}"]`)).toHaveClass(/excel-header-active/);
+    const selectedCellBox = await page.getByTestId("excel-selection-box").evaluate((element) => {
+      const style = window.getComputedStyle(element);
+
+      return {
+        left: Number.parseFloat(style.left),
+        top: Number.parseFloat(style.top)
+      };
+    });
+    expect(Math.abs(selectedCellBox.left - selectedCellTarget.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(selectedCellBox.top - selectedCellTarget.top)).toBeLessThanOrEqual(1);
 
     const excelOverviewGrid = await page.evaluate(() => {
       const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
@@ -875,7 +987,10 @@ test.describe("program theme shells", () => {
       "--panel-soft": "#f6f8f7"
     });
     await expect.poll(async () => page.locator(".excel-titlebar").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
-      "rgb(246, 248, 247)"
+      "rgb(248, 248, 248)"
+    );
+    await expect.poll(async () => page.locator(".excel-ribbon").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      "rgb(255, 255, 255)"
     );
     await expect.poll(async () => page.locator(".excel-content-frame").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
       "rgb(255, 255, 255)"
