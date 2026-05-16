@@ -4,10 +4,12 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { NextResponse } from "next/server";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail, type AppAuthUser } from "@/lib/auth-server";
 import { getServerEnv } from "@/lib/env";
+export {
+  GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
+  GOKSORRY_ROOM_REPLY_MAX_LENGTH
+} from "@/lib/goksorry-room-limits";
 import { SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 
-export const GOKSORRY_ROOM_ENTRY_MAX_LENGTH = 160;
-export const GOKSORRY_ROOM_REPLY_MAX_LENGTH = 300;
 export const GOKSORRY_ROOM_DEFAULT_LIMIT = 50;
 export const GOKSORRY_ROOM_MAX_LIMIT = 100;
 export const GOKSORRY_ROOM_GUEST_LABEL = "익명";

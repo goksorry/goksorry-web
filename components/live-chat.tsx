@@ -437,7 +437,8 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
         ) : null}
         <label className="chat-input-wrap">
           <span className="sr-only">메시지 입력</span>
-          <textarea
+          <input
+            type="text"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -449,7 +450,6 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
               event.currentTarget.form?.requestSubmit();
             }}
             maxLength={CHAT_MESSAGE_MAX_LENGTH}
-            rows={3}
             placeholder={viewer?.can_send ? "메시지를 입력하세요." : "채팅에 참여할 수 없습니다."}
             disabled={state !== "open" || !viewer?.can_send}
           />

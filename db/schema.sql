@@ -138,7 +138,7 @@ create table if not exists public.goksorry_room_replies (
     (author_kind = 'guest' and author_id is null and guest_owner_hash is not null)
   ),
   constraint goksorry_room_replies_author_label_plain_text check (author_label !~ '[<>]' and char_length(author_label) between 1 and 30),
-  constraint goksorry_room_replies_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 300)
+  constraint goksorry_room_replies_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 160)
 );
 
 create table if not exists public.votes (

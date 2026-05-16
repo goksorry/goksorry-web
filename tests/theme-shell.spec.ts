@@ -4,6 +4,7 @@ const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
 const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
 const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
+const EXCEL_CONTROL_RADIUS = 3;
 const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
   excel: "/theme-icons/excel.svg",
   powerpoint: "/theme-icons/powerpoint.svg",
@@ -54,6 +55,29 @@ const prepareThemeFirstVisitPage = async (page: Page) => {
   await page.addInitScript((key) => {
     window.localStorage.removeItem(key);
   }, THEME_STORAGE_KEY);
+};
+
+const mockGuestChatSession = async (page: Page) => {
+  await page.route("**/api/chat/session", async (route) => {
+    const chatBaseUrl = process.env.CHAT_WS_BASE_URL ?? "ws://127.0.0.1:8787/ws";
+    const separator = chatBaseUrl.includes("?") ? "&" : "?";
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ws_url: `${chatBaseUrl}${separator}token=playwright-chat-token`,
+        viewer: {
+          kind: "guest",
+          display_name: "guest",
+          can_filter_guests: false,
+          can_send: true,
+          default_filter: "all"
+        },
+        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+      })
+    });
+  });
 };
 
 const readRootThemeVars = async (page: Page, names: string[]) => {
@@ -250,13 +274,34 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Save mock command" })).toHaveCount(0);
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Undo mock command" })).toHaveCount(0);
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Analyze mock command" })).toHaveCount(0);
+    await expect(page.getByTestId("program-header").getByText("Saved to Goksorry")).toBeVisible();
+    await expect(page.getByTestId("program-header").getByText("Saved to OneDrive")).toHaveCount(0);
+
+    const excelLauncherChrome = await page.evaluate(() => {
+      const titlebar = document.querySelector(".excel-titlebar") as HTMLElement;
+      const launcher = document.querySelector(".excel-app-launcher") as HTMLElement;
+      const launcherDot = document.querySelector(".excel-app-launcher span") as HTMLElement;
+
+      return {
+        titlebarBackground: window.getComputedStyle(titlebar).backgroundColor,
+        launcherColor: window.getComputedStyle(launcher).color,
+        launcherDotBackground: window.getComputedStyle(launcherDot).backgroundColor
+      };
+    });
+    expect(excelLauncherChrome.launcherDotBackground).toBe(excelLauncherChrome.launcherColor);
+    expect(excelLauncherChrome.launcherDotBackground).not.toBe(excelLauncherChrome.titlebarBackground);
 
     const excelRibbonMetrics = await page.evaluate(() => {
       const commandButtons = Array.from(document.querySelectorAll(".excel-ribbon-command")) as HTMLElement[];
+      const plainCommandButtons = Array.from(
+        document.querySelectorAll(".excel-ribbon-command:not(.excel-ribbon-command-select)")
+      ) as HTMLElement[];
       const selectButtons = Array.from(document.querySelectorAll(".excel-ribbon-command-select")) as HTMLElement[];
       const commandRects = commandButtons.map((button) => button.getBoundingClientRect());
       const ribbonRect = (document.querySelector("[data-testid='excel-single-line-ribbon']") as HTMLElement).getBoundingClientRect();
       const commandTops = commandRects.map((rect) => Math.round(rect.top));
+      const plainCommandStyles = plainCommandButtons.map((button) => window.getComputedStyle(button));
+      const selectButtonStyles = selectButtons.map((button) => window.getComputedStyle(button));
 
       return {
         commandCount: commandButtons.length,
@@ -266,6 +311,10 @@ test.describe("program theme shells", () => {
         separatorCount: document.querySelectorAll(".excel-ribbon-separator").length,
         selectCount: selectButtons.length,
         commandHeights: commandRects.map((rect) => Math.round(rect.height)),
+        plainCommandBorderWidths: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
+        plainCommandRadii: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
+        selectCommandBorderWidths: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
+        selectCommandRadii: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
         topSpread: Math.max(...commandTops) - Math.min(...commandTops),
         ribbonHeight: Math.round(ribbonRect.height)
       };
@@ -277,12 +326,16 @@ test.describe("program theme shells", () => {
     expect(excelRibbonMetrics.separatorCount).toBeGreaterThanOrEqual(4);
     expect(excelRibbonMetrics.selectCount).toBeGreaterThanOrEqual(5);
     expect(new Set(excelRibbonMetrics.commandHeights).size).toBe(1);
+    expect(new Set(excelRibbonMetrics.plainCommandBorderWidths)).toEqual(new Set([0]));
+    expect(new Set(excelRibbonMetrics.plainCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
+    expect(new Set(excelRibbonMetrics.selectCommandBorderWidths)).toEqual(new Set([1]));
+    expect(new Set(excelRibbonMetrics.selectCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
     expect(excelRibbonMetrics.topSpread).toBeLessThanOrEqual(1);
     expect(excelRibbonMetrics.ribbonHeight).toBeLessThanOrEqual(52);
 
     const excelFormulaMetrics = await page.evaluate(() => {
       const controls = Array.from(
-        document.querySelectorAll(".excel-name-box, .excel-formula-action, .excel-fx, .excel-formula-bar input")
+        document.querySelectorAll(".excel-name-box, .excel-formula-control-group, .excel-formula-bar input")
       ) as HTMLElement[];
 
       return controls.map((control) => Math.round(control.getBoundingClientRect().height));
@@ -317,6 +370,15 @@ test.describe("program theme shells", () => {
       const tableCell = document.querySelector(".theme-shell-excel .table th, .theme-shell-excel .table td") as HTMLElement | null;
       const sheetTab = document.querySelector(".excel-sheet-tabs a") as HTMLElement;
       const headerButton = document.querySelector(".theme-shell-excel .theme-menu-trigger") as HTMLElement;
+      const commentsButton = document.querySelector(".excel-header-button") as HTMLElement;
+      const editingModeButton = document.querySelector(".excel-editing-mode") as HTMLElement;
+      const shareButton = document.querySelector(".excel-share-button") as HTMLElement;
+      const searchBox = document.querySelector(".excel-search") as HTMLElement;
+      const ribbonSelect = document.querySelector(".excel-ribbon-command-select") as HTMLElement;
+      const nameBox = document.querySelector(".excel-name-box") as HTMLElement;
+      const formulaControlGroup = document.querySelector(".excel-formula-control-group") as HTMLElement;
+      const formulaControls = Array.from(document.querySelectorAll(".excel-formula-control-group > *")) as HTMLElement[];
+      const formulaInput = document.querySelector(".excel-formula-bar input") as HTMLElement;
       const rowHeaderCell = document.querySelector(".excel-row-headers span") as HTMLElement;
       const columnHeaders = document.querySelector("[data-testid='excel-column-headers']") as HTMLElement;
       const documentStyle = window.getComputedStyle(documentElement);
@@ -325,6 +387,15 @@ test.describe("program theme shells", () => {
       const tableCellStyle = tableCell ? window.getComputedStyle(tableCell) : null;
       const sheetTabStyle = window.getComputedStyle(sheetTab);
       const headerButtonStyle = window.getComputedStyle(headerButton);
+      const commentsButtonStyle = window.getComputedStyle(commentsButton);
+      const editingModeButtonStyle = window.getComputedStyle(editingModeButton);
+      const shareButtonStyle = window.getComputedStyle(shareButton);
+      const searchBoxStyle = window.getComputedStyle(searchBox);
+      const ribbonSelectStyle = window.getComputedStyle(ribbonSelect);
+      const nameBoxStyle = window.getComputedStyle(nameBox);
+      const formulaControlGroupStyle = window.getComputedStyle(formulaControlGroup);
+      const formulaControlStyles = formulaControls.map((control) => window.getComputedStyle(control));
+      const formulaInputStyle = window.getComputedStyle(formulaInput);
       const selectedColumn = document.querySelector(".excel-column-headers .excel-header-active") as HTMLElement;
       const selectedRow = document.querySelector(".excel-row-headers .excel-header-active") as HTMLElement;
       const selection = document.querySelector("[data-testid='excel-selection-box']") as HTMLElement;
@@ -347,6 +418,27 @@ test.describe("program theme shells", () => {
         tableCellHeight: tableCellStyle ? Number.parseFloat(tableCellStyle.height) : null,
         sheetTabRadius: sheetTabStyle.borderRadius,
         headerButtonRadius: headerButtonStyle.borderRadius,
+        headerButtonBorderWidth: Number.parseFloat(headerButtonStyle.borderTopWidth),
+        commentsButtonBorderWidth: Number.parseFloat(commentsButtonStyle.borderTopWidth),
+        commentsButtonRadius: Number.parseFloat(commentsButtonStyle.borderTopLeftRadius),
+        editingModeButtonBorderWidth: Number.parseFloat(editingModeButtonStyle.borderTopWidth),
+        editingModeButtonRadius: Number.parseFloat(editingModeButtonStyle.borderTopLeftRadius),
+        shareButtonBorderWidth: Number.parseFloat(shareButtonStyle.borderTopWidth),
+        shareButtonRadius: Number.parseFloat(shareButtonStyle.borderTopLeftRadius),
+        searchBoxBorderWidth: Number.parseFloat(searchBoxStyle.borderTopWidth),
+        searchBoxRadius: Number.parseFloat(searchBoxStyle.borderTopLeftRadius),
+        ribbonSelectBorderWidth: Number.parseFloat(ribbonSelectStyle.borderTopWidth),
+        ribbonSelectRadius: Number.parseFloat(ribbonSelectStyle.borderTopLeftRadius),
+        nameBoxBorderWidth: Number.parseFloat(nameBoxStyle.borderTopWidth),
+        nameBoxRadius: Number.parseFloat(nameBoxStyle.borderTopLeftRadius),
+        formulaControlCount: formulaControls.length,
+        formulaControlGroupBorderWidth: Number.parseFloat(formulaControlGroupStyle.borderTopWidth),
+        formulaControlGroupRadius: Number.parseFloat(formulaControlGroupStyle.borderTopLeftRadius),
+        formulaControlTopBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
+        formulaControlRightBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderRightWidth)),
+        formulaControlBottomBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderBottomWidth)),
+        formulaInputBorderWidth: Number.parseFloat(formulaInputStyle.borderTopWidth),
+        formulaInputRadius: Number.parseFloat(formulaInputStyle.borderTopLeftRadius),
         selectedColumnBackground: window.getComputedStyle(selectedColumn).backgroundColor,
         selectedColumnColor: window.getComputedStyle(selectedColumn).color,
         selectedRowBackground: window.getComputedStyle(selectedRow).backgroundColor,
@@ -368,7 +460,28 @@ test.describe("program theme shells", () => {
       expect(Math.abs(excelContentChrome.tableCellHeight - excelContentChrome.rowHeight)).toBeLessThanOrEqual(1);
     }
     expect(Number.parseFloat(excelContentChrome.sheetTabRadius)).toBeGreaterThan(0);
-    expect(Number.parseFloat(excelContentChrome.headerButtonRadius)).toBeGreaterThan(0);
+    expect(Number.parseFloat(excelContentChrome.headerButtonRadius)).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.headerButtonBorderWidth).toBe(0);
+    expect(excelContentChrome.commentsButtonBorderWidth).toBe(0);
+    expect(excelContentChrome.commentsButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.editingModeButtonBorderWidth).toBe(0);
+    expect(excelContentChrome.editingModeButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.shareButtonBorderWidth).toBe(0);
+    expect(excelContentChrome.shareButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.searchBoxBorderWidth).toBeGreaterThan(0);
+    expect(excelContentChrome.searchBoxRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.ribbonSelectBorderWidth).toBeGreaterThan(0);
+    expect(excelContentChrome.ribbonSelectRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.nameBoxBorderWidth).toBeGreaterThan(0);
+    expect(excelContentChrome.nameBoxRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.formulaControlCount).toBe(3);
+    expect(excelContentChrome.formulaControlGroupBorderWidth).toBeGreaterThan(0);
+    expect(excelContentChrome.formulaControlGroupRadius).toBe(EXCEL_CONTROL_RADIUS);
+    expect(excelContentChrome.formulaControlTopBorderWidths).toEqual([0, 0, 0]);
+    expect(excelContentChrome.formulaControlRightBorderWidths).toEqual([0, 0, 0]);
+    expect(excelContentChrome.formulaControlBottomBorderWidths).toEqual([0, 0, 0]);
+    expect(excelContentChrome.formulaInputBorderWidth).toBeGreaterThan(0);
+    expect(excelContentChrome.formulaInputRadius).toBe(EXCEL_CONTROL_RADIUS);
     expect(excelContentChrome.columnHeaderBorderLeft).toBeGreaterThan(0);
     expect(excelContentChrome.contentCursor).toBe("cell");
     if (excelContentChrome.contentLinkCursor !== null) {
@@ -539,6 +652,7 @@ test.describe("program theme shells", () => {
     await page.goto("/?theme=excel-light");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    await expect.poll(async () => page.getByTestId("excel-column-headers").locator("span").count()).toBeGreaterThanOrEqual(8);
     const feedMetrics = await readExcelGridMetrics(page, [
       ".theme-shell-excel .feed-filter-panel",
       ".theme-shell-excel .feed-filter-panel h1",
@@ -642,14 +756,18 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".theme-shell-excel .goksorry-room-entry")).toHaveCount(1);
     await page.getByRole("button", { name: "덧글 1" }).click();
     await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form")).toBeVisible();
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form textarea")).toHaveCount(0);
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form textarea")).toHaveCount(0);
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form input")).toHaveAttribute("maxlength", "160");
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form input")).toHaveAttribute("maxlength", "160");
 
     const roomMetrics = await readExcelGridMetrics(page, [
       ".theme-shell-excel .goksorry-room-panel",
       ".theme-shell-excel .goksorry-room-panel > h1",
       ".theme-shell-excel .goksorry-room-entry-form",
-      ".theme-shell-excel .goksorry-room-entry-form .form-row",
-      ".theme-shell-excel .goksorry-room-entry-form textarea",
-      ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-form-footer",
+      ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-input-label",
+      ".theme-shell-excel .goksorry-room-entry-form input",
+      ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-count",
       ".theme-shell-excel .goksorry-room-list",
       ".theme-shell-excel .goksorry-room-entry",
       ".theme-shell-excel .goksorry-room-entry-main",
@@ -657,9 +775,9 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel .goksorry-room-replies",
       ".theme-shell-excel .goksorry-room-reply",
       ".theme-shell-excel .goksorry-room-reply-form",
-      ".theme-shell-excel .goksorry-room-reply-form .form-row",
-      ".theme-shell-excel .goksorry-room-reply-form textarea",
-      ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-form-footer"
+      ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-input-label",
+      ".theme-shell-excel .goksorry-room-reply-form input",
+      ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-count"
     ]);
     expectExcelGridAligned(roomMetrics);
   });
@@ -943,6 +1061,7 @@ test.describe("program theme shells", () => {
 
   test("chat moves to a collapsible desktop right sidebar when chat env is enabled", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "desktop chat sidebar requires CHAT_WS_BASE_URL in the test server env");
+    await mockGuestChatSession(page);
 
     const cases = [
       { theme: "light", shell: "default" },
@@ -964,6 +1083,10 @@ test.describe("program theme shells", () => {
       await expect(page.getByTestId("desktop-chat-sidebar")).toBeVisible();
       await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
       await expect(page.getByTestId("desktop-chat-sidebar").getByText("전체 채팅")).toBeVisible();
+      await expect(page.locator(".chat-sidebar-live .chat-input-wrap textarea")).toHaveCount(0);
+      await expect(page.locator(".chat-sidebar-live .chat-input-wrap input")).toHaveAttribute("maxlength", "100");
+      await expect(page.locator(".chat-sidebar-live .chat-nickname-wrap input")).toHaveAttribute("maxlength", "10");
+      await expect(page.locator(".chat-sidebar-live .chat-form-footer")).toContainText("0/100");
 
       const chatScroll = await page.evaluate(() => {
         const sidebar = document.querySelector("[data-testid='desktop-chat-sidebar']") as HTMLElement;
@@ -1067,6 +1190,7 @@ test.describe("program theme shells", () => {
 
   test("chat keeps the bottom tab overlay at 900px and below", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "mobile chat dock requires CHAT_WS_BASE_URL in the test server env");
+    await mockGuestChatSession(page);
 
     await page.setViewportSize({ width: 900, height: 760 });
     await prepareThemePage(page);
@@ -1078,6 +1202,10 @@ test.describe("program theme shells", () => {
     await page.getByRole("button", { name: "실시간 채팅" }).click();
     await expect(page.locator("#global-chat-dock")).toBeVisible();
     await expect(page.locator("#global-chat-dock").getByText("전체 채팅")).toBeVisible();
+    await expect(page.locator(".chat-dock-live .chat-input-wrap textarea")).toHaveCount(0);
+    await expect(page.locator(".chat-dock-live .chat-input-wrap input")).toHaveAttribute("maxlength", "100");
+    await expect(page.locator(".chat-dock-live .chat-nickname-wrap input")).toHaveAttribute("maxlength", "10");
+    await expect(page.locator(".chat-dock-live .chat-form-footer")).toContainText("0/100");
 
     const mobileChatScroll = await page.evaluate(() => {
       const panel = document.querySelector("#global-chat-dock") as HTMLElement;

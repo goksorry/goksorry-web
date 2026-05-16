@@ -438,7 +438,7 @@ export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
             <Link className="excel-workbook-title" href={currentRoute.href} aria-label="현재 통합 문서 열기">
               {currentRoute.fileName}
             </Link>
-            <span>Saved to OneDrive</span>
+            <span>Saved to Goksorry</span>
           </div>
         </div>
 
@@ -500,13 +500,17 @@ export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
 
       <div className="excel-formula-bar" data-testid="excel-formula-bar">
         <div className="excel-name-box">{selectedCellLabel}</div>
-        <button type="button" className="excel-formula-action" aria-label="Cancel formula mock command">
-          x
-        </button>
-        <button type="button" className="excel-formula-action" aria-label="Enter formula mock command">
-          ✓
-        </button>
-        <div className="excel-fx">fx</div>
+        <div className="excel-formula-control-group" aria-label="수식 입력 제어">
+          <button type="button" className="excel-formula-action" aria-label="Cancel formula mock command">
+            x
+          </button>
+          <button type="button" className="excel-formula-action" aria-label="Enter formula mock command">
+            ✓
+          </button>
+          <button type="button" className="excel-fx" aria-label="Insert function mock command">
+            fx
+          </button>
+        </div>
         <input readOnly aria-label="수식 입력줄" value={`=${currentRoute.formula} // ${normalizePath(pathname)}`} />
       </div>
 

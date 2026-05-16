@@ -9,7 +9,7 @@ import {
   readGuestChatCookie
 } from "@/lib/chat-token";
 import { normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
-import { CHAT_DEFAULT_FILTER, type ChatSessionViewer } from "@/lib/chat-types";
+import { CHAT_DEFAULT_FILTER, CHAT_GUEST_NICKNAME_MAX_LENGTH, type ChatSessionViewer } from "@/lib/chat-types";
 import { getChatServerEnv } from "@/lib/env";
 import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     const body = await readRequestBody(request);
     const bodyGuestNickname = normalizeGuestChatNickname(body.guest_nickname);
     if (typeof body.guest_nickname === "string" && body.guest_nickname.trim() && !bodyGuestNickname) {
-      return jsonMessage(requestId, 400, "비회원 닉네임은 20자 이하의 평문만 사용할 수 있습니다.");
+      return jsonMessage(requestId, 400, `비회원 닉네임은 ${CHAT_GUEST_NICKNAME_MAX_LENGTH}자 이하의 평문만 사용할 수 있습니다.`);
     }
 
     const cookieGuestNickname = normalizeGuestChatNickname(

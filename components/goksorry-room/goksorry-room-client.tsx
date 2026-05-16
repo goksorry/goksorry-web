@@ -2,9 +2,10 @@
 
 import { startTransition, useEffect, useState, type FormEvent } from "react";
 import { formatKstDateTime } from "@/lib/date-time";
-
-const ENTRY_MAX_LENGTH = 160;
-const REPLY_MAX_LENGTH = 300;
+import {
+  GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
+  GOKSORRY_ROOM_REPLY_MAX_LENGTH
+} from "@/lib/goksorry-room-limits";
 
 type RoomReply = {
   id: string;
@@ -237,25 +238,23 @@ export function GoksorryRoomClient() {
   return (
     <section className="goksorry-room-shell">
       <form className="goksorry-room-entry-form" onSubmit={submitEntry}>
-        <label className="form-row">
-          <span>한줄 의견</span>
-          <textarea
+        <label className="goksorry-room-input-label">
+          <span className="sr-only">한줄 의견</span>
+          <input
+            type="text"
             value={entryDraft}
             onChange={(event) => setEntryDraft(event.target.value)}
-            maxLength={ENTRY_MAX_LENGTH}
-            rows={2}
-            placeholder="지금 시장에 대한 한두 줄 의견을 남겨보세요."
+            maxLength={GOKSORRY_ROOM_ENTRY_MAX_LENGTH}
+            placeholder="짧게 남기기"
             required
           />
         </label>
-        <div className="goksorry-room-form-footer">
-          <span className="muted">
-            {entryDraft.length}/{ENTRY_MAX_LENGTH}
-          </span>
-          <button type="submit" disabled={entrySubmitting || !entryDraft.trim()}>
-            {entrySubmitting ? "등록 중..." : "남기기"}
-          </button>
-        </div>
+        <span className="muted goksorry-room-count">
+          {entryDraft.length}/{GOKSORRY_ROOM_ENTRY_MAX_LENGTH}
+        </span>
+        <button type="submit" disabled={entrySubmitting || !entryDraft.trim()}>
+          {entrySubmitting ? "등록 중..." : "등록"}
+        </button>
       </form>
 
       {error ? <p className="error">{error}</p> : null}
@@ -269,7 +268,7 @@ export function GoksorryRoomClient() {
           return (
             <article key={entry.id} className="goksorry-room-entry">
               <div className="goksorry-room-entry-main">
-                <p>{entry.content}</p>
+                <p title={entry.content}>{entry.content}</p>
                 <div className="goksorry-room-meta">
                   <span>{entry.author_label}</span>
                   <time dateTime={entry.created_at}>{formatKstDateTime(entry.created_at)}</time>
@@ -300,7 +299,7 @@ export function GoksorryRoomClient() {
                 <div className="goksorry-room-replies">
                   {entry.replies.map((reply) => (
                     <div key={reply.id} className="goksorry-room-reply">
-                      <p>{reply.content}</p>
+                      <p title={reply.content}>{reply.content}</p>
                       <div className="goksorry-room-meta">
                         <span>{reply.author_label}</span>
                         <time dateTime={reply.created_at}>{formatKstDateTime(reply.created_at)}</time>
@@ -328,9 +327,10 @@ export function GoksorryRoomClient() {
                     void submitReply(entry.id);
                   }}
                 >
-                  <label className="form-row">
-                    <span>덧글</span>
-                    <textarea
+                  <label className="goksorry-room-input-label">
+                    <span className="sr-only">덧글</span>
+                    <input
+                      type="text"
                       value={replyDraft}
                       onChange={(event) =>
                         setReplyDrafts((current) => ({
@@ -338,20 +338,17 @@ export function GoksorryRoomClient() {
                           [entry.id]: event.target.value
                         }))
                       }
-                      maxLength={REPLY_MAX_LENGTH}
-                      rows={2}
-                      placeholder="덧글을 남겨보세요."
+                      maxLength={GOKSORRY_ROOM_REPLY_MAX_LENGTH}
+                      placeholder="덧글"
                       required
                     />
                   </label>
-                  <div className="goksorry-room-form-footer">
-                    <span className="muted">
-                      {replyDraft.length}/{REPLY_MAX_LENGTH}
-                    </span>
-                    <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
-                      {replySubmittingEntryId === entry.id ? "등록 중..." : "덧글 등록"}
-                    </button>
-                  </div>
+                  <span className="muted goksorry-room-count">
+                    {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
+                  </span>
+                  <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
+                    {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
+                  </button>
                 </form>
               ) : null}
             </article>

@@ -16,6 +16,7 @@
   --excel-header-active-bg: #dff0e7;
   --excel-grid-line: #d9e2dc;
   --excel-selection: #217346;
+  --excel-control-radius: 3px;
   --excel-row-header-width: 3rem;
   --excel-row-height: 2.2rem;
   --excel-column-count: 8;
@@ -79,8 +80,9 @@
   place-content: center;
   gap: 0.18rem;
   border: 0;
-  border-radius: 0.22rem;
+  border-radius: var(--excel-control-radius);
   background: transparent;
+  color: var(--excel-app-bar-ink);
   box-shadow: none;
 }
 
@@ -97,7 +99,7 @@
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 0.24rem;
+  border-radius: var(--excel-control-radius);
   color: inherit;
   text-decoration: none;
 }
@@ -151,7 +153,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0 0.68rem;
-  border-radius: 0.26rem;
+  border-radius: var(--excel-control-radius);
   border: 1px solid color-mix(in srgb, var(--theme-shell-line) 82%, transparent);
   background: var(--excel-ribbon-bg);
   color: #605e5c;
@@ -208,8 +210,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 82%, transparent);
-  border-radius: 0.22rem;
+  border: 0;
+  border-radius: var(--excel-control-radius);
   background: transparent;
   color: inherit;
   box-shadow: none;
@@ -224,7 +226,6 @@
 
 .excel-share-button {
   padding: 0 0.78rem;
-  border-color: transparent;
   background: #107c41;
   color: #ffffff;
   font-weight: 800;
@@ -244,7 +245,7 @@
   --theme-shell-action-border: color-mix(in srgb, var(--theme-shell-line) 82%, transparent);
   --theme-shell-action-hover: var(--excel-app-bar-hover);
   --theme-shell-action-ink: var(--excel-app-bar-ink);
-  --theme-shell-action-radius: 0.22rem;
+  --theme-shell-action-radius: var(--excel-control-radius);
   --theme-shell-action-shadow: none;
   gap: 0.18rem;
   margin-left: 0;
@@ -257,6 +258,11 @@
 .theme-shell-excel .theme-shell-actions .clean-filter-toggle-group,
 .theme-shell-excel .theme-shell-actions .header-auth-shell {
   min-height: 1.9rem;
+  border: 0;
+}
+
+.theme-shell-excel .theme-shell-actions .clean-filter-info-button {
+  border-left: 0;
 }
 
 .excel-ribbon {
@@ -278,7 +284,7 @@
 .excel-ribbon-tabs button {
   height: 2.12rem;
   border: 0;
-  border-radius: 0.18rem;
+  border-radius: var(--excel-control-radius);
   background: transparent;
   color: var(--ink-soft);
   padding: 0 0.7rem;
@@ -333,8 +339,8 @@
   gap: 0.26rem;
   flex: 0 0 auto;
   padding: 0 0.42rem;
-  border: 1px solid transparent;
-  border-radius: 0.22rem;
+  border: 0;
+  border-radius: var(--excel-control-radius);
   background: transparent;
   color: var(--ink-soft);
   box-shadow: none;
@@ -347,7 +353,6 @@
 .excel-ribbon-command:hover,
 .excel-ribbon-command-active,
 .excel-ribbon-display-button:hover {
-  border-color: color-mix(in srgb, var(--theme-shell-line) 84%, transparent);
   background: var(--excel-ribbon-hover);
   color: var(--ink);
 }
@@ -359,6 +364,7 @@
 .excel-ribbon-command-select {
   min-width: 4.35rem;
   justify-content: space-between;
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
   border-color: color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
   background: color-mix(in srgb, var(--excel-ribbon-bg) 92%, var(--excel-ribbon-hover));
   padding-right: 0.3rem;
@@ -417,8 +423,8 @@
 
 .excel-formula-bar {
   display: grid;
-  grid-template-columns: 5.2rem 1.85rem 1.85rem 2.15rem minmax(0, 1fr);
-  gap: 0;
+  grid-template-columns: 5.2rem 5.85rem minmax(0, 1fr);
+  column-gap: 0.24rem;
   align-items: stretch;
   padding: 0.28rem 0.48rem;
   border-bottom: 1px solid #d2d0ce;
@@ -426,8 +432,7 @@
 }
 
 .excel-name-box,
-.excel-fx,
-.excel-formula-action,
+.excel-formula-control-group,
 .excel-formula-bar input {
   height: 1.78rem;
   min-height: 1.78rem;
@@ -453,7 +458,6 @@
   min-width: 0;
   justify-content: space-between;
   padding: 0 0.44rem;
-  border-right: 0;
 }
 
 .excel-name-box::after {
@@ -466,15 +470,33 @@
   opacity: 0.72;
 }
 
+.excel-formula-control-group {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1.85rem 1.85rem 2.15rem;
+  overflow: hidden;
+}
+
+.excel-fx,
 .excel-formula-action {
-  border-right: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   color: var(--theme-shell-muted);
+  box-shadow: none;
 }
 
 .excel-fx {
-  border-right: 0;
-  color: var(--theme-shell-muted);
   font-style: italic;
+}
+
+.excel-formula-action + .excel-formula-action,
+.excel-fx {
+  border-left: 1px solid #d2d0ce;
 }
 
 .excel-formula-bar input {
@@ -1305,10 +1327,11 @@
 
 .theme-shell-excel .goksorry-room-entry-form,
 .theme-shell-excel .goksorry-room-reply-form {
-  height: calc(var(--excel-row-height) * 5);
+  height: var(--excel-row-height);
   min-height: 0;
   display: grid;
-  grid-template-rows: calc(var(--excel-row-height) * 4) var(--excel-row-height);
+  grid-template-columns: minmax(0, 1fr) var(--excel-column-width) var(--excel-column-width);
+  align-items: stretch;
   gap: 0;
   padding: 0;
   border: 0;
@@ -1318,22 +1341,21 @@
   overflow: hidden;
 }
 
-.theme-shell-excel .goksorry-room-entry-form .form-row,
-.theme-shell-excel .goksorry-room-reply-form .form-row {
+.theme-shell-excel .goksorry-room-input-label {
   min-height: 0;
   display: grid;
-  grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 3);
   gap: 0;
   margin: 0;
 }
 
-.theme-shell-excel .goksorry-room-entry-form .form-row > span,
-.theme-shell-excel .goksorry-room-reply-form .form-row > span,
-.theme-shell-excel .goksorry-room-entry-form textarea,
-.theme-shell-excel .goksorry-room-reply-form textarea,
-.theme-shell-excel .goksorry-room-form-footer {
+.theme-shell-excel .goksorry-room-input-label input,
+.theme-shell-excel .goksorry-room-count,
+.theme-shell-excel .goksorry-room-entry-form > button,
+.theme-shell-excel .goksorry-room-reply-form > button {
   min-height: 0;
-  height: 100%;
+  height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
   margin: 0;
   padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
   border: 0;
@@ -1342,21 +1364,10 @@
   box-sizing: border-box;
 }
 
-.theme-shell-excel .goksorry-room-entry-form .form-row > span,
-.theme-shell-excel .goksorry-room-reply-form .form-row > span {
-  display: flex;
-  align-items: center;
-}
-
-.theme-shell-excel .goksorry-room-entry-form textarea,
-.theme-shell-excel .goksorry-room-reply-form textarea {
-  height: calc(var(--excel-row-height) * 3);
-  resize: none;
-}
-
-.theme-shell-excel .goksorry-room-form-footer {
-  flex-wrap: nowrap;
+.theme-shell-excel .goksorry-room-count {
+  justify-content: flex-end;
   overflow: hidden;
+  font-size: 0.74rem;
 }
 
 .theme-shell-excel .goksorry-room-entry,
@@ -1365,17 +1376,40 @@
   gap: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: var(--excel-cell-fill);
   box-shadow: inset 0 0 0 1px var(--excel-cell-line);
   overflow: hidden;
 }
 
+.theme-shell-excel .goksorry-room-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--excel-column-width) * 2);
+  align-items: stretch;
+}
+
 .theme-shell-excel .goksorry-room-entry-main {
-  height: calc(var(--excel-row-height) * 2);
+  height: var(--excel-row-height);
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 0.12rem;
+  grid-template-columns: minmax(0, 1fr) calc(var(--excel-column-width) * 2);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.theme-shell-excel .goksorry-room-entry-main p,
+.theme-shell-excel .goksorry-room-entry-main .goksorry-room-meta,
+.theme-shell-excel .goksorry-room-reply p,
+.theme-shell-excel .goksorry-room-reply .goksorry-room-meta {
+  height: var(--excel-row-height);
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  margin: 0;
   padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
   box-shadow: inset 0 0 0 1px var(--excel-cell-line);
   box-sizing: border-box;
@@ -1384,12 +1418,8 @@
 
 .theme-shell-excel .goksorry-room-entry-main p,
 .theme-shell-excel .goksorry-room-reply p {
-  display: -webkit-box;
-  min-height: 0;
-  margin: 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .theme-shell-excel .goksorry-room-actions {
@@ -1397,22 +1427,34 @@
   min-height: 0;
   margin: 0;
   padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  justify-content: flex-end;
+  gap: 0.28rem;
   box-shadow: inset 0 0 0 1px var(--excel-cell-line);
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .theme-shell-excel .goksorry-room-replies {
+  grid-column: 1 / -1;
   gap: 0;
+  margin: 0;
   padding-left: 0;
   border-left: 0;
+  border-top: 0;
 }
 
 .theme-shell-excel .goksorry-room-reply {
-  height: calc(var(--excel-row-height) * 2);
-  grid-template-rows: minmax(0, 1fr) auto;
-  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  height: var(--excel-row-height);
+  grid-template-columns: minmax(0, 1fr) calc(var(--excel-column-width) * 2);
+  align-items: stretch;
+  padding: 0;
   box-sizing: border-box;
+}
+
+.theme-shell-excel .goksorry-room-reply-form {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 0;
 }
 
 .theme-shell-excel .goksorry-room-meta {
@@ -1459,15 +1501,19 @@
   color: var(--ink);
 }
 
+.theme-shell-excel button:not(.excel-formula-action):not(.excel-fx):not(.excel-ribbon-command-select),
 .theme-shell-excel .btn,
-.theme-shell-excel .tag,
-.theme-shell-excel .feed-symbol-badge,
-.theme-shell-excel button,
 .theme-shell-excel a.btn,
 .theme-shell-excel .clean-filter-toggle-group,
 .theme-shell-excel .header-auth-shell {
-  border-radius: 0;
-  border-color: var(--theme-shell-line);
+  border: 0;
+  border-radius: var(--excel-control-radius);
+  box-shadow: none;
+}
+
+.theme-shell-excel .tag,
+.theme-shell-excel .feed-symbol-badge {
+  border-radius: var(--excel-control-radius);
   box-shadow: none;
 }
 
@@ -1479,7 +1525,50 @@
 .theme-shell-excel input,
 .theme-shell-excel select,
 .theme-shell-excel textarea {
-  border-radius: 0;
+  border-radius: var(--excel-control-radius);
+}
+
+.theme-shell-excel .excel-search,
+.theme-shell-excel .excel-ribbon-command-select,
+.theme-shell-excel .excel-name-box,
+.theme-shell-excel .excel-formula-control-group,
+.theme-shell-excel .excel-formula-bar input {
+  border-radius: var(--excel-control-radius);
+}
+
+.theme-shell-excel .excel-ribbon-command-select,
+.theme-shell-excel .excel-name-box,
+.theme-shell-excel .excel-formula-control-group,
+.theme-shell-excel .excel-formula-bar input {
+  border: 1px solid #d2d0ce;
+}
+
+.theme-shell-excel .excel-ribbon-command-select {
+  border: 1px solid color-mix(in srgb, var(--theme-shell-line) 72%, transparent);
+}
+
+.theme-shell-excel .excel-formula-action + .excel-formula-action,
+.theme-shell-excel .excel-fx {
+  border-left: 1px solid #d2d0ce;
+}
+
+.theme-shell-excel .excel-titlebar button,
+.theme-shell-excel .excel-titlebar .btn,
+.theme-shell-excel .excel-titlebar .excel-home-link,
+.theme-shell-excel .theme-shell-actions .theme-menu-trigger,
+.theme-shell-excel .theme-shell-actions .header-share-button,
+.theme-shell-excel .theme-shell-actions .header-auth-button,
+.theme-shell-excel .theme-shell-actions .header-auth-signout,
+.theme-shell-excel .theme-shell-actions .clean-filter-toggle-group,
+.theme-shell-excel .theme-shell-actions .header-auth-shell {
+  border: 0;
+  border-radius: var(--excel-control-radius);
+  box-shadow: none;
+}
+
+.theme-shell-excel .theme-shell-actions .clean-filter-toggle,
+.theme-shell-excel .theme-shell-actions .clean-filter-info-button {
+  border: 0;
 }
 
 .excel-sheet-tabs {
@@ -1499,7 +1588,7 @@
   padding: 0.38rem 0.72rem;
   border: 1px solid #d2d0ce;
   border-bottom: 0;
-  border-radius: 0.28rem 0.28rem 0 0;
+  border-radius: var(--excel-control-radius) var(--excel-control-radius) 0 0;
   background: var(--excel-header-bg);
   color: var(--ink-soft);
   font-size: 0.78rem;
