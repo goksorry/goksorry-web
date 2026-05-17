@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { CommunityPostList } from "@/components/community-post-list";
 import { getCachedCommunityHomeData } from "@/lib/community-read";
 import { buildPageMetadata } from "@/lib/seo";
@@ -21,10 +22,17 @@ export default async function CommunityHomePage() {
         {boardsError ? <p className="error">게시판 조회 실패: {boardsError}</p> : null}
 
         <div className="board-grid">
-          {boards.map((board) => (
-            <Link key={board.id} href={`/community/${board.slug}`} className="card board-card">
-              <h3>{board.name}</h3>
-            </Link>
+          {boards.map((board, index) => (
+            <Fragment key={board.id}>
+              {index > 0 ? (
+                <span className="board-link-separator" aria-hidden="true">
+                  |
+                </span>
+              ) : null}
+              <Link href={`/community/${board.slug}`} className="card board-card">
+                <h3>{board.name}</h3>
+              </Link>
+            </Fragment>
           ))}
         </div>
       </section>

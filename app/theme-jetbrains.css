@@ -772,15 +772,20 @@
 
 .theme-shell-jetbrains .theme-shell-page .main .board-grid {
   min-width: 0;
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 2ch;
-  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+  min-height: 0;
+  height: auto;
+  display: flex !important;
+  align-items: baseline;
+  gap: 0 1ch;
+  margin: 0 !important;
+  overflow: hidden;
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .board-grid .board-card {
+  flex: 1 1 0;
   min-width: 0;
-  min-height: var(--ide-editor-line-height);
+  min-height: 0;
+  height: auto;
   display: flex !important;
   align-items: baseline;
   justify-content: center;
@@ -788,6 +793,13 @@
   overflow: hidden;
   text-align: center;
   white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .board-grid .board-link-separator {
+  display: inline !important;
+  flex: 0 0 auto;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .board-grid .board-card h3 {
@@ -934,16 +946,30 @@
   flex: 0 0 auto;
 }
 
-.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button:first-child {
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > .goksorry-room-action-separator {
+  display: inline !important;
+  flex: 0 0 auto;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > .goksorry-room-action-separator-replies {
   order: 3;
 }
 
-.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button + button {
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button:first-of-type {
   order: 4;
 }
 
-.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span::before,
-.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button::before {
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > .goksorry-room-action-separator-delete {
+  order: 5;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button + .goksorry-room-action-separator + button {
+  order: 6;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span::before {
   content: " | ";
   color: var(--theme-shell-muted);
   font-weight: 400;
@@ -1083,9 +1109,12 @@
   }
 
   .theme-shell-jetbrains .theme-shell-page .main .board-grid {
-    grid-template-columns: repeat(3, minmax(8rem, 1fr));
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  .theme-shell-jetbrains .theme-shell-page .main .board-grid .board-card {
+    min-width: 8rem;
   }
 
   .theme-shell-jetbrains .theme-shell-page .main .board-grid::-webkit-scrollbar {

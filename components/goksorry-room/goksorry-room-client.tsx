@@ -384,6 +384,9 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                 </div>
 
                 <div className="goksorry-room-actions">
+                  <span className="goksorry-room-action-separator goksorry-room-action-separator-replies" aria-hidden="true">
+                    |
+                  </span>
                   <button
                     type="button"
                     className="btn-secondary"
@@ -392,14 +395,19 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                     덧글 {entry.reply_count}
                   </button>
                   {entry.can_delete ? (
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      disabled={deletingId === `entry:${entry.id}`}
-                      onClick={() => deleteEntry(entry.id)}
-                    >
-                      삭제
-                    </button>
+                    <>
+                      <span className="goksorry-room-action-separator goksorry-room-action-separator-delete" aria-hidden="true">
+                        |
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={deletingId === `entry:${entry.id}`}
+                        onClick={() => deleteEntry(entry.id)}
+                      >
+                        삭제
+                      </button>
+                    </>
                   ) : null}
                 </div>
 

@@ -2037,25 +2037,44 @@ test.describe("program theme shells", () => {
         if (grid.querySelectorAll(".board-card").length < 3) {
           grid.innerHTML = `
             <a href="/community/free" class="card board-card"><h3>자유게시판</h3></a>
+            <span class="board-link-separator" aria-hidden="true">|</span>
             <a href="/community/notice" class="card board-card"><h3>공지</h3></a>
+            <span class="board-link-separator" aria-hidden="true">|</span>
             <a href="/community/market" class="card board-card"><h3>시장 이야기</h3></a>
           `;
         }
         const cards = Array.from(grid.querySelectorAll(".board-card")).slice(0, 3) as HTMLElement[];
+        const separators = Array.from(grid.querySelectorAll(".board-link-separator")).slice(0, 2) as HTMLElement[];
         const headings = cards.map((card) => card.querySelector("h3") as HTMLElement);
         const gridStyle = window.getComputedStyle(grid);
+        const gridRect = grid.getBoundingClientRect();
         const rects = cards.map((card) => card.getBoundingClientRect());
+        const separatorRects = separators.map((separator) => separator.getBoundingClientRect());
         const tops = rects.map((rect) => rect.top);
         const widths = rects.map((rect) => rect.width);
+        const heights = rects.map((rect) => rect.height);
         const headingStyles = headings.map((heading) => window.getComputedStyle(heading));
 
         return {
           display: gridStyle.display,
-          gridColumnCount: gridStyle.gridTemplateColumns.split(" ").filter(Boolean).length,
+          flexWrap: gridStyle.flexWrap,
           cardCount: cards.length,
+          separatorCount: separators.length,
           topSpread: Math.max(...tops) - Math.min(...tops),
           widthSpread: Math.max(...widths) - Math.min(...widths),
+          height: gridRect.height,
+          lineHeight: Number.parseFloat(window.getComputedStyle(headings[0]).lineHeight),
+          maxCardHeight: Math.max(...heights),
           cardDisplays: cards.map((card) => window.getComputedStyle(card).display),
+          separatorTexts: separators.map((separator) => separator.textContent?.trim()),
+          separatorDisplays: separators.map((separator) => window.getComputedStyle(separator).display),
+          separatorInsideLinks: separators.map((separator) => Boolean(separator.closest("a"))),
+          firstSeparatorBetweenLinks: separatorRects[0]
+            ? rects[0].right < separatorRects[0].left && separatorRects[0].right < rects[1].left
+            : false,
+          secondSeparatorBetweenLinks: separatorRects[1]
+            ? rects[1].right < separatorRects[1].left && separatorRects[1].right < rects[2].left
+            : false,
           headingWhiteSpaces: headingStyles.map((style) => style.whiteSpace),
           headingOverflows: headingStyles.map((style) => style.overflowX),
           headingTextOverflows: headingStyles.map((style) => style.textOverflow),
@@ -2096,7 +2115,9 @@ test.describe("program theme shells", () => {
           </div>
         </div>
         <div class="goksorry-room-actions">
+          <span class="goksorry-room-action-separator goksorry-room-action-separator-replies" aria-hidden="true">|</span>
           <button type="button" class="btn-secondary">덧글 2</button>
+          <span class="goksorry-room-action-separator goksorry-room-action-separator-delete" aria-hidden="true">|</span>
           <button type="button" class="btn-secondary">삭제</button>
         </div>`;
         root.appendChild(roomEntry);
@@ -2110,12 +2131,15 @@ test.describe("program theme shells", () => {
         const roomTitle = roomEntry.querySelector(".goksorry-room-entry-main > p") as HTMLElement;
         const roomAuthor = roomEntry.querySelector(".goksorry-room-meta > span") as HTMLElement;
         const roomTime = roomEntry.querySelector(".goksorry-room-meta > time") as HTMLElement;
-	        const [replyButton, deleteButton] = Array.from(roomEntry.querySelectorAll(".goksorry-room-actions > button")) as HTMLElement[];
-	        const rect = (element: HTMLElement) => element.getBoundingClientRect();
-	        const centerY = (element: HTMLElement) => {
-	          const bounds = rect(element);
-	          return bounds.top + bounds.height / 2;
-	        };
+        const [replySeparator, deleteSeparator] = Array.from(
+          roomEntry.querySelectorAll(".goksorry-room-action-separator")
+        ) as HTMLElement[];
+        const [replyButton, deleteButton] = Array.from(roomEntry.querySelectorAll(".goksorry-room-actions > button")) as HTMLElement[];
+        const rect = (element: HTMLElement) => element.getBoundingClientRect();
+        const centerY = (element: HTMLElement) => {
+          const bounds = rect(element);
+          return bounds.top + bounds.height / 2;
+        };
 
         return {
           post: {
@@ -2139,19 +2163,26 @@ test.describe("program theme shells", () => {
             rowFlexWrap: window.getComputedStyle(roomEntry).flexWrap,
             titleLeft: rect(roomTitle).left,
             authorLeft: rect(roomAuthor).left,
+            replySeparatorLeft: rect(replySeparator).left,
             replyLeft: rect(replyButton).left,
+            deleteSeparatorLeft: rect(deleteSeparator).left,
             deleteLeft: rect(deleteButton).left,
-	            titleTop: Math.round(rect(roomTitle).top),
-	            authorTop: Math.round(rect(roomAuthor).top),
-	            replyTop: Math.round(rect(replyButton).top),
-	            deleteTop: Math.round(rect(deleteButton).top),
-	            titleCenterY: centerY(roomTitle),
-	            authorCenterY: centerY(roomAuthor),
-	            replyCenterY: centerY(replyButton),
-	            deleteCenterY: centerY(deleteButton),
-	            authorBefore: window.getComputedStyle(roomAuthor, "::before").content,
-	            replyBefore: window.getComputedStyle(replyButton, "::before").content,
-	            deleteBefore: window.getComputedStyle(deleteButton, "::before").content,
+            titleTop: Math.round(rect(roomTitle).top),
+            authorTop: Math.round(rect(roomAuthor).top),
+            replyTop: Math.round(rect(replyButton).top),
+            deleteTop: Math.round(rect(deleteButton).top),
+            titleCenterY: centerY(roomTitle),
+            authorCenterY: centerY(roomAuthor),
+            replySeparatorCenterY: centerY(replySeparator),
+            replyCenterY: centerY(replyButton),
+            deleteSeparatorCenterY: centerY(deleteSeparator),
+            deleteCenterY: centerY(deleteButton),
+            authorBefore: window.getComputedStyle(roomAuthor, "::before").content,
+            replySeparatorText: replySeparator.textContent?.trim(),
+            deleteSeparatorText: deleteSeparator.textContent?.trim(),
+            separatorsInsideButtons: [replySeparator, deleteSeparator].some((separator) => Boolean(separator.closest("button"))),
+            replyBefore: window.getComputedStyle(replyButton, "::before").content,
+            deleteBefore: window.getComputedStyle(deleteButton, "::before").content,
             timeDisplay: window.getComputedStyle(roomTime).display
           }
         };
@@ -2323,12 +2354,20 @@ test.describe("program theme shells", () => {
       await page.goto(`/community?theme=${item.theme}`);
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       const desktopBoardLayout = await readBoardEditorLayout(item.shellClass);
-      expect(desktopBoardLayout.display).toBe("grid");
-      expect(desktopBoardLayout.gridColumnCount).toBe(3);
+      expect(desktopBoardLayout.display).toBe("flex");
+      expect(desktopBoardLayout.flexWrap).toBe("nowrap");
       expect(desktopBoardLayout.cardCount).toBe(3);
+      expect(desktopBoardLayout.separatorCount).toBe(2);
       expect(desktopBoardLayout.topSpread).toBeLessThanOrEqual(1);
       expect(desktopBoardLayout.widthSpread).toBeLessThanOrEqual(1);
+      expect(Math.abs(desktopBoardLayout.height - desktopBoardLayout.maxCardHeight)).toBeLessThanOrEqual(1);
+      expect(desktopBoardLayout.height).toBeLessThanOrEqual(desktopBoardLayout.lineHeight * 1.25);
       expect(desktopBoardLayout.cardDisplays.every((display) => display === "flex")).toBe(true);
+      expect(desktopBoardLayout.separatorTexts.every((text) => text === "|")).toBe(true);
+      expect(desktopBoardLayout.separatorDisplays.every((display) => display !== "none")).toBe(true);
+      expect(desktopBoardLayout.separatorInsideLinks.every((insideLink) => insideLink === false)).toBe(true);
+      expect(desktopBoardLayout.firstSeparatorBetweenLinks).toBe(true);
+      expect(desktopBoardLayout.secondSeparatorBetweenLinks).toBe(true);
       expect(desktopBoardLayout.headingWhiteSpaces.every((whiteSpace) => whiteSpace === "nowrap")).toBe(true);
       expect(desktopBoardLayout.headingOverflows.every((overflow) => overflow === "hidden")).toBe(true);
       expect(desktopBoardLayout.headingTextOverflows.every((overflow) => overflow === "ellipsis")).toBe(true);
@@ -2347,26 +2386,35 @@ test.describe("program theme shells", () => {
       expect(separatorLayout.post.mobileBoardDisplay).toBe("none");
       expect(separatorLayout.room.rowDisplay).toBe("flex");
       expect(separatorLayout.room.rowFlexWrap).toBe("nowrap");
-	      expect(separatorLayout.room.titleLeft).toBeLessThan(separatorLayout.room.authorLeft);
-	      expect(separatorLayout.room.authorLeft).toBeLessThan(separatorLayout.room.replyLeft);
-	      expect(separatorLayout.room.replyLeft).toBeLessThan(separatorLayout.room.deleteLeft);
-	      expect(
-	        Math.max(
-	          separatorLayout.room.titleCenterY,
-	          separatorLayout.room.authorCenterY,
-	          separatorLayout.room.replyCenterY,
-	          separatorLayout.room.deleteCenterY
-	        ) -
-	          Math.min(
-	            separatorLayout.room.titleCenterY,
-	            separatorLayout.room.authorCenterY,
-	            separatorLayout.room.replyCenterY,
-	            separatorLayout.room.deleteCenterY
-	          )
-	      ).toBeLessThanOrEqual(4);
-	      expect(separatorLayout.room.authorBefore).toContain("|");
-      expect(separatorLayout.room.replyBefore).toContain("|");
-      expect(separatorLayout.room.deleteBefore).toContain("|");
+      expect(separatorLayout.room.titleLeft).toBeLessThan(separatorLayout.room.authorLeft);
+      expect(separatorLayout.room.authorLeft).toBeLessThan(separatorLayout.room.replySeparatorLeft);
+      expect(separatorLayout.room.replySeparatorLeft).toBeLessThan(separatorLayout.room.replyLeft);
+      expect(separatorLayout.room.replyLeft).toBeLessThan(separatorLayout.room.deleteSeparatorLeft);
+      expect(separatorLayout.room.deleteSeparatorLeft).toBeLessThan(separatorLayout.room.deleteLeft);
+      expect(
+        Math.max(
+          separatorLayout.room.titleCenterY,
+          separatorLayout.room.authorCenterY,
+          separatorLayout.room.replySeparatorCenterY,
+          separatorLayout.room.replyCenterY,
+          separatorLayout.room.deleteSeparatorCenterY,
+          separatorLayout.room.deleteCenterY
+        ) -
+          Math.min(
+            separatorLayout.room.titleCenterY,
+            separatorLayout.room.authorCenterY,
+            separatorLayout.room.replySeparatorCenterY,
+            separatorLayout.room.replyCenterY,
+            separatorLayout.room.deleteSeparatorCenterY,
+            separatorLayout.room.deleteCenterY
+          )
+      ).toBeLessThanOrEqual(4);
+      expect(separatorLayout.room.authorBefore).toContain("|");
+      expect(separatorLayout.room.replySeparatorText).toBe("|");
+      expect(separatorLayout.room.deleteSeparatorText).toBe("|");
+      expect(separatorLayout.room.separatorsInsideButtons).toBe(false);
+      expect(separatorLayout.room.replyBefore).not.toContain("|");
+      expect(separatorLayout.room.deleteBefore).not.toContain("|");
       expect(separatorLayout.room.timeDisplay).toBe("none");
 
       await page.goto(`/?theme=${item.theme}&channels=toss`);
