@@ -6,9 +6,14 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 const SENTIMENT_TITLE_FADE_DURATION_MS = 160;
+
+type SymbolBadge = {
+  name: string;
+  count: number;
+};
 
 const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_stock") {
@@ -74,6 +79,52 @@ const buildSymbolBadges = (rows: FeedRow[]) => {
       count
     }));
 };
+
+function SymbolBadgeList({ badges, ariaLabel }: { badges: SymbolBadge[]; ariaLabel: string }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  useEffect(() => {
+    const element = listRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateOverflow = () => {
+      setHasOverflow(element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1);
+    };
+
+    updateOverflow();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateOverflow);
+      return () => {
+        window.removeEventListener("resize", updateOverflow);
+      };
+    }
+
+    const observer = new ResizeObserver(updateOverflow);
+    observer.observe(element);
+    for (const child of Array.from(element.children)) {
+      observer.observe(child);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [badges]);
+
+  return (
+    <div ref={listRef} className={`feed-symbol-badges${hasOverflow ? " feed-symbol-badges-overflow" : ""}`} aria-label={ariaLabel}>
+      {badges.map((badge) => (
+        <span key={badge.name} className="feed-symbol-badge">
+          {badge.name}
+          {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function SentimentTitleStack({
   row,
@@ -290,16 +341,7 @@ export function SentimentFeed({
                 {SENTIMENT_DISPLAY.bearish.emoji}
               </span>
             </div>
-            {fearSymbolBadges.length > 0 ? (
-              <div className="feed-symbol-badges" aria-label="공포 등장 종목">
-                {fearSymbolBadges.map((badge) => (
-                  <span key={badge.name} className="feed-symbol-badge">
-                    {badge.name}
-                    {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            {fearSymbolBadges.length > 0 ? <SymbolBadgeList badges={fearSymbolBadges} ariaLabel="공포 등장 종목" /> : null}
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
@@ -321,16 +363,7 @@ export function SentimentFeed({
                 {SENTIMENT_DISPLAY.bullish.emoji}
               </span>
             </div>
-            {hopeSymbolBadges.length > 0 ? (
-              <div className="feed-symbol-badges" aria-label="희망 등장 종목">
-                {hopeSymbolBadges.map((badge) => (
-                  <span key={badge.name} className="feed-symbol-badge">
-                    {badge.name}
-                    {badge.count > 1 ? <span className="feed-symbol-badge-count">x{badge.count}</span> : null}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            {hopeSymbolBadges.length > 0 ? <SymbolBadgeList badges={hopeSymbolBadges} ariaLabel="희망 등장 종목" /> : null}
 
             {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
             {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}

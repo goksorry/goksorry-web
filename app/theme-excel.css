@@ -1034,6 +1034,55 @@
   display: none;
 }
 
+.theme-shell-excel .feed-symbol-badges {
+  position: relative;
+  height: calc(var(--excel-row-height) * 2);
+  min-height: 0;
+  align-content: start;
+  gap: 0.18rem;
+  padding: var(--excel-cell-padding-y) calc(var(--excel-cell-padding-x) * 2.25) var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  background: var(--excel-cell-fill);
+  box-shadow: inset 0 0 0 1px var(--excel-cell-line);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.theme-shell-excel .feed-symbol-badges-overflow::after {
+  content: "...";
+  position: absolute;
+  right: var(--excel-cell-padding-x);
+  bottom: calc(var(--excel-cell-padding-y) * 0.5);
+  padding-left: calc(var(--excel-cell-padding-x) * 1.5);
+  background: linear-gradient(90deg, transparent 0, var(--excel-cell-fill) 38%);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.theme-shell-excel .feed-symbol-badge {
+  max-width: calc(var(--excel-column-width) * 1.28);
+  min-width: 0;
+  min-height: calc(var(--excel-row-height) * 0.54);
+  padding: 0.05rem 0.28rem;
+  border: 0;
+  border-radius: var(--excel-control-radius);
+  background: color-mix(in srgb, var(--theme-shell-accent) 7%, transparent);
+  font-size: 0.68rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-excel .feed-symbol-badge-count {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .theme-shell-excel .sentiment-list {
   border-top: 0;
   gap: 0;
@@ -1043,9 +1092,10 @@
   height: calc(var(--excel-row-height) * 2);
   min-height: 0;
   display: grid;
-  align-content: center;
+  grid-template-rows: var(--excel-row-height) var(--excel-row-height);
+  align-content: stretch;
   gap: 0;
-  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  padding: 0;
   border: 0;
   background: var(--excel-cell-fill);
   box-shadow: inset 0 0 0 1px var(--excel-cell-line);
@@ -1069,19 +1119,94 @@
 }
 
 .theme-shell-excel .sentiment-card-head {
-  min-height: calc(var(--excel-row-height) * 0.72);
+  min-width: 0;
+  min-height: 0;
+  height: var(--excel-row-height);
   align-items: center;
+  gap: 0.24rem;
   margin: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x) 0;
+  overflow: hidden;
+}
+
+.theme-shell-excel .sentiment-card-head-tags {
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 0.18rem;
+  overflow: hidden;
+}
+
+.theme-shell-excel .sentiment-card-head-tags .sentiment-card-tag {
+  max-width: calc(var(--excel-column-width) * 1.25);
+  min-width: 0;
+  padding: 0.02rem 0.18rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-excel .sentiment-card-head-tags .tag-symbol {
+  max-width: calc(var(--excel-column-width) * 1.05);
+  color: var(--ink-soft);
+}
+
+.theme-shell-excel .sentiment-card-head-meta {
+  min-width: 0;
+  max-width: calc(var(--excel-column-width) * 1.2);
+  flex: 0 1 auto;
+  gap: 0.18rem;
+  overflow: hidden;
+}
+
+.theme-shell-excel .sentiment-clean-toggle {
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 0 0.16rem;
+  border: 0;
+  font-size: 0.58rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-excel .sentiment-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .theme-shell-excel .sentiment-card-body {
-  min-height: var(--excel-row-height);
+  min-width: 0;
+  min-height: 0;
+  height: var(--excel-row-height);
   display: flex;
   align-items: center;
+  padding: 0 var(--excel-cell-padding-x) var(--excel-cell-padding-y);
+  overflow: hidden;
 }
 
+.theme-shell-excel .sentiment-title-stack,
 .theme-shell-excel .sentiment-title {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.theme-shell-excel .sentiment-title,
+.theme-shell-excel .sentiment-title-layer {
   line-height: 1.28;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .theme-shell-excel .community-post-list,

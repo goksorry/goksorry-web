@@ -802,6 +802,96 @@ test.describe("program theme shells", () => {
       expectExcelGridAligned(optionalSentimentCardMetrics);
     }
 
+    await page.locator(".theme-shell-excel .sentiment-lane-fear").evaluate((laneElement) => {
+      const lane = laneElement as HTMLElement;
+      const laneHead = lane.querySelector(".sentiment-lane-head") as HTMLElement;
+      const existingBadges = lane.querySelector(".feed-symbol-badges");
+      const badges = existingBadges ?? document.createElement("div");
+      badges.className = "feed-symbol-badges feed-symbol-badges-overflow";
+      badges.setAttribute("aria-label", "공포 등장 종목");
+      badges.innerHTML = Array.from({ length: 20 }, (_, index) => {
+        return `<span class="feed-symbol-badge">긴종목명테스트${index + 1}<span class="feed-symbol-badge-count">x${index + 2}</span></span>`;
+      }).join("");
+      if (!existingBadges) {
+        laneHead.insertAdjacentElement("afterend", badges);
+      }
+
+      const list = lane.querySelector(".sentiment-list") as HTMLElement;
+      list.innerHTML = `<article class="sentiment-card sentiment-card-fear">
+        <div class="sentiment-card-head">
+          <div class="sentiment-card-head-tags">
+            <span class="tag sentiment-card-tag">토스증권 종목토론</span>
+            <span class="tag tag-symbol sentiment-card-tag">매우긴종목명테스트</span>
+          </div>
+          <div class="sentiment-card-head-meta">
+            <time class="sentiment-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17 09:30:00</time>
+          </div>
+        </div>
+        <div class="sentiment-card-body">
+          <span class="sentiment-title-stack">
+            <span class="sentiment-title sentiment-title-layer sentiment-title-layer-visible">
+              엑셀 테마에서 한 셀보다 훨씬 긴 피드 제목이 카드의 두 번째 셀을 넘어가지 않고 말줄임으로 처리되는지 확인하기 위한 아주 긴 제목입니다
+            </span>
+          </span>
+        </div>
+      </article>`;
+    });
+
+    const excelFeedOverflow = await page.evaluate(() => {
+      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
+      const rowHeight = rowHeader.getBoundingClientRect().height;
+      const badges = document.querySelector(".theme-shell-excel .sentiment-lane-fear .feed-symbol-badges") as HTMLElement;
+      const firstBadge = badges.querySelector(".feed-symbol-badge") as HTMLElement;
+      const card = document.querySelector(".theme-shell-excel .sentiment-lane-fear .sentiment-card") as HTMLElement;
+      const title = card.querySelector(".sentiment-title") as HTMLElement;
+      const sourceTag = card.querySelector(".sentiment-card-tag") as HTMLElement;
+      const symbolTag = card.querySelector(".tag-symbol") as HTMLElement;
+      const titleStyle = window.getComputedStyle(title);
+      const sourceTagStyle = window.getComputedStyle(sourceTag);
+      const symbolTagStyle = window.getComputedStyle(symbolTag);
+      const cardRect = card.getBoundingClientRect();
+      const titleRect = title.getBoundingClientRect();
+
+      return {
+        rowHeight,
+        badgesHeight: badges.getBoundingClientRect().height,
+        badgesClientHeight: badges.clientHeight,
+        badgesScrollHeight: badges.scrollHeight,
+        badgesAfter: window.getComputedStyle(badges, "::after").content,
+        firstBadgeBorderTop: window.getComputedStyle(firstBadge).borderTopWidth,
+        firstBadgeTextOverflow: window.getComputedStyle(firstBadge).textOverflow,
+        cardHeight: cardRect.height,
+        titleRightOffset: titleRect.right - cardRect.right,
+        titleBottomOffset: titleRect.bottom - cardRect.bottom,
+        titleOverflowX: titleStyle.overflowX,
+        titleTextOverflow: titleStyle.textOverflow,
+        titleWhiteSpace: titleStyle.whiteSpace,
+        sourceTagBorderTop: sourceTagStyle.borderTopWidth,
+        sourceTagFontSize: Number.parseFloat(sourceTagStyle.fontSize),
+        sourceTagPaddingLeft: Number.parseFloat(sourceTagStyle.paddingLeft),
+        sourceTagTextOverflow: sourceTagStyle.textOverflow,
+        symbolTagBorderTop: symbolTagStyle.borderTopWidth,
+        symbolTagFontSize: Number.parseFloat(symbolTagStyle.fontSize)
+      };
+    });
+    expect(Math.abs(excelFeedOverflow.badgesHeight - excelFeedOverflow.rowHeight * 2)).toBeLessThanOrEqual(1);
+    expect(excelFeedOverflow.badgesScrollHeight).toBeGreaterThan(excelFeedOverflow.badgesClientHeight);
+    expect(excelFeedOverflow.badgesAfter).toContain("...");
+    expect(excelFeedOverflow.firstBadgeBorderTop).toBe("0px");
+    expect(excelFeedOverflow.firstBadgeTextOverflow).toBe("ellipsis");
+    expect(Math.abs(excelFeedOverflow.cardHeight - excelFeedOverflow.rowHeight * 2)).toBeLessThanOrEqual(1);
+    expect(excelFeedOverflow.titleRightOffset).toBeLessThanOrEqual(1);
+    expect(excelFeedOverflow.titleBottomOffset).toBeLessThanOrEqual(1);
+    expect(excelFeedOverflow.titleOverflowX).toBe("hidden");
+    expect(excelFeedOverflow.titleTextOverflow).toBe("ellipsis");
+    expect(excelFeedOverflow.titleWhiteSpace).toBe("nowrap");
+    expect(excelFeedOverflow.sourceTagBorderTop).toBe("0px");
+    expect(excelFeedOverflow.sourceTagFontSize).toBeLessThanOrEqual(11);
+    expect(excelFeedOverflow.sourceTagPaddingLeft).toBeLessThanOrEqual(4);
+    expect(excelFeedOverflow.sourceTagTextOverflow).toBe("ellipsis");
+    expect(excelFeedOverflow.symbolTagBorderTop).toBe("0px");
+    expect(excelFeedOverflow.symbolTagFontSize).toBeLessThanOrEqual(11);
+
     await page.goto("/community?theme=excel-light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
     await page.locator(".theme-shell-excel .theme-shell-page .main").evaluate((main) => {
