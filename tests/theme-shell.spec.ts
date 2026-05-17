@@ -741,17 +741,23 @@ test.describe("program theme shells", () => {
       const slide = document.querySelector("[data-testid='powerpoint-slide-canvas']") as HTMLElement;
       const frame = document.querySelector(".powerpoint-content-frame") as HTMLElement;
       const notes = document.querySelector("[data-testid='powerpoint-notes']") as HTMLElement;
+      const canvasStyle = window.getComputedStyle(canvas);
       const slideRect = slide.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
       const thumbnailRects = thumbnails.map((thumbnail) => thumbnail.getBoundingClientRect());
       const activeStyle = window.getComputedStyle(activeSlide);
+      const canvasInnerWidth =
+        canvas.clientWidth - parseFloat(canvasStyle.paddingLeft) - parseFloat(canvasStyle.paddingRight);
+      const canvasInnerHeight =
+        canvas.clientHeight - parseFloat(canvasStyle.paddingTop) - parseFloat(canvasStyle.paddingBottom);
 
       return {
         slideCount: slideLinks.length,
         thumbnailAspectRatios: thumbnailRects.map((rect) => rect.width / rect.height),
         activeBorderColor: activeStyle.borderTopColor,
         inactiveBorderColor: window.getComputedStyle(slideLinks[1]).borderTopColor,
-        slideAspectRatio: slideRect.width / slideRect.height,
+        canvasInnerWidth,
+        canvasInnerHeight,
         frameWidth: frameRect.width,
         frameHeight: frameRect.height,
         slideWidth: slideRect.width,
@@ -766,7 +772,8 @@ test.describe("program theme shells", () => {
     expect(powerpointSlideMetrics.slideCount).toBeGreaterThanOrEqual(6);
     expect(powerpointSlideMetrics.thumbnailAspectRatios.every((ratio) => Math.abs(ratio - 16 / 9) < 0.04)).toBe(true);
     expect(powerpointSlideMetrics.activeBorderColor).not.toBe(powerpointSlideMetrics.inactiveBorderColor);
-    expect(Math.abs(powerpointSlideMetrics.slideAspectRatio - 16 / 9)).toBeLessThan(0.03);
+    expect(Math.abs(powerpointSlideMetrics.slideWidth - powerpointSlideMetrics.canvasInnerWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(powerpointSlideMetrics.slideHeight - powerpointSlideMetrics.canvasInnerHeight)).toBeLessThanOrEqual(2);
     expect(Math.abs(powerpointSlideMetrics.frameWidth - powerpointSlideMetrics.slideWidth)).toBeLessThanOrEqual(1);
     expect(Math.abs(powerpointSlideMetrics.frameHeight - powerpointSlideMetrics.slideHeight)).toBeLessThanOrEqual(1);
     expect(powerpointSlideMetrics.canvasBackground).not.toBe(powerpointSlideMetrics.slideBackground);
