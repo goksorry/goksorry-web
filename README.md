@@ -70,7 +70,7 @@
 ## 성능 / 안정성 작업 메모
 
 - 곡소리방 목록은 글 row와 `reply_count`를 먼저 가져오고, 덧글 본문은 사용자가 덧글 영역을 열 때 `/api/goksorry-room/replies`에서 lazy load합니다.
-- `reply_count`는 Supabase migration `20260517142230_goksorry-room-reply-count.sql`의 trigger로 유지합니다. `20260516143611_goksorry-room-reply-160.sql`와 함께 remote project `oldbntwoxhtaehpirepn`에 적용했습니다.
+- `reply_count`는 Supabase trigger로 유지하며, 곡소리방 덧글 최대 길이는 160자입니다.
 - 로그인 세션 안정성을 위해 NextAuth session cookie 감지는 chunked cookie(`next-auth.session-token.0`, `__Secure-next-auth.session-token.0`)까지 포함합니다.
 - 데스크톱 채팅 사이드바와 모바일 채팅 독은 사용자가 열 때만 `LiveChat` 번들과 chat session/WebSocket 초기화를 시작합니다.
 - 정책 변경 배너 조회는 60초 cache를 사용하고, 관리자 정책 저장 시 cache tag를 무효화합니다.
