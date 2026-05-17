@@ -1760,6 +1760,7 @@ test.describe("program theme shells", () => {
     });
 
     await page.goto("/?theme=jetbrains-dark");
+    await expect(page.locator(".jetbrains-content-frame")).toBeVisible();
     expect(await readRootThemeVars(page, ["--brand", "--jetbrains-toolbar-bg", "--jetbrains-tool-window-bar-bg", "--jetbrains-editor-bg"])).toMatchObject({
       "--brand": "#3574f0",
       "--jetbrains-toolbar-bg": "#2b2d30",
@@ -1988,7 +1989,8 @@ test.describe("program theme shells", () => {
             leftSpread: lefts.length ? Math.max(...lefts) - Math.min(...lefts) : 0,
             topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
             cardDisplays: cards.map((card) => window.getComputedStyle(card).display),
-            secondSeparator: cards[1] ? window.getComputedStyle(cards[1], "::before").content : ""
+            secondSeparator: cards[1] ? window.getComputedStyle(cards[1], "::before").content : "",
+            secondLineSeparator: cards[1] ? window.getComputedStyle(cards[1], "::after").content : ""
           };
         };
 
@@ -2025,6 +2027,133 @@ test.describe("program theme shells", () => {
           secondLaneStartsAfterFirst: laneRects[1] ? laneRects[1].left >= laneRects[0].right - 1 : false,
           scrollWidth: columns.scrollWidth,
           clientWidth: columns.clientWidth
+        };
+      }, shellClass);
+    };
+    const readBoardEditorLayout = async (shellClass: string) => {
+      return page.evaluate((targetShellClass) => {
+        const root = document.querySelector(`.${targetShellClass} .theme-shell-page .main`) as HTMLElement;
+        const grid = root.querySelector(".board-grid") as HTMLElement;
+        if (grid.querySelectorAll(".board-card").length < 3) {
+          grid.innerHTML = `
+            <a href="/community/free" class="card board-card"><h3>자유게시판</h3></a>
+            <a href="/community/notice" class="card board-card"><h3>공지</h3></a>
+            <a href="/community/market" class="card board-card"><h3>시장 이야기</h3></a>
+          `;
+        }
+        const cards = Array.from(grid.querySelectorAll(".board-card")).slice(0, 3) as HTMLElement[];
+        const headings = cards.map((card) => card.querySelector("h3") as HTMLElement);
+        const gridStyle = window.getComputedStyle(grid);
+        const rects = cards.map((card) => card.getBoundingClientRect());
+        const tops = rects.map((rect) => rect.top);
+        const widths = rects.map((rect) => rect.width);
+        const headingStyles = headings.map((heading) => window.getComputedStyle(heading));
+
+        return {
+          display: gridStyle.display,
+          gridColumnCount: gridStyle.gridTemplateColumns.split(" ").filter(Boolean).length,
+          cardCount: cards.length,
+          topSpread: Math.max(...tops) - Math.min(...tops),
+          widthSpread: Math.max(...widths) - Math.min(...widths),
+          cardDisplays: cards.map((card) => window.getComputedStyle(card).display),
+          headingWhiteSpaces: headingStyles.map((style) => style.whiteSpace),
+          headingOverflows: headingStyles.map((style) => style.overflowX),
+          headingTextOverflows: headingStyles.map((style) => style.textOverflow),
+          scrollWidth: grid.scrollWidth,
+          clientWidth: grid.clientWidth
+        };
+      }, shellClass);
+    };
+    const readPostAndRoomSeparatorLayout = async (shellClass: string) => {
+      return page.evaluate((targetShellClass) => {
+        const root = document.querySelector(`.${targetShellClass} .theme-shell-page .main`) as HTMLElement;
+        let postList = root.querySelector(".community-post-list") as HTMLElement | null;
+        if (!postList) {
+          postList = document.createElement("div");
+          postList.className = "community-post-list";
+          root.appendChild(postList);
+        }
+        postList.innerHTML = `<a href="/community/free/post-1" class="community-post-row community-post-row-board">
+          <span class="community-post-board">자유게시판</span>
+          <strong class="community-post-title">
+            <span>IDE 테마 게시글 제목</span>
+            <span class="community-post-comment-count">[3]</span>
+          </strong>
+          <span class="community-post-meta community-post-meta-board">
+            <span class="community-post-board-mobile">자유게시판</span>
+            <span class="community-post-author">작성자</span>
+            <time class="community-post-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17</time>
+          </span>
+        </a>`;
+
+        const roomEntry = document.createElement("article");
+        roomEntry.className = "goksorry-room-entry ide-room-separator-fixture";
+        roomEntry.innerHTML = `<div class="goksorry-room-entry-main">
+          <p title="곡소리방 의견 제목">곡소리방 의견 제목</p>
+          <div class="goksorry-room-meta">
+            <span>작성자</span>
+            <time datetime="2026-05-17T00:00:00.000Z">2026.05.17</time>
+          </div>
+        </div>
+        <div class="goksorry-room-actions">
+          <button type="button" class="btn-secondary">덧글 2</button>
+          <button type="button" class="btn-secondary">삭제</button>
+        </div>`;
+        root.appendChild(roomEntry);
+
+        const postRow = postList.querySelector(".community-post-row") as HTMLElement;
+        const postTitle = postRow.querySelector(".community-post-title") as HTMLElement;
+        const postBoard = postRow.querySelector(".community-post-board") as HTMLElement;
+        const postMobileBoard = postRow.querySelector(".community-post-board-mobile") as HTMLElement;
+        const postAuthor = postRow.querySelector(".community-post-author") as HTMLElement;
+        const postTime = postRow.querySelector(".community-post-time") as HTMLElement;
+        const roomTitle = roomEntry.querySelector(".goksorry-room-entry-main > p") as HTMLElement;
+        const roomAuthor = roomEntry.querySelector(".goksorry-room-meta > span") as HTMLElement;
+        const roomTime = roomEntry.querySelector(".goksorry-room-meta > time") as HTMLElement;
+	        const [replyButton, deleteButton] = Array.from(roomEntry.querySelectorAll(".goksorry-room-actions > button")) as HTMLElement[];
+	        const rect = (element: HTMLElement) => element.getBoundingClientRect();
+	        const centerY = (element: HTMLElement) => {
+	          const bounds = rect(element);
+	          return bounds.top + bounds.height / 2;
+	        };
+
+        return {
+          post: {
+            rowDisplay: window.getComputedStyle(postRow).display,
+            rowFlexWrap: window.getComputedStyle(postRow).flexWrap,
+            titleLeft: rect(postTitle).left,
+            boardLeft: rect(postBoard).left,
+            authorLeft: rect(postAuthor).left,
+            timeLeft: rect(postTime).left,
+            titleTop: Math.round(rect(postTitle).top),
+            boardTop: Math.round(rect(postBoard).top),
+            authorTop: Math.round(rect(postAuthor).top),
+            timeTop: Math.round(rect(postTime).top),
+            boardBefore: window.getComputedStyle(postBoard, "::before").content,
+            authorBefore: window.getComputedStyle(postAuthor, "::before").content,
+            timeBefore: window.getComputedStyle(postTime, "::before").content,
+            mobileBoardDisplay: window.getComputedStyle(postMobileBoard).display
+          },
+          room: {
+            rowDisplay: window.getComputedStyle(roomEntry).display,
+            rowFlexWrap: window.getComputedStyle(roomEntry).flexWrap,
+            titleLeft: rect(roomTitle).left,
+            authorLeft: rect(roomAuthor).left,
+            replyLeft: rect(replyButton).left,
+            deleteLeft: rect(deleteButton).left,
+	            titleTop: Math.round(rect(roomTitle).top),
+	            authorTop: Math.round(rect(roomAuthor).top),
+	            replyTop: Math.round(rect(replyButton).top),
+	            deleteTop: Math.round(rect(deleteButton).top),
+	            titleCenterY: centerY(roomTitle),
+	            authorCenterY: centerY(roomAuthor),
+	            replyCenterY: centerY(replyButton),
+	            deleteCenterY: centerY(deleteButton),
+	            authorBefore: window.getComputedStyle(roomAuthor, "::before").content,
+	            replyBefore: window.getComputedStyle(replyButton, "::before").content,
+	            deleteBefore: window.getComputedStyle(deleteButton, "::before").content,
+            timeDisplay: window.getComputedStyle(roomTime).display
+          }
         };
       }, shellClass);
     };
@@ -2145,6 +2274,7 @@ test.describe("program theme shells", () => {
       expect(desktopOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.market.clientWidth + 1);
       expect(desktopOverviewLayout.market.cardDisplays.every((display) => display === "grid")).toBe(true);
       expect(desktopOverviewLayout.market.secondSeparator).toContain("|");
+      expect(desktopOverviewLayout.market.secondLineSeparator).toContain("|");
       for (const card of desktopOverviewLayout.marketCards) {
         expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
         expect(card.labelTopOffset).toBeLessThanOrEqual(2);
@@ -2167,6 +2297,7 @@ test.describe("program theme shells", () => {
       expect(desktopOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.community.clientWidth + 1);
       expect(desktopOverviewLayout.community.cardDisplays.every((display) => display === "grid")).toBe(true);
       expect(desktopOverviewLayout.community.secondSeparator).toContain("|");
+      expect(desktopOverviewLayout.community.secondLineSeparator).toContain("|");
       for (const card of desktopOverviewLayout.communityCards) {
         expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
         expect(card.labelTopOffset).toBeLessThanOrEqual(2);
@@ -2189,6 +2320,141 @@ test.describe("program theme shells", () => {
       expect(desktopFeedLayout.secondLaneStartsAfterFirst).toBe(true);
       expect(desktopFeedLayout.scrollWidth).toBeLessThanOrEqual(desktopFeedLayout.clientWidth + 1);
 
+      await page.goto(`/community?theme=${item.theme}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      const desktopBoardLayout = await readBoardEditorLayout(item.shellClass);
+      expect(desktopBoardLayout.display).toBe("grid");
+      expect(desktopBoardLayout.gridColumnCount).toBe(3);
+      expect(desktopBoardLayout.cardCount).toBe(3);
+      expect(desktopBoardLayout.topSpread).toBeLessThanOrEqual(1);
+      expect(desktopBoardLayout.widthSpread).toBeLessThanOrEqual(1);
+      expect(desktopBoardLayout.cardDisplays.every((display) => display === "flex")).toBe(true);
+      expect(desktopBoardLayout.headingWhiteSpaces.every((whiteSpace) => whiteSpace === "nowrap")).toBe(true);
+      expect(desktopBoardLayout.headingOverflows.every((overflow) => overflow === "hidden")).toBe(true);
+      expect(desktopBoardLayout.headingTextOverflows.every((overflow) => overflow === "ellipsis")).toBe(true);
+      expect(desktopBoardLayout.scrollWidth).toBeLessThanOrEqual(desktopBoardLayout.clientWidth + 1);
+
+      const separatorLayout = await readPostAndRoomSeparatorLayout(item.shellClass);
+      expect(separatorLayout.post.rowDisplay).toBe("flex");
+      expect(separatorLayout.post.rowFlexWrap).toBe("nowrap");
+      expect(separatorLayout.post.titleLeft).toBeLessThan(separatorLayout.post.boardLeft);
+      expect(separatorLayout.post.boardLeft).toBeLessThan(separatorLayout.post.authorLeft);
+      expect(separatorLayout.post.authorLeft).toBeLessThan(separatorLayout.post.timeLeft);
+      expect(new Set([separatorLayout.post.titleTop, separatorLayout.post.boardTop, separatorLayout.post.authorTop, separatorLayout.post.timeTop]).size).toBe(1);
+      expect(separatorLayout.post.boardBefore).toContain("|");
+      expect(separatorLayout.post.authorBefore).toContain("|");
+      expect(separatorLayout.post.timeBefore).toContain("|");
+      expect(separatorLayout.post.mobileBoardDisplay).toBe("none");
+      expect(separatorLayout.room.rowDisplay).toBe("flex");
+      expect(separatorLayout.room.rowFlexWrap).toBe("nowrap");
+	      expect(separatorLayout.room.titleLeft).toBeLessThan(separatorLayout.room.authorLeft);
+	      expect(separatorLayout.room.authorLeft).toBeLessThan(separatorLayout.room.replyLeft);
+	      expect(separatorLayout.room.replyLeft).toBeLessThan(separatorLayout.room.deleteLeft);
+	      expect(
+	        Math.max(
+	          separatorLayout.room.titleCenterY,
+	          separatorLayout.room.authorCenterY,
+	          separatorLayout.room.replyCenterY,
+	          separatorLayout.room.deleteCenterY
+	        ) -
+	          Math.min(
+	            separatorLayout.room.titleCenterY,
+	            separatorLayout.room.authorCenterY,
+	            separatorLayout.room.replyCenterY,
+	            separatorLayout.room.deleteCenterY
+	          )
+	      ).toBeLessThanOrEqual(4);
+	      expect(separatorLayout.room.authorBefore).toContain("|");
+      expect(separatorLayout.room.replyBefore).toContain("|");
+      expect(separatorLayout.room.deleteBefore).toContain("|");
+      expect(separatorLayout.room.timeDisplay).toBe("none");
+
+      await page.goto(`/?theme=${item.theme}&channels=toss`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      await page.locator(`.${item.shellClass} .sentiment-lane-fear .sentiment-list`).evaluate((list) => {
+        list.innerHTML = `<article class="sentiment-card sentiment-card-fear">
+          <div class="sentiment-card-head">
+            <div class="sentiment-card-head-tags">
+              <span class="tag sentiment-card-tag">토스증권 종목토론</span>
+              <span class="tag tag-symbol sentiment-card-tag">삼성전자</span>
+            </div>
+            <div class="sentiment-card-head-meta">
+              <button type="button" class="sentiment-clean-toggle"><span>필터</span><span>해제</span></button>
+              <time class="sentiment-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17 09:30:00</time>
+            </div>
+          </div>
+          <div class="sentiment-card-body">
+            <span class="sentiment-title-stack">
+              <a class="sentiment-title sentiment-title-layer sentiment-title-layer-visible" href="#">IDE 테마 피드 포맷 검증 제목</a>
+            </span>
+          </div>
+        </article>`;
+      });
+      const feedSelectionMetrics = await page.evaluate((shellClass) => {
+        const root = document.querySelector(`.${shellClass} .theme-shell-page .main`) as HTMLElement;
+        const activeChip = root.querySelector(".feed-channel-buttons .filter-chip-active") as HTMLElement;
+        const inactiveChip = Array.from(root.querySelectorAll(".feed-channel-buttons .filter-chip")).find(
+          (button) => button !== activeChip
+        ) as HTMLElement;
+        const activeCard = root.querySelector(".overview-card-community.overview-card-active") as HTMLElement;
+        const inactiveCard = Array.from(root.querySelectorAll(".overview-card-community")).find((card) => card !== activeCard) as HTMLElement;
+        const activeLabel = activeCard.querySelector(".overview-label") as HTMLElement;
+        const inactiveLabel = inactiveCard.querySelector(".overview-label") as HTMLElement;
+        const activeScore = activeCard.querySelector(".overview-score-badge") as HTMLElement;
+        const inactiveScore = inactiveCard.querySelector(".overview-score-badge") as HTMLElement;
+        const card = root.querySelector(".sentiment-lane-fear .sentiment-card") as HTMLElement;
+        const tags = card.querySelector(".sentiment-card-head-tags") as HTMLElement;
+        const tagItems = Array.from(card.querySelectorAll(".sentiment-card-tag")) as HTMLElement[];
+        const cleanToggle = card.querySelector(".sentiment-clean-toggle") as HTMLElement;
+        const time = card.querySelector(".sentiment-time") as HTMLElement;
+        const title = card.querySelector(".sentiment-title") as HTMLElement;
+        const tagsRect = tags.getBoundingClientRect();
+        const timeRect = time.getBoundingClientRect();
+        const titleRect = title.getBoundingClientRect();
+        const toWeight = (value: string) => {
+          if (value === "normal") {
+            return 400;
+          }
+          if (value === "bold") {
+            return 700;
+          }
+          return Number.parseFloat(value);
+        };
+
+        return {
+          activeChipWeight: toWeight(window.getComputedStyle(activeChip).fontWeight),
+          inactiveChipWeight: toWeight(window.getComputedStyle(inactiveChip).fontWeight),
+          activeLabelWeight: toWeight(window.getComputedStyle(activeLabel).fontWeight),
+          inactiveLabelWeight: toWeight(window.getComputedStyle(inactiveLabel).fontWeight),
+          activeScoreColor: window.getComputedStyle(activeScore).color,
+          inactiveScoreColor: window.getComputedStyle(inactiveScore).color,
+          tagsBefore: window.getComputedStyle(tags, "::before").content,
+          tagsAfter: window.getComputedStyle(tags, "::after").content,
+          firstTagBefore: window.getComputedStyle(tagItems[0], "::before").content,
+          firstTagAfter: window.getComputedStyle(tagItems[0], "::after").content,
+          secondTagBefore: window.getComputedStyle(tagItems[1], "::before").content,
+          secondTagAfter: window.getComputedStyle(tagItems[1], "::after").content,
+          cleanToggleDisplay: window.getComputedStyle(cleanToggle).display,
+          cardDisplay: window.getComputedStyle(card).display,
+          tagsTop: Math.round(tagsRect.top),
+          timeTop: Math.round(timeRect.top),
+          titleTop: Math.round(titleRect.top)
+        };
+      }, item.shellClass);
+      expect(feedSelectionMetrics.activeChipWeight).toBeGreaterThan(feedSelectionMetrics.inactiveChipWeight);
+      expect(feedSelectionMetrics.activeLabelWeight).toBeGreaterThan(feedSelectionMetrics.inactiveLabelWeight);
+      expect(feedSelectionMetrics.activeScoreColor).toBe(feedSelectionMetrics.inactiveScoreColor);
+      expect(feedSelectionMetrics.tagsBefore).toContain("[");
+      expect(feedSelectionMetrics.tagsAfter).toContain("]");
+      expect(feedSelectionMetrics.firstTagBefore).not.toContain("[");
+      expect(feedSelectionMetrics.firstTagAfter).not.toContain("]");
+      expect(feedSelectionMetrics.secondTagBefore).toContain(",");
+      expect(feedSelectionMetrics.secondTagAfter).not.toContain("]");
+      expect(feedSelectionMetrics.cleanToggleDisplay).toBe("none");
+      expect(feedSelectionMetrics.cardDisplay).toBe("grid");
+      expect(feedSelectionMetrics.timeTop).toBeGreaterThan(feedSelectionMetrics.tagsTop);
+      expect(feedSelectionMetrics.titleTop).toBeGreaterThan(feedSelectionMetrics.timeTop);
+
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`/?theme=${item.theme}`);
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
@@ -2199,6 +2465,7 @@ test.describe("program theme shells", () => {
       expect(mobileOverviewLayout.market.topIncreases).toBe(true);
       expect(mobileOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.market.clientWidth + 1);
       expect(mobileOverviewLayout.market.secondSeparator).not.toContain("|");
+      expect(mobileOverviewLayout.market.secondLineSeparator).not.toContain("|");
       for (const card of mobileOverviewLayout.marketCards) {
         expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
         expect(card.valueRightOffset).toBeLessThanOrEqual(1);
@@ -2210,6 +2477,7 @@ test.describe("program theme shells", () => {
       expect(mobileOverviewLayout.community.topIncreases).toBe(true);
       expect(mobileOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.community.clientWidth + 1);
       expect(mobileOverviewLayout.community.secondSeparator).not.toContain("|");
+      expect(mobileOverviewLayout.community.secondLineSeparator).not.toContain("|");
       for (const card of mobileOverviewLayout.communityCards) {
         expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
         expect(card.scoreRightOffset).toBeLessThanOrEqual(1);
@@ -2220,15 +2488,24 @@ test.describe("program theme shells", () => {
   test("concept content surfaces adapt to the program family", async ({ page }) => {
     await prepareThemePage(page);
     await page.goto("/auth/login?theme=vscode-dark");
+    await expect.poll(async () => page.locator(".vscode-gutter span").count()).toBeGreaterThan(1);
     const vscodeSurface = await page.getByTestId("theme-content-document").evaluate((element) => {
       const documentStyle = window.getComputedStyle(element);
       const frame = document.querySelector(".vscode-content-frame") as Element;
       const frameStyle = window.getComputedStyle(frame);
-      const lineNumberStyle = window.getComputedStyle(element, "::before");
+      const gutter = document.querySelector(".vscode-gutter") as HTMLElement;
+      const lineNumbers = [...gutter.querySelectorAll("span")] as HTMLElement[];
+      const firstLine = lineNumbers[0];
+      const secondLine = lineNumbers[1];
+      const gutterStyle = window.getComputedStyle(gutter);
       const footer = element.querySelector(".site-footer") as HTMLElement;
       const documentRect = element.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
       const footerRect = footer.getBoundingClientRect();
+      const firstLineRect = firstLine.getBoundingClientRect();
+      const secondLineRect = secondLine.getBoundingClientRect();
+      const documentLineHeight = parseFloat(documentStyle.lineHeight);
+      const documentPaddingTop = parseFloat(documentStyle.paddingTop);
 
       return {
         fontFamily: documentStyle.fontFamily.toLowerCase(),
@@ -2237,9 +2514,15 @@ test.describe("program theme shells", () => {
         frameFooterGap: frameRect.bottom - footerRect.bottom,
         frameScrollHeight: frame.scrollHeight,
         frameClientHeight: frame.clientHeight,
-        lineNumbers: lineNumberStyle.content,
-        lineNumberBoxSizing: lineNumberStyle.boxSizing,
-        lineNumberPaddingRight: parseFloat(lineNumberStyle.paddingRight)
+        lineCount: lineNumbers.length,
+        firstLine: firstLine.textContent,
+        secondLine: secondLine.textContent,
+        lineNumberBoxSizing: gutterStyle.boxSizing,
+        lineNumberPaddingRight: parseFloat(gutterStyle.paddingRight),
+        gutterLineHeight: parseFloat(gutterStyle.lineHeight),
+        documentLineHeight,
+        firstLineOffset: firstLineRect.top - (documentRect.top + documentPaddingTop),
+        lineStep: secondLineRect.top - firstLineRect.top
       };
     });
     expect(vscodeSurface.fontFamily).toContain("monospace");
@@ -2247,28 +2530,45 @@ test.describe("program theme shells", () => {
     expect(vscodeSurface.footerGap).toBeLessThanOrEqual(32);
     expect(vscodeSurface.frameFooterGap).toBeLessThanOrEqual(32);
     expect(vscodeSurface.frameScrollHeight).toBeLessThanOrEqual(vscodeSurface.frameClientHeight + 2);
+    expect(vscodeSurface.lineCount).toBeGreaterThan(0);
     expect(vscodeSurface.lineNumberBoxSizing).toBe("border-box");
     expect(vscodeSurface.lineNumberPaddingRight).toBeGreaterThan(8);
-    expect(vscodeSurface.lineNumbers).toContain("2");
-    expect(vscodeSurface.lineNumbers).toContain("3");
-    expect(vscodeSurface.lineNumbers).not.toContain("¢");
-    expect(vscodeSurface.lineNumbers).not.toContain("£");
+    expect(vscodeSurface.firstLine).toBe("1");
+    expect(vscodeSurface.secondLine).toBe("2");
+    expect(Math.abs(vscodeSurface.gutterLineHeight - vscodeSurface.documentLineHeight)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(vscodeSurface.firstLineOffset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(vscodeSurface.lineStep - vscodeSurface.documentLineHeight)).toBeLessThanOrEqual(1);
 
     await page.goto("/docs?theme=vscode-dark");
     await expect(page.locator(".vscode-content-frame")).toBeVisible();
+    await expect.poll(async () => page.locator(".vscode-gutter span").count()).toBeGreaterThan(40);
     const vscodeScroll = await page.evaluate(() => {
       const frame = document.querySelector(".vscode-content-frame") as HTMLElement;
+      const documentElement = document.querySelector(".theme-shell-vscode .theme-shell-content-document") as HTMLElement;
+      const gutter = document.querySelector(".vscode-gutter") as HTMLElement;
       frame.scrollTop = frame.scrollHeight;
+      const lastLine = gutter.querySelector("span:last-child") as HTMLElement;
+      const lastLineRect = lastLine.getBoundingClientRect();
+      const documentRect = documentElement.getBoundingClientRect();
+      const lineHeight = parseFloat(window.getComputedStyle(documentElement).lineHeight);
       return {
         clientHeight: frame.clientHeight,
         scrollHeight: frame.scrollHeight,
-        scrollTop: frame.scrollTop
+        scrollTop: frame.scrollTop,
+        lineCount: gutter.querySelectorAll("span").length,
+        lastLine: lastLine.textContent,
+        lastLineBottom: lastLineRect.bottom,
+        documentBottom: documentRect.bottom,
+        lineHeight
       };
     });
     expect(vscodeScroll.scrollHeight).toBeGreaterThan(vscodeScroll.clientHeight);
     expect(vscodeScroll.scrollTop).toBeGreaterThan(100);
+    expect(Number(vscodeScroll.lastLine)).toBe(vscodeScroll.lineCount);
+    expect(vscodeScroll.lastLineBottom).toBeGreaterThanOrEqual(vscodeScroll.documentBottom - vscodeScroll.lineHeight);
 
     await page.goto("/auth/login?theme=jetbrains-light");
+    await expect.poll(async () => page.locator(".jetbrains-gutter span").count()).toBeGreaterThan(1);
     const jetbrainsSurface = await page.evaluate(() => {
       const gutter = document.querySelector(".jetbrains-gutter") as HTMLElement;
       const lineNumbers = [...gutter.querySelectorAll("span")] as HTMLElement[];
@@ -2300,7 +2600,7 @@ test.describe("program theme shells", () => {
         lineStep: secondLineRect.top - firstLineRect.top
       };
     });
-    expect(jetbrainsSurface.lineCount).toBeGreaterThanOrEqual(60);
+    expect(jetbrainsSurface.lineCount).toBeGreaterThan(0);
     expect(jetbrainsSurface.bodyOverflowY).toBe("auto");
     expect(jetbrainsSurface.bodyScrollHeight).toBeLessThanOrEqual(jetbrainsSurface.bodyClientHeight + 2);
     expect(jetbrainsSurface.frameOverflowY).toBe("visible");
@@ -2314,17 +2614,29 @@ test.describe("program theme shells", () => {
     const jetbrainsScroll = await page.evaluate(() => {
       const body = document.querySelector(".jetbrains-editor-body") as HTMLElement;
       const frame = document.querySelector(".jetbrains-content-frame") as HTMLElement;
+      const documentElement = document.querySelector(".theme-shell-jetbrains .theme-shell-content-document") as HTMLElement;
+      const gutter = document.querySelector(".jetbrains-gutter") as HTMLElement;
+      const firstLine = gutter.querySelector("span") as HTMLElement;
+      const beforeFirstLineTop = firstLine.getBoundingClientRect().top;
       body.scrollTop = body.scrollHeight;
+      const afterFirstLineTop = firstLine.getBoundingClientRect().top;
       return {
         bodyClientHeight: body.clientHeight,
         bodyScrollHeight: body.scrollHeight,
         bodyScrollTop: body.scrollTop,
-        frameScrollTop: frame.scrollTop
+        frameScrollTop: frame.scrollTop,
+        firstLineDelta: afterFirstLineTop - beforeFirstLineTop,
+        bodyBackground: window.getComputedStyle(body).backgroundColor,
+        frameBackground: window.getComputedStyle(frame).backgroundColor,
+        documentBackground: window.getComputedStyle(documentElement).backgroundColor
       };
     });
     expect(jetbrainsScroll.bodyScrollHeight).toBeGreaterThan(jetbrainsScroll.bodyClientHeight);
     expect(jetbrainsScroll.bodyScrollTop).toBeGreaterThan(100);
     expect(jetbrainsScroll.frameScrollTop).toBe(0);
+    expect(jetbrainsScroll.firstLineDelta).toBeLessThan(-100);
+    expect(jetbrainsScroll.documentBackground).toBe(jetbrainsScroll.frameBackground);
+    expect(jetbrainsScroll.bodyBackground).toBe(jetbrainsScroll.frameBackground);
 
     await page.goto("/?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {

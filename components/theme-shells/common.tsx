@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
@@ -346,6 +346,104 @@ export function RouteLinks({
         </Link>
       ))}
     </nav>
+  );
+}
+
+const IDE_LINE_COUNT_FALLBACK = 1;
+const IDE_LINE_COUNT_MAX = 2000;
+
+type ShellLineNumberMetrics = {
+  count: number;
+  height: number;
+};
+
+export function ShellLineNumbers({
+  className,
+  targetSelector
+}: {
+  className: string;
+  targetSelector: string;
+}) {
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const [metrics, setMetrics] = useState<ShellLineNumberMetrics>({
+    count: IDE_LINE_COUNT_FALLBACK,
+    height: 0
+  });
+
+  useEffect(() => {
+    const gutter = gutterRef.current;
+    const shell = gutter?.closest(".theme-shell") ?? document;
+    const target = shell.querySelector<HTMLElement>(targetSelector);
+    if (!gutter || !target) {
+      return;
+    }
+
+    let frameId = 0;
+    const updateLineCount = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        const targetStyle = window.getComputedStyle(target);
+        const lineHeight = Number.parseFloat(targetStyle.lineHeight);
+        const paddingTop = Number.parseFloat(targetStyle.paddingTop);
+        const paddingBottom = Number.parseFloat(targetStyle.paddingBottom);
+        const usableHeight =
+          target.scrollHeight -
+          (Number.isFinite(paddingTop) ? paddingTop : 0) -
+          (Number.isFinite(paddingBottom) ? paddingBottom : 0);
+        const nextLineCount = Math.max(
+          1,
+          Math.min(
+            IDE_LINE_COUNT_MAX,
+            Math.ceil(usableHeight / (Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 24))
+          )
+        );
+        const nextHeight = Math.max(0, Math.ceil(target.scrollHeight));
+
+        setMetrics((current) =>
+          current.count === nextLineCount && current.height === nextHeight
+            ? current
+            : {
+                count: nextLineCount,
+                height: nextHeight
+              }
+        );
+      });
+    };
+
+    updateLineCount();
+
+    const resizeObserver = new ResizeObserver(updateLineCount);
+    resizeObserver.observe(target);
+    for (const child of Array.from(target.children)) {
+      resizeObserver.observe(child);
+    }
+
+    const mutationObserver = new MutationObserver(updateLineCount);
+    mutationObserver.observe(target, {
+      attributes: true,
+      childList: true,
+      subtree: true
+    });
+    window.addEventListener("resize", updateLineCount);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", updateLineCount);
+    };
+  }, [targetSelector]);
+
+  const style = {
+    "--ide-line-number-height": metrics.height > 0 ? `${metrics.height}px` : "100%"
+  } as CSSProperties;
+
+  return (
+    <div ref={gutterRef} className={className} style={style} aria-hidden="true">
+      {Array.from({ length: metrics.count }, (_, index) => (
+        <span key={index}>{index + 1}</span>
+      ))}
+    </div>
   );
 }
 

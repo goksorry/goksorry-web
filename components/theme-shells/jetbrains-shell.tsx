@@ -8,6 +8,7 @@ import {
   ShellCommandButton,
   ShellHeaderActions,
   ShellIcon,
+  ShellLineNumbers,
   ShellNavLinks,
   ShellStatusBar,
   isRouteActive,
@@ -60,11 +61,10 @@ export function JetBrainsShell({ children, option, chatSidebar }: ThemeShellProp
             ))}
           </div>
           <div className="jetbrains-editor-body">
-            <div className="jetbrains-gutter" aria-hidden="true">
-              {Array.from({ length: 60 }, (_, index) => (
-                <span key={index}>{index + 1}</span>
-              ))}
-            </div>
+            <ShellLineNumbers
+              className="jetbrains-gutter ide-line-numbers"
+              targetSelector=".jetbrains-content-frame .theme-shell-content-document"
+            />
             <div className="theme-shell-content-frame jetbrains-content-frame">{children}</div>
           </div>
         </main>

@@ -8,6 +8,7 @@ import {
   ShellCommandButton,
   ShellHeaderActions,
   ShellIcon,
+  ShellLineNumbers,
   ShellNavLinks,
   ShellStatusBar,
   isRouteActive,
@@ -58,7 +59,13 @@ export function VsCodeShell({ children, option, chatSidebar }: ThemeShellProps) 
               </Link>
             ))}
           </div>
-          <div className="theme-shell-content-frame vscode-content-frame">{children}</div>
+          <div className="theme-shell-content-frame vscode-content-frame">
+            <ShellLineNumbers
+              className="vscode-gutter ide-line-numbers"
+              targetSelector=".vscode-content-frame .theme-shell-content-document"
+            />
+            {children}
+          </div>
           <div className="vscode-panel">
             <ShellCommandButton label="Problems" icon="find" active />
             <ShellCommandButton label="Output" icon="document" />

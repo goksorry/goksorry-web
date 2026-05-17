@@ -206,25 +206,33 @@
   font-family: var(--mono-font);
 }
 
-.theme-shell-vscode .theme-shell-content-document::before {
-  content: "1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9\A 10\A 11\A 12\A 13\A 14\A 15\A 16\A 17\A 18\A 19\A 20\A 21\A 22\A 23\A 24\A 25\A 26\A 27\A 28\A 29\A 30\A 31\A 32\A 33\A 34\A 35\A 36\A 37\A 38\A 39\A 40\A 41\A 42\A 43\A 44\A 45\A 46\A 47\A 48\A 49\A 50\A 51\A 52\A 53\A 54\A 55\A 56\A 57\A 58\A 59\A 60";
+.vscode-gutter {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
   width: var(--ide-editor-gutter-width);
-  height: 100%;
+  height: var(--ide-line-number-height, 100%);
+  min-height: 100%;
   box-sizing: border-box;
   overflow: hidden;
   padding: 0.92rem 0.7rem 2rem 0;
   border-right: 1px solid var(--theme-shell-line);
+  background: var(--vscode-gutter-bg);
   color: color-mix(in srgb, var(--theme-shell-muted) 70%, transparent);
+  display: grid;
+  align-content: start;
+  gap: 0;
   font-family: var(--mono-font);
   font-size: 0.72rem;
   line-height: var(--ide-editor-line-height);
   pointer-events: none;
   text-align: right;
-  white-space: pre;
+}
+
+.vscode-gutter span {
+  height: var(--ide-editor-line-height);
+  line-height: var(--ide-editor-line-height);
 }
 
 .theme-shell-vscode .theme-shell-content-document {
@@ -822,6 +830,35 @@
   margin: 0 !important;
 }
 
+.theme-shell-vscode .theme-shell-page .main .board-grid {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 2ch;
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .board-grid .board-card {
+  min-width: 0;
+  min-height: var(--ide-editor-line-height);
+  display: flex !important;
+  align-items: baseline;
+  justify-content: center;
+  margin: 0 !important;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .board-grid .board-card h3 {
+  min-width: 0;
+  display: block !important;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .theme-shell-vscode .theme-shell-page .main .overview-heading {
   display: flex !important;
   flex-wrap: wrap;
@@ -871,10 +908,248 @@
   margin: 0 !important;
 }
 
+.theme-shell-vscode .theme-shell-page .main .community-post-row {
+  align-items: baseline;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-title {
+  order: 1;
+  min-width: 0;
+  display: inline-flex !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-title span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-board {
+  order: 2;
+  flex: 0 0 auto;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-meta {
+  display: contents !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-board-mobile {
+  display: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-author {
+  order: 3;
+  flex: 0 0 auto;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-time {
+  order: 4;
+  flex: 0 0 auto;
+}
+
+.theme-shell-vscode .theme-shell-page .main .community-post-row :where(
+  .community-post-board,
+  .community-post-author,
+  .community-post-time
+)::before {
+  content: " | ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry {
+  align-items: baseline;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main,
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta,
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions {
+  display: contents !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > p {
+  order: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span {
+  order: 2;
+  flex: 0 0 auto;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > time {
+  display: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button {
+  flex: 0 0 auto;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button:first-child {
+  order: 3;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button + button {
+  order: 4;
+}
+
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span::before,
+.theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button::before {
+  content: " | ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .filter-chip-active {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--theme-shell-accent) !important;
+  font-weight: 900 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-card-community.overview-card-active {
+  background: transparent !important;
+  border-color: transparent !important;
+  transform: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-card-community.overview-card-active .overview-label {
+  color: inherit !important;
+  font-weight: 900 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-card-community.overview-card-active .overview-score-badge {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--brand-strong) !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::after,
+.theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::after {
+  content: "|";
+  position: absolute;
+  top: var(--ide-editor-line-height);
+  left: 0;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card {
+  min-width: 0;
+  display: grid !important;
+  grid-template-rows: var(--ide-editor-line-height) var(--ide-editor-line-height) minmax(var(--ide-editor-line-height), auto);
+  gap: 0;
+  overflow: hidden;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head,
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-meta {
+  display: contents !important;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags {
+  min-width: 0;
+  display: flex !important;
+  grid-row: 1;
+  align-items: baseline;
+  gap: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags::before {
+  content: "[";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags::after {
+  content: "]";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag {
+  display: inline !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag::before,
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag::after {
+  content: "" !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag + .sentiment-card-tag::before {
+  content: ", " !important;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-clean-toggle {
+  display: none !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-time {
+  display: block !important;
+  grid-row: 2;
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-card-body {
+  display: block !important;
+  grid-row: 3;
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-title-stack {
+  display: grid !important;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.theme-shell-vscode .theme-shell-page .main .sentiment-title {
+  display: block !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .theme-shell-vscode .theme-shell-page .main .overview-market-row,
   .theme-shell-vscode .theme-shell-page .main .overview-bottom-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .board-grid {
+    grid-template-columns: repeat(3, minmax(8rem, 1fr));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .board-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .theme-shell-vscode .theme-shell-page .main .sentiment-columns {
@@ -902,7 +1177,9 @@
   }
 
   .theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before,
-  .theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before {
+  .theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::after,
+  .theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before,
+  .theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::after {
     content: "";
     margin-right: 0;
   }

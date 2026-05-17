@@ -170,16 +170,18 @@
   grid-template-columns: 3rem minmax(0, 1fr);
   overflow: auto;
   overscroll-behavior: contain;
+  background: var(--jetbrains-editor-bg);
 }
 
 .jetbrains-gutter {
-  position: sticky;
-  top: 0;
   display: grid;
   align-content: start;
   gap: 0;
-  height: 100%;
-  min-height: 0;
+  align-self: start;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--ide-line-number-height, auto);
+  min-height: 100%;
   overflow: hidden;
   padding: 0.9rem 0.45rem 1.1rem;
   border-right: 1px solid var(--theme-shell-line);
@@ -207,6 +209,7 @@
 .theme-shell-jetbrains .theme-shell-content-document {
   min-height: 100%;
   padding: 0.9rem 1.05rem 1.1rem;
+  background-color: var(--jetbrains-editor-bg);
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -767,6 +770,35 @@
   margin: 0 !important;
 }
 
+.theme-shell-jetbrains .theme-shell-page .main .board-grid {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 2ch;
+  margin: 0 0 var(--ide-editor-line-height) 0 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .board-grid .board-card {
+  min-width: 0;
+  min-height: var(--ide-editor-line-height);
+  display: flex !important;
+  align-items: baseline;
+  justify-content: center;
+  margin: 0 !important;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .board-grid .board-card h3 {
+  min-width: 0;
+  display: block !important;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .theme-shell-jetbrains .theme-shell-page .main .overview-heading {
   display: flex !important;
   flex-wrap: wrap;
@@ -816,10 +848,248 @@
   margin: 0 !important;
 }
 
+.theme-shell-jetbrains .theme-shell-page .main .community-post-row {
+  align-items: baseline;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-title {
+  order: 1;
+  min-width: 0;
+  display: inline-flex !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-title span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-board {
+  order: 2;
+  flex: 0 0 auto;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-meta {
+  display: contents !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-board-mobile {
+  display: none !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-author {
+  order: 3;
+  flex: 0 0 auto;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-time {
+  order: 4;
+  flex: 0 0 auto;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-row :where(
+  .community-post-board,
+  .community-post-author,
+  .community-post-time
+)::before {
+  content: " | ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry {
+  align-items: baseline;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main,
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta,
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions {
+  display: contents !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > p {
+  order: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span {
+  order: 2;
+  flex: 0 0 auto;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > time {
+  display: none !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button {
+  flex: 0 0 auto;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button:first-child {
+  order: 3;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button + button {
+  order: 4;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span::before,
+.theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions > button::before {
+  content: " | ";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .filter-chip-active {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--theme-shell-accent) !important;
+  font-weight: 900 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-card-community.overview-card-active {
+  background: transparent !important;
+  border-color: transparent !important;
+  transform: none !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-card-community.overview-card-active .overview-label {
+  color: inherit !important;
+  font-weight: 900 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-card-community.overview-card-active .overview-score-badge {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--brand-strong) !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-market-row .overview-card + .overview-card::after,
+.theme-shell-jetbrains .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::after {
+  content: "|";
+  position: absolute;
+  top: var(--ide-editor-line-height);
+  left: 0;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card {
+  min-width: 0;
+  display: grid !important;
+  grid-template-rows: var(--ide-editor-line-height) var(--ide-editor-line-height) minmax(var(--ide-editor-line-height), auto);
+  gap: 0;
+  overflow: hidden;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head,
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-meta {
+  display: contents !important;
+  margin: 0 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags {
+  min-width: 0;
+  display: flex !important;
+  grid-row: 1;
+  align-items: baseline;
+  gap: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags::before {
+  content: "[";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags::after {
+  content: "]";
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag {
+  display: inline !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag::before,
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag::after {
+  content: "" !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-head-tags .sentiment-card-tag + .sentiment-card-tag::before {
+  content: ", " !important;
+  color: var(--theme-shell-muted);
+  font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-clean-toggle {
+  display: none !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-time {
+  display: block !important;
+  grid-row: 2;
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-card-body {
+  display: block !important;
+  grid-row: 3;
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-title-stack {
+  display: grid !important;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .sentiment-title {
+  display: block !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .theme-shell-jetbrains .theme-shell-page .main .overview-market-row,
   .theme-shell-jetbrains .theme-shell-page .main .overview-bottom-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .theme-shell-jetbrains .theme-shell-page .main .board-grid {
+    grid-template-columns: repeat(3, minmax(8rem, 1fr));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .theme-shell-jetbrains .theme-shell-page .main .board-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .theme-shell-jetbrains .theme-shell-page .main .sentiment-columns {
@@ -847,7 +1117,9 @@
   }
 
   .theme-shell-jetbrains .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before,
-  .theme-shell-jetbrains .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before {
+  .theme-shell-jetbrains .theme-shell-page .main .overview-market-row .overview-card + .overview-card::after,
+  .theme-shell-jetbrains .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before,
+  .theme-shell-jetbrains .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::after {
     content: "";
     margin-right: 0;
   }
