@@ -46,7 +46,6 @@ const DOCS_TOOLBAR_GROUPS = [
 ] as const;
 
 const DOCS_HORIZONTAL_RULER_TICKS = ["1", "2", "3", "4", "5", "6", "7"];
-const DOCS_VERTICAL_RULER_TICKS = ["1", "2", "3", "4", "5"];
 
 function DocsToolbarButton({
   label,
@@ -168,11 +167,6 @@ export function DocsShell({ children, option, chatSidebar }: ThemeShellProps) {
           </div>
           <article className="theme-shell-content-frame docs-content-frame">
             <div className="docs-document-stage">
-              <div className="docs-vertical-ruler" aria-hidden="true">
-                {DOCS_VERTICAL_RULER_TICKS.map((tick) => (
-                  <span key={tick}>{tick}</span>
-                ))}
-              </div>
               {children}
             </div>
           </article>

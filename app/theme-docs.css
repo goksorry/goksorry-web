@@ -14,7 +14,6 @@
   --docs-ruler-ink: #6f7378;
   --docs-button-ink: #3c4043;
   --docs-page-width: clamp(42.5rem, 60vw, 67.5rem);
-  --docs-vertical-ruler-width: 3.2rem;
 }
 
 :root[data-theme="docs-dark"][data-theme-shell="docs"] {
@@ -399,13 +398,13 @@
 .docs-ruler-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: var(--docs-vertical-ruler-width) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   border-bottom: 1px solid color-mix(in srgb, var(--theme-shell-line) 78%, transparent);
   background: var(--docs-ruler-bg);
 }
 
 .docs-ruler-corner {
-  border-right: 1px solid color-mix(in srgb, var(--theme-shell-line) 78%, transparent);
+  display: none;
 }
 
 .docs-horizontal-ruler {
@@ -442,31 +441,10 @@
 .docs-document-stage {
   min-width: max-content;
   display: grid;
-  grid-template-columns: var(--docs-vertical-ruler-width) var(--docs-page-width);
+  grid-template-columns: var(--docs-page-width);
   justify-content: center;
   align-items: start;
-  padding: 0 1.2rem 3rem 0;
-}
-
-.docs-vertical-ruler {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  min-height: 62rem;
-  display: grid;
-  grid-template-rows: repeat(5, 11rem);
-  justify-items: center;
-  border-right: 1px solid color-mix(in srgb, var(--theme-shell-line) 78%, transparent);
-  background: var(--docs-ruler-bg);
-  color: var(--docs-ruler-ink);
-  font-size: 0.62rem;
-}
-
-.docs-vertical-ruler span {
-  width: 100%;
-  padding-top: 0.42rem;
-  border-top: 1px solid color-mix(in srgb, var(--theme-shell-line) 42%, transparent);
-  text-align: center;
+  padding: 0 1.2rem 3rem;
 }
 
 .theme-shell-docs .theme-shell-content-document {
@@ -576,7 +554,6 @@
 @media (max-width: 900px) {
   :root[data-theme-shell="docs"] {
     --docs-page-width: min(100%, 52.5rem);
-    --docs-vertical-ruler-width: 2.2rem;
   }
 
   .docs-titlebar {
@@ -613,8 +590,8 @@
 
   .docs-document-stage {
     min-width: 0;
-    grid-template-columns: var(--docs-vertical-ruler-width) minmax(0, 1fr);
-    padding: 0 0.7rem 2.4rem 0;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 0.7rem 2.4rem;
   }
 
   .theme-shell-docs .theme-shell-content-document {

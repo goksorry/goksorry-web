@@ -2210,18 +2210,23 @@ test.describe("program theme shells", () => {
       const frame = document.querySelector(".docs-content-frame") as HTMLElement;
       const page = document.querySelector(".theme-shell-docs .theme-shell-content-document") as HTMLElement;
       const heading = document.querySelector(".theme-shell-docs .docs-shell h1") as HTMLElement;
+      const stage = document.querySelector(".docs-document-stage") as HTMLElement;
 
       return {
         frameBackground: window.getComputedStyle(frame).backgroundColor,
         pageBackground: window.getComputedStyle(page).backgroundColor,
         pageShadow: window.getComputedStyle(page).boxShadow,
-        headingMarker: window.getComputedStyle(heading, "::before").content
+        headingMarker: window.getComputedStyle(heading, "::before").content,
+        stageColumns: window.getComputedStyle(stage).gridTemplateColumns,
+        verticalRulerCount: document.querySelectorAll(".docs-vertical-ruler").length
       };
     });
     expect(docsEditorChrome.frameBackground).toBe("rgb(241, 243, 244)");
     expect(docsEditorChrome.pageBackground).toBe("rgb(255, 255, 255)");
     expect(docsEditorChrome.pageShadow).not.toBe("none");
     expect(docsEditorChrome.headingMarker).toBe("none");
+    expect(docsEditorChrome.stageColumns.split(" ")).toHaveLength(1);
+    expect(docsEditorChrome.verticalRulerCount).toBe(0);
   });
 
   test("concept system themes resolve to the current device tone", async ({ page }) => {
