@@ -866,8 +866,17 @@
   overflow: hidden;
 }
 
-.theme-shell-jetbrains .theme-shell-page .main .community-post-title {
+.theme-shell-jetbrains .theme-shell-page .main .community-post-title-link {
   order: 1;
+  min-width: 0;
+  display: inline-flex !important;
+  overflow: hidden;
+  color: inherit !important;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-title {
   min-width: 0;
   display: inline-flex !important;
   overflow: hidden;
@@ -881,7 +890,7 @@
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .community-post-board {
-  order: 2;
+  order: 3;
   flex: 0 0 auto;
 }
 
@@ -894,23 +903,32 @@
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .community-post-author {
-  order: 3;
+  order: 5;
   flex: 0 0 auto;
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .community-post-time {
-  order: 4;
+  order: 7;
   flex: 0 0 auto;
 }
 
-.theme-shell-jetbrains .theme-shell-page .main .community-post-row :where(
-  .community-post-board,
-  .community-post-author,
-  .community-post-time
-)::before {
-  content: " | ";
+.theme-shell-jetbrains .theme-shell-page .main .community-post-separator {
+  display: inline !important;
+  flex: 0 0 auto;
   color: var(--theme-shell-muted);
   font-weight: 400;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-separator-board {
+  order: 2;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-separator-author {
+  order: 4;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .community-post-separator-time {
+  order: 6;
 }
 
 .theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry {

@@ -257,52 +257,52 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("theme-shell-brand-icon")).toHaveCount(0);
     await expect(page.locator(".header").getByRole("link", { name: "채팅" })).toHaveCount(0);
     await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
-	    await expect
-	      .poll(async () =>
-	        page.evaluate(() => {
-	          const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
-	          return link ? new URL(link.href, window.location.href).pathname : null;
-	        })
-	      )
-	      .toBe("/favicon.ico");
+      await expect
+        .poll(async () =>
+          page.evaluate(() => {
+            const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
+            return link ? new URL(link.href, window.location.href).pathname : null;
+          })
+        )
+        .toBe("/favicon.ico");
 
-	    await page.goto("/community");
-	    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
-	    await expect(page.locator(".community-board-panel")).toBeVisible();
+      await page.goto("/community");
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+      await expect(page.locator(".community-board-panel")).toBeVisible();
 
-	    const defaultBoardLayout = await page.evaluate(() => {
-	      const main = document.querySelector(".main") as HTMLElement;
-	      const panel = document.querySelector(".community-board-panel") as HTMLElement;
-	      const cards = Array.from(panel.querySelectorAll(".board-card")) as HTMLElement[];
-	      const panelStyle = window.getComputedStyle(panel);
-	      const panelRect = panel.getBoundingClientRect();
-	      const visibleChildren = Array.from(panel.children).filter((child) => {
-	        return window.getComputedStyle(child).display !== "none";
-	      }) as HTMLElement[];
-	      const childRects = visibleChildren.map((child) => child.getBoundingClientRect());
-	      const contentTop = Math.min(...childRects.map((rect) => rect.top));
-	      const contentBottom = Math.max(...childRects.map((rect) => rect.bottom));
-	      const expectedPanelHeight =
-	        contentBottom -
-	        contentTop +
-	        Number.parseFloat(panelStyle.paddingTop) +
-	        Number.parseFloat(panelStyle.paddingBottom) +
-	        Number.parseFloat(panelStyle.borderTopWidth) +
-	        Number.parseFloat(panelStyle.borderBottomWidth);
+      const defaultBoardLayout = await page.evaluate(() => {
+        const main = document.querySelector(".main") as HTMLElement;
+        const panel = document.querySelector(".community-board-panel") as HTMLElement;
+        const cards = Array.from(panel.querySelectorAll(".board-card")) as HTMLElement[];
+        const panelStyle = window.getComputedStyle(panel);
+        const panelRect = panel.getBoundingClientRect();
+        const visibleChildren = Array.from(panel.children).filter((child) => {
+          return window.getComputedStyle(child).display !== "none";
+        }) as HTMLElement[];
+        const childRects = visibleChildren.map((child) => child.getBoundingClientRect());
+        const contentTop = Math.min(...childRects.map((rect) => rect.top));
+        const contentBottom = Math.max(...childRects.map((rect) => rect.bottom));
+        const expectedPanelHeight =
+          contentBottom -
+          contentTop +
+          Number.parseFloat(panelStyle.paddingTop) +
+          Number.parseFloat(panelStyle.paddingBottom) +
+          Number.parseFloat(panelStyle.borderTopWidth) +
+          Number.parseFloat(panelStyle.borderBottomWidth);
 
-	      return {
-	        mainAlignContent: window.getComputedStyle(main).alignContent,
-	        panelAlignSelf: panelStyle.alignSelf,
-	        panelHeight: panelRect.height,
-	        expectedPanelHeight,
-	        cardMinHeights: cards.map((card) => window.getComputedStyle(card).minHeight)
-	      };
-	    });
-	    expect(defaultBoardLayout.mainAlignContent).toBe("start");
-	    expect(defaultBoardLayout.panelAlignSelf).toBe("start");
-	    expect(defaultBoardLayout.cardMinHeights.every((height) => height === "0px")).toBe(true);
-	    expect(defaultBoardLayout.panelHeight).toBeLessThanOrEqual(defaultBoardLayout.expectedPanelHeight + 1);
-	  });
+        return {
+          mainAlignContent: window.getComputedStyle(main).alignContent,
+          panelAlignSelf: panelStyle.alignSelf,
+          panelHeight: panelRect.height,
+          expectedPanelHeight,
+          cardMinHeights: cards.map((card) => window.getComputedStyle(card).minHeight)
+        };
+      });
+      expect(defaultBoardLayout.mainAlignContent).toBe("start");
+      expect(defaultBoardLayout.panelAlignSelf).toBe("start");
+      expect(defaultBoardLayout.cardMinHeights.every((height) => height === "0px")).toBe(true);
+      expect(defaultBoardLayout.panelHeight).toBeLessThanOrEqual(defaultBoardLayout.expectedPanelHeight + 1);
+    });
 
   test("default system follows the device color scheme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
@@ -975,20 +975,25 @@ test.describe("program theme shells", () => {
             <a href="/community/free/new" class="btn">글쓰기</a>
             <a href="/community" class="btn btn-secondary">게시판 목록</a>
           </div>
-          <div class="community-post-list">
-            <a href="/community/free/post-1" class="community-post-row community-post-row-board">
-              <span class="community-post-board">자유</span>
-              <strong class="community-post-title">
-                <span>엑셀 셀 정렬 검증용 게시글입니다</span>
-                <span class="community-post-comment-count">[3]</span>
-              </strong>
-              <span class="community-post-meta community-post-meta-board">
-                <span class="community-post-board-mobile">자유</span>
-                <span class="community-post-author">테스터</span>
-                <time class="community-post-time" datetime="2026-05-16T00:00:00.000Z">2026.05.16</time>
-              </span>
-            </a>
-          </div>
+            <div class="community-post-list">
+              <article class="community-post-row community-post-row-board">
+                <span class="community-post-board">자유</span>
+                <a href="/community/free/post-1" class="community-post-title-link">
+                  <strong class="community-post-title">
+                    <span>엑셀 셀 정렬 검증용 게시글입니다</span>
+                    <span class="community-post-comment-count">[3]</span>
+                  </strong>
+                </a>
+                <span class="community-post-separator community-post-separator-board" aria-hidden="true">|</span>
+                <span class="community-post-meta community-post-meta-board">
+                  <span class="community-post-board-mobile">자유</span>
+                  <span class="community-post-separator community-post-separator-author" aria-hidden="true">|</span>
+                  <span class="community-post-author">테스터</span>
+                  <span class="community-post-separator community-post-separator-time" aria-hidden="true">|</span>
+                  <time class="community-post-time" datetime="2026-05-16T00:00:00.000Z">2026.05.16</time>
+                </span>
+              </article>
+            </div>
         </section>`
       );
     });
@@ -2129,18 +2134,23 @@ test.describe("program theme shells", () => {
           postList.className = "community-post-list";
           root.appendChild(postList);
         }
-        postList.innerHTML = `<a href="/community/free/post-1" class="community-post-row community-post-row-board">
-          <span class="community-post-board">자유게시판</span>
-          <strong class="community-post-title">
-            <span>IDE 테마 게시글 제목</span>
-            <span class="community-post-comment-count">[3]</span>
-          </strong>
-          <span class="community-post-meta community-post-meta-board">
-            <span class="community-post-board-mobile">자유게시판</span>
-            <span class="community-post-author">작성자</span>
-            <time class="community-post-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17</time>
-          </span>
-        </a>`;
+          postList.innerHTML = `<article class="community-post-row community-post-row-board">
+            <span class="community-post-board">자유게시판</span>
+            <a href="/community/free/post-1" class="community-post-title-link">
+              <strong class="community-post-title">
+                <span>IDE 테마 게시글 제목</span>
+                <span class="community-post-comment-count">[3]</span>
+              </strong>
+            </a>
+            <span class="community-post-separator community-post-separator-board" aria-hidden="true">|</span>
+            <span class="community-post-meta community-post-meta-board">
+              <span class="community-post-board-mobile">자유게시판</span>
+              <span class="community-post-separator community-post-separator-author" aria-hidden="true">|</span>
+              <span class="community-post-author">작성자</span>
+              <span class="community-post-separator community-post-separator-time" aria-hidden="true">|</span>
+              <time class="community-post-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17</time>
+            </span>
+          </article>`;
 
         const roomEntry = document.createElement("article");
         roomEntry.className = "goksorry-room-entry ide-room-separator-fixture";
@@ -2159,12 +2169,16 @@ test.describe("program theme shells", () => {
         </div>`;
         root.appendChild(roomEntry);
 
-        const postRow = postList.querySelector(".community-post-row") as HTMLElement;
-        const postTitle = postRow.querySelector(".community-post-title") as HTMLElement;
-        const postBoard = postRow.querySelector(".community-post-board") as HTMLElement;
-        const postMobileBoard = postRow.querySelector(".community-post-board-mobile") as HTMLElement;
-        const postAuthor = postRow.querySelector(".community-post-author") as HTMLElement;
-        const postTime = postRow.querySelector(".community-post-time") as HTMLElement;
+          const postRow = postList.querySelector(".community-post-row") as HTMLElement;
+          const postTitleLink = postRow.querySelector(".community-post-title-link") as HTMLElement;
+          const postTitle = postRow.querySelector(".community-post-title") as HTMLElement;
+          const postBoardSeparator = postRow.querySelector(".community-post-separator-board") as HTMLElement;
+          const postBoard = postRow.querySelector(".community-post-board") as HTMLElement;
+          const postMobileBoard = postRow.querySelector(".community-post-board-mobile") as HTMLElement;
+          const postAuthorSeparator = postRow.querySelector(".community-post-separator-author") as HTMLElement;
+          const postAuthor = postRow.querySelector(".community-post-author") as HTMLElement;
+          const postTimeSeparator = postRow.querySelector(".community-post-separator-time") as HTMLElement;
+          const postTime = postRow.querySelector(".community-post-time") as HTMLElement;
         const roomTitle = roomEntry.querySelector(".goksorry-room-entry-main > p") as HTMLElement;
         const roomAuthor = roomEntry.querySelector(".goksorry-room-meta > span") as HTMLElement;
         const roomTime = roomEntry.querySelector(".goksorry-room-meta > time") as HTMLElement;
@@ -2179,22 +2193,34 @@ test.describe("program theme shells", () => {
         };
 
         return {
-          post: {
-            rowDisplay: window.getComputedStyle(postRow).display,
-            rowFlexWrap: window.getComputedStyle(postRow).flexWrap,
-            titleLeft: rect(postTitle).left,
-            boardLeft: rect(postBoard).left,
-            authorLeft: rect(postAuthor).left,
-            timeLeft: rect(postTime).left,
-            titleTop: Math.round(rect(postTitle).top),
-            boardTop: Math.round(rect(postBoard).top),
-            authorTop: Math.round(rect(postAuthor).top),
-            timeTop: Math.round(rect(postTime).top),
-            boardBefore: window.getComputedStyle(postBoard, "::before").content,
-            authorBefore: window.getComputedStyle(postAuthor, "::before").content,
-            timeBefore: window.getComputedStyle(postTime, "::before").content,
-            mobileBoardDisplay: window.getComputedStyle(postMobileBoard).display
-          },
+            post: {
+              rowDisplay: window.getComputedStyle(postRow).display,
+              rowFlexWrap: window.getComputedStyle(postRow).flexWrap,
+              rowTagName: postRow.tagName,
+              titleLinkTagName: postTitleLink.tagName,
+              titleLeft: rect(postTitleLink).left,
+              boardSeparatorLeft: rect(postBoardSeparator).left,
+              boardLeft: rect(postBoard).left,
+              authorSeparatorLeft: rect(postAuthorSeparator).left,
+              authorLeft: rect(postAuthor).left,
+              timeSeparatorLeft: rect(postTimeSeparator).left,
+              timeLeft: rect(postTime).left,
+              titleCenterY: centerY(postTitleLink),
+              boardSeparatorCenterY: centerY(postBoardSeparator),
+              boardCenterY: centerY(postBoard),
+              authorSeparatorCenterY: centerY(postAuthorSeparator),
+              authorCenterY: centerY(postAuthor),
+              timeSeparatorCenterY: centerY(postTimeSeparator),
+              timeCenterY: centerY(postTime),
+              separatorTexts: [postBoardSeparator, postAuthorSeparator, postTimeSeparator].map((separator) =>
+                separator.textContent?.trim()
+              ),
+              separatorsInsideLinks: [postBoardSeparator, postAuthorSeparator, postTimeSeparator].some((separator) =>
+                Boolean(separator.closest("a"))
+              ),
+              titleDisplay: window.getComputedStyle(postTitle).display,
+              mobileBoardDisplay: window.getComputedStyle(postMobileBoard).display
+            },
           room: {
             rowDisplay: window.getComputedStyle(roomEntry).display,
             rowFlexWrap: window.getComputedStyle(roomEntry).flexWrap,
@@ -2410,17 +2436,40 @@ test.describe("program theme shells", () => {
       expect(desktopBoardLayout.headingTextOverflows.every((overflow) => overflow === "ellipsis")).toBe(true);
       expect(desktopBoardLayout.scrollWidth).toBeLessThanOrEqual(desktopBoardLayout.clientWidth + 1);
 
-      const separatorLayout = await readPostAndRoomSeparatorLayout(item.shellClass);
-      expect(separatorLayout.post.rowDisplay).toBe("flex");
-      expect(separatorLayout.post.rowFlexWrap).toBe("nowrap");
-      expect(separatorLayout.post.titleLeft).toBeLessThan(separatorLayout.post.boardLeft);
-      expect(separatorLayout.post.boardLeft).toBeLessThan(separatorLayout.post.authorLeft);
-      expect(separatorLayout.post.authorLeft).toBeLessThan(separatorLayout.post.timeLeft);
-      expect(new Set([separatorLayout.post.titleTop, separatorLayout.post.boardTop, separatorLayout.post.authorTop, separatorLayout.post.timeTop]).size).toBe(1);
-      expect(separatorLayout.post.boardBefore).toContain("|");
-      expect(separatorLayout.post.authorBefore).toContain("|");
-      expect(separatorLayout.post.timeBefore).toContain("|");
-      expect(separatorLayout.post.mobileBoardDisplay).toBe("none");
+        const separatorLayout = await readPostAndRoomSeparatorLayout(item.shellClass);
+        expect(separatorLayout.post.rowDisplay).toBe("flex");
+        expect(separatorLayout.post.rowFlexWrap).toBe("nowrap");
+        expect(separatorLayout.post.rowTagName).not.toBe("A");
+        expect(separatorLayout.post.titleLinkTagName).toBe("A");
+        expect(separatorLayout.post.titleLeft).toBeLessThan(separatorLayout.post.boardSeparatorLeft);
+        expect(separatorLayout.post.boardSeparatorLeft).toBeLessThan(separatorLayout.post.boardLeft);
+        expect(separatorLayout.post.boardLeft).toBeLessThan(separatorLayout.post.authorSeparatorLeft);
+        expect(separatorLayout.post.authorSeparatorLeft).toBeLessThan(separatorLayout.post.authorLeft);
+        expect(separatorLayout.post.authorLeft).toBeLessThan(separatorLayout.post.timeSeparatorLeft);
+        expect(separatorLayout.post.timeSeparatorLeft).toBeLessThan(separatorLayout.post.timeLeft);
+        expect(
+          Math.max(
+            separatorLayout.post.titleCenterY,
+            separatorLayout.post.boardSeparatorCenterY,
+            separatorLayout.post.boardCenterY,
+            separatorLayout.post.authorSeparatorCenterY,
+            separatorLayout.post.authorCenterY,
+            separatorLayout.post.timeSeparatorCenterY,
+            separatorLayout.post.timeCenterY
+          ) -
+            Math.min(
+              separatorLayout.post.titleCenterY,
+              separatorLayout.post.boardSeparatorCenterY,
+              separatorLayout.post.boardCenterY,
+              separatorLayout.post.authorSeparatorCenterY,
+              separatorLayout.post.authorCenterY,
+              separatorLayout.post.timeSeparatorCenterY,
+              separatorLayout.post.timeCenterY
+            )
+        ).toBeLessThanOrEqual(4);
+        expect(separatorLayout.post.separatorTexts.every((text) => text === "|")).toBe(true);
+        expect(separatorLayout.post.separatorsInsideLinks).toBe(false);
+        expect(separatorLayout.post.mobileBoardDisplay).toBe("none");
       expect(separatorLayout.room.rowDisplay).toBe("flex");
       expect(separatorLayout.room.rowFlexWrap).toBe("nowrap");
       expect(separatorLayout.room.titleLeft).toBeLessThan(separatorLayout.room.authorLeft);

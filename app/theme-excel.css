@@ -1267,9 +1267,14 @@
 }
 
 .theme-shell-excel .community-post-row:hover,
+.theme-shell-excel .community-post-row:focus-within,
 .theme-shell-excel .community-post-row:focus-visible {
   background: color-mix(in srgb, var(--excel-cell-fill) 80%, var(--theme-shell-accent));
   transform: none;
+}
+
+.theme-shell-excel .community-post-title-link {
+  display: contents;
 }
 
 .theme-shell-excel .community-post-board,

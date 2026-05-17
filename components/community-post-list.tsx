@@ -37,26 +37,39 @@ export function CommunityPostList({
         const boardLabel = normalizeBoardLabel(post.boardLabel);
 
         return (
-          <Link
+          <article
             key={post.id}
-            href={post.href}
             className={`community-post-row${showBoardName ? " community-post-row-board" : ""}`}
           >
             {showBoardName ? <span className="community-post-board">{boardLabel}</span> : null}
 
-            <strong className="community-post-title">
-              <span>{post.title}</span>
-              <span className="community-post-comment-count">[{post.commentCount}]</span>
-            </strong>
+            <Link href={post.href} className="community-post-title-link">
+              <strong className="community-post-title">
+                <span>{post.title}</span>
+                <span className="community-post-comment-count">[{post.commentCount}]</span>
+              </strong>
+            </Link>
+
+            {showBoardName ? (
+              <span className="community-post-separator community-post-separator-board" aria-hidden="true">
+                |
+              </span>
+            ) : null}
 
             <span className={`community-post-meta${showBoardName ? " community-post-meta-board" : ""}`}>
               {showBoardName ? <span className="community-post-board-mobile">{boardLabel}</span> : null}
+              <span className="community-post-separator community-post-separator-author" aria-hidden="true">
+                |
+              </span>
               <span className="community-post-author">{post.authorNickname ?? "알 수 없음"}</span>
+              <span className="community-post-separator community-post-separator-time" aria-hidden="true">
+                |
+              </span>
               <time className="community-post-time" dateTime={post.createdAt ?? undefined}>
                 {post.createdAt ? formatKstDateTime(post.createdAt) : "-"}
               </time>
             </span>
-          </Link>
+          </article>
         );
       })}
     </div>
