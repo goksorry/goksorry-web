@@ -16,7 +16,7 @@ export default async function CommunityHomePage() {
 
   return (
     <>
-      <section className="panel">
+      <section className="panel community-board-panel">
         <h1>게시판</h1>
 
         {boardsError ? <p className="error">게시판 조회 실패: {boardsError}</p> : null}

@@ -563,6 +563,7 @@ a:hover {
   padding: var(--layout-padding);
   display: grid;
   gap: var(--layout-gap);
+  align-content: start;
 }
 
 .site-footer {
@@ -2399,6 +2400,14 @@ button:disabled {
   display: none;
 }
 
+.community-board-panel {
+  align-self: start;
+}
+
+.community-board-panel .board-grid {
+  align-items: start;
+}
+
 .board-card {
   padding: 0.85rem 0.9rem;
   display: flex;
@@ -2406,6 +2415,10 @@ button:disabled {
   justify-content: center;
   text-align: center;
   min-height: 4rem;
+}
+
+.community-board-panel .board-card {
+  min-height: 0;
 }
 
 .board-card h3 {

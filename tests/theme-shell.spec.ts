@@ -257,15 +257,52 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("theme-shell-brand-icon")).toHaveCount(0);
     await expect(page.locator(".header").getByRole("link", { name: "채팅" })).toHaveCount(0);
     await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toHaveText("🎨");
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
-          return link ? new URL(link.href, window.location.href).pathname : null;
-        })
-      )
-      .toBe("/favicon.ico");
-  });
+	    await expect
+	      .poll(async () =>
+	        page.evaluate(() => {
+	          const link = document.querySelector('link[data-theme-favicon="true"]') as HTMLLinkElement | null;
+	          return link ? new URL(link.href, window.location.href).pathname : null;
+	        })
+	      )
+	      .toBe("/favicon.ico");
+
+	    await page.goto("/community");
+	    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+	    await expect(page.locator(".community-board-panel")).toBeVisible();
+
+	    const defaultBoardLayout = await page.evaluate(() => {
+	      const main = document.querySelector(".main") as HTMLElement;
+	      const panel = document.querySelector(".community-board-panel") as HTMLElement;
+	      const cards = Array.from(panel.querySelectorAll(".board-card")) as HTMLElement[];
+	      const panelStyle = window.getComputedStyle(panel);
+	      const panelRect = panel.getBoundingClientRect();
+	      const visibleChildren = Array.from(panel.children).filter((child) => {
+	        return window.getComputedStyle(child).display !== "none";
+	      }) as HTMLElement[];
+	      const childRects = visibleChildren.map((child) => child.getBoundingClientRect());
+	      const contentTop = Math.min(...childRects.map((rect) => rect.top));
+	      const contentBottom = Math.max(...childRects.map((rect) => rect.bottom));
+	      const expectedPanelHeight =
+	        contentBottom -
+	        contentTop +
+	        Number.parseFloat(panelStyle.paddingTop) +
+	        Number.parseFloat(panelStyle.paddingBottom) +
+	        Number.parseFloat(panelStyle.borderTopWidth) +
+	        Number.parseFloat(panelStyle.borderBottomWidth);
+
+	      return {
+	        mainAlignContent: window.getComputedStyle(main).alignContent,
+	        panelAlignSelf: panelStyle.alignSelf,
+	        panelHeight: panelRect.height,
+	        expectedPanelHeight,
+	        cardMinHeights: cards.map((card) => window.getComputedStyle(card).minHeight)
+	      };
+	    });
+	    expect(defaultBoardLayout.mainAlignContent).toBe("start");
+	    expect(defaultBoardLayout.panelAlignSelf).toBe("start");
+	    expect(defaultBoardLayout.cardMinHeights.every((height) => height === "0px")).toBe(true);
+	    expect(defaultBoardLayout.panelHeight).toBeLessThanOrEqual(defaultBoardLayout.expectedPanelHeight + 1);
+	  });
 
   test("default system follows the device color scheme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
