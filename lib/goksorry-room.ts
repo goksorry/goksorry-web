@@ -4,6 +4,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { NextResponse } from "next/server";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail, type AppAuthUser } from "@/lib/auth-server";
 import { getServerEnv } from "@/lib/env";
+import { hasNextAuthSessionCookie } from "@/lib/nextauth-cookie";
 export {
   GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
   GOKSORRY_ROOM_REPLY_MAX_LENGTH
@@ -103,7 +104,8 @@ export const setGoksorryRoomGuestCookie = (
 };
 
 export const resolveExistingGoksorryRoomActor = async (request: Request): Promise<MaybeActor> => {
-  const user = await getUserFromAuthorization(request);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const user = hasNextAuthSessionCookie(cookieHeader) ? await getUserFromAuthorization(request) : null;
   if (user) {
     const profile = await getCompletedProfileForUser(user);
     if (profile) {

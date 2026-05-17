@@ -11,7 +11,9 @@ import {
 import { normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
 import { CHAT_DEFAULT_FILTER, CHAT_GUEST_NICKNAME_MAX_LENGTH, type ChatSessionViewer } from "@/lib/chat-types";
 import { getChatServerEnv } from "@/lib/env";
+import { hasNextAuthSessionCookie } from "@/lib/nextauth-cookie";
 import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
+import { applyServerTiming, createServerTimer } from "@/lib/server-timing";
 
 type SessionViewer = ChatSessionViewer & {
   id: string;
@@ -45,17 +47,22 @@ const readRequestBody = async (request: Request): Promise<{ guest_nickname?: unk
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
+  const timer = createServerTimer();
+  const withTiming = (response: Response) => applyServerTiming(response, timer.headerValue());
   const sameOriginError = requireSameOriginMutation(request, requestId);
   if (sameOriginError) {
-    return sameOriginError;
+    return withTiming(sameOriginError);
   }
 
   const chatEnv = getChatServerEnv();
   if (!chatEnv.enabled) {
-    return jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다.");
+    return withTiming(jsonMessage(requestId, 503, "채팅 설정이 아직 배포되지 않았습니다."));
   }
 
-  const session = await getServerSession(authOptions);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const session = hasNextAuthSessionCookie(cookieHeader)
+    ? await timer.measure("nextauth", () => getServerSession(authOptions))
+    : null;
   const memberId = String(session?.user?.id ?? "").trim();
   const memberNickname = String(session?.user?.nickname ?? "").trim();
   const profileSetupRequired = Boolean(session?.user?.profile_setup_required);
@@ -65,10 +72,10 @@ export async function POST(request: Request) {
 
   if (memberId) {
     if (profileSetupRequired) {
-      return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 가입 설정을 완료해야 합니다.");
+      return withTiming(jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 가입 설정을 완료해야 합니다."));
     }
     if (!memberNickname) {
-      return jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다.");
+      return withTiming(jsonMessage(requestId, 403, "채팅에 참여하려면 먼저 닉네임 설정을 완료해야 합니다."));
     }
 
     viewer = {
@@ -80,11 +87,12 @@ export async function POST(request: Request) {
       default_filter: CHAT_DEFAULT_FILTER
     };
   } else {
-    const cookieHeader = request.headers.get("cookie") ?? "";
     const body = await readRequestBody(request);
     const bodyGuestNickname = normalizeGuestChatNickname(body.guest_nickname);
     if (typeof body.guest_nickname === "string" && body.guest_nickname.trim() && !bodyGuestNickname) {
-      return jsonMessage(requestId, 400, `비회원 닉네임은 ${CHAT_GUEST_NICKNAME_MAX_LENGTH}자 이하의 평문만 사용할 수 있습니다.`);
+      return withTiming(
+        jsonMessage(requestId, 400, `비회원 닉네임은 ${CHAT_GUEST_NICKNAME_MAX_LENGTH}자 이하의 평문만 사용할 수 있습니다.`)
+      );
     }
 
     const cookieGuestNickname = normalizeGuestChatNickname(
@@ -94,7 +102,9 @@ export async function POST(request: Request) {
     guestNicknameCookieValue = requestedDisplayName;
 
     const cookieValue = readCookieValue(cookieHeader, SERVER_COOKIE_DEFINITIONS.guestChat.key);
-    const guestIdentity = await readGuestChatCookie(cookieValue, chatEnv.CHAT_TOKEN_SECRET);
+    const guestIdentity = await timer.measure("guest_cookie", () =>
+      readGuestChatCookie(cookieValue, chatEnv.CHAT_TOKEN_SECRET)
+    );
 
     if (guestIdentity) {
       viewer = {
@@ -106,7 +116,9 @@ export async function POST(request: Request) {
         default_filter: CHAT_DEFAULT_FILTER
       };
     } else {
-      const nextGuestCookie = await createGuestChatCookie(chatEnv.CHAT_TOKEN_SECRET);
+      const nextGuestCookie = await timer.measure("guest_cookie_new", () =>
+        createGuestChatCookie(chatEnv.CHAT_TOKEN_SECRET)
+      );
       guestCookie = {
         value: nextGuestCookie.value,
         expiresAt: nextGuestCookie.expiresAt
@@ -123,15 +135,17 @@ export async function POST(request: Request) {
     }
   }
 
-  const sessionToken = await createChatSessionToken(
-    {
-      subject: viewer.id,
-      kind: viewer.kind,
-      displayName: viewer.display_name,
-      canFilterGuests: viewer.can_filter_guests,
-      canSend: viewer.can_send
-    },
-    chatEnv.CHAT_TOKEN_SECRET
+  const sessionToken = await timer.measure("session_token", () =>
+    createChatSessionToken(
+      {
+        subject: viewer.id,
+        kind: viewer.kind,
+        displayName: viewer.display_name,
+        canFilterGuests: viewer.can_filter_guests,
+        canSend: viewer.can_send
+      },
+      chatEnv.CHAT_TOKEN_SECRET
+    )
   );
 
   const response = NextResponse.json({
@@ -170,5 +184,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return response;
+  return withTiming(response);
 }

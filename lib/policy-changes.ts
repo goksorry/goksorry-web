@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
 
@@ -41,7 +42,9 @@ const isTransientPolicyFetchError = (message: string): boolean => {
   return message.includes("fetch failed") || message.includes("TypeError: fetch failed");
 };
 
-export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
+export const POLICY_CHANGE_CACHE_TAG = "policy-change-active";
+
+const loadActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
   const supabase = getServiceSupabaseClient();
   const now = new Date().toISOString();
   const { data: documentChange, error: documentError } = await supabase
@@ -109,3 +112,8 @@ export const getActivePolicyChange = async (): Promise<ActivePolicyChange | null
     label: policy.title
   };
 };
+
+export const getActivePolicyChange = unstable_cache(loadActivePolicyChange, ["policy-change-active"], {
+  revalidate: 60,
+  tags: [POLICY_CHANGE_CACHE_TAG]
+});

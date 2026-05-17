@@ -1,36 +1,18 @@
 "use client";
 
-import { startTransition, useEffect, useState, type FormEvent } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { formatKstDateTime } from "@/lib/date-time";
 import {
   GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
   GOKSORRY_ROOM_REPLY_MAX_LENGTH
 } from "@/lib/goksorry-room-limits";
+import type {
+  GoksorryRoomEntryPayload as RoomEntry,
+  GoksorryRoomPayload,
+  GoksorryRoomReplyPayload as RoomReply
+} from "@/lib/goksorry-room-types";
 
-type RoomReply = {
-  id: string;
-  entry_id: string;
-  content: string;
-  author_kind: "member" | "guest";
-  author_label: string;
-  created_at: string;
-  can_delete: boolean;
-};
-
-type RoomEntry = {
-  id: string;
-  content: string;
-  author_kind: "member" | "guest";
-  author_label: string;
-  created_at: string;
-  reply_count: number;
-  can_delete: boolean;
-  replies: RoomReply[];
-};
-
-type RoomPayload = {
-  entries?: RoomEntry[];
-  next_cursor?: string | null;
+type RoomPayload = Partial<GoksorryRoomPayload> & {
   error?: string;
 };
 
@@ -44,6 +26,16 @@ type ReplyPayload = {
   error?: string;
 };
 
+type RepliesPayload = {
+  replies?: RoomReply[];
+  error?: string;
+};
+
+type GoksorryRoomClientProps = {
+  initialPayload?: GoksorryRoomPayload | null;
+  initialError?: string | null;
+};
+
 const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, init);
   const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
@@ -54,20 +46,47 @@ const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Prom
   return payload;
 };
 
-export function GoksorryRoomClient() {
-  const [entries, setEntries] = useState<RoomEntry[]>([]);
+const mergeUniqueEntries = (current: RoomEntry[], next: RoomEntry[]): RoomEntry[] => {
+  const seenIds = new Set(current.map((entry) => entry.id));
+  return [...current, ...next.filter((entry) => !seenIds.has(entry.id))];
+};
+
+const removeRecordKey = (record: Record<string, string>, key: string): Record<string, string> => {
+  const next = { ...record };
+  delete next[key];
+  return next;
+};
+
+export function GoksorryRoomClient({ initialPayload, initialError = null }: GoksorryRoomClientProps) {
+  const listRegionRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const hasInitialPayload = initialPayload !== undefined && initialPayload !== null;
+  const [entries, setEntries] = useState<RoomEntry[]>(() => initialPayload?.entries ?? []);
   const [entryDraft, setEntryDraft] = useState("");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyEntryId, setOpenReplyEntryId] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedReplyEntryIds, setLoadedReplyEntryIds] = useState<Set<string>>(
+    () =>
+      new Set(
+        (initialPayload?.entries ?? [])
+          .filter((entry) => entry.reply_count === 0 || entry.replies.length > 0)
+          .map((entry) => entry.id)
+      )
+  );
+  const [nextCursor, setNextCursor] = useState<string | null>(() => initialPayload?.next_cursor ?? null);
+  const [loading, setLoading] = useState(!hasInitialPayload);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [autoLoadSupported, setAutoLoadSupported] = useState(true);
   const [entrySubmitting, setEntrySubmitting] = useState(false);
   const [replySubmittingEntryId, setReplySubmittingEntryId] = useState<string | null>(null);
+  const [replyLoadingEntryId, setReplyLoadingEntryId] = useState<string | null>(null);
+  const [replyLoadErrors, setReplyLoadErrors] = useState<Record<string, string>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const loadEntries = async (cursor?: string | null) => {
+  const loadEntries = useCallback(async (cursor?: string | null) => {
     const params = new URLSearchParams();
     if (cursor) {
       params.set("cursor", cursor);
@@ -76,15 +95,116 @@ export function GoksorryRoomClient() {
     const payload = await fetchJson<RoomPayload>(`/api/goksorry-room${params.size ? `?${params}` : ""}`);
     const nextEntries = payload.entries ?? [];
     setNextCursor(payload.next_cursor ?? null);
-    setEntries((current) => (cursor ? [...current, ...nextEntries] : nextEntries));
+    setEntries((current) => (cursor ? mergeUniqueEntries(current, nextEntries) : nextEntries));
+  }, []);
+
+  const loadReplies = useCallback(
+    async (entryId: string) => {
+      const entry = entries.find((currentEntry) => currentEntry.id === entryId);
+      if (!entry || entry.reply_count <= entry.replies.length || loadedReplyEntryIds.has(entryId)) {
+        return;
+      }
+
+      setReplyLoadingEntryId(entryId);
+      setReplyLoadErrors((current) => removeRecordKey(current, entryId));
+      try {
+        const payload = await fetchJson<RepliesPayload>(
+          `/api/goksorry-room/replies?entry_id=${encodeURIComponent(entryId)}`
+        );
+        const replies = payload.replies ?? [];
+        setEntries((current) =>
+          current.map((currentEntry) => (currentEntry.id === entryId ? { ...currentEntry, replies } : currentEntry))
+        );
+        setLoadedReplyEntryIds((current) => new Set(current).add(entryId));
+      } catch (loadError) {
+        setReplyLoadErrors((current) => ({
+          ...current,
+          [entryId]: loadError instanceof Error ? loadError.message : "덧글을 불러오지 못했습니다."
+        }));
+      } finally {
+        setReplyLoadingEntryId((current) => (current === entryId ? null : current));
+      }
+    },
+    [entries, loadedReplyEntryIds]
+  );
+
+  const toggleReply = (entry: RoomEntry) => {
+    const nextOpen = openReplyEntryId === entry.id ? null : entry.id;
+    setOpenReplyEntryId(nextOpen);
+    if (nextOpen) {
+      void loadReplies(entry.id);
+    }
   };
 
+  const loadMore = useCallback(
+    async (options?: { retry?: boolean }) => {
+      if (!nextCursor || loading || loadingMore || loadingMoreRef.current) {
+        return;
+      }
+
+      if (loadMoreError && !options?.retry) {
+        return;
+      }
+
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      setLoadMoreError(null);
+      try {
+        await loadEntries(nextCursor);
+      } catch (loadError) {
+        setLoadMoreError(loadError instanceof Error ? loadError.message : "더 불러오지 못했습니다.");
+      } finally {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    },
+    [loadEntries, loadMoreError, loading, loadingMore, nextCursor]
+  );
+
   useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setAutoLoadSupported(false);
+      return;
+    }
+
+    setAutoLoadSupported(true);
+    const root = listRegionRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel || !nextCursor || loading || loadingMore || loadMoreError) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (observedEntries) => {
+        if (observedEntries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      {
+        root,
+        rootMargin: "160px 0px",
+        threshold: 0
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadMore, loadMoreError, loading, loadingMore, nextCursor]);
+
+  useEffect(() => {
+    if (hasInitialPayload) {
+      return;
+    }
+
     let cancelled = false;
 
     const run = async () => {
       setLoading(true);
       setError(null);
+      setLoadMoreError(null);
       try {
         const payload = await fetchJson<RoomPayload>("/api/goksorry-room");
         if (cancelled) {
@@ -109,7 +229,7 @@ export function GoksorryRoomClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasInitialPayload]);
 
   const submitEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -132,7 +252,7 @@ export function GoksorryRoomClient() {
       if (payload.entry) {
         setEntryDraft("");
         startTransition(() => {
-          setEntries((current) => [payload.entry as RoomEntry, ...current]);
+          setEntries((current) => [payload.entry as RoomEntry, ...current.filter((entry) => entry.id !== payload.entry?.id)]);
         });
       }
     } catch (submitError) {
@@ -164,6 +284,8 @@ export function GoksorryRoomClient() {
 
       if (payload.reply) {
         setReplyDrafts((current) => ({ ...current, [entryId]: "" }));
+        setOpenReplyEntryId(entryId);
+        setReplyLoadErrors((current) => removeRecordKey(current, entryId));
         setEntries((current) =>
           current.map((entry) =>
             entry.id === entryId
@@ -219,22 +341,6 @@ export function GoksorryRoomClient() {
     }
   };
 
-  const loadMore = async () => {
-    if (!nextCursor) {
-      return;
-    }
-
-    setLoadingMore(true);
-    setError(null);
-    try {
-      await loadEntries(nextCursor);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "더 불러오지 못했습니다.");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   return (
     <section className="goksorry-room-shell">
       <form className="goksorry-room-entry-form" onSubmit={submitEntry}>
@@ -258,113 +364,157 @@ export function GoksorryRoomClient() {
       </form>
 
       {error ? <p className="error">{error}</p> : null}
-      {loading ? <p className="muted">곡소리방을 불러오는 중입니다.</p> : null}
+      <div className="goksorry-room-list-region" ref={listRegionRef} aria-label="글 목록" tabIndex={0}>
+        {loading ? <p className="muted goksorry-room-list-status">곡소리방을 불러오는 중입니다.</p> : null}
 
-      <div className="goksorry-room-list">
-        {entries.map((entry) => {
-          const replyDraft = replyDrafts[entry.id] ?? "";
-          const replyOpen = openReplyEntryId === entry.id;
+        <div className="goksorry-room-list">
+          {entries.map((entry) => {
+            const replyDraft = replyDrafts[entry.id] ?? "";
+            const replyOpen = openReplyEntryId === entry.id;
+            const replyLoadError = replyLoadErrors[entry.id];
 
-          return (
-            <article key={entry.id} className="goksorry-room-entry">
-              <div className="goksorry-room-entry-main">
-                <p title={entry.content}>{entry.content}</p>
-                <div className="goksorry-room-meta">
-                  <span>{entry.author_label}</span>
-                  <time dateTime={entry.created_at}>{formatKstDateTime(entry.created_at)}</time>
+            return (
+              <article key={entry.id} className="goksorry-room-entry">
+                <div className="goksorry-room-entry-main">
+                  <p title={entry.content}>{entry.content}</p>
+                  <div className="goksorry-room-meta">
+                    <span>{entry.author_label}</span>
+                    <time dateTime={entry.created_at}>{formatKstDateTime(entry.created_at)}</time>
+                  </div>
                 </div>
-              </div>
 
-              <div className="goksorry-room-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setOpenReplyEntryId(replyOpen ? null : entry.id)}
-                >
-                  덧글 {entry.reply_count}
-                </button>
-                {entry.can_delete ? (
+                <div className="goksorry-room-actions">
                   <button
                     type="button"
                     className="btn-secondary"
-                    disabled={deletingId === `entry:${entry.id}`}
-                    onClick={() => deleteEntry(entry.id)}
+                    onClick={() => toggleReply(entry)}
                   >
-                    삭제
+                    덧글 {entry.reply_count}
                   </button>
-                ) : null}
-              </div>
-
-              {entry.replies.length > 0 ? (
-                <div className="goksorry-room-replies">
-                  {entry.replies.map((reply) => (
-                    <div key={reply.id} className="goksorry-room-reply">
-                      <p title={reply.content}>{reply.content}</p>
-                      <div className="goksorry-room-meta">
-                        <span>{reply.author_label}</span>
-                        <time dateTime={reply.created_at}>{formatKstDateTime(reply.created_at)}</time>
-                        {reply.can_delete ? (
-                          <button
-                            type="button"
-                            className="site-footer-link-button goksorry-room-inline-delete"
-                            disabled={deletingId === `reply:${reply.id}`}
-                            onClick={() => deleteReply(entry.id, reply.id)}
-                          >
-                            삭제
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
+                  {entry.can_delete ? (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={deletingId === `entry:${entry.id}`}
+                      onClick={() => deleteEntry(entry.id)}
+                    >
+                      삭제
+                    </button>
+                  ) : null}
                 </div>
-              ) : null}
 
-              {replyOpen ? (
-                <form
-                  className="goksorry-room-reply-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void submitReply(entry.id);
-                  }}
-                >
-                  <label className="goksorry-room-input-label">
-                    <span className="sr-only">덧글</span>
-                    <input
-                      type="text"
-                      value={replyDraft}
-                      onChange={(event) =>
-                        setReplyDrafts((current) => ({
-                          ...current,
-                          [entry.id]: event.target.value
-                        }))
-                      }
-                      maxLength={GOKSORRY_ROOM_REPLY_MAX_LENGTH}
-                      placeholder="덧글"
-                      required
-                    />
-                  </label>
-                  <span className="muted goksorry-room-count">
-                    {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
-                  </span>
-                  <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
-                    {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
-                  </button>
-                </form>
-              ) : null}
-            </article>
-          );
-        })}
-      </div>
+                {replyOpen ? (
+                  <>
+                    {replyLoadingEntryId === entry.id ? (
+                      <p className="muted goksorry-room-list-status" role="status">
+                        덧글을 불러오는 중...
+                      </p>
+                    ) : null}
 
-      {!loading && entries.length === 0 ? <p className="muted">아직 남겨진 의견이 없습니다.</p> : null}
+                    {replyLoadError ? (
+                      <div className="goksorry-room-list-status" role="status">
+                        <p className="error">{replyLoadError}</p>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={replyLoadingEntryId === entry.id}
+                          onClick={() => loadReplies(entry.id)}
+                        >
+                          다시 시도
+                        </button>
+                      </div>
+                    ) : null}
 
-      {nextCursor ? (
-        <div className="actions">
-          <button type="button" className="btn-secondary" disabled={loadingMore} onClick={loadMore}>
-            {loadingMore ? "불러오는 중..." : "더 보기"}
-          </button>
+                    {entry.replies.length > 0 ? (
+                      <div className="goksorry-room-replies">
+                        {entry.replies.map((reply) => (
+                          <div key={reply.id} className="goksorry-room-reply">
+                            <p title={reply.content}>{reply.content}</p>
+                            <div className="goksorry-room-meta">
+                              <span>{reply.author_label}</span>
+                              <time dateTime={reply.created_at}>{formatKstDateTime(reply.created_at)}</time>
+                              {reply.can_delete ? (
+                                <button
+                                  type="button"
+                                  className="site-footer-link-button goksorry-room-inline-delete"
+                                  disabled={deletingId === `reply:${reply.id}`}
+                                  onClick={() => deleteReply(entry.id, reply.id)}
+                                >
+                                  삭제
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <form
+                      className="goksorry-room-reply-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void submitReply(entry.id);
+                      }}
+                    >
+                      <label className="goksorry-room-input-label">
+                        <span className="sr-only">덧글</span>
+                        <input
+                          type="text"
+                          value={replyDraft}
+                          onChange={(event) =>
+                            setReplyDrafts((current) => ({
+                              ...current,
+                              [entry.id]: event.target.value
+                            }))
+                          }
+                          maxLength={GOKSORRY_ROOM_REPLY_MAX_LENGTH}
+                          placeholder="덧글"
+                          required
+                        />
+                      </label>
+                      <span className="muted goksorry-room-count">
+                        {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
+                      </span>
+                      <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
+                        {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
+                      </button>
+                    </form>
+                  </>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
-      ) : null}
+
+        {!loading && !error && entries.length === 0 ? (
+          <p className="muted goksorry-room-list-status">아직 남겨진 의견이 없습니다.</p>
+        ) : null}
+
+        {loadMoreError ? (
+          <div className="goksorry-room-list-status" role="status">
+            <p className="error">{loadMoreError}</p>
+            <button type="button" className="btn-secondary" disabled={loadingMore} onClick={() => loadMore({ retry: true })}>
+              다시 시도
+            </button>
+          </div>
+        ) : null}
+
+        {loadingMore ? (
+          <p className="muted goksorry-room-list-status" role="status">
+            불러오는 중...
+          </p>
+        ) : null}
+
+        <div className="goksorry-room-list-sentinel" ref={sentinelRef} aria-hidden="true" />
+
+        {nextCursor && !loadMoreError && !autoLoadSupported ? (
+          <div className="actions goksorry-room-list-status">
+            <button type="button" className="btn-secondary" disabled={loadingMore} onClick={() => loadMore({ retry: true })}>
+              {loadingMore ? "불러오는 중..." : "더 보기"}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

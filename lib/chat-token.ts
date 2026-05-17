@@ -12,6 +12,7 @@ const CHAT_JWT_HEADER = {
 
 const encoder = new TextEncoder();
 const subtle = globalThis.crypto?.subtle ?? webcrypto.subtle;
+const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
 
 type SignedPayload = {
   sub: string;
@@ -40,10 +41,18 @@ const base64UrlDecode = (value: string): string => {
   return Buffer.from(value, "base64url").toString("utf8");
 };
 
-const importHmacKey = async (secret: string) => {
-  return subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
-    "sign"
-  ]);
+const importHmacKey = (secret: string): Promise<CryptoKey> => {
+  const cached = hmacKeyCache.get(secret);
+  if (cached) {
+    return cached;
+  }
+
+  const imported = subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  hmacKeyCache.set(secret, imported);
+  imported.catch(() => {
+    hmacKeyCache.delete(secret);
+  });
+  return imported;
 };
 
 const signEncodedToken = async (header: string, payload: string, secret: string): Promise<string> => {

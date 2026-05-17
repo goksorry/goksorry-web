@@ -1,7 +1,8 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { getRequestId, jsonMessage, logApiError, requireSameOriginMutation } from "@/lib/api-auth";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail } from "@/lib/auth-server";
+import { POLICY_CHANGE_CACHE_TAG } from "@/lib/policy-changes";
 import { POLICY_DOCUMENT_META, type PolicyDocumentType } from "@/lib/policy-defaults";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
@@ -246,6 +247,7 @@ export async function POST(request: Request) {
   revalidatePath("/terms");
   revalidatePath("/privacy");
   revalidatePath("/admin/policies");
+  revalidateTag(POLICY_CHANGE_CACHE_TAG);
 
   return jsonNoStore({
     ok: true,

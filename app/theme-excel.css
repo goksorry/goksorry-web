@@ -1450,6 +1450,25 @@
   gap: 0;
 }
 
+.theme-shell-excel .goksorry-room-list-region {
+  max-height: calc(var(--excel-row-height) * 14);
+  overflow-y: auto;
+}
+
+.theme-shell-excel .goksorry-room-list-status {
+  min-height: 0;
+  height: var(--excel-row-height);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--excel-cell-padding-y) var(--excel-cell-padding-x);
+  border: 0;
+  background: var(--excel-cell-fill);
+  box-shadow: inset 0 0 0 1px var(--excel-cell-line);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 .theme-shell-excel .goksorry-room-entry-form,
 .theme-shell-excel .goksorry-room-reply-form {
   height: var(--excel-row-height);

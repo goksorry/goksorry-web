@@ -2413,11 +2413,15 @@ button:disabled {
 .goksorry-room-panel {
   display: grid;
   gap: 0.9rem;
+  align-content: start;
+  min-height: 0;
 }
 
 .goksorry-room-shell {
   display: grid;
   gap: 0.5rem;
+  align-content: start;
+  min-height: 0;
 }
 
 .goksorry-room-entry-form,
@@ -2425,7 +2429,7 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.42rem;
-  align-items: center;
+  align-items: start;
   padding: 0.42rem 0.5rem;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2440,22 +2444,28 @@ button:disabled {
 .goksorry-room-input-label input {
   width: 100%;
   min-width: 0;
-  min-height: 2.05rem;
+  min-height: 0;
   padding: 0.38rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel-elevated);
+  line-height: 1.35;
 }
 
 .goksorry-room-count {
+  align-self: start;
+  padding-top: 0.45rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .goksorry-room-entry-form button,
 .goksorry-room-reply-form button {
-  min-height: 2.05rem;
+  align-self: start;
+  min-height: 0;
   padding: 0.38rem 0.62rem;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
@@ -2469,10 +2479,45 @@ button:disabled {
   border-top: 1px solid var(--line);
 }
 
+.goksorry-room-list-region {
+  min-width: 0;
+  min-height: 0;
+  max-height: min(58vh, 42rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.goksorry-room-list-region:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.goksorry-room-list-status {
+  margin: 0;
+  padding: 0.6rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+
+div.goksorry-room-list-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.goksorry-room-list-status .error {
+  margin: 0;
+}
+
+.goksorry-room-list-sentinel {
+  min-height: 1px;
+}
+
 .goksorry-room-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 0.55rem;
   padding: 0.42rem 0.55rem;
   border-bottom: 1px solid var(--line);
@@ -2483,7 +2528,7 @@ button:disabled {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 0.5rem;
 }
 
@@ -2517,7 +2562,7 @@ button:disabled {
 
 .goksorry-room-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 0.32rem;
   flex-wrap: nowrap;
@@ -2541,7 +2586,7 @@ button:disabled {
 .goksorry-room-reply {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 0.5rem;
   padding: 0.34rem 0.55rem 0.34rem 1.25rem;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);

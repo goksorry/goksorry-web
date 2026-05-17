@@ -6,11 +6,40 @@ import {
   resolveWritableGoksorryRoomActor,
   setGoksorryRoomGuestCookie
 } from "@/lib/goksorry-room";
+import { readGoksorryRoomReplies } from "@/lib/goksorry-room-read";
 import { sanitizePlainText } from "@/lib/plain-text";
+import { applyServerTiming, createServerTimer } from "@/lib/server-timing";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function GET(request: Request) {
+  const requestId = getRequestId(request);
+  const timer = createServerTimer();
+  const url = new URL(request.url);
+  const entryId = String(url.searchParams.get("entry_id") ?? "").trim();
+  if (!UUID_PATTERN.test(entryId)) {
+    return applyServerTiming(jsonMessage(requestId, 400, "Invalid entry_id"), timer.headerValue());
+  }
+
+  const { replies, error } = await timer.measure("room_replies", () =>
+    readGoksorryRoomReplies({
+      request,
+      entryId
+    })
+  );
+
+  if (error) {
+    logApiError("goksorry room replies lookup failed", requestId, error);
+    return applyServerTiming(
+      jsonMessage(requestId, 500, "곡소리방 덧글을 불러오지 못했습니다."),
+      timer.headerValue()
+    );
+  }
+
+  return applyServerTiming(NextResponse.json({ replies }), timer.headerValue());
+}
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);

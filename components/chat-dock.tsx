@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { LiveChat } from "@/components/live-chat";
 import { useMediaQuery } from "@/components/use-media-query";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
+
+const LazyLiveChat = dynamic(() => import("@/components/live-chat").then((mod) => mod.LiveChat), {
+  ssr: false
+});
 
 export function ChatDock({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
@@ -29,7 +33,7 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
           className={`panel chat-dock-panel ${open ? "chat-dock-panel-open" : ""}`}
           aria-hidden={!open}
         >
-          <LiveChat
+          <LazyLiveChat
             enabled={enabled}
             className="chat-dock-live"
             headerActions={

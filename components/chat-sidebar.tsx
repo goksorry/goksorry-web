@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib/browser-persistence";
 import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
-import { LiveChat } from "@/components/live-chat";
 import { useMediaQuery } from "@/components/use-media-query";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
 const CHAT_SIDEBAR_OPEN_VALUE = "open";
 const CHAT_SIDEBAR_COLLAPSED_VALUE = "collapsed";
+const LazyLiveChat = dynamic(() => import("@/components/live-chat").then((mod) => mod.LiveChat), {
+  ssr: false
+});
 
 export function ChatSidebar({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const { user } = useSessionSnapshot();
   const isDesktop = useMediaQuery("(min-width: 901px)");
   const panelId = useId();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const storedState = readClientLocalStorageValue(CLIENT_PERSISTENCE_DEFINITIONS.chatSidebarState);
@@ -63,7 +66,7 @@ export function ChatSidebar({ enabled }: { enabled: boolean }) {
       </button>
       {open ? (
         <div id={panelId} className="chat-sidebar-panel">
-          <LiveChat enabled={enabled} className="chat-sidebar-live" />
+          <LazyLiveChat enabled={enabled} className="chat-sidebar-live" />
         </div>
       ) : null}
     </aside>

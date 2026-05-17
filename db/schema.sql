@@ -107,6 +107,7 @@ create table if not exists public.goksorry_room_entries (
   guest_owner_hash text,
   author_label text not null default '익명',
   content text not null,
+  reply_count integer not null default 0,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -117,7 +118,8 @@ create table if not exists public.goksorry_room_entries (
     (author_kind = 'guest' and author_id is null and guest_owner_hash is not null)
   ),
   constraint goksorry_room_entries_author_label_plain_text check (author_label !~ '[<>]' and char_length(author_label) between 1 and 30),
-  constraint goksorry_room_entries_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 160)
+  constraint goksorry_room_entries_content_plain_text check (content !~ '[<>]' and char_length(content) between 1 and 160),
+  constraint goksorry_room_entries_reply_count_nonnegative check (reply_count >= 0)
 );
 
 create table if not exists public.goksorry_room_replies (
@@ -263,6 +265,59 @@ as $$
   );
 $$;
 
+create or replace function public.refresh_goksorry_room_entry_reply_count(target_entry_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if target_entry_id is null then
+    return;
+  end if;
+
+  update public.goksorry_room_entries
+  set reply_count = (
+    select count(*)::integer
+    from public.goksorry_room_replies
+    where entry_id = target_entry_id
+      and is_deleted = false
+  )
+  where id = target_entry_id;
+end;
+$$;
+
+create or replace function public.goksorry_room_replies_refresh_entry_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    perform public.refresh_goksorry_room_entry_reply_count(new.entry_id);
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' then
+    if old.entry_id is distinct from new.entry_id then
+      perform public.refresh_goksorry_room_entry_reply_count(old.entry_id);
+      perform public.refresh_goksorry_room_entry_reply_count(new.entry_id);
+    elsif old.is_deleted is distinct from new.is_deleted then
+      perform public.refresh_goksorry_room_entry_reply_count(new.entry_id);
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    perform public.refresh_goksorry_room_entry_reply_count(old.entry_id);
+    return old;
+  end if;
+
+  return null;
+end;
+$$;
+
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
@@ -298,6 +353,12 @@ create trigger goksorry_room_replies_set_updated_at
 before update on public.goksorry_room_replies
 for each row
 execute function public.set_updated_at();
+
+drop trigger if exists goksorry_room_replies_refresh_entry_count on public.goksorry_room_replies;
+create trigger goksorry_room_replies_refresh_entry_count
+after insert or delete or update of entry_id, is_deleted on public.goksorry_room_replies
+for each row
+execute function public.goksorry_room_replies_refresh_entry_count();
 
 insert into public.boards (slug, name, description, sort_order)
 values

@@ -56,8 +56,9 @@ const prepareThemeFirstVisitPage = async (page: Page) => {
   }, THEME_STORAGE_KEY);
 };
 
-const mockGuestChatSession = async (page: Page) => {
+const mockGuestChatSession = async (page: Page, onRequest?: () => void) => {
   await page.route("**/api/chat/session", async (route) => {
+    onRequest?.();
     const chatBaseUrl = process.env.CHAT_WS_BASE_URL ?? "ws://127.0.0.1:8787/ws";
     const separator = chatBaseUrl.includes("?") ? "&" : "?";
 
@@ -220,6 +221,28 @@ const expectExcelGridAligned = (
     }
   }
 };
+
+const buildRoomEntry = (id: string, index: number) => ({
+  id,
+  content: `무한 스크롤 테스트 의견 ${index}`,
+  author_kind: "guest",
+  author_label: "테스터",
+  created_at: new Date(Date.UTC(2026, 4, 17, 0, index, 0)).toISOString(),
+  reply_count: 0,
+  can_delete: false,
+  replies: []
+});
+
+const roomThemeCases = [
+  { url: "/goksorry-room", shell: "default", root: "" },
+  { url: "/goksorry-room?theme=excel-light", shell: "excel", root: ".theme-shell-excel" },
+  { url: "/goksorry-room?theme=powerpoint-light", shell: "powerpoint", root: ".theme-shell-powerpoint" },
+  { url: "/goksorry-room?theme=docs-light", shell: "docs", root: ".theme-shell-docs" },
+  { url: "/goksorry-room?theme=vscode-light", shell: "vscode", root: ".theme-shell-vscode" },
+  { url: "/goksorry-room?theme=jetbrains-light", shell: "jetbrains", root: ".theme-shell-jetbrains" }
+];
+
+const roomSelector = (root: string, selector: string) => `${root ? `${root} ` : ""}${selector}`;
 
 test.describe("program theme shells", () => {
   test("default light theme keeps the original site shell", async ({ page }) => {
@@ -949,6 +972,28 @@ test.describe("program theme shells", () => {
     expectExcelGridAligned(communityMetrics);
 
     await page.route("**/api/goksorry-room**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/replies")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            replies: [
+              {
+                id: "reply-1",
+                entry_id: "entry-1",
+                content: "덧글도 같은 셀 높이에 맞습니다.",
+                author_kind: "guest",
+                author_label: "응답자",
+                created_at: "2026-05-16T00:01:00.000Z",
+                can_delete: false
+              }
+            ]
+          })
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -962,17 +1007,7 @@ test.describe("program theme shells", () => {
               created_at: "2026-05-16T00:00:00.000Z",
               reply_count: 1,
               can_delete: false,
-              replies: [
-                {
-                  id: "reply-1",
-                  entry_id: "entry-1",
-                  content: "덧글도 같은 셀 높이에 맞습니다.",
-                  author_kind: "guest",
-                  author_label: "응답자",
-                  created_at: "2026-05-16T00:01:00.000Z",
-                  can_delete: false
-                }
-              ]
+              replies: []
             }
           ],
           next_cursor: null
@@ -984,6 +1019,7 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".theme-shell-excel .goksorry-room-entry")).toHaveCount(1);
     await page.getByRole("button", { name: "덧글 1" }).click();
     await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form")).toBeVisible();
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply")).toHaveCount(1);
     await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form textarea")).toHaveCount(0);
     await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form textarea")).toHaveCount(0);
     await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form input")).toHaveAttribute("maxlength", "160");
@@ -1008,6 +1044,107 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-count"
     ]);
     expectExcelGridAligned(roomMetrics);
+  });
+
+  test("goksorry room infinite scroll appends entries inside the list region across themes", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const cursor = requestUrl.searchParams.get("cursor");
+      const entries =
+        cursor === "cursor-2"
+          ? Array.from({ length: 3 }, (_, index) => buildRoomEntry(`page-2-${index + 1}`, index + 41))
+          : Array.from({ length: 40 }, (_, index) => buildRoomEntry(`page-1-${index + 1}`, index + 1));
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          entries,
+          next_cursor: cursor === "cursor-2" ? null : "cursor-2"
+        })
+      });
+    });
+
+    for (const item of roomThemeCases) {
+      await page.goto(item.url);
+      if (item.shell === "default") {
+        await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+      } else {
+        await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
+      }
+
+      const entrySelector = roomSelector(item.root, ".goksorry-room-entry");
+      const listRegion = page.locator(roomSelector(item.root, ".goksorry-room-list-region")).first();
+      await expect(page.locator(entrySelector)).toHaveCount(40);
+      await expect(listRegion).toBeVisible();
+
+      const listMetrics = await listRegion.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        windowScrollHeight: document.documentElement.scrollHeight,
+        windowClientHeight: document.documentElement.clientHeight
+      }));
+      expect(listMetrics.scrollHeight).toBeGreaterThan(listMetrics.clientHeight);
+
+      await listRegion.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await expect(page.locator(entrySelector)).toHaveCount(43);
+    }
+  });
+
+  test("goksorry room load-more errors wait for manual retry instead of looping", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    let cursorRequests = 0;
+
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      const cursor = requestUrl.searchParams.get("cursor");
+
+      if (cursor === "cursor-2") {
+        cursorRequests += 1;
+        if (cursorRequests === 1) {
+          await route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "일시 실패" })
+          });
+          return;
+        }
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          entries:
+            cursor === "cursor-2"
+              ? Array.from({ length: 3 }, (_, index) => buildRoomEntry(`retry-page-2-${index + 1}`, index + 31))
+              : Array.from({ length: 30 }, (_, index) => buildRoomEntry(`retry-page-1-${index + 1}`, index + 1)),
+          next_cursor: cursor === "cursor-2" ? null : "cursor-2"
+        })
+      });
+    });
+
+    await page.goto("/goksorry-room");
+    await expect(page.locator(".goksorry-room-entry")).toHaveCount(30);
+
+    const listRegion = page.locator(".goksorry-room-list-region").first();
+    await listRegion.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect(page.getByText("일시 실패")).toBeVisible();
+    expect(cursorRequests).toBe(1);
+
+    await page.waitForTimeout(250);
+    expect(cursorRequests).toBe(1);
+
+    await page.getByRole("button", { name: "다시 시도" }).click();
+    await expect(page.locator(".goksorry-room-entry")).toHaveCount(33);
+    expect(cursorRequests).toBe(2);
   });
 
   test("excel theme keeps overview art visible and uses one-cell mobile indicators", async ({ page }, testInfo) => {
@@ -1284,7 +1421,10 @@ test.describe("program theme shells", () => {
 
   test("chat moves to a collapsible desktop right sidebar when chat env is enabled", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "desktop chat sidebar requires CHAT_WS_BASE_URL in the test server env");
-    await mockGuestChatSession(page);
+    let chatSessionRequests = 0;
+    await mockGuestChatSession(page, () => {
+      chatSessionRequests += 1;
+    });
 
     const cases = [
       { theme: "light", shell: "default" },
@@ -1302,9 +1442,21 @@ test.describe("program theme shells", () => {
 
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       await expect(page.getByRole("link", { name: "채팅" })).toHaveCount(0);
-      await expect(page.getByTestId("desktop-chat-sidebar")).toBeVisible();
-      await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
-      await expect(page.getByTestId("desktop-chat-sidebar").getByText("전체 채팅")).toBeVisible();
+      const sidebar = page.getByTestId("desktop-chat-sidebar");
+      await expect(sidebar).toBeVisible();
+
+      if (item === cases[0]) {
+        await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+        await expect(sidebar.getByText("전체 채팅")).toHaveCount(0);
+        expect(chatSessionRequests).toBe(0);
+      }
+
+      if ((await sidebar.getAttribute("data-state")) !== "open") {
+        await sidebar.getByRole("button", { name: "채팅 사이드바 열기" }).click({ force: true });
+      }
+
+      await expect(sidebar).toHaveAttribute("data-state", "open");
+      await expect(sidebar.getByText("전체 채팅")).toBeVisible();
       await expect(page.locator(".chat-sidebar-live .chat-input-wrap textarea")).toHaveCount(0);
       await expect(page.locator(".chat-sidebar-live .chat-input-wrap input")).toHaveAttribute("maxlength", "100");
       await expect(page.locator(".chat-sidebar-live .chat-nickname-wrap input")).toHaveAttribute("maxlength", "10");
