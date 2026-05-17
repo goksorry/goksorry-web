@@ -32,6 +32,8 @@ const SOURCE_LINKS = [
   }
 ];
 
+const ROBOTS_TXT_LAST_CHECKED_AT = "2026-05-17 22:24 KST";
+
 export function SiteFooter() {
   return (
     <footer className="site-footer">
@@ -67,10 +69,16 @@ export function SiteFooter() {
               <summary className="site-footer-info-trigger" aria-label="출처 기준 안내">
                 <span aria-hidden="true">i</span>
               </summary>
-              <p className="site-footer-info-copy">
-                외부 커뮤니티 수집 여부는 각 사이트의 robots.txt를 읽고 확인한 뒤 반영합니다. 아래 목록도 그 기준에 맞춰
-                관리합니다.
-              </p>
+              <div className="site-footer-info-copy">
+                <p>
+                  외부 커뮤니티 수집 여부는 각 사이트의 robots.txt를 읽고 확인한 뒤 반영합니다. 아래 목록도 그 기준에 맞춰
+                  관리합니다.
+                </p>
+                <p className="site-footer-info-timestamp">
+                  robots.txt 마지막 확인:{" "}
+                  <time dateTime="2026-05-17T22:24:04+09:00">{ROBOTS_TXT_LAST_CHECKED_AT}</time>
+                </p>
+              </div>
             </details>
           </div>
           <div className="site-footer-links">

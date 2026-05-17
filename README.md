@@ -63,6 +63,10 @@
 - `CHAT_TOKEN_SECRET`
 - `CHAT_WS_BASE_URL`
 
+## 운영 메모
+
+- 외부 출처의 `robots.txt`를 다시 확인하면 [`components/site-footer.tsx`](./components/site-footer.tsx)의 출처 안내 확인 시각도 함께 갱신합니다.
+
 ## 로컬 실행
 
 ```bash

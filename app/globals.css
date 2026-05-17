@@ -658,6 +658,14 @@ a:hover {
   background: var(--panel);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
   color: var(--ink-soft);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.site-footer-info-timestamp {
+  color: var(--muted);
+  font-size: 0.74rem;
+  opacity: 0.78;
 }
 
 .site-footer-link-button,
