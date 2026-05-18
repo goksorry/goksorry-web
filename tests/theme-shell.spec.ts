@@ -2128,6 +2128,59 @@ test.describe("program theme shells", () => {
     await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
   });
 
+  test("mobile concept auth controls sit at the top right", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await prepareThemePage(page);
+
+    const cases = [
+      { theme: "excel-light", shell: "excel" },
+      { theme: "powerpoint-light", shell: "powerpoint" },
+      { theme: "docs-light", shell: "docs" },
+      { theme: "vscode-dark", shell: "vscode" },
+      { theme: "jetbrains-light", shell: "jetbrains" }
+    ];
+
+    for (const item of cases) {
+      await page.goto(`/?theme=${item.theme}`);
+      await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
+
+      const actions = page.getByTestId("concept-header-actions");
+      const authButton = actions.getByRole("button", { name: "구글 로그인" });
+      await expect(authButton).toBeVisible();
+      await expect(actions.getByRole("button", { name: /테마 선택/ })).toBeVisible();
+      await expect(actions.locator(".clean-filter-toggle")).toBeVisible();
+
+      const metrics = await page.evaluate(() => {
+        const header = document.querySelector("[data-testid='program-header']") as HTMLElement;
+        const auth = document.querySelector(".theme-shell-auth-slot") as HTMLElement;
+        const headerRect = header.getBoundingClientRect();
+        const authRect = auth.getBoundingClientRect();
+
+        return {
+          authTopOffset: authRect.top - headerRect.top,
+          authRightGap: headerRect.right - authRect.right,
+          authLeft: authRect.left,
+          headerLeft: headerRect.left,
+          authWidth: authRect.width,
+          authHeight: authRect.height
+        };
+      });
+
+      expect(metrics.authTopOffset).toBeGreaterThanOrEqual(0);
+      expect(metrics.authTopOffset).toBeLessThanOrEqual(14);
+      expect(metrics.authRightGap).toBeGreaterThanOrEqual(0);
+      expect(metrics.authRightGap).toBeLessThanOrEqual(12);
+      expect(metrics.authLeft).toBeGreaterThanOrEqual(metrics.headerLeft);
+      expect(metrics.authWidth).toBeGreaterThan(0);
+      expect(metrics.authHeight).toBeGreaterThan(0);
+    }
+
+    await page.goto("/?theme=light");
+    await expect(page.locator(".header")).toBeVisible();
+    await expect(page.locator(".theme-shell-auth-slot")).toHaveCount(0);
+    await expect(page.locator(".header").getByRole("button", { name: "구글 로그인" })).toBeVisible();
+  });
+
   test("first visit theme dialog uses family and tone sections", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemeFirstVisitPage(page);

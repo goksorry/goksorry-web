@@ -298,9 +298,11 @@ export function ShellHeaderActions() {
       <ThemeToggle />
       <CleanFilterToggle />
       <SiteShareButton />
-      <Suspense fallback={<HeaderAuthSkeleton />}>
-        <AuthControls />
-      </Suspense>
+      <span className="theme-shell-auth-slot">
+        <Suspense fallback={<HeaderAuthSkeleton />}>
+          <AuthControls />
+        </Suspense>
+      </span>
     </div>
   );
 }

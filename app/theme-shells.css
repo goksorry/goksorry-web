@@ -129,6 +129,10 @@
   margin-left: auto;
 }
 
+.theme-shell-auth-slot {
+  display: contents;
+}
+
 .theme-shell-actions .theme-menu-trigger,
 .theme-shell-actions .clean-filter-toggle,
 .theme-shell-actions .clean-filter-info-button,
@@ -309,6 +313,10 @@
 }
 
 @media (max-width: 760px) {
+  :root:not([data-theme-shell="default"]) {
+    --theme-shell-mobile-auth-width: min(11.5rem, 44vw);
+  }
+
   .theme-shell {
     height: 100dvh;
     min-height: 100dvh;
@@ -318,6 +326,35 @@
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
+  }
+
+  .theme-shell-auth-slot {
+    position: absolute;
+    top: 0.46rem;
+    right: 0.55rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    max-width: var(--theme-shell-mobile-auth-width);
+  }
+
+  .theme-shell-auth-slot .header-auth-button,
+  .theme-shell-auth-slot .header-auth-shell,
+  .theme-shell-auth-slot .header-auth-skeleton {
+    max-width: var(--theme-shell-mobile-auth-width);
+  }
+
+  .theme-shell-auth-slot .header-profile-link {
+    min-width: 0;
+  }
+
+  .excel-titlebar,
+  .powerpoint-titlebar,
+  .docs-titlebar,
+  .vscode-titlebar,
+  .jetbrains-toolbar {
+    padding-right: calc(var(--theme-shell-mobile-auth-width) + 0.85rem);
   }
 
   .theme-shell-brand-wrap {
