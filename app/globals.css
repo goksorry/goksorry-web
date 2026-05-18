@@ -488,6 +488,10 @@ a:hover {
   white-space: nowrap;
 }
 
+.btn.header-share-button {
+  display: none;
+}
+
 .header-share-label-desktop,
 .header-share-label-mobile {
   display: inline-flex;
@@ -3439,6 +3443,10 @@ div.goksorry-room-list-status {
     order: 3;
     flex: 1 1 auto;
     margin-left: auto;
+  }
+
+  .btn.header-share-button {
+    display: inline-flex;
   }
 
   .header-share-button {

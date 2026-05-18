@@ -311,6 +311,29 @@ test.describe("program theme shells", () => {
       expect(defaultBoardLayout.panelHeight).toBeLessThanOrEqual(defaultBoardLayout.expectedPanelHeight + 1);
     });
 
+  test("header share button is mobile-only", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/");
+
+    const defaultShareButton = page.locator(".header .header-share-button");
+    await expect(defaultShareButton).toHaveCount(1);
+    await expect(defaultShareButton).toBeHidden();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(defaultShareButton).toBeVisible();
+
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.goto("/?theme=excel-light");
+
+    const conceptShareButton = page.getByTestId("concept-header-actions").locator(".header-share-button");
+    await expect(conceptShareButton).toHaveCount(1);
+    await expect(conceptShareButton).toBeHidden();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(conceptShareButton).toBeVisible();
+  });
+
   test("default system follows the device color scheme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await prepareThemePage(page, "system");
