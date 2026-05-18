@@ -173,6 +173,10 @@ const fallbackIndicator = (id: string, label: string, note: string): MarketIndic
   note
 });
 
+export const hasUsableMarketIndicator = (indicator: MarketIndicator): boolean => {
+  return indicator.value_text !== "--" && indicator.delta_text !== "데이터 없음";
+};
+
 const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promise<MarketIndicator> => {
   try {
     const raw = await fetchText(`https://polling.finance.naver.com/api/realtime?query=SERVICE_INDEX:${code}`);
@@ -337,9 +341,7 @@ const buildOverallFromCommunityIndicators = (
   };
 };
 
-export const getCachedMarketOverview = unstable_cache(buildMarketOverview, ["market-overview"], {
-  revalidate: MARKET_TTL_SEC
-});
+export const getCachedMarketOverview = buildMarketOverview;
 
 export const buildCommunityIndicatorsData = async (
   marketAdjustmentEnabled = true

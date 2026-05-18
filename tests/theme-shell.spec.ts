@@ -448,6 +448,76 @@ test.describe("program theme shells", () => {
       .toBe("https://goksorry.com/community?sort=recent&theme=vscode-dark#board");
   });
 
+  test("market overview refresh updates market indicators", async ({ page }) => {
+    let overviewRequests = 0;
+    await page.route("**/api/overview**", async (route) => {
+      overviewRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2026-05-18T01:30:00.000Z",
+          market_indicators: [
+            {
+              id: "kospi",
+              label: "KOSPI",
+              value_text: "9,876.54",
+              delta_text: "+12.34 (+0.12%)",
+              change_value: 12.34,
+              change_percent: 0.12,
+              tone: "up",
+              note: "테스트"
+            },
+            {
+              id: "kosdaq",
+              label: "KOSDAQ",
+              value_text: "1,234.56",
+              delta_text: "+3.21 (+0.26%)",
+              change_value: 3.21,
+              change_percent: 0.26,
+              tone: "up",
+              note: "테스트"
+            },
+            {
+              id: "nasdaq",
+              label: "NASDAQ",
+              value_text: "20,123.45",
+              delta_text: "-4.56 (-0.02%)",
+              change_value: -4.56,
+              change_percent: -0.02,
+              tone: "down",
+              note: "테스트"
+            },
+            {
+              id: "usdkrw",
+              label: "원/달러 환율",
+              value_text: "1,350.10",
+              delta_text: "+1.10 KRW (+0.08%)",
+              change_value: 1.1,
+              change_percent: 0.08,
+              tone: "up",
+              note: "테스트"
+            }
+          ],
+          market_adjustment_enabled: true,
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: []
+        })
+      });
+    });
+
+    await prepareThemePage(page);
+    await page.goto("/");
+
+    await page.locator(".overview-market-adjustment-button").click();
+    await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
+    expect(overviewRequests).toBeGreaterThan(0);
+  });
+
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
