@@ -372,7 +372,7 @@ test.describe("program theme shells", () => {
   test("theme selection persists to cookie and local storage", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/");
+    await page.goto("/?channels=toss");
 
     await page.getByRole("button", { name: /테마 선택/ }).click();
     await page.getByRole("button", { name: "테마 VS Code" }).click();
@@ -380,6 +380,18 @@ test.describe("program theme shells", () => {
     await page.getByRole("button", { name: "적용" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-dark");
+    await expect
+      .poll(async () => {
+        const url = new URL(page.url());
+        return {
+          channels: url.searchParams.get("channels"),
+          theme: url.searchParams.get("theme")
+        };
+      })
+      .toEqual({
+        channels: "toss",
+        theme: "vscode-dark"
+      });
     await expect
       .poll(async () =>
         page.evaluate(
@@ -397,6 +409,43 @@ test.describe("program theme shells", () => {
         cookie: `${THEME_COOKIE}=vscode-dark`,
         storage: "vscode-dark"
       });
+  });
+
+  test("site share URL includes the active theme", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "share", {
+        configurable: true,
+        value: async (data: ShareData) => {
+          (window as Window & { __lastSharedUrl?: string }).__lastSharedUrl = data.url;
+        }
+      });
+    });
+    await prepareThemePage(page, "vscode-dark");
+    await page.goto("/community?sort=recent#board");
+
+    await expect
+      .poll(async () => {
+        const url = new URL(page.url());
+        return {
+          sort: url.searchParams.get("sort"),
+          theme: url.searchParams.get("theme"),
+          hash: url.hash
+        };
+      })
+      .toEqual({
+        sort: "recent",
+        theme: "vscode-dark",
+        hash: "#board"
+      });
+
+    const shareButton = page.locator(".header-share-button");
+    await expect(shareButton).toBeVisible();
+    await shareButton.click();
+
+    await expect
+      .poll(async () => page.evaluate(() => (window as Window & { __lastSharedUrl?: string }).__lastSharedUrl ?? null))
+      .toBe("https://goksorry.com/community?sort=recent&theme=vscode-dark#board");
   });
 
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {

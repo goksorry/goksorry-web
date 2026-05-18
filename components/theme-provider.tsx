@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   readClientCookieValue,
   readClientLocalStorageValue,
@@ -16,6 +17,7 @@ import {
   getThemeOption,
   normalizeThemeId,
   readThemeParamFromLocation,
+  replaceCurrentUrlThemeParam,
   type ThemeId
 } from "@/lib/theme";
 import { useCleanFilter } from "@/components/clean-filter-provider";
@@ -59,11 +61,24 @@ const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: bo
   };
 };
 
+function ThemeUrlSync({ themeId }: { themeId: ThemeId }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsString = searchParams.toString();
+
+  useEffect(() => {
+    replaceCurrentUrlThemeParam(themeId);
+  }, [pathname, searchParamsString, themeId]);
+
+  return null;
+}
+
 export function ThemeProvider({ children, initialThemeId }: { children: ReactNode; initialThemeId: ThemeId }) {
   const { showFirstVisitPrompt, isApplying } = useCleanFilter();
   const [themeId, setThemeId] = useState<ThemeId>(initialThemeId);
   const [promptPending, setPromptPending] = useState(false);
   const [showThemePrompt, setShowThemePrompt] = useState(false);
+  const [urlSyncEnabled, setUrlSyncEnabled] = useState(false);
 
   useEffect(() => {
     const syncThemeFromLocation = () => {
@@ -71,6 +86,7 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
       const paramTheme = readThemeParamFromLocation();
       const stored = readStoredThemeId();
       const nextTheme = paramTheme ?? stored.themeId ?? initialThemeId;
+      const shouldSyncUrl = hasThemeParam || stored.hasStoredPreference;
 
       setThemeId(nextTheme);
       applyThemeMode(nextTheme);
@@ -79,6 +95,10 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
       }
       setPromptPending(!hasThemeParam && !stored.hasStoredPreference);
       setShowThemePrompt(false);
+      setUrlSyncEnabled(shouldSyncUrl);
+      if (shouldSyncUrl) {
+        replaceCurrentUrlThemeParam(nextTheme);
+      }
     };
 
     syncThemeFromLocation();
@@ -118,6 +138,8 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
     setThemeId(nextThemeId);
     applyThemeMode(nextThemeId);
     persistThemePreference(nextThemeId);
+    replaceCurrentUrlThemeParam(nextThemeId);
+    setUrlSyncEnabled(true);
     setPromptPending(false);
     setShowThemePrompt(false);
   };
@@ -135,6 +157,11 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
         dismissThemePrompt
       }}
     >
+      {urlSyncEnabled ? (
+        <Suspense fallback={null}>
+          <ThemeUrlSync themeId={themeId} />
+        </Suspense>
+      ) : null}
       {children}
     </ThemeContext.Provider>
   );

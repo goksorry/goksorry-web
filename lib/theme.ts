@@ -316,6 +316,35 @@ export const readThemeParamFromLocation = (): ThemeId | null => {
   return normalizeThemeId(params.get(THEME_PARAM_NAME)) ?? DEFAULT_THEME_ID;
 };
 
+export const applyThemeParamToUrl = (url: URL, themeId: ThemeId): URL => {
+  url.searchParams.set(THEME_PARAM_NAME, themeId);
+  return url;
+};
+
+export const buildThemedUrl = (href: string, themeId: ThemeId, base?: string): string => {
+  const url = applyThemeParamToUrl(new URL(href, base), themeId);
+  return url.toString();
+};
+
+export const buildThemedPath = (href: string, themeId: ThemeId, base?: string): string => {
+  const url = applyThemeParamToUrl(new URL(href, base), themeId);
+  return `${url.pathname}${url.search}${url.hash}`;
+};
+
+export const replaceCurrentUrlThemeParam = (themeId: ThemeId): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const next = buildThemedPath(window.location.href, themeId);
+  if (next === current) {
+    return;
+  }
+
+  window.history.replaceState(window.history.state, "", next);
+};
+
 export const applyThemeMode = (mode: ThemeMode): void => {
   applyThemeAttributes(document.documentElement, mode);
 };

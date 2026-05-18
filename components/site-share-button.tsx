@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@/components/theme-provider";
+import { buildThemedUrl } from "@/lib/theme";
 
 const SITE_SHARE_TITLE = "곡소리닷컴";
 const SITE_SHARE_TEXT = "외부 종목 커뮤니티 감성 피드와 게시판";
@@ -66,6 +68,7 @@ function CopyIcon() {
 }
 
 export function SiteShareButton() {
+  const { themeId } = useTheme();
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState<ShareStatus>("idle");
   const resetTimerRef = useRef<number | null>(null);
@@ -93,6 +96,8 @@ export function SiteShareButton() {
       return;
     }
 
+    const currentUrl = new URL(window.location.href);
+    const shareUrl = buildThemedUrl(`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`, themeId, SITE_SHARE_URL);
     const preferShareIntent =
       window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(max-width: 767px)").matches;
 
@@ -102,14 +107,14 @@ export function SiteShareButton() {
         await navigator.share({
           title: SITE_SHARE_TITLE,
           text: SITE_SHARE_TEXT,
-          url: SITE_SHARE_URL
+          url: shareUrl
         });
         setStatus("shared");
         scheduleStatusReset();
         return;
       }
 
-      await copyToClipboard(SITE_SHARE_URL);
+      await copyToClipboard(shareUrl);
       setStatus("copied");
       scheduleStatusReset();
     } catch (error) {
@@ -119,7 +124,7 @@ export function SiteShareButton() {
 
       if (preferShareIntent) {
         try {
-          await copyToClipboard(SITE_SHARE_URL);
+          await copyToClipboard(shareUrl);
           setStatus("copied");
           scheduleStatusReset();
           return;
