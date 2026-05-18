@@ -1807,43 +1807,62 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
   });
 
-  test("chat keeps the bottom tab overlay at 900px and below", async ({ page }) => {
+  test("chat keeps an opaque bottom tab overlay in mobile concept themes", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "mobile chat dock requires CHAT_WS_BASE_URL in the test server env");
     await mockGuestChatSession(page);
 
-    await page.setViewportSize({ width: 900, height: 760 });
+    await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemePage(page);
-    await page.goto("/?theme=docs-light");
 
-    await expect(page.getByTestId("desktop-chat-sidebar")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "실시간 채팅" })).toBeVisible();
+    const cases = [
+      { theme: "excel-light", shell: "excel" },
+      { theme: "powerpoint-light", shell: "powerpoint" },
+      { theme: "docs-light", shell: "docs" },
+      { theme: "vscode-dark", shell: "vscode" },
+      { theme: "jetbrains-light", shell: "jetbrains" }
+    ];
 
-    await page.getByRole("button", { name: "실시간 채팅" }).click();
-    await expect(page.locator("#global-chat-dock")).toBeVisible();
-    await expect(page.locator("#global-chat-dock").getByText("전체 채팅")).toBeVisible();
-    await expect(page.locator(".chat-dock-live .chat-input-wrap textarea")).toHaveCount(0);
-    await expect(page.locator(".chat-dock-live .chat-input-wrap input")).toHaveAttribute("maxlength", "100");
-    await expect(page.locator(".chat-dock-live .chat-nickname-wrap input")).toHaveAttribute("maxlength", "10");
-    await expect(page.locator(".chat-dock-live .chat-form-footer")).toContainText("0/100");
+    for (const item of cases) {
+      await page.goto(`/?theme=${item.theme}`);
 
-    const mobileChatScroll = await page.evaluate(() => {
-      const panel = document.querySelector("#global-chat-dock") as HTMLElement;
-      const live = document.querySelector(".chat-dock-live") as HTMLElement;
-      const log = document.querySelector(".chat-dock-live .chat-log") as HTMLElement;
+      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
+      await expect(page.getByTestId("desktop-chat-sidebar")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "실시간 채팅" })).toBeVisible();
 
-      return {
-        panelOverflowY: window.getComputedStyle(panel).overflowY,
-        liveOverflowY: window.getComputedStyle(live).overflowY,
-        logOverflowY: window.getComputedStyle(log).overflowY,
-        panelHeight: panel.getBoundingClientRect().height,
-        logHeight: log.getBoundingClientRect().height
-      };
-    });
-    expect(mobileChatScroll.panelOverflowY).toBe("hidden");
-    expect(mobileChatScroll.liveOverflowY).toBe("hidden");
-    expect(mobileChatScroll.logOverflowY).toBe("auto");
-    expect(mobileChatScroll.logHeight).toBeGreaterThan(0);
-    expect(mobileChatScroll.logHeight).toBeLessThan(mobileChatScroll.panelHeight);
+      await page.getByRole("button", { name: "실시간 채팅" }).click();
+      await expect(page.locator("#global-chat-dock")).toBeVisible();
+      await expect(page.locator("#global-chat-dock").getByText("전체 채팅")).toBeVisible();
+      await expect(page.locator(".chat-dock-live .chat-input-wrap textarea")).toHaveCount(0);
+      await expect(page.locator(".chat-dock-live .chat-input-wrap input")).toHaveAttribute("maxlength", "100");
+      await expect(page.locator(".chat-dock-live .chat-nickname-wrap input")).toHaveAttribute("maxlength", "10");
+      await expect(page.locator(".chat-dock-live .chat-form-footer")).toContainText("0/100");
+
+      const mobileChatScroll = await page.evaluate(() => {
+        const panel = document.querySelector("#global-chat-dock") as HTMLElement;
+        const live = document.querySelector(".chat-dock-live") as HTMLElement;
+        const log = document.querySelector(".chat-dock-live .chat-log") as HTMLElement;
+        const panelStyle = window.getComputedStyle(panel);
+        const backgroundColor = panelStyle.backgroundColor;
+        const backgroundChannels = backgroundColor.match(/[\d.]+/g)?.map(Number) ?? [];
+
+        return {
+          panelBackgroundColor: backgroundColor,
+          panelBackgroundAlpha: backgroundChannels.length >= 4 ? backgroundChannels[3] : 1,
+          panelOverflowY: panelStyle.overflowY,
+          liveOverflowY: window.getComputedStyle(live).overflowY,
+          logOverflowY: window.getComputedStyle(log).overflowY,
+          panelHeight: panel.getBoundingClientRect().height,
+          logHeight: log.getBoundingClientRect().height
+        };
+      });
+      expect(mobileChatScroll.panelBackgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+      expect(mobileChatScroll.panelBackgroundAlpha).toBe(1);
+      expect(mobileChatScroll.panelOverflowY).toBe("hidden");
+      expect(mobileChatScroll.liveOverflowY).toBe("hidden");
+      expect(mobileChatScroll.logOverflowY).toBe("auto");
+      expect(mobileChatScroll.logHeight).toBeGreaterThan(0);
+      expect(mobileChatScroll.logHeight).toBeLessThan(mobileChatScroll.panelHeight);
+    }
   });
 
   test("jetbrains header uses site navigation as the main menu and keeps run controls", async ({ page }) => {

@@ -302,6 +302,14 @@
   box-shadow: none;
 }
 
+:root:not([data-theme-shell="default"]) .chat-dock-panel.panel {
+  border: 1px solid var(--theme-shell-line, var(--line)) !important;
+  background: var(--theme-shell-elevated, var(--panel-elevated)) !important;
+  background-image: none !important;
+  color: var(--theme-shell-ink, var(--ink)) !important;
+  box-shadow: 0 -0.85rem 2rem rgba(0, 0, 0, 0.2) !important;
+}
+
 .excel-titlebar,
 .powerpoint-titlebar,
 .docs-app-header,
