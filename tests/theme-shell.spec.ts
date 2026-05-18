@@ -930,6 +930,46 @@ test.describe("program theme shells", () => {
     await page.screenshot({ path: testInfo.outputPath("excel-light.png"), fullPage: false });
   });
 
+  test("excel titlebar keeps right actions visible with compact search", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/?theme=excel-light");
+
+    await expect(page.getByTestId("program-header").getByRole("button", { name: "Share workbook mock command" })).toBeVisible();
+
+    const titlebarLayout = await page.evaluate(() => {
+      const header = document.querySelector(".excel-titlebar") as HTMLElement;
+      const search = document.querySelector(".excel-search") as HTMLElement;
+      const actions = document.querySelector(".excel-top-actions") as HTMLElement;
+      const shareButton = document.querySelector(".excel-share-button") as HTMLElement;
+      const conceptActions = document.querySelector(".theme-shell-excel .theme-shell-actions") as HTMLElement;
+      const headerRect = header.getBoundingClientRect();
+      const searchRect = search.getBoundingClientRect();
+      const actionsRect = actions.getBoundingClientRect();
+      const shareButtonRect = shareButton.getBoundingClientRect();
+
+      return {
+        headerRight: headerRect.right,
+        searchWidth: searchRect.width,
+        searchRight: searchRect.right,
+        actionsLeft: actionsRect.left,
+        actionsRight: actionsRect.right,
+        actionsClientWidth: actions.clientWidth,
+        actionsScrollWidth: actions.scrollWidth,
+        conceptActionsClientWidth: conceptActions.clientWidth,
+        conceptActionsScrollWidth: conceptActions.scrollWidth,
+        shareButtonRight: shareButtonRect.right
+      };
+    });
+
+    expect(titlebarLayout.searchWidth).toBeLessThanOrEqual(15 * 16 + 1);
+    expect(titlebarLayout.searchRight).toBeLessThanOrEqual(titlebarLayout.actionsLeft - 4);
+    expect(titlebarLayout.actionsRight).toBeLessThanOrEqual(titlebarLayout.headerRight + 1);
+    expect(titlebarLayout.shareButtonRight).toBeLessThanOrEqual(titlebarLayout.headerRight + 1);
+    expect(titlebarLayout.actionsScrollWidth).toBeLessThanOrEqual(titlebarLayout.actionsClientWidth + 1);
+    expect(titlebarLayout.conceptActionsScrollWidth).toBeLessThanOrEqual(titlebarLayout.conceptActionsClientWidth + 1);
+  });
+
   test("powerpoint theme renders an Office web slide editor shell", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

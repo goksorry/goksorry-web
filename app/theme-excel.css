@@ -54,7 +54,7 @@
 .excel-titlebar {
   min-height: 2.72rem;
   display: grid;
-  grid-template-columns: minmax(14rem, 1fr) minmax(12rem, 24rem) minmax(14rem, 1fr);
+  grid-template-columns: minmax(12rem, 1fr) clamp(8rem, 18vw, 15rem) max-content;
   align-items: center;
   gap: 0.62rem;
   padding: 0.28rem 0.58rem;
