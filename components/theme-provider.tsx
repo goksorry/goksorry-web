@@ -1,9 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib/browser-persistence";
+import {
+  readClientCookieValue,
+  readClientLocalStorageValue,
+  writeClientCookieValue,
+  writeClientLocalStorageValue
+} from "@/lib/browser-persistence";
 import {
   DEFAULT_THEME_ID,
+  THEME_COOKIE_DEFINITION,
   THEME_PARAM_NAME,
   THEME_STORAGE_DEFINITION,
   applyThemeMode,
@@ -23,7 +29,21 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const persistThemePreference = (themeId: ThemeId): void => {
+  writeClientCookieValue(THEME_COOKIE_DEFINITION, themeId);
+  writeClientLocalStorageValue(THEME_STORAGE_DEFINITION, themeId);
+};
+
 const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: boolean } => {
+  const cookie = readClientCookieValue(THEME_COOKIE_DEFINITION);
+  if (cookie) {
+    const themeId = normalizeThemeId(cookie);
+    return {
+      themeId: themeId ?? DEFAULT_THEME_ID,
+      hasStoredPreference: true
+    };
+  }
+
   const stored = readClientLocalStorageValue(THEME_STORAGE_DEFINITION);
   if (!stored) {
     return {
@@ -39,9 +59,9 @@ const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: bo
   };
 };
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children, initialThemeId }: { children: ReactNode; initialThemeId: ThemeId }) {
   const { showFirstVisitPrompt, isApplying } = useCleanFilter();
-  const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID);
+  const [themeId, setThemeId] = useState<ThemeId>(initialThemeId);
   const [promptPending, setPromptPending] = useState(false);
   const [showThemePrompt, setShowThemePrompt] = useState(false);
 
@@ -50,10 +70,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const hasThemeParam = new URLSearchParams(window.location.search).has(THEME_PARAM_NAME);
       const paramTheme = readThemeParamFromLocation();
       const stored = readStoredThemeId();
-      const nextTheme = paramTheme ?? stored.themeId ?? DEFAULT_THEME_ID;
+      const nextTheme = paramTheme ?? stored.themeId ?? initialThemeId;
 
       setThemeId(nextTheme);
       applyThemeMode(nextTheme);
+      if (!hasThemeParam && stored.hasStoredPreference) {
+        persistThemePreference(nextTheme);
+      }
       setPromptPending(!hasThemeParam && !stored.hasStoredPreference);
       setShowThemePrompt(false);
     };
@@ -63,7 +86,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("popstate", syncThemeFromLocation);
     };
-  }, []);
+  }, [initialThemeId]);
 
   useEffect(() => {
     const option = getThemeOption(themeId);
@@ -94,7 +117,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const selectTheme = (nextThemeId: ThemeId) => {
     setThemeId(nextThemeId);
     applyThemeMode(nextThemeId);
-    writeClientLocalStorageValue(THEME_STORAGE_DEFINITION, nextThemeId);
+    persistThemePreference(nextThemeId);
     setPromptPending(false);
     setShowThemePrompt(false);
   };

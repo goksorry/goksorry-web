@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { Gowun_Batang } from "next/font/google";
 import Script from "next/script";
@@ -29,7 +30,7 @@ import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getChatServerEnv } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
-import { getThemeInitScript } from "@/lib/theme";
+import { DEFAULT_THEME_ID, THEME_REQUEST_HEADER, getThemeAttributeValues, getThemeInitScript, normalizeThemeId } from "@/lib/theme";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
 
@@ -72,9 +73,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const chatEnv = getChatServerEnv();
+  const requestHeaders = headers();
+  const initialThemeId = normalizeThemeId(requestHeaders.get(THEME_REQUEST_HEADER)) ?? DEFAULT_THEME_ID;
+  const initialThemeAttributes = getThemeAttributeValues(initialThemeId, "light");
 
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html
+      lang="ko"
+      suppressHydrationWarning
+      data-theme-id={initialThemeAttributes.themeId}
+      data-theme={initialThemeAttributes.theme}
+      data-theme-shell={initialThemeAttributes.shell}
+      data-theme-family={initialThemeAttributes.family}
+      data-theme-tone={initialThemeAttributes.tone}
+      data-theme-effective-tone={initialThemeAttributes.effectiveTone}
+    >
       <body className={gowunBatang.variable}>
         <Script id="theme-init" strategy="beforeInteractive">
           {getThemeInitScript()}
@@ -83,7 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CookieConsentProvider>
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
-              <ThemeProvider>
+              <ThemeProvider initialThemeId={initialThemeId}>
                 <ThemeFavicon />
                 <CleanFilterOverlay />
                 <CleanFilterFirstVisit />

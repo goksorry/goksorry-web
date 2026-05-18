@@ -81,6 +81,16 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     category: "essential",
     label: "테마 설정",
     description: "사이트 전체 테마 선택을 저장합니다."
+  },
+  themeModeCookie: {
+    kind: "cookie",
+    key: "goksorry-theme-mode",
+    category: "essential",
+    label: "테마 설정",
+    description: "첫 화면부터 선택한 테마로 렌더링하기 위해 사이트 전체 테마 선택을 저장합니다.",
+    maxAgeSeconds: ONE_YEAR_IN_SECONDS,
+    path: "/",
+    sameSite: "Lax"
   }
 } as const satisfies Record<string, PersistenceDefinition>;
 

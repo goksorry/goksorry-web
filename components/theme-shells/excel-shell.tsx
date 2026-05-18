@@ -336,12 +336,24 @@ export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
       });
     };
 
+    let firstFrame: number | null = null;
+    let secondFrame: number | null = null;
     updateColumns();
+    firstFrame = window.requestAnimationFrame(() => {
+      updateColumns();
+      secondFrame = window.requestAnimationFrame(updateColumns);
+    });
 
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", updateColumns);
 
       return () => {
+        if (firstFrame !== null) {
+          window.cancelAnimationFrame(firstFrame);
+        }
+        if (secondFrame !== null) {
+          window.cancelAnimationFrame(secondFrame);
+        }
         window.removeEventListener("resize", updateColumns);
       };
     }
@@ -351,6 +363,12 @@ export function ExcelShell({ children, option, chatSidebar }: ThemeShellProps) {
     window.addEventListener("resize", updateColumns);
 
     return () => {
+      if (firstFrame !== null) {
+        window.cancelAnimationFrame(firstFrame);
+      }
+      if (secondFrame !== null) {
+        window.cancelAnimationFrame(secondFrame);
+      }
       resizeObserver.disconnect();
       window.removeEventListener("resize", updateColumns);
     };

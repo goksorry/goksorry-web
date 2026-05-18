@@ -918,6 +918,7 @@
 }
 
 .theme-shell-excel .feed-filter-panel {
+  width: calc(var(--excel-column-width) * var(--excel-column-count));
   display: grid;
   grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 2) calc(var(--excel-row-height) * 3);
   height: calc(var(--excel-row-height) * var(--excel-feed-filter-rows));

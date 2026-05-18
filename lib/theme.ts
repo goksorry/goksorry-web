@@ -44,7 +44,9 @@ export type ThemeFamilyIcon = {
 };
 
 export const THEME_STORAGE_DEFINITION = CLIENT_PERSISTENCE_DEFINITIONS.themeMode;
+export const THEME_COOKIE_DEFINITION = CLIENT_PERSISTENCE_DEFINITIONS.themeModeCookie;
 export const THEME_PARAM_NAME = "theme";
+export const THEME_REQUEST_HEADER = "x-goksorry-theme-id";
 export const DEFAULT_THEME_ID: ThemeId = "light";
 export const DEFAULT_FAVICON_HREF = "/favicon.ico";
 
@@ -260,21 +262,45 @@ export const getEffectiveThemeId = (themeId: ThemeId, systemTone: ThemeEffective
   return FAMILY_TONE_THEME_IDS[option.family][systemTone];
 };
 
+export type ThemeAttributeValues = {
+  themeId: ThemeId;
+  theme: ThemeId;
+  shell: ThemeShellType;
+  family: ThemeFamily;
+  tone: ThemeTone;
+  effectiveTone: ThemeEffectiveTone;
+};
+
+export const getThemeAttributeValues = (
+  themeId: ThemeId,
+  systemTone: ThemeEffectiveTone = resolveSystemTone()
+): ThemeAttributeValues => {
+  const option = getThemeOption(themeId);
+  const effectiveTone = option.tone === "system" ? systemTone : option.tone;
+
+  return {
+    themeId: option.id,
+    theme: getEffectiveThemeId(option.id, effectiveTone),
+    shell: option.shellType,
+    family: option.family,
+    tone: option.tone,
+    effectiveTone
+  };
+};
+
 export const applyThemeAttributes = (
   root: HTMLElement,
   themeId: ThemeId,
   systemTone: ThemeEffectiveTone = resolveSystemTone()
 ): void => {
-  const option = getThemeOption(themeId);
-  const effectiveTone = option.tone === "system" ? systemTone : option.tone;
-  const effectiveThemeId = getEffectiveThemeId(themeId, effectiveTone);
+  const attributes = getThemeAttributeValues(themeId, systemTone);
 
-  root.setAttribute("data-theme-id", option.id);
-  root.setAttribute("data-theme", effectiveThemeId);
-  root.setAttribute("data-theme-shell", option.shellType);
-  root.setAttribute("data-theme-family", option.family);
-  root.setAttribute("data-theme-tone", option.tone);
-  root.setAttribute("data-theme-effective-tone", effectiveTone);
+  root.setAttribute("data-theme-id", attributes.themeId);
+  root.setAttribute("data-theme", attributes.theme);
+  root.setAttribute("data-theme-shell", attributes.shell);
+  root.setAttribute("data-theme-family", attributes.family);
+  root.setAttribute("data-theme-tone", attributes.tone);
+  root.setAttribute("data-theme-effective-tone", attributes.effectiveTone);
 };
 
 export const readThemeParamFromLocation = (): ThemeId | null => {
@@ -298,6 +324,7 @@ export const getThemeInitScript = (): string => {
   return `(() => {
     try {
       const key = ${JSON.stringify(THEME_STORAGE_DEFINITION.key)};
+      const cookieKey = ${JSON.stringify(THEME_COOKIE_DEFINITION.key)};
       const defaultTheme = ${JSON.stringify(DEFAULT_THEME_ID)};
       const paramName = ${JSON.stringify(THEME_PARAM_NAME)};
       const themes = ${JSON.stringify(
@@ -322,12 +349,32 @@ export const getThemeInitScript = (): string => {
         if (valid.has(normalized)) return normalized;
         return aliases[normalized] || null;
       };
+      const readCookie = (name) => {
+        const prefix = name + "=";
+        const entry = document.cookie
+          .split(";")
+          .map((part) => part.trim())
+          .find((part) => part.startsWith(prefix));
+        if (!entry) return null;
+        try {
+          return decodeURIComponent(entry.slice(prefix.length));
+        } catch {
+          return entry.slice(prefix.length);
+        }
+      };
       const params = new URLSearchParams(window.location.search);
       const hasThemeParam = params.has(paramName);
       const paramTheme = hasThemeParam ? normalize(params.get(paramName)) || defaultTheme : null;
-      const storedRaw = window.localStorage.getItem(key);
+      const cookieTheme = normalize(readCookie(cookieKey));
+      const storedRaw = (() => {
+        try {
+          return window.localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      })();
       const storedTheme = storedRaw ? normalize(storedRaw) || defaultTheme : null;
-      const value = paramTheme || storedTheme || defaultTheme;
+      const value = paramTheme || cookieTheme || storedTheme || defaultTheme;
       const option = themes[value] || themes[defaultTheme];
       const systemTone =
         window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";

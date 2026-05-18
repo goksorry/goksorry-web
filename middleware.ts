@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { DEFAULT_THEME_ID, THEME_COOKIE_DEFINITION, THEME_PARAM_NAME, THEME_REQUEST_HEADER, normalizeThemeId } from "@/lib/theme";
 
 const CANONICAL_HOST = "goksorry.com";
 const LEGACY_HOSTS = new Set(["www.goksorry.com"]);
@@ -52,9 +53,15 @@ export function middleware(request: NextRequest) {
 
   const nonce = crypto.randomUUID().replace(/-/g, "");
   const csp = buildCsp(nonce);
+  const themeFromParam = request.nextUrl.searchParams.has(THEME_PARAM_NAME)
+    ? normalizeThemeId(request.nextUrl.searchParams.get(THEME_PARAM_NAME)) ?? DEFAULT_THEME_ID
+    : null;
+  const themeFromCookie = normalizeThemeId(request.cookies.get(THEME_COOKIE_DEFINITION.key)?.value);
+  const initialThemeId = themeFromParam ?? themeFromCookie ?? DEFAULT_THEME_ID;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set(THEME_REQUEST_HEADER, initialThemeId);
 
   const response = NextResponse.next({
     request: {

@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
 const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
+const THEME_COOKIE = "goksorry-theme-mode";
 const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
 const EXCEL_CONTROL_RADIUS = 3;
 const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
@@ -24,6 +25,12 @@ const prepareThemePage = async (page: Page, storedTheme = "light") => {
     {
       name: CLEAN_FILTER_COOKIE,
       value: "on",
+      domain: "127.0.0.1",
+      path: "/"
+    },
+    {
+      name: THEME_COOKIE,
+      value: storedTheme,
       domain: "127.0.0.1",
       path: "/"
     }
@@ -313,6 +320,60 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.locator("html")).toHaveAttribute("data-theme-effective-tone", "dark");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+  });
+
+  test("theme shell is server-rendered from URL and cookie preferences", async ({ request }) => {
+    const urlThemeResponse = await request.get("/?theme=vscode-dark", {
+      headers: {
+        cookie: `${THEME_COOKIE}=jetbrains-dark`
+      }
+    });
+    const urlThemeHtml = await urlThemeResponse.text();
+    expect(urlThemeResponse.ok()).toBe(true);
+    expect(urlThemeHtml).toContain('data-theme-id="vscode-dark"');
+    expect(urlThemeHtml).toContain('data-theme-shell="vscode"');
+    expect(urlThemeHtml).toContain("theme-shell-vscode");
+
+    const cookieThemeResponse = await request.get("/", {
+      headers: {
+        cookie: `${THEME_COOKIE}=jetbrains-dark`
+      }
+    });
+    const cookieThemeHtml = await cookieThemeResponse.text();
+    expect(cookieThemeResponse.ok()).toBe(true);
+    expect(cookieThemeHtml).toContain('data-theme-id="jetbrains-dark"');
+    expect(cookieThemeHtml).toContain('data-theme-shell="jetbrains"');
+    expect(cookieThemeHtml).toContain("theme-shell-jetbrains");
+  });
+
+  test("theme selection persists to cookie and local storage", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/");
+
+    await page.getByRole("button", { name: /테마 선택/ }).click();
+    await page.getByRole("button", { name: "테마 VS Code" }).click();
+    await page.getByRole("button", { name: "색상 다크" }).click();
+    await page.getByRole("button", { name: "적용" }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-dark");
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          ([cookieName, storageKey]) => ({
+            cookie: document.cookie
+              .split(";")
+              .map((part) => part.trim())
+              .find((part) => part.startsWith(`${cookieName}=`)),
+            storage: window.localStorage.getItem(storageKey)
+          }),
+          [THEME_COOKIE, THEME_STORAGE_KEY]
+        )
+      )
+      .toEqual({
+        cookie: `${THEME_COOKIE}=vscode-dark`,
+        storage: "vscode-dark"
+      });
   });
 
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
