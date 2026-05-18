@@ -36,6 +36,7 @@ type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
   initialCommunityIndicators: CommunityIndicatorsPayload;
   initialMarketAdjustmentEnabled: boolean;
+  initialSelectedGroupIds: SourceGroupId[];
 };
 
 type OverviewArtStyle = CSSProperties & {
@@ -90,7 +91,8 @@ const COMMUNITY_RETRY_MS = 15_000;
 export function MarketOverview({
   marketOverview,
   initialCommunityIndicators,
-  initialMarketAdjustmentEnabled
+  initialMarketAdjustmentEnabled,
+  initialSelectedGroupIds
 }: MarketOverviewProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -263,7 +265,7 @@ export function MarketOverview({
       return [legacyChannel];
     }
 
-    return parseSourceGroupSelection("");
+    return initialSelectedGroupIds;
   })();
   const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
   const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
@@ -301,7 +303,9 @@ export function MarketOverview({
             <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
               <div className="overview-market-head">
                 <p className="overview-label">{indicator.label}</p>
-                {indicator.note ? <p className="overview-note">{indicator.note}</p> : null}
+                <p className="overview-note" hidden={!indicator.note}>
+                  {indicator.note}
+                </p>
               </div>
               <div className="overview-market-main">
                 <strong className="overview-value">{indicator.value_text}</strong>

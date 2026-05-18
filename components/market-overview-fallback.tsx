@@ -1,11 +1,13 @@
 import type { CSSProperties } from "react";
-import { SOURCE_GROUPS } from "@/lib/feed-source-groups";
+import { SOURCE_GROUPS, SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
 
 const overviewCommunityRowStyle: CSSProperties & { "--overview-community-columns": string } = {
   "--overview-community-columns": String(SOURCE_GROUPS.length)
 };
 
-export function MarketOverviewFallback() {
+export function MarketOverviewFallback({ selectedGroupIds = SOURCE_GROUP_IDS }: { selectedGroupIds?: SourceGroupId[] }) {
+  const selectedFeedGroupId = selectedGroupIds.length === 1 ? selectedGroupIds[0] : null;
+
   return (
     <>
       <section className="overview-market-block">
@@ -49,7 +51,11 @@ export function MarketOverviewFallback() {
         <section className="overview-section">
           <div className="overview-bottom-row" style={overviewCommunityRowStyle}>
             {SOURCE_GROUPS.map((group) => (
-              <article key={group.id} className="overview-card overview-card-community overview-tone-mixed">
+              <article
+                key={group.id}
+                className={`overview-card overview-card-community overview-tone-mixed${selectedFeedGroupId === group.id ? " overview-card-active" : ""}`}
+                aria-pressed={selectedFeedGroupId === group.id}
+              >
                 <div className="overview-community-head">
                   <p className="overview-label">{group.label}</p>
                   <span className="overview-score-badge">로딩중</span>

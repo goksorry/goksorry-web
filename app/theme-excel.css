@@ -1083,7 +1083,8 @@
   text-overflow: ellipsis;
 }
 
-.theme-shell-excel .sentiment-list {
+.theme-shell-excel .sentiment-list,
+.theme-shell-excel .feed-skeleton-list {
   border-top: 0;
   gap: 0;
 }

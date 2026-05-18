@@ -7,10 +7,10 @@ import { SessionResumeRefresh } from "@/components/session-resume-refresh";
 
 export function AuthSessionProvider({
   children,
-  session
+  session = null
 }: {
   children: ReactNode;
-  session: Session | null;
+  session?: Session | null;
 }) {
   return (
     <SessionProvider session={session} refetchOnWindowFocus refetchInterval={300}>

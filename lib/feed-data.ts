@@ -93,15 +93,22 @@ const chunk = <T>(items: T[], size: number): T[][] => {
 
 export const fetchRecentFeedRows = async (
   service: SupabaseClient,
-  { hours = 24, limit = 500 }: { hours?: number; limit?: number } = {}
+  { hours = 24, limit = 500, offset = 0 }: { hours?: number; limit?: number; offset?: number } = {}
 ): Promise<{ rows: FeedRow[]; errorMessage: string }> => {
+  const safeLimit = Math.max(0, Math.floor(limit));
+  const safeOffset = Math.max(0, Math.floor(offset));
+  if (safeLimit === 0) {
+    return { rows: [], errorMessage: "" };
+  }
+
   const cutoffIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   const { data: sentimentData, error: sentimentError } = await service
     .from("sentiment_results")
     .select("post_key,label,sentiment_score,confidence,analyzed_at")
     .gte("analyzed_at", cutoffIso)
     .order("analyzed_at", { ascending: false })
-    .limit(limit);
+    .order("post_key", { ascending: false })
+    .range(safeOffset, safeOffset + safeLimit - 1);
 
   if (sentimentError) {
     console.error("feed sentiment query failed", {
@@ -126,13 +133,17 @@ export const fetchRecentFeedRows = async (
     return { rows: [], errorMessage: "" };
   }
 
-  const externalRows: ExternalPostRow[] = [];
-  for (const postKeyBatch of chunk(postKeys, EXTERNAL_POST_BATCH_SIZE)) {
-    const { data: externalData, error: externalError } = await service
-      .from("external_posts")
-      .select("post_key,source,title,clean_title,url,symbol")
-      .in("post_key", postKeyBatch);
+  const externalBatchResults = await Promise.all(
+    chunk(postKeys, EXTERNAL_POST_BATCH_SIZE).map((postKeyBatch) =>
+      service
+        .from("external_posts")
+        .select("post_key,source,title,clean_title,url,symbol")
+        .in("post_key", postKeyBatch)
+    )
+  );
 
+  const externalRows: ExternalPostRow[] = [];
+  for (const { data: externalData, error: externalError } of externalBatchResults) {
     if (externalError) {
       console.error("feed external post query failed", {
         message: externalError.message

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Gowun_Batang } from "next/font/google";
 import Script from "next/script";
-import { getServerSession } from "next-auth";
 import "@/app/globals.css";
 import "@/app/theme-tokens.css";
 import "@/app/theme-shells.css";
@@ -28,7 +27,6 @@ import { ThemeChrome } from "@/components/theme-shells";
 import { ThemeFavicon } from "@/components/theme-favicon";
 import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
-import { authOptions } from "@/lib/auth";
 import { getChatServerEnv } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { getThemeInitScript } from "@/lib/theme";
@@ -72,9 +70,8 @@ export const metadata: Metadata = {
   }
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const chatEnv = getChatServerEnv();
-  const session = await getServerSession(authOptions);
 
   return (
     <html lang="ko" suppressHydrationWarning>
@@ -82,7 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Script id="theme-init" strategy="beforeInteractive">
           {getThemeInitScript()}
         </Script>
-        <AuthSessionProvider session={session}>
+        <AuthSessionProvider>
           <CookieConsentProvider>
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
@@ -93,7 +90,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <ThemeFirstVisit />
                 <ThemeChrome
                   defaultHeader={<SiteHeader />}
-                  policyBanner={<PolicyChangeBanner />}
+                  policyBanner={
+                    <Suspense fallback={null}>
+                      <PolicyChangeBanner />
+                    </Suspense>
+                  }
                   footer={<SiteFooter />}
                   mobileChatDock={<ChatDock enabled={chatEnv.enabled} />}
                   desktopChatSidebar={<ChatSidebar enabled={chatEnv.enabled} />}

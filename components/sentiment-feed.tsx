@@ -6,9 +6,7 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-
-const SENTIMENT_TITLE_FADE_DURATION_MS = 160;
+import { useEffect, useRef, useState } from "react";
 
 type SymbolBadge = {
   name: string;
@@ -126,59 +124,48 @@ function SymbolBadgeList({ badges, ariaLabel }: { badges: SymbolBadge[]; ariaLab
   );
 }
 
-function SentimentTitleStack({
+function SentimentTitleLink({
   row,
   showPrettyTitle
 }: {
   row: FeedRow;
   showPrettyTitle: boolean;
 }) {
-  const originalTitle = resolveDisplayTitle({
+  const displayTitle = resolveDisplayTitle({
     title: row.title,
     cleanTitle: row.clean_title,
-    cleanFilterEnabled: false
+    cleanFilterEnabled: showPrettyTitle
   });
-  const prettyTitle = resolveDisplayTitle({
-    title: row.title,
-    cleanTitle: row.clean_title,
-    cleanFilterEnabled: true
-  });
-  const originalInteractive = !showPrettyTitle;
-  const prettyInteractive = showPrettyTitle;
 
   return (
-    <div
-      className="sentiment-title-stack"
-      style={
-        {
-          "--sentiment-title-fade-duration": `${SENTIMENT_TITLE_FADE_DURATION_MS}ms`
-        } as CSSProperties
-      }
+    <a
+      className={`sentiment-title${displayTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""}`}
+      href={row.url}
+      target="_blank"
+      rel="noreferrer"
     >
-      <a
-        className={`sentiment-title sentiment-title-layer${
-          showPrettyTitle ? " sentiment-title-layer-hidden" : " sentiment-title-layer-visible"
-        }`}
-        href={row.url}
-        target="_blank"
-        rel="noreferrer"
-        aria-hidden={!originalInteractive}
-        tabIndex={originalInteractive ? undefined : -1}
-      >
-        {originalTitle.text}
-      </a>
-      <a
-        className={`sentiment-title sentiment-title-layer${
-          prettyTitle.usedFallbackFilter ? " sentiment-title-fallback" : ""
-        }${showPrettyTitle ? " sentiment-title-layer-visible" : " sentiment-title-layer-hidden"}`}
-        href={row.url}
-        target="_blank"
-        rel="noreferrer"
-        aria-hidden={!prettyInteractive}
-        tabIndex={prettyInteractive ? undefined : -1}
-      >
-        {prettyTitle.text}
-      </a>
+      {displayTitle.text}
+    </a>
+  );
+}
+
+function FeedSkeletonRows({ tone }: { tone: "fear" | "hope" }) {
+  return (
+    <div className="feed-skeleton-list" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <article key={`${tone}-${index}`} className={`sentiment-card sentiment-card-${tone} feed-skeleton-card`}>
+          <div className="sentiment-card-head">
+            <div className="sentiment-card-head-tags">
+              <span className="feed-skeleton-pill feed-skeleton-pill-source" />
+              <span className="feed-skeleton-pill feed-skeleton-pill-symbol" />
+            </div>
+            <span className="feed-skeleton-pill feed-skeleton-pill-time" />
+          </div>
+          <div className="sentiment-card-body">
+            <span className="feed-skeleton-title" />
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -186,11 +173,13 @@ function SentimentTitleStack({
 export function SentimentFeed({
   rows,
   errorMessage,
-  timezone
+  timezone,
+  loading = false
 }: {
   rows: FeedRow[];
   errorMessage: string;
   timezone: string;
+  loading?: boolean;
 }) {
   const { cleanFilterEnabled } = useCleanFilter();
   const { activeGroupIds } = useFeedSelection();
@@ -316,7 +305,7 @@ export function SentimentFeed({
           </div>
         </div>
         <div className="sentiment-card-body">
-          <SentimentTitleStack row={row} showPrettyTitle={showPrettyTitle} />
+          <SentimentTitleLink row={row} showPrettyTitle={showPrettyTitle} />
         </div>
       </article>
     );
@@ -335,7 +324,7 @@ export function SentimentFeed({
             <div className="sentiment-lane-head">
               <h2>
                 공포
-                <span className="tag sentiment-count-tag">{fearRows.length}건</span>
+                <span className="tag sentiment-count-tag">{loading ? "로딩" : `${fearRows.length}건`}</span>
               </h2>
               <span className="sentiment-lane-watermark sentiment-lane-watermark-fear" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bearish.emoji}
@@ -343,9 +332,11 @@ export function SentimentFeed({
             </div>
             {fearSymbolBadges.length > 0 ? <SymbolBadgeList badges={fearSymbolBadges} ariaLabel="공포 등장 종목" /> : null}
 
-            {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
-            {!errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
-            <div className="sentiment-list">{fearRows.map((row) => renderRow(row, "fear"))}</div>
+            {loading ? <p className="muted feed-loading-status">피드를 불러오는 중입니다.</p> : null}
+            {!loading && errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
+            {!loading && !errorMessage && fearRows.length === 0 ? <p className="muted">조건에 맞는 공포 글이 없습니다.</p> : null}
+            <div className="sentiment-list">{loading ? null : fearRows.map((row) => renderRow(row, "fear"))}</div>
+            {loading ? <FeedSkeletonRows tone="fear" /> : null}
           </section>
 
           <section
@@ -357,7 +348,7 @@ export function SentimentFeed({
             <div className="sentiment-lane-head">
               <h2>
                 희망
-                <span className="tag sentiment-count-tag">{hopeRows.length}건</span>
+                <span className="tag sentiment-count-tag">{loading ? "로딩" : `${hopeRows.length}건`}</span>
               </h2>
               <span className="sentiment-lane-watermark sentiment-lane-watermark-hope" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bullish.emoji}
@@ -365,9 +356,11 @@ export function SentimentFeed({
             </div>
             {hopeSymbolBadges.length > 0 ? <SymbolBadgeList badges={hopeSymbolBadges} ariaLabel="희망 등장 종목" /> : null}
 
-            {errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
-            {!errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
-            <div className="sentiment-list">{hopeRows.map((row) => renderRow(row, "hope"))}</div>
+            {loading ? <p className="muted feed-loading-status">피드를 불러오는 중입니다.</p> : null}
+            {!loading && errorMessage ? <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p> : null}
+            {!loading && !errorMessage && hopeRows.length === 0 ? <p className="muted">조건에 맞는 희망 글이 없습니다.</p> : null}
+            <div className="sentiment-list">{loading ? null : hopeRows.map((row) => renderRow(row, "hope"))}</div>
+            {loading ? <FeedSkeletonRows tone="hope" /> : null}
           </section>
         </div>
         <MobileSentimentSwipeHint />

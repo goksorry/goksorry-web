@@ -8,17 +8,19 @@ const FEED_REVALIDATE_SEC = 60;
 
 export const getCachedRecentFeedRows = async ({
   hours = 24,
-  limit = 500
+  limit = 500,
+  offset = 0
 }: {
   hours?: number;
   limit?: number;
+  offset?: number;
 } = {}) =>
   unstable_cache(
     async () => {
       const service = getServiceSupabaseClient();
-      return fetchRecentFeedRows(service, { hours, limit });
+      return fetchRecentFeedRows(service, { hours, limit, offset });
     },
-    [`recent-feed-rows:${hours}:${limit}`],
+    [`recent-feed-rows:${hours}:${limit}:${offset}`],
     {
       revalidate: FEED_REVALIDATE_SEC
     }

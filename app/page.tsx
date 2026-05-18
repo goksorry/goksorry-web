@@ -5,13 +5,13 @@ import { HomeFeedShell } from "@/components/home-feed-shell";
 import { MarketOverviewFallback } from "@/components/market-overview-fallback";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
 import { MARKET_ADJUSTMENT_COOKIE_NAME, resolveMarketAdjustmentEnabled } from "@/lib/community-market-adjustment";
-import { getCachedRecentFeedRows } from "@/lib/feed-read";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
 import { buildPageMetadata, SITE_NAME } from "@/lib/seo";
 
 type QueryValue = string | string[] | undefined;
 const FEED_WINDOW_HOURS = 6;
+const INITIAL_FEED_LIMIT = 80;
 
 const homeMetadata = buildPageMetadata({
   title: "홈",
@@ -68,19 +68,18 @@ export default async function Home({
     defaultEnabled: false
   });
 
-  const { rows, errorMessage } = await getCachedRecentFeedRows({ hours: FEED_WINDOW_HOURS, limit: 500 });
   const timezone = getTimezone();
 
   return (
     <>
-      <Suspense fallback={<MarketOverviewFallback />}>
-        <MarketOverviewShell marketAdjustmentEnabled={marketAdjustmentEnabled} />
+      <Suspense fallback={<MarketOverviewFallback selectedGroupIds={selectedGroupIds} />}>
+        <MarketOverviewShell marketAdjustmentEnabled={marketAdjustmentEnabled} selectedGroupIds={selectedGroupIds} />
       </Suspense>
       <HomeFeedShell
-        rows={rows}
-        errorMessage={errorMessage}
         timezone={timezone}
         selectedGroupIds={selectedGroupIds}
+        windowHours={FEED_WINDOW_HOURS}
+        initialLimit={INITIAL_FEED_LIMIT}
       />
     </>
   );
