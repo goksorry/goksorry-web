@@ -1991,7 +1991,7 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("desktop-chat-sidebar")).toHaveAttribute("data-state", "open");
   });
 
-  test("chat keeps an opaque bottom tab overlay in mobile concept themes", async ({ page }) => {
+  test("chat keeps an opaque bottom fab overlay in mobile concept themes", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "mobile chat dock requires CHAT_WS_BASE_URL in the test server env");
     await mockGuestChatSession(page);
 
@@ -2011,9 +2011,46 @@ test.describe("program theme shells", () => {
 
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       await expect(page.getByTestId("desktop-chat-sidebar")).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "실시간 채팅" })).toBeVisible();
+      const chatToggle = page.getByRole("button", { name: "실시간 채팅" });
+      await expect(chatToggle).toBeVisible();
+      await expect(chatToggle).toHaveText("💬");
 
-      await page.getByRole("button", { name: "실시간 채팅" }).click();
+      const chatToggleMetrics = await chatToggle.evaluate((button) => {
+        const bounds = button.getBoundingClientRect();
+        const style = window.getComputedStyle(button);
+
+        return {
+          width: bounds.width,
+          height: bounds.height,
+          rightOffset: window.innerWidth - bounds.right,
+          bottomOffset: window.innerHeight - bounds.bottom,
+          borderRadius: Number.parseFloat(style.borderTopLeftRadius),
+          position: style.position
+        };
+      });
+      expect(Math.abs(chatToggleMetrics.width - chatToggleMetrics.height)).toBeLessThanOrEqual(1);
+      expect(chatToggleMetrics.width).toBeLessThanOrEqual(56);
+      expect(chatToggleMetrics.borderRadius).toBeGreaterThanOrEqual(chatToggleMetrics.width / 2);
+      expect(chatToggleMetrics.rightOffset).toBeGreaterThan(0);
+      expect(chatToggleMetrics.bottomOffset).toBeGreaterThan(0);
+      expect(chatToggleMetrics.position).toBe("fixed");
+
+      const feedFabMetrics = await page.locator(".mobile-feed-fabs").evaluate((nav) => {
+        const chatToggle = document.querySelector(".chat-dock-toggle") as HTMLElement;
+        const navBounds = nav.getBoundingClientRect();
+        const chatBounds = chatToggle.getBoundingClientRect();
+
+        return {
+          display: window.getComputedStyle(nav).display,
+          rightEdgeDelta: Math.abs(navBounds.right - chatBounds.right),
+          gapAboveChat: chatBounds.top - navBounds.bottom
+        };
+      });
+      expect(feedFabMetrics.display).toBe("grid");
+      expect(feedFabMetrics.rightEdgeDelta).toBeLessThanOrEqual(1);
+      expect(feedFabMetrics.gapAboveChat).toBeGreaterThanOrEqual(6);
+
+      await chatToggle.click();
       await expect(page.locator("#global-chat-dock")).toBeVisible();
       await expect(page.locator("#global-chat-dock").getByText("전체 채팅")).toBeVisible();
       await expect(page.locator(".chat-dock-live .chat-input-wrap textarea")).toHaveCount(0);

@@ -3293,10 +3293,23 @@ div.goksorry-room-list-status {
 
 .chat-dock-toggle {
   pointer-events: auto;
-  min-width: 8.5rem;
-  min-height: 2.8rem;
-  border-radius: 18px 18px 0 0;
+  position: fixed !important;
+  right: max(1rem, env(safe-area-inset-right)) !important;
+  bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+  width: 3.3rem !important;
+  min-width: 3.3rem !important;
+  height: 3.3rem !important;
+  min-height: 3.3rem !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: var(--fab-bg) !important;
+  color: rgba(248, 250, 252, 0.96) !important;
   box-shadow: var(--fab-shadow);
+  font-size: 1.38rem !important;
+  line-height: 1;
 }
 
 .chat-dock-toggle-open {
@@ -3330,7 +3343,9 @@ div.goksorry-room-list-status {
   }
 
   .chat-dock-toggle {
-    justify-self: start;
+    right: max(0.9rem, env(safe-area-inset-right)) !important;
+    bottom: calc(0.9rem + env(safe-area-inset-bottom)) !important;
+    justify-self: end;
   }
 }
 
@@ -3935,7 +3950,9 @@ div.goksorry-room-list-status {
   }
 
   .chat-dock-toggle {
-    justify-self: start;
+    right: max(0.9rem, env(safe-area-inset-right)) !important;
+    bottom: calc(0.9rem + env(safe-area-inset-bottom)) !important;
+    justify-self: end;
   }
 
   .sentiment-time {
@@ -3953,8 +3970,8 @@ div.goksorry-room-list-status {
 
   .mobile-feed-fabs {
     position: fixed;
-    right: max(0.72rem, env(safe-area-inset-right));
-    bottom: calc(0.85rem + env(safe-area-inset-bottom));
+    right: max(0.9rem, env(safe-area-inset-right));
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
     z-index: 55;
     display: grid;
     gap: 0.4rem;

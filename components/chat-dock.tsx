@@ -49,14 +49,16 @@ export function ChatDock({ enabled }: { enabled: boolean }) {
         <button
           type="button"
           className="chat-dock-toggle"
+          aria-label="실시간 채팅"
           aria-expanded={open}
           aria-controls="global-chat-dock"
+          title="실시간 채팅"
           onClick={() => {
             setHasOpened(true);
             setOpen(true);
           }}
         >
-          실시간 채팅
+          <span aria-hidden="true">💬</span>
         </button>
       ) : null}
     </div>
