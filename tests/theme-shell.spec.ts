@@ -1331,6 +1331,112 @@ test.describe("program theme shells", () => {
     expectExcelGridAligned(roomMetrics);
   });
 
+  test("excel mobile room forms use two input cells and one footer cell", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await prepareThemePage(page);
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/replies")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            replies: [
+              {
+                id: "reply-excel-mobile-1",
+                entry_id: "entry-excel-mobile-1",
+                content: "엑셀 모바일 답글 입력 폼 검증입니다.",
+                author_kind: "guest",
+                author_label: "응답자",
+                created_at: "2026-05-16T00:01:00.000Z",
+                can_delete: false
+              }
+            ]
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          entries: [
+            {
+              id: "entry-excel-mobile-1",
+              content: "엑셀 모바일 곡소리방 입력 폼 검증입니다.",
+              author_kind: "guest",
+              author_label: "테스터",
+              created_at: "2026-05-16T00:00:00.000Z",
+              reply_count: 1,
+              can_delete: false,
+              replies: []
+            }
+          ],
+          next_cursor: null
+        })
+      });
+    });
+
+    const readMobileFormLayout = async (selector: string) =>
+      page.locator(selector).evaluate((form) => {
+        const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
+        const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
+        const inputLabel = form.querySelector(".goksorry-room-input-label") as HTMLElement;
+        const input = inputLabel.querySelector("input") as HTMLElement;
+        const footer = form.querySelector(".goksorry-room-form-footer") as HTMLElement;
+        const count = footer.querySelector(".goksorry-room-count") as HTMLElement;
+        const button = footer.querySelector("button") as HTMLElement;
+        const rect = (element: HTMLElement) => element.getBoundingClientRect();
+        const inputStyle = window.getComputedStyle(input);
+        const buttonStyle = window.getComputedStyle(button);
+
+        return {
+          columnWidth,
+          formWidth: rect(form).width,
+          formScrollWidth: form.scrollWidth,
+          formClientWidth: form.clientWidth,
+          inputLabelWidth: rect(inputLabel).width,
+          inputWidth: rect(input).width,
+          inputHeight: rect(input).height,
+          footerWidth: rect(footer).width,
+          footerLeft: rect(footer).left,
+          footerRight: rect(footer).right,
+          footerDisplay: window.getComputedStyle(footer).display,
+          countLeft: rect(count).left,
+          countRight: rect(count).right,
+          buttonLeft: rect(button).left,
+          buttonRight: rect(button).right,
+          buttonHeight: rect(button).height,
+          inputFontSize: Number.parseFloat(inputStyle.fontSize),
+          buttonFontSize: Number.parseFloat(buttonStyle.fontSize)
+        };
+      });
+    const expectMobileFormCells = (layout: Awaited<ReturnType<typeof readMobileFormLayout>>) => {
+      expect(Math.abs(layout.formWidth - layout.columnWidth * 3)).toBeLessThanOrEqual(2);
+      expect(Math.abs(layout.inputLabelWidth - layout.columnWidth * 2)).toBeLessThanOrEqual(2);
+      expect(Math.abs(layout.inputWidth - layout.inputLabelWidth)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.footerWidth - layout.columnWidth)).toBeLessThanOrEqual(2);
+      expect(layout.footerDisplay).toBe("grid");
+      expect(layout.countLeft).toBeGreaterThanOrEqual(layout.footerLeft - 1);
+      expect(layout.countRight).toBeLessThanOrEqual(layout.footerRight + 1);
+      expect(layout.buttonLeft).toBeGreaterThanOrEqual(layout.footerLeft - 1);
+      expect(layout.buttonRight).toBeLessThanOrEqual(layout.footerRight + 1);
+      expect(layout.buttonHeight).toBeLessThan(layout.inputHeight);
+      expect(layout.buttonFontSize).toBeLessThan(layout.inputFontSize);
+      expect(layout.formScrollWidth).toBeLessThanOrEqual(layout.formClientWidth + 1);
+    };
+
+    await page.goto("/goksorry-room?theme=excel-light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry")).toHaveCount(1);
+    await page.getByRole("button", { name: "덧글 1" }).click();
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form")).toBeVisible();
+
+    expectMobileFormCells(await readMobileFormLayout(".theme-shell-excel .goksorry-room-entry-form"));
+    expectMobileFormCells(await readMobileFormLayout(".theme-shell-excel .goksorry-room-reply-form"));
+  });
+
   test("goksorry room infinite scroll appends entries inside the list region across themes", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

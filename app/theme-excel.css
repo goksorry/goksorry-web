@@ -1499,10 +1499,14 @@
   margin: 0;
 }
 
+.theme-shell-excel .goksorry-room-form-footer {
+  display: contents;
+  min-width: 0;
+}
+
 .theme-shell-excel .goksorry-room-input-label input,
 .theme-shell-excel .goksorry-room-count,
-.theme-shell-excel .goksorry-room-entry-form > button,
-.theme-shell-excel .goksorry-room-reply-form > button {
+.theme-shell-excel .goksorry-room-form-footer > button {
   min-height: 0;
   height: var(--excel-row-height);
   display: flex;
@@ -1842,6 +1846,58 @@
 
   .excel-grid-shell {
     --excel-row-header-width: 2.55rem;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-form,
+  .theme-shell-excel .goksorry-room-reply-form {
+    width: min(100%, calc(var(--excel-column-width) * 3));
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    justify-self: start;
+  }
+
+  .theme-shell-excel .goksorry-room-form-footer {
+    min-width: 0;
+    height: var(--excel-row-height);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.14rem;
+    margin: 0;
+    padding: calc(var(--excel-cell-padding-y) * 0.6) calc(var(--excel-cell-padding-x) * 0.55);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--excel-cell-line);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .theme-shell-excel .goksorry-room-form-footer .goksorry-room-count,
+  .theme-shell-excel .goksorry-room-form-footer > button {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+    line-height: 1;
+  }
+
+  .theme-shell-excel .goksorry-room-form-footer .goksorry-room-count {
+    justify-content: flex-start;
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .theme-shell-excel .goksorry-room-form-footer > button {
+    min-width: 2.2rem;
+    min-height: 1.12rem;
+    justify-content: center;
+    padding: 0.06rem 0.18rem;
+    border: 1px solid color-mix(in srgb, var(--excel-cell-line) 88%, var(--excel-selection));
+    border-radius: var(--excel-control-radius);
+    background: color-mix(in srgb, var(--excel-cell-fill) 82%, var(--excel-selection) 18%);
+    font-size: 0.66rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .theme-shell-excel .goksorry-room-entry {

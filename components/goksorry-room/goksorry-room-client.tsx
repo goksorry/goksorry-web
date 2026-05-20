@@ -355,12 +355,14 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
             required
           />
         </label>
-        <span className="muted goksorry-room-count">
-          {entryDraft.length}/{GOKSORRY_ROOM_ENTRY_MAX_LENGTH}
-        </span>
-        <button type="submit" disabled={entrySubmitting || !entryDraft.trim()}>
-          {entrySubmitting ? "등록 중..." : "등록"}
-        </button>
+        <div className="goksorry-room-form-footer">
+          <span className="muted goksorry-room-count">
+            {entryDraft.length}/{GOKSORRY_ROOM_ENTRY_MAX_LENGTH}
+          </span>
+          <button type="submit" disabled={entrySubmitting || !entryDraft.trim()}>
+            {entrySubmitting ? "등록 중..." : "등록"}
+          </button>
+        </div>
       </form>
 
       {error ? <p className="error">{error}</p> : null}
@@ -480,12 +482,14 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                           required
                         />
                       </label>
-                      <span className="muted goksorry-room-count">
-                        {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
-                      </span>
-                      <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
-                        {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
-                      </button>
+                      <div className="goksorry-room-form-footer">
+                        <span className="muted goksorry-room-count">
+                          {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
+                        </span>
+                        <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
+                          {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
+                        </button>
+                      </div>
                     </form>
                   </>
                 ) : null}
