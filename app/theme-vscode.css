@@ -1224,6 +1224,104 @@
     scroll-snap-align: start;
   }
 
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "room-content room-content"
+      "room-meta room-actions";
+    align-items: start;
+    gap: 0.28rem 0;
+    overflow: visible;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main {
+    display: contents !important;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > p {
+    grid-area: room-content;
+    display: block !important;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta {
+    grid-area: room-meta;
+    min-width: 0;
+    display: flex !important;
+    align-self: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 0.45ch;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span,
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > time {
+    order: initial;
+    flex: 0 1 auto;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > span::before {
+    content: "";
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-entry-main > .goksorry-room-meta > time {
+    display: inline !important;
+    white-space: normal;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-actions {
+    grid-area: room-actions;
+    display: flex !important;
+    align-self: center;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0 0.45ch;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-list-status,
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-replies,
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-entry > .goksorry-room-reply-form {
+    grid-column: 1 / -1;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-reply {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.24rem;
+    overflow: visible;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-reply > p {
+    display: block !important;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-reply > .goksorry-room-meta {
+    min-width: 0;
+    display: flex !important;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 0.45ch;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-actions > button,
+  .theme-shell-vscode .theme-shell-page .main .goksorry-room-reply > .goksorry-room-meta > button {
+    display: inline-flex !important;
+  }
+
   .theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::before,
   .theme-shell-vscode .theme-shell-page .main .overview-market-row .overview-card + .overview-card::after,
   .theme-shell-vscode .theme-shell-page .main .overview-bottom-row .overview-card + .overview-card::before,

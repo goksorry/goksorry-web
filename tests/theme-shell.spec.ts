@@ -1380,6 +1380,150 @@ test.describe("program theme shells", () => {
     }
   });
 
+  test("goksorry room mobile puts entry and reply content above meta rows across themes", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await prepareThemePage(page);
+    const entryContent =
+      "모바일 곡소리방 긴 의견은 첫 번째 줄 영역에서 여러 줄로 자연스럽게 이어지고 작성자와 날짜와 버튼들은 아래 줄에 모여야 합니다.";
+    const replyContent =
+      "모바일 답글도 긴 문장이 내용 영역에서 여러 줄로 표시되고 작성자와 날짜와 삭제 버튼은 그 아래 줄에 표시되어야 합니다.";
+
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/replies")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            replies: [
+              {
+                id: "reply-mobile-1",
+                entry_id: "entry-mobile-1",
+                content: replyContent,
+                author_kind: "guest",
+                author_label: "답글작성자",
+                created_at: "2026-05-17T01:01:00.000Z",
+                can_delete: true
+              }
+            ]
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          entries: [
+            {
+              id: "entry-mobile-1",
+              content: entryContent,
+              author_kind: "guest",
+              author_label: "작성자",
+              created_at: "2026-05-17T01:00:00.000Z",
+              reply_count: 1,
+              can_delete: true,
+              replies: []
+            }
+          ],
+          next_cursor: null
+        })
+      });
+    });
+
+    const readEntryMobileLayout = async (root: string) =>
+      page.locator(roomSelector(root, ".goksorry-room-entry")).first().evaluate((entry) => {
+        const content = entry.querySelector(".goksorry-room-entry-main > p") as HTMLElement;
+        const meta = entry.querySelector(".goksorry-room-entry-main .goksorry-room-meta") as HTMLElement;
+        const actions = entry.querySelector(".goksorry-room-actions") as HTMLElement;
+        const time = meta.querySelector("time") as HTMLElement;
+        const contentRect = content.getBoundingClientRect();
+        const metaRect = meta.getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
+        const contentStyle = window.getComputedStyle(content);
+        const range = document.createRange();
+        range.selectNodeContents(content);
+        const contentLineCount = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 && rect.height > 0
+        ).length;
+        range.detach();
+
+        return {
+          contentLineCount,
+          contentWhiteSpace: contentStyle.whiteSpace,
+          contentTextOverflow: contentStyle.textOverflow,
+          contentBottom: contentRect.bottom,
+          metaTop: metaRect.top,
+          actionsTop: actionsRect.top,
+          metaCenterY: metaRect.top + metaRect.height / 2,
+          actionsCenterY: actionsRect.top + actionsRect.height / 2,
+          timeDisplay: window.getComputedStyle(time).display,
+          scrollWidth: entry.scrollWidth,
+          clientWidth: entry.clientWidth
+        };
+      });
+    const readReplyMobileLayout = async (root: string) =>
+      page.locator(roomSelector(root, ".goksorry-room-reply")).first().evaluate((reply) => {
+        const content = reply.querySelector("p") as HTMLElement;
+        const meta = reply.querySelector(".goksorry-room-meta") as HTMLElement;
+        const time = meta.querySelector("time") as HTMLElement;
+        const contentRect = content.getBoundingClientRect();
+        const metaRect = meta.getBoundingClientRect();
+        const contentStyle = window.getComputedStyle(content);
+        const range = document.createRange();
+        range.selectNodeContents(content);
+        const contentLineCount = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 && rect.height > 0
+        ).length;
+        range.detach();
+
+        return {
+          contentLineCount,
+          contentWhiteSpace: contentStyle.whiteSpace,
+          contentTextOverflow: contentStyle.textOverflow,
+          contentBottom: contentRect.bottom,
+          metaTop: metaRect.top,
+          timeDisplay: window.getComputedStyle(time).display,
+          scrollWidth: reply.scrollWidth,
+          clientWidth: reply.clientWidth
+        };
+      });
+
+    for (const item of roomThemeCases) {
+      await page.goto(item.url);
+      if (item.shell === "default") {
+        await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+      } else {
+        await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
+      }
+
+      await expect(page.locator(roomSelector(item.root, ".goksorry-room-entry"))).toHaveCount(1);
+      await page
+        .locator(roomSelector(item.root, ".goksorry-room-actions"))
+        .getByRole("button", { name: "덧글 1" })
+        .click();
+      await expect(page.locator(roomSelector(item.root, ".goksorry-room-reply"))).toHaveCount(1);
+
+      const entryLayout = await readEntryMobileLayout(item.root);
+      expect(entryLayout.contentWhiteSpace).not.toBe("nowrap");
+      expect(entryLayout.contentTextOverflow).not.toBe("ellipsis");
+      expect(entryLayout.contentLineCount).toBeGreaterThanOrEqual(2);
+      expect(Math.min(entryLayout.metaTop, entryLayout.actionsTop)).toBeGreaterThanOrEqual(entryLayout.contentBottom - 1);
+      expect(Math.abs(entryLayout.metaCenterY - entryLayout.actionsCenterY)).toBeLessThanOrEqual(14);
+      expect(entryLayout.timeDisplay).not.toBe("none");
+      expect(entryLayout.scrollWidth).toBeLessThanOrEqual(entryLayout.clientWidth + 1);
+
+      const replyLayout = await readReplyMobileLayout(item.root);
+      expect(replyLayout.contentWhiteSpace).not.toBe("nowrap");
+      expect(replyLayout.contentTextOverflow).not.toBe("ellipsis");
+      expect(replyLayout.contentLineCount).toBeGreaterThanOrEqual(2);
+      expect(replyLayout.metaTop).toBeGreaterThanOrEqual(replyLayout.contentBottom - 1);
+      expect(replyLayout.timeDisplay).not.toBe("none");
+      expect(replyLayout.scrollWidth).toBeLessThanOrEqual(replyLayout.clientWidth + 1);
+    }
+  });
+
   test("goksorry room load-more errors wait for manual retry instead of looping", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

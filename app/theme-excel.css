@@ -1844,6 +1844,74 @@
     --excel-row-header-width: 2.55rem;
   }
 
+  .theme-shell-excel .goksorry-room-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "room-content room-content"
+      "room-meta room-actions";
+    align-items: start;
+    overflow: visible;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main {
+    height: auto;
+    min-height: var(--excel-row-height);
+    display: contents;
+    overflow: visible;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main p {
+    grid-area: room-content;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main .goksorry-room-meta {
+    grid-area: room-meta;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main p,
+  .theme-shell-excel .goksorry-room-reply p {
+    height: auto;
+    min-height: var(--excel-row-height);
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main .goksorry-room-meta,
+  .theme-shell-excel .goksorry-room-reply .goksorry-room-meta {
+    height: auto;
+    min-height: var(--excel-row-height);
+    align-items: center;
+    flex-wrap: wrap;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .theme-shell-excel .goksorry-room-entry-main .goksorry-room-meta > *,
+  .theme-shell-excel .goksorry-room-reply .goksorry-room-meta > * {
+    white-space: normal;
+  }
+
+  .theme-shell-excel .goksorry-room-actions {
+    grid-area: room-actions;
+    height: auto;
+    min-height: var(--excel-row-height);
+    align-items: center;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .theme-shell-excel .goksorry-room-reply {
+    height: auto;
+    min-height: calc(var(--excel-row-height) * 2);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    overflow: visible;
+  }
+
   .theme-shell-excel .overview-market-block {
     grid-template-rows: var(--excel-row-height) calc(var(--excel-row-height) * 4);
   }

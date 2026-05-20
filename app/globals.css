@@ -3551,6 +3551,65 @@ div.goksorry-room-list-status {
     text-align: right;
   }
 
+  .goksorry-room-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "room-content room-content"
+      "room-meta room-actions";
+    align-items: start;
+    gap: 0.32rem 0.5rem;
+  }
+
+  .goksorry-room-entry-main {
+    display: contents;
+  }
+
+  .goksorry-room-entry-main p {
+    grid-area: room-content;
+  }
+
+  .goksorry-room-entry-main p,
+  .goksorry-room-reply p {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .goksorry-room-entry-main .goksorry-room-meta {
+    grid-area: room-meta;
+    align-self: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .goksorry-room-actions {
+    grid-area: room-actions;
+    align-self: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .goksorry-room-entry > .goksorry-room-list-status {
+    grid-column: 1 / -1;
+  }
+
+  .goksorry-room-replies,
+  .goksorry-room-reply-form {
+    margin-inline: 0;
+  }
+
+  .goksorry-room-reply {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.28rem;
+  }
+
+  .goksorry-room-reply .goksorry-room-meta {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .panel h1 {
     font-size: 1.28rem;
   }
