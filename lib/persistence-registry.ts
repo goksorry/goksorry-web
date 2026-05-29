@@ -48,16 +48,6 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     path: "/",
     sameSite: "Lax"
   },
-  marketAdjustment: {
-    kind: "cookie",
-    key: "goksorry_market_adjustment",
-    category: "essential",
-    label: "시장 보정 표시 설정",
-    description: "홈 시장 보정 토글 상태를 저장합니다.",
-    maxAgeSeconds: ONE_YEAR_IN_SECONDS,
-    path: "/",
-    sameSite: "Lax"
-  },
   guestChatNickname: {
     kind: "cookie",
     key: "goksorry_guest_chat_nickname",

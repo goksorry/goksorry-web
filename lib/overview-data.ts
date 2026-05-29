@@ -343,18 +343,13 @@ const buildOverallFromCommunityIndicators = (
 
 export const getCachedMarketOverview = buildMarketOverview;
 
-export const buildCommunityIndicatorsData = async (
-  marketAdjustmentEnabled = true
-): Promise<CommunityIndicatorsPayload> => {
+export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
   const service = getServiceSupabaseClient();
   const { rows } = await fetchRecentFeedRows(service, { hours: COMMUNITY_WINDOW_HOURS, limit: 600 });
   const asOf = new Date();
-  const marketOverview = marketAdjustmentEnabled ? await getCachedMarketOverview() : null;
-  const marketAdjustmentSnapshot = marketOverview
-    ? buildMarketAdjustmentSnapshot(marketOverview.generated_at, marketOverview.market_indicators)
-    : null;
+  const marketOverview = await getCachedMarketOverview();
+  const marketAdjustmentSnapshot = buildMarketAdjustmentSnapshot(marketOverview.generated_at, marketOverview.market_indicators);
   const communityIndicators = buildSourceGroupSummaries(rows, {
-    marketAdjustmentEnabled,
     marketAdjustmentSnapshot,
     asOf
   });
@@ -362,7 +357,7 @@ export const buildCommunityIndicatorsData = async (
 
   return {
     generated_at: asOf.toISOString(),
-    market_adjustment_enabled: marketAdjustmentEnabled,
+    market_adjustment_enabled: true,
     overall_base_score: overall.overall_base_score,
     overall_market_adjustment: overall.overall_market_adjustment,
     overall_sentiment_score: overall.overall_sentiment_score,
@@ -376,10 +371,10 @@ export const getCachedCommunityIndicators = unstable_cache(buildCommunityIndicat
   revalidate: COMMUNITY_TTL_SEC
 });
 
-export const buildOverviewData = async (marketAdjustmentEnabled = true): Promise<OverviewPayload> => {
+export const buildOverviewData = async (): Promise<OverviewPayload> => {
   const [marketOverview, communityOverview] = await Promise.all([
     getCachedMarketOverview(),
-    getCachedCommunityIndicators(marketAdjustmentEnabled)
+    getCachedCommunityIndicators()
   ]);
 
   return {

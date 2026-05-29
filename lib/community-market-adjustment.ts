@@ -1,9 +1,3 @@
-import {
-  readClientCookieValue,
-  writeClientCookieValue
-} from "@/lib/browser-persistence";
-import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
-
 export type MarketAdjustmentTarget = "all" | "kr" | "us";
 
 export type MarketAdjustmentSnapshot = {
@@ -18,8 +12,6 @@ export type MarketAdjustmentRowLike = {
   source: string;
   symbol_market: "kr" | "us" | null;
 };
-
-export const MARKET_ADJUSTMENT_COOKIE_NAME = CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment.key;
 
 const MARKET_ADJUSTMENT_LOG_SCALE = 0.43;
 const MARKET_ADJUSTMENT_CAP = 1.2;
@@ -122,80 +114,6 @@ const getTargetMarketChangePercent = (
     return snapshot.nasdaq_change_percent;
   }
   return getAllMarketChangePercent(snapshot);
-};
-
-export const parseMarketAdjustmentParam = (value: string | null | undefined): boolean => {
-  const normalized = String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-  if (!normalized) {
-    return true;
-  }
-
-  if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no") {
-    return false;
-  }
-
-  return true;
-};
-
-export const getMarketAdjustmentQueryValue = (enabled: boolean): string | null => {
-  return enabled ? "on" : null;
-};
-
-export const getMarketAdjustmentCookieValue = (enabled: boolean): "on" | "off" => {
-  return enabled ? "on" : "off";
-};
-
-export const persistMarketAdjustmentPreference = (enabled: boolean): boolean => {
-  return writeClientCookieValue(
-    CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment,
-    getMarketAdjustmentCookieValue(enabled)
-  );
-};
-
-export const parseMarketAdjustmentCookieValue = (value: string | null | undefined): boolean | null => {
-  const normalized = String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no") {
-    return false;
-  }
-
-  if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes") {
-    return true;
-  }
-
-  return null;
-};
-
-export const readMarketAdjustmentPreferenceFromDocument = (): boolean | null => {
-  const value = readClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.marketAdjustment);
-  return parseMarketAdjustmentCookieValue(value);
-};
-
-export const resolveMarketAdjustmentEnabled = ({
-  queryValue,
-  cookieValue,
-  defaultEnabled = false
-}: {
-  queryValue: string | null | undefined;
-  cookieValue?: string | null | undefined;
-  defaultEnabled?: boolean;
-}): boolean => {
-  const normalizedQuery = String(queryValue ?? "").trim();
-  if (normalizedQuery) {
-    return parseMarketAdjustmentParam(normalizedQuery);
-  }
-
-  const cookiePreference = parseMarketAdjustmentCookieValue(cookieValue);
-  return cookiePreference ?? defaultEnabled;
 };
 
 export const buildMarketAdjustmentSnapshot = (

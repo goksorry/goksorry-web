@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { parseMarketAdjustmentParam } from "@/lib/community-market-adjustment";
 import { buildOverviewData, hasUsableMarketIndicator } from "@/lib/overview-data";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const marketAdjustmentEnabled = parseMarketAdjustmentParam(url.searchParams.get("market_adjustment"));
-  const payload = await buildOverviewData(marketAdjustmentEnabled);
+export async function GET() {
+  const payload = await buildOverviewData();
   const response = NextResponse.json(payload);
   const hasMarketData = payload.market_indicators.some(hasUsableMarketIndicator);
   response.headers.set(

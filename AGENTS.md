@@ -28,7 +28,7 @@
 - Worker integration APIs:
   - `POST /api/ingest` (idempotent upsert)
   - `POST /api/v1/detector/register` (aggregated snapshot)
-- TradingBot read APIs (`/api/v1/*`)
+- TradingBot read APIs (`/api/v1/health`, `/api/v1/signals/latest`)
 - Member-issued TradingBot token APIs (`/api/v1/tokens*`)
 
 ## Auth and Profile Setup Model

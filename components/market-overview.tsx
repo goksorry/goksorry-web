@@ -1,16 +1,10 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState, type CSSProperties } from "react";
+import { startTransition, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
-import {
-  getMarketAdjustmentQueryValue,
-  parseMarketAdjustmentParam,
-  persistMarketAdjustmentPreference,
-  readMarketAdjustmentPreferenceFromDocument
-} from "@/lib/community-market-adjustment";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -35,7 +29,6 @@ const toLocalTime = (iso: string): string => {
 type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
   initialCommunityIndicators: CommunityIndicatorsPayload;
-  initialMarketAdjustmentEnabled: boolean;
   initialSelectedGroupIds: SourceGroupId[];
 };
 
@@ -96,7 +89,6 @@ const hasMissingMarketIndicator = (indicator: Pick<OverviewPayload["market_indic
 export function MarketOverview({
   marketOverview,
   initialCommunityIndicators,
-  initialMarketAdjustmentEnabled,
   initialSelectedGroupIds
 }: MarketOverviewProps) {
   const pathname = usePathname();
@@ -109,19 +101,6 @@ export function MarketOverview({
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
   const [optimisticGroupIds, setOptimisticGroupIds] = useState<SourceGroupId[] | null>(null);
-  const [cookieBackedMarketAdjustmentEnabled, setCookieBackedMarketAdjustmentEnabled] = useState(initialMarketAdjustmentEnabled);
-  const [refreshNowKey, setRefreshNowKey] = useState(0);
-  const refreshNowKeyRef = useRef(refreshNowKey);
-  const explicitMarketAdjustmentParam = searchParams.get("market_adjustment");
-  const marketAdjustmentEnabled =
-    explicitMarketAdjustmentParam === null
-      ? cookieBackedMarketAdjustmentEnabled
-      : parseMarketAdjustmentParam(explicitMarketAdjustmentParam);
-
-  useEffect(() => {
-    refreshNowKeyRef.current = refreshNowKey;
-  }, [refreshNowKey]);
-
   useEffect(() => {
     setMarketPayload(marketOverview);
   }, [marketOverview]);
@@ -132,30 +111,12 @@ export function MarketOverview({
   }, [initialCommunityIndicators]);
 
   useEffect(() => {
-    if (explicitMarketAdjustmentParam !== null) {
-      return;
-    }
-
-    setCookieBackedMarketAdjustmentEnabled(readMarketAdjustmentPreferenceFromDocument() ?? initialMarketAdjustmentEnabled);
-  }, [explicitMarketAdjustmentParam, initialMarketAdjustmentEnabled]);
-
-  useEffect(() => {
-    persistMarketAdjustmentPreference(marketAdjustmentEnabled);
-  }, [marketAdjustmentEnabled]);
-
-  useEffect(() => {
     const controller = new AbortController();
     let refreshTimer: number | null = null;
 
     const fetchOverview = async () => {
       try {
-        const params = new URLSearchParams();
-        const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(marketAdjustmentEnabled);
-        if (marketAdjustmentQueryValue) {
-          params.set("market_adjustment", marketAdjustmentQueryValue);
-        }
-        const query = params.toString();
-        const response = await fetch(query ? `/api/overview?${query}` : "/api/overview", {
+        const response = await fetch("/api/overview", {
           signal: controller.signal,
           cache: "no-store"
         });
@@ -183,10 +144,6 @@ export function MarketOverview({
           return;
         }
         setError("지수 불러오기에 실패했습니다.");
-      } finally {
-        if (!controller.signal.aborted && refreshNowKeyRef.current !== 0) {
-          setRefreshNowKey(0);
-        }
       }
     };
 
@@ -195,13 +152,11 @@ export function MarketOverview({
     const ageMs = Number.isFinite(generatedAtMs) ? Date.now() - generatedAtMs : COMMUNITY_REFRESH_MS;
     const delayMs = error
       ? COMMUNITY_RETRY_MS
-      : refreshNowKey > 0
-        ? 0
-        : marketNeedsRetry
-          ? MARKET_RETRY_MS
-          : ageMs >= COMMUNITY_REFRESH_MS
-            ? 0
-            : COMMUNITY_REFRESH_MS - ageMs;
+      : marketNeedsRetry
+        ? MARKET_RETRY_MS
+        : ageMs >= COMMUNITY_REFRESH_MS
+          ? 0
+          : COMMUNITY_REFRESH_MS - ageMs;
 
     refreshTimer = window.setTimeout(() => {
       void fetchOverview();
@@ -213,7 +168,7 @@ export function MarketOverview({
         window.clearTimeout(refreshTimer);
       }
     };
-  }, [error, marketAdjustmentEnabled, marketPayload.market_indicators, payload?.generated_at, refreshNowKey]);
+  }, [error, marketPayload.market_indicators, payload?.generated_at]);
 
   useEffect(() => {
     setActiveGroupId(null);
@@ -265,26 +220,6 @@ export function MarketOverview({
     setOptimisticGroupIds([groupId]);
     startTransition(() => {
       router.push(`/?channels=${groupId}`);
-    });
-  };
-
-  const onToggleMarketAdjustment = () => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    const nextEnabled = !marketAdjustmentEnabled;
-    const marketAdjustmentQueryValue = getMarketAdjustmentQueryValue(nextEnabled);
-
-    persistMarketAdjustmentPreference(nextEnabled);
-    setCookieBackedMarketAdjustmentEnabled(nextEnabled);
-    setRefreshNowKey((current) => current + 1);
-
-    if (marketAdjustmentQueryValue) {
-      nextParams.set("market_adjustment", marketAdjustmentQueryValue);
-    } else {
-      nextParams.delete("market_adjustment");
-    }
-
-    startTransition(() => {
-      router.replace(nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname, { scroll: false });
     });
   };
 
@@ -369,9 +304,7 @@ export function MarketOverview({
                 {marketPayload.generated_at ? `업데이트 ${toLocalTime(marketPayload.generated_at)}` : "캐시 지수 준비 중"}
               </p>
               <p className="overview-market-adjustment-meta">
-                {marketAdjustmentEnabled
-                  ? `기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · 시장보정 ${signedGoksorryMarketAdjustment}`
-                  : "시장 지수 미반영"}
+                {`기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · 시장보정 ${signedGoksorryMarketAdjustment}`}
               </p>
             </div>
             <div className="overview-overall-score" aria-live="polite">
@@ -381,15 +314,6 @@ export function MarketOverview({
                   {communityLoading ? "--" : overallGoksorryIndex.toFixed(1)}
                   <span>/10</span>
                 </strong>
-                <button
-                  type="button"
-                  className={`overview-market-adjustment-button${marketAdjustmentEnabled ? " overview-market-adjustment-button-active" : ""}`}
-                  onClick={onToggleMarketAdjustment}
-                  aria-pressed={marketAdjustmentEnabled}
-                  title={marketAdjustmentEnabled ? "시장 지수 반영 켜짐" : "시장 지수 반영 꺼짐"}
-                >
-                  시장 {marketAdjustmentEnabled ? "ON" : "OFF"}
-                </button>
               </div>
               <p className="overview-overall-band">{overallCommunityLabel}</p>
             </div>

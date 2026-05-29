@@ -76,7 +76,6 @@ export type FeedScoreOverview = {
 };
 
 type FeedScoreBuildOptions = {
-  marketAdjustmentEnabled?: boolean;
   marketAdjustmentSnapshot?: MarketAdjustmentSnapshot | null;
   asOf?: Date;
 };
@@ -228,7 +227,6 @@ const getActionableRows = (rows: FeedRow[]): FeedRow[] => rows.filter((row) => r
 const buildAggregateVisibleScore = (
   actionableRows: FeedRow[],
   {
-    marketAdjustmentEnabled = true,
     marketAdjustmentSnapshot = null,
     asOf = new Date()
   }: FeedScoreBuildOptions = {}
@@ -236,10 +234,9 @@ const buildAggregateVisibleScore = (
   const baseScore = amplifyAggregateSentimentScore(
     averageSentimentScore(actionableRows.map((row) => row.sentiment_score))
   );
-  const marketAdjustment =
-    marketAdjustmentEnabled && marketAdjustmentSnapshot
-      ? averageRowMarketAdjustment(actionableRows, marketAdjustmentSnapshot, asOf)
-      : 0;
+  const marketAdjustment = marketAdjustmentSnapshot
+    ? averageRowMarketAdjustment(actionableRows, marketAdjustmentSnapshot, asOf)
+    : 0;
   const score = clampSentimentScore(baseScore + marketAdjustment);
   const bullish = actionableRows.filter((row) => row.label === "bullish").length;
   const bearish = actionableRows.filter((row) => row.label === "bearish").length;

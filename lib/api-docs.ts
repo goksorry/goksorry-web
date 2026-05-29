@@ -45,9 +45,6 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     section: "홈 공개",
     summary: "홈 커뮤니티 카드의 원감성 점수와 표시용 곡소리 지수를 조회합니다.",
     auth: "public",
-    query: [
-      { name: "market_adjustment", type: "on|off", description: "시장 보정 적용 여부입니다. 기본값은 `on`입니다." }
-    ],
     responseExample: {
       generated_at: "2026-04-08T09:30:00.000Z",
       market_adjustment_enabled: true,
@@ -103,9 +100,6 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     section: "홈 공개",
     summary: "홈 상단 시장 지표와 원감성 점수, 표시용 곡소리 지수를 함께 조회합니다.",
     auth: "public",
-    query: [
-      { name: "market_adjustment", type: "on|off", description: "시장 보정 적용 여부입니다. 기본값은 `on`입니다." }
-    ],
     responseExample: {
       generated_at: "2026-04-08T09:30:00.000Z",
       market_indicators: [
@@ -229,100 +223,6 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       "이 API는 커뮤니티에서 파생된 신호만 제공합니다.",
       "공식 시세, 지수, 거시 지표 원데이터는 봇이 별도로 수집해야 합니다."
     ]
-  },
-  {
-    method: "GET",
-    path: "/api/v1/signals/{symbol}",
-    section: "트레이딩봇 조회",
-    summary: "특정 종목 하나의 최신 신호 스냅샷을 조회합니다.",
-    auth: "tradingbot",
-    pathParams: [{ name: "symbol", type: "string", description: "티커 또는 종목 코드입니다. 최대 20자입니다." }],
-    headers: tradingBotHeaders,
-    responseExample: {
-      symbol: "AAPL",
-      market: "us",
-      latest: {
-        symbol: "AAPL",
-        market: "us",
-        asof: "2026-03-11T09:57:00.000Z",
-        freshness_sec: 180,
-        mentions: 42,
-        neg_count: 11,
-        pos_count: 20,
-        panic_score: 26.19,
-        euphoria_score: 47.62,
-        signal_quality: 0.81,
-        mention_velocity_z: 0,
-        confidence_grade: "A",
-        source_diversity: 3
-      },
-      window: {
-        long_min: 120,
-        short_min: 20
-      }
-    }
-  },
-  {
-    method: "GET",
-    path: "/api/v1/market/latest",
-    section: "트레이딩봇 조회",
-    summary: "시장 단위의 최신 커뮤니티 레짐과 공포 지수를 조회합니다.",
-    auth: "tradingbot",
-    query: [{ name: "market", type: "kr|us|all", description: "시장 필터입니다. 기본값은 `all`입니다." }],
-    headers: tradingBotHeaders,
-    responseExample: {
-      status: "ok",
-      generated_at: "2026-03-11T10:00:00.000Z",
-      markets: [
-        {
-          market: "kr",
-          asof: "2026-03-11T09:58:00.000Z",
-          regime: "risk_off",
-          fear_index: 67.5,
-          payload: {
-            avg_euphoria: 31.2,
-            avg_sentiment_score: 3.84,
-            symbol_count: 18,
-            pos_count: 42,
-            neg_count: 71,
-            neutral_count: 19,
-            actionable_count: 113,
-            dominant_share: 0.6283,
-            regime_basis: "post_dominance_v1"
-          }
-        }
-      ],
-      ttl_sec: 60
-    },
-    notes: [
-      "레짐과 공포 지수는 공식 거래소 지표가 아니라 커뮤니티 활동에서 파생된 값입니다.",
-      "regime은 최근 수집 글의 bullish/bearish 우세로 계산하고, fear_index는 평균 sentiment score에서 파생합니다."
-    ]
-  },
-  {
-    method: "GET",
-    path: "/api/v1/status",
-    section: "트레이딩봇 조회",
-    summary: "봇 측 안전 점검을 위한 detector 파이프라인 상태를 조회합니다.",
-    auth: "tradingbot",
-    headers: tradingBotHeaders,
-    responseExample: {
-      status: "ok",
-      detector_mode: "normal",
-      collector: {
-        last_run_at: "2026-03-11T09:59:00.000Z",
-        errors: 0
-      },
-      llm: {
-        provider: "gemini",
-        last_run_at: "2026-03-11T09:59:00.000Z",
-        degraded: false
-      },
-      sources: {
-        us_cooldown_until: null,
-        hold_list: []
-      }
-    }
   },
   {
     method: "GET",

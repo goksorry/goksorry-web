@@ -76,7 +76,7 @@ export default async function DocsPage() {
             <li>사용자가 `내 프로필`에서 TradingBot 토큰을 요청합니다.</li>
             <li>관리자가 `/admin/tokens`에서 승인합니다.</li>
             <li>사용자가 다시 `내 프로필`에서 토큰 값을 1회 확인합니다.</li>
-            <li>봇은 `Authorization`, `X-Client-Id`, `X-Request-Id` 헤더와 함께 `/api/v1/*`를 호출합니다.</li>
+            <li>봇은 `Authorization`, `X-Client-Id`, `X-Request-Id` 헤더와 함께 `/api/v1/signals/latest`를 호출합니다.</li>
           </ol>
         </article>
 

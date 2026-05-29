@@ -952,36 +952,6 @@ a:hover {
   color: var(--muted);
 }
 
-.overview-market-adjustment-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 1.5rem;
-  padding: 0.18rem 0.46rem;
-  border: 1px solid var(--chip-line);
-  border-radius: 999px;
-  background: rgba(88, 96, 106, 0.08);
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.overview-market-adjustment-button:hover {
-  background: rgba(88, 96, 106, 0.12);
-  border-color: var(--chip-hover-line);
-  color: var(--ink);
-}
-
-.overview-market-adjustment-button-active {
-  background: color-mix(in srgb, var(--brand) 14%, transparent);
-  border-color: color-mix(in srgb, var(--brand) 32%, var(--chip-line));
-  color: var(--brand-strong);
-}
-
 .overview-overall-band {
   font-size: 0.8rem;
   font-weight: 700;
@@ -3672,12 +3642,6 @@ div.goksorry-room-list-status {
 
   .overview-overall-value-row {
     justify-content: flex-start;
-  }
-
-  .overview-market-adjustment-button {
-    min-height: 1.42rem;
-    padding: 0.16rem 0.42rem;
-    font-size: 0.64rem;
   }
 
   .overview-panel-art {

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { HomeFeedShell } from "@/components/home-feed-shell";
 import { MarketOverviewFallback } from "@/components/market-overview-fallback";
 import { MarketOverviewShell } from "@/components/market-overview-shell";
-import { MARKET_ADJUSTMENT_COOKIE_NAME, resolveMarketAdjustmentEnabled } from "@/lib/community-market-adjustment";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
 import { buildPageMetadata, SITE_NAME } from "@/lib/seo";
@@ -50,10 +48,6 @@ export default async function Home({
 }: {
   searchParams?: Record<string, QueryValue>;
 }) {
-  const marketAdjustmentParam = pickFirst(searchParams?.market_adjustment);
-  const cookieStore = await cookies();
-  const marketAdjustmentCookieValue = cookieStore.get(MARKET_ADJUSTMENT_COOKIE_NAME)?.value ?? "";
-
   const selectedChannelsRaw = pickFirst(searchParams?.channels);
   const legacyChannelRaw = pickFirst(searchParams?.channel);
   const selectedGroupIds =
@@ -62,18 +56,13 @@ export default async function Home({
       : isSourceGroupId(legacyChannelRaw)
         ? [legacyChannelRaw]
         : parseSourceGroupSelection("");
-  const marketAdjustmentEnabled = resolveMarketAdjustmentEnabled({
-    queryValue: marketAdjustmentParam,
-    cookieValue: marketAdjustmentCookieValue,
-    defaultEnabled: false
-  });
 
   const timezone = getTimezone();
 
   return (
     <>
       <Suspense fallback={<MarketOverviewFallback selectedGroupIds={selectedGroupIds} />}>
-        <MarketOverviewShell marketAdjustmentEnabled={marketAdjustmentEnabled} selectedGroupIds={selectedGroupIds} />
+        <MarketOverviewShell selectedGroupIds={selectedGroupIds} />
       </Suspense>
       <HomeFeedShell
         timezone={timezone}

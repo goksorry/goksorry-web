@@ -448,15 +448,17 @@ test.describe("program theme shells", () => {
       .toBe("https://goksorry.com/community?sort=recent&theme=vscode-dark#board");
   });
 
-  test("market overview refresh updates market indicators", async ({ page }) => {
-    let overviewRequests = 0;
+  test("market overview refresh always uses market-adjusted overview", async ({ page }) => {
+    const overviewRequestUrls: string[] = [];
+    await page.clock.install();
+
     await page.route("**/api/overview**", async (route) => {
-      overviewRequests += 1;
+      overviewRequestUrls.push(route.request().url());
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          generated_at: "2026-05-18T01:30:00.000Z",
+          generated_at: "2999-01-01T00:00:00.000Z",
           market_indicators: [
             {
               id: "kospi",
@@ -511,11 +513,18 @@ test.describe("program theme shells", () => {
     });
 
     await prepareThemePage(page);
-    await page.goto("/");
+    await page.goto("/?market_adjustment=off");
 
-    await page.locator(".overview-market-adjustment-button").click();
+    await expect(page.locator(".overview-market-adjustment-button")).toHaveCount(0);
+    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정");
+    await expect(page.locator(".overview-market-adjustment-meta")).not.toContainText("미반영");
+
+    await page.clock.runFor(61_000);
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
-    expect(overviewRequests).toBeGreaterThan(0);
+    expect(overviewRequestUrls.length).toBeGreaterThan(0);
+    for (const requestUrl of overviewRequestUrls) {
+      expect(new URL(requestUrl).searchParams.has("market_adjustment")).toBe(false);
+    }
   });
 
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
@@ -1379,7 +1388,8 @@ test.describe("program theme shells", () => {
     });
 
     const readMobileFormLayout = async (selector: string) =>
-      page.locator(selector).evaluate((form) => {
+      page.locator(selector).evaluate((formElement) => {
+        const form = formElement as HTMLElement;
         const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
         const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
         const inputLabel = form.querySelector(".goksorry-room-input-label") as HTMLElement;
