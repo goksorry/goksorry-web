@@ -2292,8 +2292,7 @@ button:disabled {
 
 .analysis-card-korean_news,
 .analysis-card-us_news,
-.analysis-card-top10,
-.analysis-card-market {
+.analysis-card-top10 {
   grid-column: span 2;
 }
 
@@ -4248,8 +4247,7 @@ div.goksorry-room-list-status {
 
   .analysis-card-korean_news,
   .analysis-card-us_news,
-  .analysis-card-top10,
-  .analysis-card-market {
+  .analysis-card-top10 {
     grid-column: auto;
   }
 
