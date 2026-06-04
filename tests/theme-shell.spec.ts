@@ -322,6 +322,113 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".analysis-card-market")).toHaveCount(0);
   });
 
+  test("excel theme aligns analysis sections to worksheet cells", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/analysis?theme=excel-light");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
+    await page.locator(".theme-shell-excel .analysis-page").evaluate((pageElement) => {
+      pageElement.insertAdjacentHTML(
+        "beforeend",
+        `<section id="excel-analysis-hero" class="analysis-hero panel">
+          <div class="analysis-hero-copy">
+            <p class="overview-kicker">삐에로봇 분석</p>
+            <h1>분석</h1>
+            <p>거래대금과 차트 변화가 확대되고 있습니다.</p>
+            <p class="muted">최근 입력 기준 분석입니다.</p>
+          </div>
+          <div class="analysis-status-card">
+            <span class="analysis-status analysis-status-ok">ok</span>
+            <p>업데이트 06.05 02:30</p>
+            <p>30분 주기</p>
+          </div>
+        </section>
+        <section id="excel-analysis-grid" class="analysis-grid" aria-label="Excel 분석 섹션">
+          ${["korean_news", "us_news", "kr_top10", "us_top10", "kr_large_popular_changes", "us_large_popular_changes", "kr_chart_states", "us_chart_states"]
+            .map((id, index) => `
+              <article class="analysis-card analysis-card-${id}">
+                <div class="analysis-card-head">
+                  <h2>${id}</h2>
+                  <span>10건</span>
+                </div>
+                <p class="analysis-card-summary">요약 ${index + 1}</p>
+                <ul class="analysis-list">
+                  <li class="analysis-item analysis-tone-${index % 2 === 0 ? "up" : "down"}">
+                    <div class="analysis-item-main">
+                      <span class="analysis-item-label">NVIDIA (NVDA)</span>
+                      <strong class="analysis-item-value">+1.23%</strong>
+                    </div>
+                    <p>거래대금 상위 · 거래량 증가 · 차트 상세</p>
+                  </li>
+                </ul>
+              </article>`)
+            .join("")}
+        </section>
+        <section id="excel-analysis-symbols" class="panel analysis-symbol-panel">
+          <h2>중요 종목</h2>
+          <div class="analysis-symbols">
+            <span class="tag">Micron Technology (MU)</span>
+            <span class="tag">Broadcom (AVGO)</span>
+            <span class="tag">NVIDIA (NVDA)</span>
+            <span class="tag">삼성전기보통주 (009150)</span>
+          </div>
+        </section>`
+      );
+    });
+
+    const desktopMetrics = await readExcelGridMetrics(page, [
+      ".theme-shell-excel #excel-analysis-hero",
+      ".theme-shell-excel #excel-analysis-grid",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-korean_news",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_large_popular_changes",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-us_large_popular_changes",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_chart_states",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-us_chart_states",
+      ".theme-shell-excel #excel-analysis-symbols",
+      ".theme-shell-excel #excel-analysis-symbols .analysis-symbols .tag"
+    ]);
+    expectExcelGridAligned(desktopMetrics);
+
+    const desktopLayout = await page.evaluate(() => {
+      const ids = ["kr_large_popular_changes", "us_large_popular_changes", "kr_chart_states", "us_chart_states"];
+      const cards = ids.map((id) => document.querySelector(`.theme-shell-excel #excel-analysis-grid .analysis-card-${id}`) as HTMLElement);
+      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
+      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
+      const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
+      const rowHeight = rowHeader.getBoundingClientRect().height;
+      const rects = cards.map((card) => card.getBoundingClientRect());
+      return {
+        sameRow: rects.every((rect) => Math.abs(rect.top - rects[0].top) <= 1),
+        widths: rects.map((rect) => rect.width),
+        cardHeight: rects[0].height,
+        columnWidth,
+        rowHeight
+      };
+    });
+    expect(desktopLayout.sameRow).toBe(true);
+    expect(desktopLayout.widths.every((width) => Math.abs(width - desktopLayout.columnWidth * 2) <= 1)).toBe(true);
+    expect(Math.abs(desktopLayout.cardHeight - desktopLayout.rowHeight * 14)).toBeLessThanOrEqual(1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileLayout = await page.evaluate(() => {
+      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
+      const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
+      const hero = document.querySelector(".theme-shell-excel #excel-analysis-hero") as HTMLElement;
+      const card = document.querySelector(".theme-shell-excel #excel-analysis-grid .analysis-card-korean_news") as HTMLElement;
+      const symbol = document.querySelector(".theme-shell-excel #excel-analysis-symbols .analysis-symbols .tag") as HTMLElement;
+      return {
+        columnWidth,
+        heroWidth: hero.getBoundingClientRect().width,
+        cardWidth: card.getBoundingClientRect().width,
+        symbolWidth: symbol.getBoundingClientRect().width
+      };
+    });
+    expect(Math.abs(mobileLayout.heroWidth - mobileLayout.columnWidth * 3)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mobileLayout.cardWidth - mobileLayout.columnWidth * 3)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mobileLayout.symbolWidth - mobileLayout.columnWidth)).toBeLessThanOrEqual(1);
+  });
+
   test("header share button is mobile-only", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
