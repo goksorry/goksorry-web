@@ -26,20 +26,46 @@ const formatKst = (iso: string): string => {
   }).format(date);
 };
 
+const formatNewsTime = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value || "시간 정보 없음";
+  }
+  return formatKst(value);
+};
+
 const isReportStale = (report: AnalysisReport): boolean => {
   const asofMs = new Date(report.asof).getTime();
   return Number.isNaN(asofMs) || Date.now() - asofMs > 60 * 60 * 1000;
 };
 
-const renderItem = (item: AnalysisItem, index: number) => (
-  <li key={`${item.label}-${index}`} className={`analysis-item analysis-tone-${item.tone}`}>
-    <div className="analysis-item-main">
-      <span className="analysis-item-label">{item.label}</span>
-      {item.value ? <strong className="analysis-item-value">{item.value}</strong> : null}
-    </div>
-    {item.note ? <p>{item.note}</p> : null}
+const renderItem = (item: AnalysisItem, index: number, variant: "default" | "news" = "default") => (
+  <li
+    key={`${item.label}-${index}`}
+    className={`analysis-item ${variant === "news" ? "analysis-news-item" : ""} analysis-tone-${item.tone}`}
+  >
+    {variant === "news" ? (
+      <>
+        <div className="analysis-news-meta">
+          <span className="analysis-item-label">{item.label}</span>
+          <time>{formatNewsTime(item.note)}</time>
+        </div>
+        {item.value ? <strong className="analysis-news-headline">{item.value}</strong> : null}
+      </>
+    ) : (
+      <>
+        <div className="analysis-item-main">
+          <span className="analysis-item-label">{item.label}</span>
+          {item.value ? <strong className="analysis-item-value">{item.value}</strong> : null}
+        </div>
+        {item.note ? <p>{item.note}</p> : null}
+      </>
+    )}
   </li>
 );
+
+const renderSectionItem = (sectionId: string) => (item: AnalysisItem, index: number) =>
+  renderItem(item, index, sectionId === "korean_news" || sectionId === "us_news" ? "news" : "default");
 
 const renderMarketIndicator = (indicator: MarketIndicator) => (
   <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
@@ -125,7 +151,11 @@ export default async function AnalysisPage() {
             </div>
             <p className="analysis-card-summary">{section.summary}</p>
             <ul className="analysis-list">
-              {section.items.length > 0 ? section.items.map(renderItem) : <li className="analysis-item analysis-tone-flat">대기 중</li>}
+              {section.items.length > 0 ? (
+                section.items.map(renderSectionItem(section.id))
+              ) : (
+                <li className="analysis-item analysis-tone-flat">대기 중</li>
+              )}
             </ul>
           </article>
         ))}
