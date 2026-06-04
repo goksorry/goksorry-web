@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AnalysisReportStatus = "ok" | "partial" | "error";
@@ -189,6 +190,7 @@ const normalizeReport = (row: ReportRow): AnalysisReport => {
 };
 
 export const fetchLatestAnalysisReport = async (): Promise<AnalysisReport | null> => {
+  noStore();
   const service = getServiceSupabaseClient();
   const { data, error } = await service
     .from("analysis_reports")
