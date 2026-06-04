@@ -28,11 +28,12 @@ export type ThemeShellProps = {
 
 export const SHELL_ROUTES: ShellRoute[] = [
   { href: "/", label: "피드", fileName: "feed.goksorry", cell: "A1", formula: "GOKSORRY.FEED()" },
-  { href: "/community", label: "게시판", fileName: "board.goksorry", cell: "B2", formula: "GOKSORRY.BOARD()" },
-  { href: "/goksorry-room", label: "곡소리방", fileName: "room.goksorry", cell: "C3", formula: "GOKSORRY.ROOM()" },
-  { href: "/docs", label: "문서", fileName: "api.docs", cell: "D4", formula: "GOKSORRY.DOCS()" },
-  { href: "/terms", label: "약관", fileName: "terms.md", cell: "E5", formula: "GOKSORRY.POLICY(\"terms\")" },
-  { href: "/privacy", label: "개인정보", fileName: "privacy.md", cell: "F6", formula: "GOKSORRY.POLICY(\"privacy\")" }
+  { href: "/analysis", label: "분석", fileName: "analysis.goksorry", cell: "B2", formula: "GOKSORRY.ANALYSIS()" },
+  { href: "/community", label: "게시판", fileName: "board.goksorry", cell: "C3", formula: "GOKSORRY.BOARD()" },
+  { href: "/goksorry-room", label: "곡소리방", fileName: "room.goksorry", cell: "D4", formula: "GOKSORRY.ROOM()" },
+  { href: "/docs", label: "문서", fileName: "api.docs", cell: "E5", formula: "GOKSORRY.DOCS()" },
+  { href: "/terms", label: "약관", fileName: "terms.md", cell: "F6", formula: "GOKSORRY.POLICY(\"terms\")" },
+  { href: "/privacy", label: "개인정보", fileName: "privacy.md", cell: "G7", formula: "GOKSORRY.POLICY(\"privacy\")" }
 ];
 
 type IconName =
@@ -280,6 +281,9 @@ export function ShellNavLinks({ className = "theme-shell-nav" }: { className?: s
     <nav className={className} aria-label="사이트 메뉴">
       <Link href="/" replace>
         피드
+      </Link>
+      <Link href="/analysis" replace>
+        분석
       </Link>
       <Link href="/community" replace>
         게시판

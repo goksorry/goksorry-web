@@ -2188,6 +2188,230 @@ button:disabled {
   gap: 0.45rem;
 }
 
+.analysis-page {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.analysis-empty {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.analysis-empty h1,
+.analysis-hero h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.analysis-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+.analysis-hero-copy {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+}
+
+.analysis-hero-copy p {
+  margin: 0;
+}
+
+.analysis-status-card {
+  display: grid;
+  align-content: center;
+  gap: 0.45rem;
+  padding: 0.8rem;
+  border: 1px solid var(--overview-card-line);
+  border-radius: 8px;
+  background: var(--panel-elevated);
+}
+
+.analysis-status-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.analysis-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 1.7rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+}
+
+.analysis-status-ok {
+  border-color: var(--hope-line);
+  background: var(--hope-bg);
+  color: var(--hope);
+}
+
+.analysis-status-partial,
+.analysis-status-stale {
+  border-color: var(--chip-line);
+  background: var(--tag-bg);
+  color: var(--brand);
+}
+
+.analysis-status-error {
+  border-color: var(--fear-line);
+  background: var(--fear-bg);
+  color: var(--danger);
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.analysis-card {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  min-height: 16rem;
+  padding: 0.8rem;
+  border: 1px solid var(--overview-card-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--panel-elevated));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--shadow) 70%, transparent);
+}
+
+.analysis-card-news,
+.analysis-card-market {
+  grid-column: span 2;
+}
+
+.analysis-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.analysis-card-head h2,
+.analysis-symbol-panel h2,
+.analysis-error-panel h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.analysis-card-head span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-family: var(--mono-font);
+}
+
+.analysis-card-summary {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.analysis-list {
+  display: grid;
+  gap: 0.48rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.analysis-item {
+  display: grid;
+  gap: 0.26rem;
+  min-height: 3.1rem;
+  padding: 0.52rem 0.58rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel-elevated);
+}
+
+.analysis-item-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.analysis-item-label {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.analysis-item-value {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-family: var(--mono-font);
+  font-weight: 800;
+}
+
+.analysis-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.analysis-tone-up,
+.analysis-tone-greed {
+  border-left-color: var(--hope);
+}
+
+.analysis-tone-down,
+.analysis-tone-fear {
+  border-left-color: var(--danger);
+}
+
+.analysis-tone-flat,
+.analysis-tone-mixed {
+  border-left-color: var(--brand);
+}
+
+.analysis-symbol-panel,
+.analysis-error-panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.analysis-error-panel {
+  border-color: var(--fear-line);
+}
+
+.analysis-error-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--danger);
+}
+
+.analysis-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 @keyframes clean-filter-circle-expand {
   0% {
     opacity: 0.5;
@@ -4013,6 +4237,25 @@ div.goksorry-room-list-status {
   .overview-modal {
     max-height: min(84vh, 900px);
     padding: 0.82rem;
+  }
+
+  .analysis-hero,
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-card-news,
+  .analysis-card-market {
+    grid-column: auto;
+  }
+
+  .analysis-card {
+    min-height: auto;
+  }
+
+  .analysis-item-main {
+    display: grid;
+    justify-content: stretch;
   }
 
   .overview-modal-head,

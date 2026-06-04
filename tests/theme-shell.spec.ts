@@ -311,6 +311,14 @@ test.describe("program theme shells", () => {
       expect(defaultBoardLayout.panelHeight).toBeLessThanOrEqual(defaultBoardLayout.expectedPanelHeight + 1);
     });
 
+  test("analysis page is reachable from the site shell", async ({ page }) => {
+    await prepareThemePage(page);
+    await page.goto("/analysis");
+
+    await expect(page.locator(".header").getByRole("link", { name: "분석" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "분석", level: 1 })).toBeVisible();
+  });
+
   test("header share button is mobile-only", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

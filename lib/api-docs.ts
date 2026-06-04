@@ -172,6 +172,37 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
   },
   {
     method: "GET",
+    path: "/api/analysis/latest",
+    section: "홈 공개",
+    summary: "분석 페이지에 표시되는 최신 삐에로봇 리포트를 조회합니다.",
+    auth: "public",
+    responseExample: {
+      report: {
+        id: "uuid",
+        asof: "2026-06-04T14:30:00.000Z",
+        status: "ok",
+        summary: "뉴스, Top 10, 환율, 시장, 테마, PER/PBR, 차트 상태 요약입니다.",
+        payload: {
+          headline: "대형주 수급과 환율 경계가 함께 관찰됩니다.",
+          brief: "삐에로봇 30분 분석 요약",
+          sections: {
+            news: {
+              title: "뉴스",
+              summary: "주요 헤드라인 요약",
+              items: [{ label: "뉴스", value: "헤드라인", note: "출처", tone: "mixed" }]
+            }
+          },
+          important_symbols: ["005930", "NVDA"],
+          generated_from: {}
+        },
+        errors: [],
+        created_at: "2026-06-04T14:30:00.000Z"
+      }
+    },
+    notes: ["분석 생성은 삐에로봇이 담당하며 웹은 저장된 최신 결과만 반환합니다.", "응답 캐시는 30분 기준입니다."]
+  },
+  {
+    method: "GET",
     path: "/api/v1/health",
     section: "트레이딩봇 조회",
     summary: "서비스 상태와 배포 버전을 확인합니다.",
@@ -525,6 +556,41 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       status_updated: true
     },
     notes: ["내부 worker가 web으로 데이터를 적재할 때 쓰는 API이며, 공개 클라이언트용이 아닙니다."]
+  },
+  {
+    method: "POST",
+    path: "/api/v1/analysis/report",
+    section: "내부",
+    summary: "삐에로봇 30분 분석 리포트를 저장하는 엔드포인트입니다.",
+    auth: "detector",
+    visibility: "admin",
+    headers: [{ name: "Authorization", required: true, description: "Bearer <DETECTOR_WRITE_TOKEN>" }],
+    requestBody: {
+      contentType: "application/json",
+      example: {
+        asof: "2026-06-04T14:30:00.000Z",
+        status: "ok",
+        summary: "삐에로봇 분석 요약",
+        payload: {
+          headline: "시장 요약",
+          brief: "분석 본문",
+          sections: {},
+          important_symbols: [],
+          generated_from: {}
+        },
+        errors: []
+      }
+    },
+    responseExample: {
+      status: "ok",
+      request_id: "uuid",
+      report: {
+        id: "uuid",
+        asof: "2026-06-04T14:30:00.000Z",
+        status: "ok"
+      }
+    },
+    notes: ["내부 worker 전용입니다.", "페이지 갱신 주기는 worker의 `ANALYSIS_REFRESH_MINUTES=30` 기준입니다."]
   }
 ];
 

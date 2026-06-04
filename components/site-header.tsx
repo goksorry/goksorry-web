@@ -18,6 +18,9 @@ export function SiteHeader() {
           <Link href="/" replace>
             피드
           </Link>
+          <Link href="/analysis" replace>
+            분석
+          </Link>
           <Link href="/community" replace>
             게시판
           </Link>
