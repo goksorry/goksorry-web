@@ -2292,7 +2292,16 @@ button:disabled {
 
 .analysis-card-korean_news,
 .analysis-card-us_news,
-.analysis-card-top10 {
+.analysis-card-kr_top10,
+.analysis-card-us_top10,
+.analysis-card-kr_themes,
+.analysis-card-us_themes,
+.analysis-card-kr_valuation,
+.analysis-card-us_valuation,
+.analysis-card-kr_large_popular_changes,
+.analysis-card-us_large_popular_changes,
+.analysis-card-kr_chart_states,
+.analysis-card-us_chart_states {
   grid-column: span 2;
 }
 
@@ -4274,7 +4283,16 @@ div.goksorry-room-list-status {
 
   .analysis-card-korean_news,
   .analysis-card-us_news,
-  .analysis-card-top10 {
+  .analysis-card-kr_top10,
+  .analysis-card-us_top10,
+  .analysis-card-kr_themes,
+  .analysis-card-us_themes,
+  .analysis-card-kr_valuation,
+  .analysis-card-us_valuation,
+  .analysis-card-kr_large_popular_changes,
+  .analysis-card-us_large_popular_changes,
+  .analysis-card-kr_chart_states,
+  .analysis-card-us_chart_states {
     grid-column: auto;
   }
 

@@ -181,7 +181,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         id: "uuid",
         asof: "2026-06-04T14:30:00.000Z",
         status: "ok",
-        summary: "한국/미국 뉴스, Top 10, 시장, 테마, PER/PBR, 차트 상태 요약입니다.",
+        summary: "한국/미국 뉴스, Top 10, 테마, PER/PBR, 차트 상세 요약입니다.",
         payload: {
           headline: "대형주 수급과 주요 지수 변동이 함께 관찰됩니다.",
           brief: "삐에로봇 30분 분석 요약",
@@ -196,10 +196,15 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
               summary: "미국 주요 헤드라인 요약",
               items: [{ label: "News", value: "Headline", note: "source", tone: "mixed" }]
             },
-            top10: {
-              title: "Top 10",
-              summary: "KIS ranking 기준 상위 종목",
-              items: [{ label: "삼성전자보통주 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래대금 12.3조", tone: "down" }]
+            kr_top10: {
+              title: "한국 Top 10",
+              summary: "KIS ranking 기준 한국 상위 종목",
+              items: [{ label: "삼성전자보통주 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래량 3477.1만 · 거래대금 12.3조", tone: "down" }]
+            },
+            us_top10: {
+              title: "미국 Top 10",
+              summary: "KIS ranking 기준 미국 상위 종목",
+              items: [{ label: "NVIDIA (NVDA)", value: "182.40 · +1.20%", note: "NASDAQ 시총 #1 · 거래량 9876.5만", tone: "up" }]
             }
           },
           important_symbols: ["삼성전자보통주 (005930)", "NVDA"],

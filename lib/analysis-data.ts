@@ -8,11 +8,16 @@ export type AnalysisTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 export type AnalysisSectionId =
   | "korean_news"
   | "us_news"
-  | "top10"
-  | "themes"
-  | "valuation"
-  | "large_popular_changes"
-  | "chart_states";
+  | "kr_top10"
+  | "us_top10"
+  | "kr_themes"
+  | "us_themes"
+  | "kr_valuation"
+  | "us_valuation"
+  | "kr_large_popular_changes"
+  | "us_large_popular_changes"
+  | "kr_chart_states"
+  | "us_chart_states";
 
 export type AnalysisItem = {
   label: string;
@@ -59,21 +64,31 @@ type ReportRow = {
 export const ANALYSIS_SECTION_ORDER: AnalysisSectionId[] = [
   "korean_news",
   "us_news",
-  "top10",
-  "themes",
-  "valuation",
-  "large_popular_changes",
-  "chart_states"
+  "kr_top10",
+  "us_top10",
+  "kr_themes",
+  "us_themes",
+  "kr_valuation",
+  "us_valuation",
+  "kr_large_popular_changes",
+  "us_large_popular_changes",
+  "kr_chart_states",
+  "us_chart_states"
 ];
 
 const SECTION_TITLES: Record<AnalysisSectionId, string> = {
   korean_news: "한국 경제 뉴스",
   us_news: "미국 경제 뉴스",
-  top10: "Top 10",
-  themes: "인기 테마",
-  valuation: "PER/PBR",
-  large_popular_changes: "대형주/인기주 변화",
-  chart_states: "차트 상태"
+  kr_top10: "한국 Top 10",
+  us_top10: "미국 Top 10",
+  kr_themes: "한국 인기 테마",
+  us_themes: "미국 인기 테마",
+  kr_valuation: "한국 PER/PBR",
+  us_valuation: "미국 PER/PBR",
+  kr_large_popular_changes: "한국 인기주 변화",
+  us_large_popular_changes: "미국 인기주 변화",
+  kr_chart_states: "한국 차트 상세",
+  us_chart_states: "미국 차트 상세"
 };
 
 const TONES = new Set<AnalysisTone>(["up", "down", "flat", "fear", "greed", "mixed"]);
