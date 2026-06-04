@@ -2297,11 +2297,7 @@ button:disabled {
 .analysis-card-kr_categories,
 .analysis-card-us_categories,
 .analysis-card-kr_valuation,
-.analysis-card-us_valuation,
-.analysis-card-kr_large_popular_changes,
-.analysis-card-us_large_popular_changes,
-.analysis-card-kr_chart_states,
-.analysis-card-us_chart_states {
+.analysis-card-us_valuation {
   grid-column: span 2;
 }
 
