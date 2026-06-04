@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { ANALYSIS_SECTION_ORDER, fetchLatestAnalysisReport, type AnalysisItem, type AnalysisReport } from "@/lib/analysis-data";
+import { getCachedMarketOverview, type MarketIndicator } from "@/lib/overview-data";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "분석",
-  description: "삐에로봇이 30분 주기로 뉴스, Top 10, 환율, 시장, 인기 테마, PER/PBR, 차트 상태를 분석한 결과입니다.",
+  description: "삐에로봇이 30분 주기로 한국/미국 뉴스, Top 10, 시장, 인기 테마, PER/PBR, 차트 상태를 분석한 결과입니다.",
   path: "/analysis"
 });
 
@@ -40,16 +41,45 @@ const renderItem = (item: AnalysisItem, index: number) => (
   </li>
 );
 
+const renderMarketIndicator = (indicator: MarketIndicator) => (
+  <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
+    <div className="overview-market-head">
+      <p className="overview-label">{indicator.label}</p>
+      <p className="overview-note" hidden={!indicator.note}>
+        {indicator.note}
+      </p>
+    </div>
+    <div className="overview-market-main">
+      <strong className="overview-value">{indicator.value_text}</strong>
+      <p className="overview-delta">{indicator.delta_text}</p>
+    </div>
+  </article>
+);
+
+const renderMarketStrip = (indicators: MarketIndicator[]) => (
+  <section className="overview-market-block analysis-market-strip" aria-label="주요 시장 지표">
+    <div className="overview-section-head">
+      <h3>시장</h3>
+      <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
+    </div>
+    <div className="overview-market-row">{indicators.map(renderMarketIndicator)}</div>
+  </section>
+);
+
 export default async function AnalysisPage() {
-  const report = await fetchLatestAnalysisReport();
+  const [report, marketOverview] = await Promise.all([fetchLatestAnalysisReport(), getCachedMarketOverview()]);
+  const marketIndicators = marketOverview.market_indicators.slice(0, 4);
 
   if (!report) {
     return (
-      <section className="panel analysis-empty">
-        <p className="overview-kicker">삐에로봇 분석</p>
-        <h1>분석</h1>
-        <p className="muted">아직 저장된 분석 결과가 없습니다. 삐에로봇 첫 30분 분석 이후 표시됩니다.</p>
-      </section>
+      <div className="analysis-page">
+        {renderMarketStrip(marketIndicators)}
+        <section className="panel analysis-empty">
+          <p className="overview-kicker">삐에로봇 분석</p>
+          <h1>분석</h1>
+          <p className="muted">아직 저장된 분석 결과가 없습니다. 삐에로봇 첫 30분 분석 이후 표시됩니다.</p>
+        </section>
+      </div>
     );
   }
 
@@ -58,6 +88,8 @@ export default async function AnalysisPage() {
 
   return (
     <div className="analysis-page">
+      {renderMarketStrip(marketIndicators)}
+
       <section className="analysis-hero panel">
         <div className="analysis-hero-copy">
           <p className="overview-kicker">삐에로봇 분석</p>

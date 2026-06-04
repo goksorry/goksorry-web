@@ -2290,7 +2290,9 @@ button:disabled {
   box-shadow: 0 8px 20px color-mix(in srgb, var(--shadow) 70%, transparent);
 }
 
-.analysis-card-news,
+.analysis-card-korean_news,
+.analysis-card-us_news,
+.analysis-card-top10,
 .analysis-card-market {
   grid-column: span 2;
 }
@@ -4244,7 +4246,9 @@ div.goksorry-room-list-status {
     grid-template-columns: 1fr;
   }
 
-  .analysis-card-news,
+  .analysis-card-korean_news,
+  .analysis-card-us_news,
+  .analysis-card-top10,
   .analysis-card-market {
     grid-column: auto;
   }

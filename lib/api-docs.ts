@@ -181,18 +181,28 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
         id: "uuid",
         asof: "2026-06-04T14:30:00.000Z",
         status: "ok",
-        summary: "뉴스, Top 10, 환율, 시장, 테마, PER/PBR, 차트 상태 요약입니다.",
+        summary: "한국/미국 뉴스, Top 10, 시장, 테마, PER/PBR, 차트 상태 요약입니다.",
         payload: {
-          headline: "대형주 수급과 환율 경계가 함께 관찰됩니다.",
+          headline: "대형주 수급과 주요 지수 변동이 함께 관찰됩니다.",
           brief: "삐에로봇 30분 분석 요약",
           sections: {
-            news: {
-              title: "뉴스",
-              summary: "주요 헤드라인 요약",
+            korean_news: {
+              title: "한국 경제 뉴스",
+              summary: "국내 주요 헤드라인 요약",
               items: [{ label: "뉴스", value: "헤드라인", note: "출처", tone: "mixed" }]
+            },
+            us_news: {
+              title: "미국 경제 뉴스",
+              summary: "미국 주요 헤드라인 요약",
+              items: [{ label: "News", value: "Headline", note: "source", tone: "mixed" }]
+            },
+            top10: {
+              title: "Top 10",
+              summary: "KIS ranking 기준 상위 종목",
+              items: [{ label: "삼성전자보통주 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래대금 12.3조", tone: "down" }]
             }
           },
-          important_symbols: ["005930", "NVDA"],
+          important_symbols: ["삼성전자보통주 (005930)", "NVDA"],
           generated_from: {}
         },
         errors: [],

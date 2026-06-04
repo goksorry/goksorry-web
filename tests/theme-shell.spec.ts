@@ -317,6 +317,8 @@ test.describe("program theme shells", () => {
 
     await expect(page.locator(".header").getByRole("link", { name: "분석" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "분석", level: 1 })).toBeVisible();
+    await expect(page.locator(".analysis-market-strip .overview-market-stat")).toHaveCount(4);
+    await expect(page.locator(".analysis-card-exchange")).toHaveCount(0);
   });
 
   test("header share button is mobile-only", async ({ page }) => {

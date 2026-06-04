@@ -5,9 +5,9 @@ import { getServiceSupabaseClient } from "@/lib/supabase/service";
 export type AnalysisReportStatus = "ok" | "partial" | "error";
 export type AnalysisTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 export type AnalysisSectionId =
-  | "news"
+  | "korean_news"
+  | "us_news"
   | "top10"
-  | "exchange"
   | "market"
   | "themes"
   | "valuation"
@@ -57,9 +57,9 @@ type ReportRow = {
 };
 
 export const ANALYSIS_SECTION_ORDER: AnalysisSectionId[] = [
-  "news",
+  "korean_news",
+  "us_news",
   "top10",
-  "exchange",
   "market",
   "themes",
   "valuation",
@@ -68,10 +68,10 @@ export const ANALYSIS_SECTION_ORDER: AnalysisSectionId[] = [
 ];
 
 const SECTION_TITLES: Record<AnalysisSectionId, string> = {
-  news: "뉴스",
+  korean_news: "한국 경제 뉴스",
+  us_news: "미국 경제 뉴스",
   top10: "Top 10",
-  exchange: "환율",
-  market: "시장",
+  market: "시장 분석",
   themes: "인기 테마",
   valuation: "PER/PBR",
   large_popular_changes: "대형주/인기주 변화",
@@ -106,7 +106,7 @@ const normalizeItems = (value: unknown): AnalysisItem[] => {
     return [];
   }
 
-  return value.slice(0, 16).flatMap((item) => {
+  return value.slice(0, 10).flatMap((item) => {
     const record = asRecord(item);
     if (!record) {
       return [];
@@ -152,7 +152,7 @@ export const normalizeAnalysisPayload = (value: unknown): AnalysisReportPayload 
     brief: asText(record.brief, "삐에로봇 분석 결과가 아직 없습니다.", 800),
     sections,
     important_symbols: Array.isArray(record.important_symbols)
-      ? record.important_symbols.map((item) => asText(item, "", 20)).filter(Boolean).slice(0, 20)
+      ? record.important_symbols.map((item) => asText(item, "", 80)).filter(Boolean).slice(0, 20)
       : [],
     generated_from: asRecord(record.generated_from) ?? {}
   };
