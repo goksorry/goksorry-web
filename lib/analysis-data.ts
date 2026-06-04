@@ -10,8 +10,8 @@ export type AnalysisSectionId =
   | "us_news"
   | "kr_top10"
   | "us_top10"
-  | "kr_themes"
-  | "us_themes"
+  | "kr_categories"
+  | "us_categories"
   | "kr_valuation"
   | "us_valuation"
   | "kr_large_popular_changes"
@@ -66,8 +66,8 @@ export const ANALYSIS_SECTION_ORDER: AnalysisSectionId[] = [
   "us_news",
   "kr_top10",
   "us_top10",
-  "kr_themes",
-  "us_themes",
+  "kr_categories",
+  "us_categories",
   "kr_valuation",
   "us_valuation",
   "kr_large_popular_changes",
@@ -81,8 +81,8 @@ const SECTION_TITLES: Record<AnalysisSectionId, string> = {
   us_news: "미국 경제 뉴스",
   kr_top10: "한국 Top 10",
   us_top10: "미국 Top 10",
-  kr_themes: "한국 인기 테마",
-  us_themes: "미국 인기 테마",
+  kr_categories: "한국 인기 카테고리",
+  us_categories: "미국 인기 카테고리",
   kr_valuation: "한국 PER/PBR",
   us_valuation: "미국 PER/PBR",
   kr_large_popular_changes: "한국 인기주 변화",

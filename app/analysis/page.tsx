@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "분석",
-  description: "삐에로봇이 30분 주기로 한국/미국 뉴스, Top 10, 시장, 인기 테마, PER/PBR, 차트 상태를 분석한 결과입니다.",
+  description: "삐에로봇이 30분 주기로 한국/미국 뉴스, Top 10, 인기 카테고리, PER/PBR, 차트 상세를 분석한 결과입니다.",
   path: "/analysis"
 });
 
