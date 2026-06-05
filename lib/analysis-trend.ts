@@ -6,7 +6,7 @@ export type ChartTrendSegment = {
   isTrendToken: boolean;
 };
 
-const TREND_TOKEN = "추세";
+const TREND_PHRASE_PATTERN = /(상승\s*추세|강세\s*추세|급등\s*추세|반등\s*추세|하락\s*추세|약세\s*추세|급락\s*추세|조정\s*추세)/g;
 const UP_TREND_PATTERN = /상승|강세|급등|반등/;
 const DOWN_TREND_PATTERN = /하락|약세|급락|조정/;
 
@@ -24,21 +24,21 @@ export const resolveChartTrendTone = (value: string, fallbackTone: ChartTrendInp
 };
 
 export const splitChartTrendText = (value: string): ChartTrendSegment[] => {
-  if (!value.includes(TREND_TOKEN)) {
+  const matches = [...value.matchAll(TREND_PHRASE_PATTERN)];
+  if (matches.length === 0) {
     return [{ text: value, isTrendToken: false }];
   }
 
   const segments: ChartTrendSegment[] = [];
   let cursor = 0;
-  let nextIndex = value.indexOf(TREND_TOKEN, cursor);
-
-  while (nextIndex !== -1) {
-    if (nextIndex > cursor) {
-      segments.push({ text: value.slice(cursor, nextIndex), isTrendToken: false });
+  for (const match of matches) {
+    const text = match[0];
+    const index = match.index ?? 0;
+    if (index > cursor) {
+      segments.push({ text: value.slice(cursor, index), isTrendToken: false });
     }
-    segments.push({ text: TREND_TOKEN, isTrendToken: true });
-    cursor = nextIndex + TREND_TOKEN.length;
-    nextIndex = value.indexOf(TREND_TOKEN, cursor);
+    segments.push({ text, isTrendToken: true });
+    cursor = index + text.length;
   }
 
   if (cursor < value.length) {

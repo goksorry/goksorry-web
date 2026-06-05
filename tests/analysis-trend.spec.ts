@@ -9,11 +9,14 @@ test.describe("analysis chart trend text", () => {
     expect(resolveChartTrendTone("데이터 없음", "greed")).toBe("mixed");
   });
 
-  test("splits only the trend token", () => {
+  test("splits the full trend phrase", () => {
     expect(splitChartTrendText("상승 추세 · 2D +1.23%")).toEqual([
-      { text: "상승 ", isTrendToken: false },
-      { text: "추세", isTrendToken: true },
+      { text: "상승 추세", isTrendToken: true },
       { text: " · 2D +1.23%", isTrendToken: false }
+    ]);
+    expect(splitChartTrendText("하락 추세 · 2D -1.23%")).toEqual([
+      { text: "하락 추세", isTrendToken: true },
+      { text: " · 2D -1.23%", isTrendToken: false }
     ]);
     expect(splitChartTrendText("급등")).toEqual([{ text: "급등", isTrendToken: false }]);
   });

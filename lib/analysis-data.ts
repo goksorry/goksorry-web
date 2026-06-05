@@ -25,6 +25,7 @@ export type AnalysisItem = {
   value: string;
   note: string;
   tone: AnalysisTone;
+  translation?: string;
 };
 
 export type AnalysisSection = {
@@ -139,6 +140,7 @@ const normalizeItems = (sectionId: AnalysisSectionId, value: unknown): AnalysisI
     const label = asDisplayText(record.label, "", 80);
     let valueText = asDisplayText(record.value, "", 120);
     let note = asDisplayText(record.note, "", 240);
+    const translation = asText(record.translation, "", 240);
     if (VALUATION_SECTION_IDS.has(sectionId)) {
       valueText = hideZeroValuationMetric(valueText);
       note = hideZeroValuationMetric(note);
@@ -155,7 +157,8 @@ const normalizeItems = (sectionId: AnalysisSectionId, value: unknown): AnalysisI
         label: label || "항목",
         value: valueText,
         note,
-        tone: asTone(record.tone)
+        tone: asTone(record.tone),
+        ...(translation ? { translation } : {})
       }
     ];
   });

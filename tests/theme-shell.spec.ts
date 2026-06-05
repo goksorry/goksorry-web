@@ -368,10 +368,11 @@ test.describe("program theme shells", () => {
             .map((id, index) => {
               const isValuation = id === "kr_valuation" || id === "us_valuation";
               const isChart = id === "kr_chart_states" || id === "us_chart_states";
+              const isNews = id === "korean_news" || id === "us_news";
               const chartDirection = id === "us_chart_states" ? "하락" : "상승";
               const chartTrendTokenClass = id === "us_chart_states" ? "analysis-chart-trend-token-down" : "analysis-chart-trend-token-up";
               const valueHtml = isChart
-                ? `${chartDirection} <span class="analysis-chart-trend-token ${chartTrendTokenClass}">추세</span> · 2D ${
+                ? `<span class="analysis-chart-trend-token ${chartTrendTokenClass}">${chartDirection} 추세</span> · 2D ${
                     id === "us_chart_states" ? "-0.80%" : "+1.23%"
                   }`
                 : "+1.23%";
@@ -391,6 +392,19 @@ test.describe("program theme shells", () => {
                           <strong class="analysis-item-value">PER 14.20</strong>
                           <strong class="analysis-item-value analysis-valuation-pbr">PBR 1.32</strong>
                         </li>`
+                      : isNews
+                        ? `<li class="analysis-item analysis-news-item ${
+                            id === "us_news" ? "analysis-news-item-translated" : ""
+                          } analysis-tone-${index % 2 === 0 ? "up" : "down"}">
+                            <div class="analysis-news-meta">
+                              <span class="analysis-item-label">${id === "us_news" ? "Reuters" : "연합뉴스"}</span>
+                              <time>06.05 02:30</time>
+                            </div>
+                            <strong class="analysis-news-headline">${
+                              id === "us_news" ? "Stocks rise as chip earnings lift Nasdaq" : "반도체 강세"
+                            }</strong>
+                            ${id === "us_news" ? `<strong class="analysis-news-translation">반도체 실적이 나스닥을 끌어올리며 주가가 상승</strong>` : ""}
+                          </li>`
                       : `<li class="analysis-item ${isChart ? "analysis-chart-item" : ""} analysis-tone-${index % 2 === 0 ? "up" : "down"}">
                           <div class="analysis-item-main">
                             <span class="analysis-item-label">NVIDIA (NVDA)</span>
@@ -476,6 +490,24 @@ test.describe("program theme shells", () => {
     expect(Math.abs(valuationLayout.rowHeight - valuationLayout.expectedRowHeight)).toBeLessThanOrEqual(1);
     expect(valuationLayout.spacerWidth).toBeGreaterThan(0);
 
+    const translatedNewsLayout = await page.evaluate(() => {
+      const row = document.querySelector(
+        ".theme-shell-excel #excel-analysis-grid .analysis-card-us_news .analysis-news-item-translated"
+      ) as HTMLElement;
+      const headline = row.querySelector(".analysis-news-headline") as HTMLElement;
+      const translation = row.querySelector(".analysis-news-translation") as HTMLElement;
+      const headlineRect = headline.getBoundingClientRect();
+      const translationRect = translation.getBoundingClientRect();
+      return {
+        translationText: translation.textContent,
+        sameRow: Math.abs(headlineRect.top - translationRect.top) <= 1,
+        separatedColumns: translationRect.left > headlineRect.left + 10
+      };
+    });
+    expect(translatedNewsLayout.translationText).toContain("반도체 실적");
+    expect(translatedNewsLayout.sameRow).toBe(true);
+    expect(translatedNewsLayout.separatedColumns).toBe(true);
+
     const trendColors = await page.evaluate(() => {
       const read = (selector: string) => {
         const item = document.querySelector(selector) as HTMLElement;
@@ -492,8 +524,8 @@ test.describe("program theme shells", () => {
         down: read(".theme-shell-excel #excel-analysis-grid .analysis-card-us_chart_states .analysis-chart-item")
       };
     });
-    expect(trendColors.up.tokenText).toBe("추세");
-    expect(trendColors.down.tokenText).toBe("추세");
+    expect(trendColors.up.tokenText).toBe("상승 추세");
+    expect(trendColors.down.tokenText).toBe("하락 추세");
     expect(trendColors.up.tokenColor).not.toBe(trendColors.up.valueColor);
     expect(trendColors.down.tokenColor).not.toBe(trendColors.down.valueColor);
     expect(trendColors.up.tokenColor).not.toBe(trendColors.down.tokenColor);

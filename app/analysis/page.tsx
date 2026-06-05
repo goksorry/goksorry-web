@@ -68,6 +68,8 @@ const renderItem = (
   <li
     key={`${item.label}-${index}`}
     className={`analysis-item ${variant === "news" ? "analysis-news-item" : ""} ${
+      variant === "news" && item.translation ? "analysis-news-item-translated" : ""
+    } ${
       variant === "valuation" ? "analysis-valuation-item" : ""
     } ${variant === "chart" ? "analysis-chart-item" : ""} analysis-tone-${item.tone}`}
   >
@@ -78,6 +80,7 @@ const renderItem = (
           <time>{formatNewsTime(item.note)}</time>
         </div>
         {item.value ? <strong className="analysis-news-headline">{item.value}</strong> : null}
+        {item.translation ? <strong className="analysis-news-translation">{item.translation}</strong> : null}
       </>
     ) : variant === "valuation" ? (
       <>

@@ -2016,6 +2016,24 @@
   grid-template-rows: var(--excel-row-height) var(--excel-row-height);
 }
 
+.theme-shell-excel .analysis-news-item-translated {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: var(--excel-row-height) var(--excel-row-height);
+  gap: 0;
+}
+
+.theme-shell-excel .analysis-news-item-translated .analysis-news-meta {
+  grid-column: 1 / -1;
+}
+
+.theme-shell-excel .analysis-news-item-translated .analysis-news-headline {
+  grid-column: 1;
+}
+
+.theme-shell-excel .analysis-news-item-translated .analysis-news-translation {
+  grid-column: 2;
+}
+
 .theme-shell-excel .analysis-valuation-item {
   min-height: var(--excel-row-height);
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--excel-column-width) var(--excel-column-width);
@@ -2040,6 +2058,7 @@
 .theme-shell-excel .analysis-valuation-spacer,
 .theme-shell-excel .analysis-news-meta time,
 .theme-shell-excel .analysis-news-headline,
+.theme-shell-excel .analysis-news-translation,
 .theme-shell-excel .analysis-item p {
   min-width: 0;
   min-height: 0;
@@ -2056,6 +2075,7 @@
 }
 
 .theme-shell-excel .analysis-news-headline,
+.theme-shell-excel .analysis-news-translation,
 .theme-shell-excel .analysis-item p {
   grid-column: 1 / -1;
 }
