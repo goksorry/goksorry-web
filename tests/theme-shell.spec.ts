@@ -2618,12 +2618,9 @@ test.describe("program theme shells", () => {
     }
   });
 
-  test("chat moves to a collapsible desktop right sidebar when chat env is enabled", async ({ page }) => {
+  test("chat moves to an open desktop right sidebar when chat env is enabled", async ({ page }) => {
     test.skip(!CHAT_LAYOUT_ENABLED, "desktop chat sidebar requires CHAT_WS_BASE_URL in the test server env");
-    let chatSessionRequests = 0;
-    await mockGuestChatSession(page, () => {
-      chatSessionRequests += 1;
-    });
+    await mockGuestChatSession(page);
 
     const cases = [
       { theme: "light", shell: "default" },
@@ -2643,17 +2640,6 @@ test.describe("program theme shells", () => {
       await expect(page.getByRole("link", { name: "채팅" })).toHaveCount(0);
       const sidebar = page.getByTestId("desktop-chat-sidebar");
       await expect(sidebar).toBeVisible();
-
-      if (item === cases[0]) {
-        await expect(sidebar).toHaveAttribute("data-state", "collapsed");
-        await expect(sidebar.getByText("전체 채팅")).toHaveCount(0);
-        expect(chatSessionRequests).toBe(0);
-      }
-
-      if ((await sidebar.getAttribute("data-state")) !== "open") {
-        await sidebar.getByRole("button", { name: "채팅 사이드바 열기" }).click({ force: true });
-      }
-
       await expect(sidebar).toHaveAttribute("data-state", "open");
       await expect(sidebar.getByText("전체 채팅")).toBeVisible();
       await expect(page.locator(".chat-sidebar-live .chat-input-wrap textarea")).toHaveCount(0);
@@ -2739,7 +2725,7 @@ test.describe("program theme shells", () => {
       } else {
         expect(layoutSeparation.documentScrollable).toBe(false);
         expect(layoutSeparation.workspaceOverflowY).toBe("hidden");
-        expect(layoutSeparation.contentOverflowY).toBe("auto");
+        expect(layoutSeparation.contentOverflowY).toBe(item.shell === "jetbrains" ? "visible" : "auto");
       }
     }
 

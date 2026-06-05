@@ -19,7 +19,7 @@ export function ChatSidebar({ enabled }: { enabled: boolean }) {
   const { user } = useSessionSnapshot();
   const isDesktop = useMediaQuery("(min-width: 901px)");
   const panelId = useId();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     const storedState = readClientLocalStorageValue(CLIENT_PERSISTENCE_DEFINITIONS.chatSidebarState);
