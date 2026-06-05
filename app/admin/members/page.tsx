@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { formatKstDateTime } from "@/lib/date-time";
 
@@ -13,30 +12,9 @@ type MemberListRow = {
   is_current_user: boolean;
 };
 
-type MemberTokenRow = {
-  id: string;
-  name: string;
-  token_prefix: string | null;
-  scope: string;
-  approval_status: "pending" | "approved" | "rejected";
-  approval_requested_at: string | null;
-  approved_at: string | null;
-  rejected_at: string | null;
-  approval_note: string | null;
-  created_at: string | null;
-  last_used_at: string | null;
-  expires_at: string | null;
-  revoked_at: string | null;
-  token_claimed: boolean;
-  claim_ready: boolean;
-};
-
 type MemberDetail = MemberListRow & {
   nickname_confirmed_at: string | null;
   nickname_changed_at: string | null;
-  active_token_count: number;
-  total_token_count: number;
-  tokens: MemberTokenRow[];
 };
 
 type PaginationPayload = {
@@ -74,22 +52,6 @@ const parsePayload = (rawText: string): Record<string, unknown> => {
   } catch {
     return {};
   }
-};
-
-const tokenStatusLabel = (token: MemberTokenRow): string => {
-  if (token.revoked_at) {
-    return "폐기됨";
-  }
-  if (token.approval_status === "pending") {
-    return "승인 대기";
-  }
-  if (token.approval_status === "rejected") {
-    return "반려";
-  }
-  if (token.claim_ready) {
-    return "승인 완료 · 발급 대기";
-  }
-  return "사용 가능";
 };
 
 const fetchMemberList = async ({ page, query }: { page: number; query: string }) => {
@@ -378,36 +340,6 @@ export default function AdminMembersPage() {
     }
   };
 
-  const onDeleteToken = async (token: MemberTokenRow) => {
-    if (!selectedMemberDetail) {
-      return;
-    }
-
-    setActingKey(`token:${token.id}`);
-    setError(null);
-    setDetailError(null);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`/api/admin/tokens/${token.id}`, {
-        method: "DELETE"
-      });
-      const rawText = await response.text();
-      const payload = parsePayload(rawText);
-      if (!response.ok) {
-        setDetailError(String(payload.error ?? payload.message ?? rawText ?? "토큰 삭제에 실패했습니다."));
-        return;
-      }
-
-      setMessage(`${selectedMemberDetail.email}의 토큰을 삭제했습니다.`);
-      await refreshListAndDetail(selectedMemberDetail.id);
-    } catch (deleteError) {
-      setDetailError(String(deleteError));
-    } finally {
-      setActingKey(null);
-    }
-  };
-
   const paginationItems = useMemo(() => {
     const totalPages = pagination.total_pages || 1;
     const currentPage = pagination.page || 1;
@@ -427,13 +359,7 @@ export default function AdminMembersPage() {
     <>
       <section className="panel">
         <h1>회원 관리</h1>
-        <p className="muted">이메일 또는 닉네임으로 회원을 검색하고, 목록에서 상세 관리를 열어 닉변/탈퇴/토큰 삭제를 처리합니다.</p>
-
-        <div className="actions">
-          <Link href="/admin/tokens" className="btn btn-secondary">
-            토큰 승인으로 이동
-          </Link>
-        </div>
+        <p className="muted">이메일 또는 닉네임으로 회원을 검색하고, 목록에서 상세 관리를 열어 닉변/탈퇴를 처리합니다.</p>
 
         <div className="admin-member-toolbar">
           <label className="form-row">
@@ -575,8 +501,6 @@ export default function AdminMembersPage() {
                   <span className="tag">{selectedMemberDetail.role === "admin" ? "관리자" : "회원"}</span>
                   {selectedMemberDetail.is_current_user ? <span className="tag">현재 로그인</span> : null}
                   <span className="tag">가입 {formatDateTime(selectedMemberDetail.created_at)}</span>
-                  <span className="tag">활성 토큰 {selectedMemberDetail.active_token_count}</span>
-                  <span className="tag">전체 토큰 {selectedMemberDetail.total_token_count}</span>
                 </div>
 
                 <div className="admin-member-detail-grid">
@@ -658,7 +582,7 @@ export default function AdminMembersPage() {
 
                         {confirmWithdraw ? (
                           <p className="error">
-                            이 회원의 프로필, 글/댓글, 신고, 표, API 토큰이 함께 삭제되고 같은 이메일은 7일 동안 재가입할 수 없습니다.
+                            이 회원의 프로필, 글/댓글, 신고, 표가 함께 삭제되고 같은 이메일은 7일 동안 재가입할 수 없습니다.
                           </p>
                         ) : null}
                       </>
@@ -666,62 +590,6 @@ export default function AdminMembersPage() {
                   </div>
                 </div>
 
-                <div className="card admin-member-token-card">
-                  <h3>토큰 관리</h3>
-
-                  {selectedMemberDetail.tokens.length === 0 ? (
-                    <p className="muted">보유 토큰이 없습니다.</p>
-                  ) : (
-                    <div className="table-wrap">
-                      <table className="table">
-                        <thead>
-                          <tr>
-                            <th>이름</th>
-                            <th>상태</th>
-                            <th>Prefix</th>
-                            <th>요청/처리</th>
-                            <th>마지막 사용</th>
-                            <th>만료</th>
-                            <th>동작</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedMemberDetail.tokens.map((token) => (
-                            <tr key={token.id}>
-                              <td>
-                                {token.name}
-                                {token.approval_note ? <p className="muted">{token.approval_note}</p> : null}
-                              </td>
-                              <td>{tokenStatusLabel(token)}</td>
-                              <td>{token.token_prefix ?? "-"}</td>
-                              <td>
-                                요청: {formatDateTime(token.approval_requested_at)}
-                                <br />
-                                처리: {formatDateTime(token.approved_at ?? token.rejected_at)}
-                              </td>
-                              <td>{formatDateTime(token.last_used_at)}</td>
-                              <td>{formatDateTime(token.expires_at)}</td>
-                              <td>
-                                {selectedMemberDetail.role === "admin" ? (
-                                  <span className="muted">관리자 보호</span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() => void onDeleteToken(token)}
-                                    disabled={Boolean(actingKey)}
-                                  >
-                                    {actingKey === `token:${token.id}` ? "삭제 중..." : "강제 삭제"}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
               </div>
             ) : null}
           </div>

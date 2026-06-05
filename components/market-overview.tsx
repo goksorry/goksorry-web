@@ -117,7 +117,7 @@ export function MarketOverview({
 
     const fetchOverview = async () => {
       try {
-        const response = await fetch("/api/overview", {
+        const response = await fetch("/api/internal/overview", {
           signal: controller.signal,
           cache: "no-store"
         });

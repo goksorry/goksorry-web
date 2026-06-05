@@ -649,7 +649,7 @@ test.describe("program theme shells", () => {
   test("change color mode maps market deltas by market context", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await page.clock.install();
-    await page.route("**/api/overview**", async (route) => {
+    await page.route("**/api/internal/overview**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -783,11 +783,11 @@ test.describe("program theme shells", () => {
       .toBe("https://goksorry.com/community?sort=recent&theme=vscode-dark#board");
   });
 
-  test("market overview refresh always uses market-adjusted overview", async ({ page }) => {
+  test("market overview refresh uses the internal overview route", async ({ page }) => {
     const overviewRequestUrls: string[] = [];
     await page.clock.install();
 
-    await page.route("**/api/overview**", async (route) => {
+    await page.route("**/api/internal/overview**", async (route) => {
       overviewRequestUrls.push(route.request().url());
       await route.fulfill({
         status: 200,
@@ -858,7 +858,9 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
     expect(overviewRequestUrls.length).toBeGreaterThan(0);
     for (const requestUrl of overviewRequestUrls) {
-      expect(new URL(requestUrl).searchParams.has("market_adjustment")).toBe(false);
+      const url = new URL(requestUrl);
+      expect(url.pathname).toBe("/api/internal/overview");
+      expect(url.searchParams.has("market_adjustment")).toBe(false);
     }
   });
 

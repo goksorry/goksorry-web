@@ -1,13 +1,13 @@
 # goksorry-web
 
-곡소리닷컴 웹 앱입니다. Next.js App Router 기반으로 피드, 게시판, 곡소리방, 관리자 화면, Trading Bot read API, 정책 문서 화면을 제공합니다.
+곡소리닷컴 웹 앱입니다. Next.js App Router 기반으로 피드, 게시판, 곡소리방, 관리자 화면, 공개 곡소리 지수 API, 정책 문서 화면을 제공합니다.
 
 ## 주요 기능
 
 - 외부 투자 커뮤니티 감성 피드 `/`
 - 자체 게시판 `/community`
 - 곡소리방 `/goksorry-room`
-- Trading Bot read API `/api/v1/health`, `/api/v1/signals/latest`
+- 공개 곡소리 지수 API `/api/overview`
 - API 문서 `/docs`, `/docs.txt`, `/openapi.json`
 - Google OAuth 로그인과 관리자 기능
 - 최초 계정 생성 게이트 `/profile`
@@ -18,11 +18,9 @@
 - 로그인은 NextAuth + Google OAuth를 사용합니다.
 - Google 로그인 직후에는 세션만 생기고, `/profile`에서 `가입 완료`를 눌러야 실제 `profiles` 계정이 생성됩니다.
 - `profile_setup_required = true` 상태에서는 아직 회원 가입이 완료되지 않은 상태입니다.
-- 이 상태에서는 게시판 쓰기, 신고, 채팅 참여, Trading Bot 토큰 기능, 관리자 기능이 차단됩니다.
+- 이 상태에서는 게시판 쓰기, 신고, 채팅 참여, 관리자 기능이 차단됩니다.
 - 이 상태에서는 헤더의 `채팅` 탭과 우하단 채팅 독 버튼도 숨깁니다.
-- 브라우저 기반 토큰 요청/claim/revoke는 `/profile`에서 처리합니다.
-- 일반 API 문서에는 브라우저 세션 전용 토큰 API를 노출하지 않습니다.
-- Trading Bot read API는 member-issued token + `X-Client-Id` + `X-Request-Id`를 요구합니다.
+- 유저에게 제공되는 API 문서는 공개 곡소리 지수 endpoint 1개만 노출합니다.
 
 ## 쿠키 동의 / 브라우저 저장 규칙
 
@@ -109,35 +107,13 @@ npm run test:e2e
 - `POST /api/ingest`
 - `POST /api/v1/detector/register`
 
-### Trading Bot read API
+### Public Goksorry Index API
 
-- `GET /api/v1/health`
-- `GET /api/v1/signals/latest`
-
-메모:
-
-- 이 API는 `community-derived` 신호만 제공합니다.
-- 공식 가격, 지수, 매크로 데이터는 별도 수집 대상입니다.
-
-### Home Overview API
-
-- `GET /api/community-indicators`
 - `GET /api/overview`
 
 메모:
 
-- 홈에서 크게 보이는 `곡소리 지수`는 높을수록 절망/곡소리, 낮을수록 희망을 뜻하는 표시용 반전 점수입니다.
-- 응답의 `overall_sentiment_score`, `base_score`, `score` 는 내부 원감성 점수이며 `0..10` 에서 높을수록 희망입니다.
-- 응답의 `overall_goksorry_index`, `goksorry_index` 는 홈 표시용 곡소리 지수이며 `0..10` 에서 높을수록 절망입니다.
-- 시장 보정은 항상 적용합니다. 연속형 로그 곡선으로 계산하며, 소스 성격에 따라 `시장전체 / 국장 / 나스닥` 중 하나를 참조합니다.
-- `국장` 보정은 `KOSPI 55% + KOSDAQ 45%`에 `원/달러 환율` 리스크를 함께 반영합니다.
-- `시장전체` 보정은 `국장 보정 + NASDAQ` 혼합값을 사용합니다.
-- 소스별 기본 매핑:
-  - `blind_stock_invest` → 시장전체
-  - `dc_stock`, `dc_krstock`, `ppomppu_stock` → 국장
-  - `dc_usstock`, `dc_tenbagger` → 나스닥
-  - `toss_stock_community_*` → 종목 시장(`KR/US`) 기준
-  - `toss_lounge_kr_*` → 국장
-  - `toss_lounge_us_*` → 나스닥
-  - 그 외 `toss_lounge_*` → 시장전체
-- 응답에는 `market_adjustment_enabled`, `overall_base_score`, `overall_market_adjustment`, `overall_sentiment_score`, `overall_goksorry_index` 와 각 섹션별 `base_score`, `market_adjustment`, `score`, `goksorry_index` 가 함께 포함됩니다.
+- 유저에게 제공되는 공개 API는 이 endpoint 하나입니다.
+- 응답은 `goksorry_index`, `generated_at`, `ttl_sec` 만 포함합니다.
+- `goksorry_index`는 0..10 표시용 점수이며 높을수록 절망/곡소리입니다.
+- 홈 화면과 내부 운영 route는 별도 내부 JSON 구조를 계속 사용합니다.

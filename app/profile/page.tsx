@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { ProfileForm } from "@/components/profile-form";
-import { ProfileTokenManager } from "@/components/profile-token-manager";
 import { getUserFromAuthorization } from "@/lib/auth-server";
 import { getNicknamePolicy } from "@/lib/profile-sync";
 import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = buildNoIndexMetadata("내 프로필", "곡소리닷컴 계정 및 토큰 관리 화면입니다.");
+export const metadata: Metadata = buildNoIndexMetadata("내 프로필", "곡소리닷컴 계정 관리 화면입니다.");
 
 export default async function ProfilePage({
   searchParams
@@ -32,7 +31,7 @@ export default async function ProfilePage({
   const profileTitle = user.profile_setup_required ? "계정 생성" : "내 프로필";
   const profileDescription = user.profile_setup_required
     ? "닉네임 설정과 정책 동의 후 계정을 생성합니다."
-    : "닉네임과 TradingBot 토큰 요청을 관리할 수 있습니다. 토큰은 관리자 승인 후 사용할 수 있습니다.";
+    : "닉네임과 계정 상태를 관리할 수 있습니다.";
 
   return (
     <section className="panel">
@@ -48,7 +47,6 @@ export default async function ProfilePage({
         isAdmin={user.role === "admin"}
         nextPath={nextPath}
       />
-      {user.profile_setup_required ? null : <ProfileTokenManager />}
     </section>
   );
 }
