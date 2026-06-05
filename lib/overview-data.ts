@@ -9,7 +9,7 @@ import {
 import {
   clampSentimentScore,
   goksorryIndexFromScore,
-  sentimentBandFromScore,
+  sentimentBandFromGoksorryIndex,
   type SentimentBand
 } from "@/lib/sentiment-score";
 
@@ -331,13 +331,14 @@ const buildOverallFromCommunityIndicators = (
   const overallBaseScore = clampSentimentScore(average(communityIndicators.map((group) => group.base_score), 1));
   const overallMarketAdjustment = average(communityIndicators.map((group) => group.market_adjustment), 2);
   const overallSentimentScore = clampSentimentScore(average(communityIndicators.map((group) => group.score), 1));
+  const overallGoksorryIndex = goksorryIndexFromScore(overallSentimentScore);
 
   return {
     overall_base_score: overallBaseScore,
     overall_market_adjustment: overallMarketAdjustment,
     overall_sentiment_score: overallSentimentScore,
-    overall_goksorry_index: goksorryIndexFromScore(overallSentimentScore),
-    overall_sentiment_band: sentimentBandFromScore(overallSentimentScore)
+    overall_goksorry_index: overallGoksorryIndex,
+    overall_sentiment_band: sentimentBandFromGoksorryIndex(overallGoksorryIndex)
   };
 };
 

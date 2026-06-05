@@ -14,6 +14,10 @@ const EXTREME_BEARISH_MAX = 2.5;
 const BEARISH_MAX = 4.5;
 const NEUTRAL_MAX = 5.5;
 const BULLISH_MAX = 7.5;
+const EXTREME_HOPE_GOKSORRY_MAX = 2.5;
+const HOPE_GOKSORRY_MAX = 4.5;
+const NEUTRAL_GOKSORRY_MAX = 5.5;
+const EXTREME_FEAR_GOKSORRY_MIN = 7.5;
 const AGGREGATE_ACTIONABLE_COUNT_MIN = 2;
 const AGGREGATE_DOMINANCE_COUNT_GAP_MIN = 1;
 const AGGREGATE_DOMINANCE_SHARE_MIN = 0.54;
@@ -62,6 +66,23 @@ export const sentimentBandFromScore = (score: number): SentimentBand => {
     return "bullish";
   }
   return "extreme_bullish";
+};
+
+export const sentimentBandFromGoksorryIndex = (index: number): SentimentBand => {
+  const normalized = clampSentimentScore(index);
+  if (normalized <= EXTREME_HOPE_GOKSORRY_MAX) {
+    return "extreme_bullish";
+  }
+  if (normalized <= HOPE_GOKSORRY_MAX) {
+    return "bullish";
+  }
+  if (normalized <= NEUTRAL_GOKSORRY_MAX) {
+    return "neutral";
+  }
+  if (normalized < EXTREME_FEAR_GOKSORRY_MIN) {
+    return "bearish";
+  }
+  return "extreme_bearish";
 };
 
 export const sentimentToneFromScore = (score: number): "bearish" | "mixed" | "bullish" => {
@@ -136,7 +157,7 @@ export const aggregateSentimentBand = (
   }
 ): SentimentBand => {
   const dominantLabel = dominantAggregateSentimentLabel(bullishCount, bearishCount);
-  const scoreBand = sentimentBandFromScore(score);
+  const scoreBand = sentimentBandFromGoksorryIndex(goksorryIndexFromScore(score));
 
   if (scoreBand === "neutral") {
     return "neutral";

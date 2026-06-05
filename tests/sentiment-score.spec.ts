@@ -4,6 +4,7 @@ import {
   euphoriaIndexFromScore,
   fearIndexFromScore,
   goksorryIndexFromScore,
+  sentimentBandFromGoksorryIndex,
   sentimentBandFromScore,
   sentimentLabelFromScore,
   sentimentToneFromScore
@@ -29,6 +30,19 @@ test.describe("sentiment score levels", () => {
     expect(sentimentBandFromScore(7.5)).toBe("bullish");
     expect(sentimentBandFromScore(7.6)).toBe("extreme_bullish");
     expect(sentimentBandFromScore(10)).toBe("extreme_bullish");
+  });
+
+  test("maps visible goksorry index to public fear and hope bands", () => {
+    expect(sentimentBandFromGoksorryIndex(0)).toBe("extreme_bullish");
+    expect(sentimentBandFromGoksorryIndex(2.5)).toBe("extreme_bullish");
+    expect(sentimentBandFromGoksorryIndex(2.6)).toBe("bullish");
+    expect(sentimentBandFromGoksorryIndex(4.5)).toBe("bullish");
+    expect(sentimentBandFromGoksorryIndex(4.6)).toBe("neutral");
+    expect(sentimentBandFromGoksorryIndex(5.5)).toBe("neutral");
+    expect(sentimentBandFromGoksorryIndex(5.6)).toBe("bearish");
+    expect(sentimentBandFromGoksorryIndex(7.4)).toBe("bearish");
+    expect(sentimentBandFromGoksorryIndex(7.5)).toBe("extreme_bearish");
+    expect(sentimentBandFromGoksorryIndex(10)).toBe("extreme_bearish");
   });
 
   test("keeps labels and tones aligned to the neutral center", () => {
