@@ -18,6 +18,7 @@ const AGGREGATE_ACTIONABLE_COUNT_MIN = 2;
 const AGGREGATE_DOMINANCE_COUNT_GAP_MIN = 1;
 const AGGREGATE_DOMINANCE_SHARE_MIN = 0.54;
 const AGGREGATE_SCORE_DRIFT_MULTIPLIER = 1.35;
+const EXTREME_INDEX_MULTIPLIER = 1.6;
 
 export const clampSentimentScore = (value: number): number => {
   const clamped = Math.min(SENTIMENT_SCORE_MAX, Math.max(SENTIMENT_SCORE_MIN, value));
@@ -169,16 +170,27 @@ export const averageSentimentScore = (scores: number[]): number => {
   return Number((total / scores.length).toFixed(1));
 };
 
-export const fearIndexFromScore = (score: number): number => {
+const clampIndexValue = (value: number, max: number, digits: number): number => {
+  const clamped = Math.min(max, Math.max(0, value));
+  return Number(clamped.toFixed(digits));
+};
+
+const amplifiedDistanceFromNeutral = (score: number): number => {
   const normalized = clampSentimentScore(score);
-  return Number((((SENTIMENT_SCORE_MAX - normalized) / (SENTIMENT_SCORE_MAX - SENTIMENT_SCORE_MIN)) * 100).toFixed(2));
+  return (normalized - SENTIMENT_SCORE_NEUTRAL) * EXTREME_INDEX_MULTIPLIER;
+};
+
+export const fearIndexFromScore = (score: number): number => {
+  const index = 50 - amplifiedDistanceFromNeutral(score) * 10;
+  return clampIndexValue(index, 100, 2);
 };
 
 export const euphoriaIndexFromScore = (score: number): number => {
-  const normalized = clampSentimentScore(score);
-  return Number((((normalized - SENTIMENT_SCORE_MIN) / (SENTIMENT_SCORE_MAX - SENTIMENT_SCORE_MIN)) * 100).toFixed(2));
+  const index = 50 + amplifiedDistanceFromNeutral(score) * 10;
+  return clampIndexValue(index, 100, 2);
 };
 
 export const goksorryIndexFromScore = (score: number): number => {
-  return Number((SENTIMENT_SCORE_MAX - clampSentimentScore(score)).toFixed(1));
+  const index = SENTIMENT_SCORE_NEUTRAL - amplifiedDistanceFromNeutral(score);
+  return clampIndexValue(index, SENTIMENT_SCORE_MAX, 1);
 };

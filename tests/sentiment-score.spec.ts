@@ -42,17 +42,21 @@ test.describe("sentiment score levels", () => {
     expect(sentimentToneFromScore(5.6)).toBe("bullish");
   });
 
-  test("derives symmetric fear, euphoria, and goksorry indexes", () => {
+  test("derives amplified fear, euphoria, and goksorry indexes", () => {
     expect(fearIndexFromScore(0)).toBe(100);
+    expect(fearIndexFromScore(2.5)).toBe(90);
     expect(fearIndexFromScore(5)).toBe(50);
+    expect(fearIndexFromScore(7.5)).toBe(10);
     expect(fearIndexFromScore(10)).toBe(0);
     expect(euphoriaIndexFromScore(0)).toBe(0);
+    expect(euphoriaIndexFromScore(2.5)).toBe(10);
     expect(euphoriaIndexFromScore(5)).toBe(50);
+    expect(euphoriaIndexFromScore(7.5)).toBe(90);
     expect(euphoriaIndexFromScore(10)).toBe(100);
     expect(goksorryIndexFromScore(0)).toBe(10);
-    expect(goksorryIndexFromScore(2.5)).toBe(7.5);
+    expect(goksorryIndexFromScore(2.5)).toBe(9);
     expect(goksorryIndexFromScore(5)).toBe(5);
-    expect(goksorryIndexFromScore(7.5)).toBe(2.5);
+    expect(goksorryIndexFromScore(7.5)).toBe(1);
     expect(goksorryIndexFromScore(10)).toBe(0);
   });
 });

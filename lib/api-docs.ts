@@ -51,7 +51,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       overall_base_score: 5.4,
       overall_market_adjustment: -0.32,
       overall_sentiment_score: 5.1,
-      overall_goksorry_index: 4.9,
+      overall_goksorry_index: 4.8,
       overall_sentiment_band: "neutral",
       community_indicators: [
         {
@@ -65,7 +65,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           base_score: 5.6,
           market_adjustment: -0.21,
           score: 5.4,
-          goksorry_index: 4.6,
+          goksorry_index: 4.4,
           sentiment_band: "neutral",
           tone: "mixed",
           rows: [
@@ -128,7 +128,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       overall_base_score: 5.4,
       overall_market_adjustment: -0.32,
       overall_sentiment_score: 5.1,
-      overall_goksorry_index: 4.9,
+      overall_goksorry_index: 4.8,
       overall_sentiment_band: "neutral",
       community_indicators: [
         {
@@ -142,7 +142,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
           base_score: 5.6,
           market_adjustment: -0.21,
           score: 5.4,
-          goksorry_index: 4.6,
+          goksorry_index: 4.4,
           sentiment_band: "neutral",
           tone: "mixed",
           rows: [
