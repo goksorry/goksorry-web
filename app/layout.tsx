@@ -17,17 +17,16 @@ import { ChatDock } from "@/components/chat-dock";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { CookieConsentProvider } from "@/components/cookie-consent-provider";
-import { CleanFilterFirstVisit } from "@/components/clean-filter-first-visit";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { CleanFilterOverlay } from "@/components/clean-filter-overlay";
 import { CleanFilterProvider } from "@/components/clean-filter-provider";
+import { FirstVisitHeaderHint } from "@/components/first-visit-header-hint";
 import { PolicyChangeBanner } from "@/components/policy-change-banner";
 import { ProfileSetupRedirect } from "@/components/profile-setup-redirect";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeChrome } from "@/components/theme-shells";
 import { ThemeFavicon } from "@/components/theme-favicon";
-import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getChatServerEnv } from "@/lib/env";
 import { authOptions } from "@/lib/auth";
@@ -110,8 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <ThemeProvider initialThemeId={initialThemeId} initialChangeColorMode={initialChangeColorMode}>
                 <ThemeFavicon />
                 <CleanFilterOverlay />
-                <CleanFilterFirstVisit />
-                <ThemeFirstVisit />
+                <FirstVisitHeaderHint />
                 <ThemeChrome
                   defaultHeader={<SiteHeader />}
                   policyBanner={

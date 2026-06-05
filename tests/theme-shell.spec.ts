@@ -52,27 +52,22 @@ const prepareThemePage = async (page: Page, storedTheme = "light", storedChangeC
   );
 };
 
-const prepareThemeFirstVisitPage = async (page: Page) => {
+const prepareSetupHintFirstVisitPage = async (page: Page) => {
   await page.context().addCookies([
     {
       name: COOKIE_CONSENT_COOKIE,
       value: "v1:essential",
       domain: "127.0.0.1",
       path: "/"
-    },
-    {
-      name: CLEAN_FILTER_COOKIE,
-      value: "on",
-      domain: "127.0.0.1",
-      path: "/"
     }
   ]);
-  await page.addInitScript((key) => {
-    window.localStorage.removeItem(key);
-  }, THEME_STORAGE_KEY);
-  await page.addInitScript((key) => {
-    window.localStorage.removeItem(key);
-  }, CHANGE_COLOR_MODE_STORAGE_KEY);
+  await page.addInitScript(
+    ([themeKey, changeColorModeKey]) => {
+      window.localStorage.removeItem(themeKey);
+      window.localStorage.removeItem(changeColorModeKey);
+    },
+    [THEME_STORAGE_KEY, CHANGE_COLOR_MODE_STORAGE_KEY]
+  );
 };
 
 const mockGuestChatSession = async (page: Page, onRequest?: () => void) => {
@@ -3177,29 +3172,50 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".header").getByRole("button", { name: "구글 로그인" })).toBeVisible();
   });
 
-  test("first visit theme dialog uses family and tone sections", async ({ page }) => {
+  test("first visit setup hint replaces clean filter and theme dialogs", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await prepareThemeFirstVisitPage(page);
+    await prepareSetupHintFirstVisitPage(page);
     await page.goto("/");
 
-    const dialog = page.getByRole("dialog", { name: "사이트 분위기를 고르세요." });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("테마", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("색상", { exact: true })).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "테마 Excel" })).toHaveText("Excel");
-    await expect(dialog.getByRole("button", { name: "테마 Docs" })).toHaveText("Docs");
-    await expect(dialog.getByRole("button", { name: "색상 다크" })).toHaveText("다크");
-    await expect(dialog.getByText("excel-light")).toHaveCount(0);
-    await expect(dialog.getByText("엑셀 라이트")).toHaveCount(0);
-    await expect(dialog.getByText("기술문서")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "이쁜말 필터를 켤까요?" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "사이트 분위기를 고르세요." })).toHaveCount(0);
 
-    await dialog.getByRole("button", { name: "테마 Excel" }).click();
-    await dialog.getByRole("button", { name: "색상 다크" }).click();
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "선택 완료" }).click();
+    const hint = page.getByRole("note", { name: "초기 설정 안내" });
+    await expect(hint).toBeVisible();
+    await expect(hint).toContainText("이쁜말필터와 테마는 여기서 바꿀 수 있어요.");
+    await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toBeVisible();
+    await expect(page.locator(".header").locator(".clean-filter-toggle")).toBeVisible();
 
-    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
-    await expect(dialog).toHaveCount(0);
+    const hintPlacement = await page.evaluate(() => {
+      const header = document.querySelector(".header") as HTMLElement;
+      const hint = document.querySelector(".first-visit-header-hint") as HTMLElement;
+      const headerRect = header.getBoundingClientRect();
+      const hintRect = hint.getBoundingClientRect();
+
+      return {
+        topGap: hintRect.top - headerRect.bottom,
+        rightGap: window.innerWidth - hintRect.right
+      };
+    });
+    expect(hintPlacement.topGap).toBeGreaterThanOrEqual(-4);
+    expect(hintPlacement.rightGap).toBeGreaterThanOrEqual(8);
+
+    await hint.getByRole("button", { name: "초기 설정 안내 닫기" }).click();
+    await expect(hint).toHaveCount(0);
+    await expect
+      .poll(async () =>
+        page.evaluate(() => ({
+          cleanFilterCookie: document.cookie.includes("goksorry-clean-filter=on"),
+          themeStorage: window.localStorage.getItem("goksorry-theme")
+        }))
+      )
+      .toEqual({
+        cleanFilterCookie: true,
+        themeStorage: "light"
+      });
+
+    await page.reload();
+    await expect(page.getByRole("note", { name: "초기 설정 안내" })).toHaveCount(0);
   });
 
   test("ide concept themes render page content as plain editor text", async ({ page }) => {
