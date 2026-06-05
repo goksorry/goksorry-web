@@ -2383,6 +2383,29 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.analysis-valuation-item {
+  grid-template-columns: minmax(0, 1.25fr) minmax(1rem, 1fr) max-content max-content;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.5rem;
+}
+
+.analysis-valuation-item .analysis-item-label,
+.analysis-valuation-item .analysis-item-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-valuation-spacer {
+  min-width: 1rem;
+}
+
+.analysis-valuation-item .analysis-valuation-pbr {
+  color: var(--ink-soft);
+}
+
 .analysis-item-label {
   min-width: 0;
   color: var(--ink);
@@ -4299,6 +4322,11 @@ div.goksorry-room-list-status {
   .analysis-item-main {
     display: grid;
     justify-content: stretch;
+  }
+
+  .analysis-valuation-item {
+    grid-template-columns: minmax(0, 1fr) minmax(0.5rem, 0.45fr) max-content max-content;
+    gap: 0.36rem;
   }
 
   .overview-modal-head,

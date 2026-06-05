@@ -345,8 +345,21 @@ test.describe("program theme shells", () => {
           </div>
         </section>
         <section id="excel-analysis-grid" class="analysis-grid" aria-label="Excel 분석 섹션">
-          ${["korean_news", "us_news", "kr_top10", "us_top10", "kr_large_popular_changes", "us_large_popular_changes", "kr_chart_states", "us_chart_states"]
-            .map((id, index) => `
+          ${[
+            "korean_news",
+            "us_news",
+            "kr_top10",
+            "us_top10",
+            "kr_valuation",
+            "us_valuation",
+            "kr_large_popular_changes",
+            "us_large_popular_changes",
+            "kr_chart_states",
+            "us_chart_states"
+          ]
+            .map((id, index) => {
+              const isValuation = id === "kr_valuation" || id === "us_valuation";
+              return `
               <article class="analysis-card analysis-card-${id}">
                 <div class="analysis-card-head">
                   <h2>${id}</h2>
@@ -354,15 +367,25 @@ test.describe("program theme shells", () => {
                 </div>
                 <p class="analysis-card-summary">요약 ${index + 1}</p>
                 <ul class="analysis-list">
-                  <li class="analysis-item analysis-tone-${index % 2 === 0 ? "up" : "down"}">
-                    <div class="analysis-item-main">
-                      <span class="analysis-item-label">NVIDIA (NVDA)</span>
-                      <strong class="analysis-item-value">+1.23%</strong>
-                    </div>
-                    <p>거래대금 상위 · 거래량 증가 · 차트 상세</p>
-                  </li>
+                  ${
+                    isValuation
+                      ? `<li class="analysis-item analysis-valuation-item analysis-tone-${index % 2 === 0 ? "up" : "down"}">
+                          <span class="analysis-item-label">삼성전자 (005930)</span>
+                          <span class="analysis-valuation-spacer" aria-hidden="true"></span>
+                          <strong class="analysis-item-value">PER 14.20</strong>
+                          <strong class="analysis-item-value analysis-valuation-pbr">PBR 1.32</strong>
+                        </li>`
+                      : `<li class="analysis-item analysis-tone-${index % 2 === 0 ? "up" : "down"}">
+                          <div class="analysis-item-main">
+                            <span class="analysis-item-label">NVIDIA (NVDA)</span>
+                            <strong class="analysis-item-value">+1.23%</strong>
+                          </div>
+                          <p>거래대금 상위 · 거래량 증가 · 차트 상세</p>
+                        </li>`
+                  }
                 </ul>
-              </article>`)
+              </article>`;
+            })
             .join("")}
         </section>
         <section id="excel-analysis-symbols" class="panel analysis-symbol-panel">
@@ -381,6 +404,7 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel #excel-analysis-hero",
       ".theme-shell-excel #excel-analysis-grid",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-korean_news",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_valuation",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_large_popular_changes",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-us_large_popular_changes",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_chart_states",
@@ -409,6 +433,32 @@ test.describe("program theme shells", () => {
     expect(desktopLayout.sameRow).toBe(true);
     expect(desktopLayout.widths.every((width) => Math.abs(width - desktopLayout.columnWidth * 2) <= 1)).toBe(true);
     expect(Math.abs(desktopLayout.cardHeight - desktopLayout.rowHeight * 14)).toBeLessThanOrEqual(1);
+
+    const valuationLayout = await page.evaluate(() => {
+      const row = document.querySelector(
+        ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_valuation .analysis-valuation-item"
+      ) as HTMLElement;
+      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
+      const selectors = [
+        ".analysis-item-label",
+        ".analysis-valuation-spacer",
+        ".analysis-item-value:not(.analysis-valuation-pbr)",
+        ".analysis-valuation-pbr"
+      ];
+      const rects = selectors.map((selector) => (row.querySelector(selector) as HTMLElement).getBoundingClientRect());
+      const rowRect = row.getBoundingClientRect();
+      return {
+        rowHeight: rowRect.height,
+        expectedRowHeight: rowHeader.getBoundingClientRect().height,
+        pCount: row.querySelectorAll("p").length,
+        sameRow: rects.every((rect) => Math.abs(rect.top - rowRect.top) <= 1),
+        spacerWidth: rects[1].width
+      };
+    });
+    expect(valuationLayout.pCount).toBe(0);
+    expect(valuationLayout.sameRow).toBe(true);
+    expect(Math.abs(valuationLayout.rowHeight - valuationLayout.expectedRowHeight)).toBeLessThanOrEqual(1);
+    expect(valuationLayout.spacerWidth).toBeGreaterThan(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileLayout = await page.evaluate(() => {

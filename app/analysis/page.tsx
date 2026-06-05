@@ -39,10 +39,12 @@ const isReportStale = (report: AnalysisReport): boolean => {
   return Number.isNaN(asofMs) || Date.now() - asofMs > 60 * 60 * 1000;
 };
 
-const renderItem = (item: AnalysisItem, index: number, variant: "default" | "news" = "default") => (
+const renderItem = (item: AnalysisItem, index: number, variant: "default" | "news" | "valuation" = "default") => (
   <li
     key={`${item.label}-${index}`}
-    className={`analysis-item ${variant === "news" ? "analysis-news-item" : ""} analysis-tone-${item.tone}`}
+    className={`analysis-item ${variant === "news" ? "analysis-news-item" : ""} ${
+      variant === "valuation" ? "analysis-valuation-item" : ""
+    } analysis-tone-${item.tone}`}
   >
     {variant === "news" ? (
       <>
@@ -51,6 +53,13 @@ const renderItem = (item: AnalysisItem, index: number, variant: "default" | "new
           <time>{formatNewsTime(item.note)}</time>
         </div>
         {item.value ? <strong className="analysis-news-headline">{item.value}</strong> : null}
+      </>
+    ) : variant === "valuation" ? (
+      <>
+        <span className="analysis-item-label">{item.label}</span>
+        <span className="analysis-valuation-spacer" aria-hidden="true" />
+        <strong className="analysis-item-value">{item.value}</strong>
+        <strong className="analysis-item-value analysis-valuation-pbr">{item.note}</strong>
       </>
     ) : (
       <>
@@ -64,8 +73,16 @@ const renderItem = (item: AnalysisItem, index: number, variant: "default" | "new
   </li>
 );
 
-const renderSectionItem = (sectionId: string) => (item: AnalysisItem, index: number) =>
-  renderItem(item, index, sectionId === "korean_news" || sectionId === "us_news" ? "news" : "default");
+const renderSectionItem = (sectionId: string) => (item: AnalysisItem, index: number) => {
+  const variant =
+    sectionId === "korean_news" || sectionId === "us_news"
+      ? "news"
+      : sectionId === "kr_valuation" || sectionId === "us_valuation"
+        ? "valuation"
+        : "default";
+
+  return renderItem(item, index, variant);
+};
 
 const renderMarketIndicator = (indicator: MarketIndicator) => (
   <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>

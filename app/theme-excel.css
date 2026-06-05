@@ -1972,6 +1972,7 @@
 .theme-shell-excel .analysis-list {
   min-height: 0;
   display: grid;
+  align-content: start;
   gap: 0;
   overflow: auto;
 }
@@ -1994,6 +1995,14 @@
   grid-template-rows: var(--excel-row-height) var(--excel-row-height);
 }
 
+.theme-shell-excel .analysis-valuation-item {
+  min-height: var(--excel-row-height);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--excel-column-width) var(--excel-column-width);
+  grid-template-rows: var(--excel-row-height);
+  align-items: stretch;
+  gap: 0;
+}
+
 .theme-shell-excel .analysis-item-main,
 .theme-shell-excel .analysis-news-meta {
   min-width: 0;
@@ -2007,6 +2016,7 @@
 
 .theme-shell-excel .analysis-item-label,
 .theme-shell-excel .analysis-item-value,
+.theme-shell-excel .analysis-valuation-spacer,
 .theme-shell-excel .analysis-news-meta time,
 .theme-shell-excel .analysis-news-headline,
 .theme-shell-excel .analysis-item p {
@@ -2031,6 +2041,11 @@
 
 .theme-shell-excel .analysis-item-value,
 .theme-shell-excel .analysis-news-meta time {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.theme-shell-excel .analysis-valuation-item .analysis-item-value {
   justify-content: flex-end;
   text-align: right;
 }
@@ -2497,6 +2512,14 @@
   .theme-shell-excel .analysis-item-main,
   .theme-shell-excel .analysis-news-meta {
     grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--excel-column-width) * 0.85));
+  }
+
+  .theme-shell-excel .analysis-valuation-item {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 0.35fr)
+      minmax(0, calc(var(--excel-column-width) * 0.72))
+      minmax(0, calc(var(--excel-column-width) * 0.72));
   }
 
   .theme-shell-excel .analysis-symbols {
