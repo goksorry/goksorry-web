@@ -93,6 +93,8 @@ const SECTION_TITLES: Record<AnalysisSectionId, string> = {
 };
 
 const TONES = new Set<AnalysisTone>(["up", "down", "flat", "fear", "greed", "mixed"]);
+const VALUATION_SECTION_IDS = new Set<AnalysisSectionId>(["kr_valuation", "us_valuation"]);
+const ZERO_VALUATION_METRIC_PATTERN = /^(?:PER|PBR)?\s*[:=]?\s*[+-]?(?:0+(?:\.0+)?|0?\.0+)(?:\s*(?:배|x))?$/i;
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -114,12 +116,16 @@ const asDisplayText = (value: unknown, fallback = "", maxLength = 500): string =
   return formatKoreanStockDisplayText(asText(value, fallback, maxLength));
 };
 
+const hideZeroValuationMetric = (value: string): string => {
+  return ZERO_VALUATION_METRIC_PATTERN.test(value.replace(/,/g, "").trim()) ? "" : value;
+};
+
 const asTone = (value: unknown): AnalysisTone => {
   const text = asText(value, "mixed", 20).toLowerCase();
   return TONES.has(text as AnalysisTone) ? (text as AnalysisTone) : "mixed";
 };
 
-const normalizeItems = (value: unknown): AnalysisItem[] => {
+const normalizeItems = (sectionId: AnalysisSectionId, value: unknown): AnalysisItem[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -131,8 +137,15 @@ const normalizeItems = (value: unknown): AnalysisItem[] => {
     }
 
     const label = asDisplayText(record.label, "", 80);
-    const valueText = asDisplayText(record.value, "", 120);
-    const note = asDisplayText(record.note, "", 240);
+    let valueText = asDisplayText(record.value, "", 120);
+    let note = asDisplayText(record.note, "", 240);
+    if (VALUATION_SECTION_IDS.has(sectionId)) {
+      valueText = hideZeroValuationMetric(valueText);
+      note = hideZeroValuationMetric(note);
+      if (!valueText && !note) {
+        return [];
+      }
+    }
     if (!label && !valueText && !note) {
       return [];
     }
@@ -154,7 +167,7 @@ const normalizeSection = (id: AnalysisSectionId, value: unknown): AnalysisSectio
     id,
     title: asDisplayText(record.title, SECTION_TITLES[id], 80),
     summary: asDisplayText(record.summary, "분석 대기 중", 500),
-    items: normalizeItems(record.items)
+    items: normalizeItems(id, record.items)
   };
 };
 
