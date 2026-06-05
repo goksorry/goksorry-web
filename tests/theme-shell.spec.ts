@@ -372,6 +372,14 @@ test.describe("program theme shells", () => {
           ]
             .map((id, index) => {
               const isValuation = id === "kr_valuation" || id === "us_valuation";
+              const isChart = id === "kr_chart_states" || id === "us_chart_states";
+              const chartDirection = id === "us_chart_states" ? "하락" : "상승";
+              const chartTrendTokenClass = id === "us_chart_states" ? "analysis-chart-trend-token-down" : "analysis-chart-trend-token-up";
+              const valueHtml = isChart
+                ? `${chartDirection} <span class="analysis-chart-trend-token ${chartTrendTokenClass}">추세</span> · 2D ${
+                    id === "us_chart_states" ? "-0.80%" : "+1.23%"
+                  }`
+                : "+1.23%";
               return `
               <article class="analysis-card analysis-card-${id}">
                 <div class="analysis-card-head">
@@ -388,10 +396,10 @@ test.describe("program theme shells", () => {
                           <strong class="analysis-item-value">PER 14.20</strong>
                           <strong class="analysis-item-value analysis-valuation-pbr">PBR 1.32</strong>
                         </li>`
-                      : `<li class="analysis-item analysis-tone-${index % 2 === 0 ? "up" : "down"}">
+                      : `<li class="analysis-item ${isChart ? "analysis-chart-item" : ""} analysis-tone-${index % 2 === 0 ? "up" : "down"}">
                           <div class="analysis-item-main">
                             <span class="analysis-item-label">NVIDIA (NVDA)</span>
-                            <strong class="analysis-item-value">+1.23%</strong>
+                            <strong class="analysis-item-value">${valueHtml}</strong>
                           </div>
                           <p>거래대금 상위 · 거래량 증가 · 차트 상세</p>
                         </li>`
@@ -472,6 +480,28 @@ test.describe("program theme shells", () => {
     expect(valuationLayout.sameRow).toBe(true);
     expect(Math.abs(valuationLayout.rowHeight - valuationLayout.expectedRowHeight)).toBeLessThanOrEqual(1);
     expect(valuationLayout.spacerWidth).toBeGreaterThan(0);
+
+    const trendColors = await page.evaluate(() => {
+      const read = (selector: string) => {
+        const item = document.querySelector(selector) as HTMLElement;
+        const value = item.querySelector(".analysis-item-value") as HTMLElement;
+        const token = item.querySelector(".analysis-chart-trend-token") as HTMLElement;
+        return {
+          tokenText: token.textContent,
+          valueColor: window.getComputedStyle(value).color,
+          tokenColor: window.getComputedStyle(token).color
+        };
+      };
+      return {
+        up: read(".theme-shell-excel #excel-analysis-grid .analysis-card-kr_chart_states .analysis-chart-item"),
+        down: read(".theme-shell-excel #excel-analysis-grid .analysis-card-us_chart_states .analysis-chart-item")
+      };
+    });
+    expect(trendColors.up.tokenText).toBe("추세");
+    expect(trendColors.down.tokenText).toBe("추세");
+    expect(trendColors.up.tokenColor).not.toBe(trendColors.up.valueColor);
+    expect(trendColors.down.tokenColor).not.toBe(trendColors.down.valueColor);
+    expect(trendColors.up.tokenColor).not.toBe(trendColors.down.tokenColor);
 
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileLayout = await page.evaluate(() => {

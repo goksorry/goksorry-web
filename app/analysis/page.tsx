@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ANALYSIS_SECTION_ORDER, fetchLatestAnalysisReport, type AnalysisItem, type AnalysisReport } from "@/lib/analysis-data";
+import { resolveChartTrendTone, splitChartTrendText } from "@/lib/analysis-trend";
 import { getMarketColorContextForAnalysisSection, getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import { getCachedMarketOverview, type MarketIndicator } from "@/lib/overview-data";
 import { buildPageMetadata } from "@/lib/seo";
@@ -40,12 +41,35 @@ const isReportStale = (report: AnalysisReport): boolean => {
   return Number.isNaN(asofMs) || Date.now() - asofMs > 60 * 60 * 1000;
 };
 
-const renderItem = (item: AnalysisItem, index: number, variant: "default" | "news" | "valuation" = "default") => (
+const renderChartValue = (item: AnalysisItem) => {
+  const trendTone = resolveChartTrendTone(item.value, item.tone);
+  const tokenToneClass = trendTone === "up" || trendTone === "down" ? ` analysis-chart-trend-token-${trendTone}` : "";
+
+  return (
+    <strong className="analysis-item-value">
+      {splitChartTrendText(item.value).map((segment, segmentIndex) =>
+        segment.isTrendToken ? (
+          <span key={`${segment.text}-${segmentIndex}`} className={`analysis-chart-trend-token${tokenToneClass}`}>
+            {segment.text}
+          </span>
+        ) : (
+          segment.text
+        )
+      )}
+    </strong>
+  );
+};
+
+const renderItem = (
+  item: AnalysisItem,
+  index: number,
+  variant: "default" | "news" | "valuation" | "chart" = "default"
+) => (
   <li
     key={`${item.label}-${index}`}
     className={`analysis-item ${variant === "news" ? "analysis-news-item" : ""} ${
       variant === "valuation" ? "analysis-valuation-item" : ""
-    } analysis-tone-${item.tone}`}
+    } ${variant === "chart" ? "analysis-chart-item" : ""} analysis-tone-${item.tone}`}
   >
     {variant === "news" ? (
       <>
@@ -66,7 +90,13 @@ const renderItem = (item: AnalysisItem, index: number, variant: "default" | "new
       <>
         <div className="analysis-item-main">
           <span className="analysis-item-label">{item.label}</span>
-          {item.value ? <strong className="analysis-item-value">{item.value}</strong> : null}
+          {item.value ? (
+            variant === "chart" ? (
+              renderChartValue(item)
+            ) : (
+              <strong className="analysis-item-value">{item.value}</strong>
+            )
+          ) : null}
         </div>
         {item.note ? <p>{item.note}</p> : null}
       </>
@@ -80,7 +110,9 @@ const renderSectionItem = (sectionId: string) => (item: AnalysisItem, index: num
       ? "news"
       : sectionId === "kr_valuation" || sectionId === "us_valuation"
         ? "valuation"
-        : "default";
+        : sectionId === "kr_chart_states" || sectionId === "us_chart_states"
+          ? "chart"
+          : "default";
 
   return renderItem(item, index, variant);
 };

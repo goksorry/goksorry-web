@@ -2531,7 +2531,7 @@ button:disabled {
   border-left-color: var(--change-up);
 }
 
-.analysis-tone-up:not(.analysis-news-item):not(.analysis-valuation-item) .analysis-item-value {
+.analysis-tone-up:not(.analysis-news-item):not(.analysis-valuation-item):not(.analysis-chart-item) .analysis-item-value {
   color: var(--change-up);
 }
 
@@ -2543,7 +2543,19 @@ button:disabled {
   border-left-color: var(--change-down);
 }
 
-.analysis-tone-down:not(.analysis-news-item):not(.analysis-valuation-item) .analysis-item-value {
+.analysis-tone-down:not(.analysis-news-item):not(.analysis-valuation-item):not(.analysis-chart-item) .analysis-item-value {
+  color: var(--change-down);
+}
+
+.analysis-chart-trend-token {
+  color: inherit;
+}
+
+.analysis-chart-trend-token-up {
+  color: var(--change-up);
+}
+
+.analysis-chart-trend-token-down {
   color: var(--change-down);
 }
 
