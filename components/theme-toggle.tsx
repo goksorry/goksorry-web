@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { CHANGE_COLOR_MODES, type ChangeColorMode } from "@/lib/change-color-mode";
 import { THEME_OPTIONS, getThemeOption, type ThemeFamily, type ThemeOption, type ThemeTone } from "@/lib/theme";
 import { useTheme } from "@/components/theme-provider";
 
 type ThemeChoiceButtonProps = {
-  label: string;
+  label: ReactNode;
   ariaLabel: string;
-  swatchOption: ThemeOption;
+  swatchOption?: ThemeOption;
   active: boolean;
   onSelect: () => void;
 };
@@ -42,17 +43,39 @@ export const getThemeFamilyChoices = (): Array<{ family: ThemeFamily; label: str
   }, []);
 };
 
+const CHANGE_COLOR_LABELS: Record<ChangeColorMode, string> = {
+  kr: "한국식",
+  us: "미국식",
+  hybrid: "하이브리드"
+};
+
+const renderChangeColorLabel = (mode: ChangeColorMode): ReactNode => {
+  if (mode === "hybrid") {
+    return <span className="theme-menu-change-label theme-menu-change-label-hybrid">🔀</span>;
+  }
+
+  return (
+    <span className={`theme-menu-change-label theme-menu-change-label-${mode}`}>
+      <span className="theme-menu-change-flag">{mode === "kr" ? "🇰🇷" : "🇺🇸"}</span>
+      <span className="theme-menu-change-arrow theme-menu-change-up">↑</span>
+      <span className="theme-menu-change-arrow theme-menu-change-down">↓</span>
+    </span>
+  );
+};
+
 export function ThemeChoiceButton({ label, ariaLabel, swatchOption, active, onSelect }: ThemeChoiceButtonProps) {
   return (
     <button
       type="button"
-      className={`theme-menu-item theme-menu-choice${active ? " theme-menu-item-active" : ""}`}
-      style={buildSwatchStyle(swatchOption)}
+      className={`theme-menu-item theme-menu-choice${swatchOption ? "" : " theme-menu-choice-plain"}${
+        active ? " theme-menu-item-active" : ""
+      }`}
+      style={swatchOption ? buildSwatchStyle(swatchOption) : undefined}
       onClick={onSelect}
       aria-pressed={active}
       aria-label={ariaLabel}
     >
-      <span className="theme-menu-swatch" aria-hidden="true" />
+      {swatchOption ? <span className="theme-menu-swatch" aria-hidden="true" /> : null}
       <span className="theme-menu-item-copy">
         <span>{label}</span>
       </span>
@@ -61,11 +84,12 @@ export function ThemeChoiceButton({ label, ariaLabel, swatchOption, active, onSe
 }
 
 export function ThemeToggle() {
-  const { themeId, selectTheme } = useTheme();
+  const { themeId, changeColorMode, selectTheme, selectChangeColorMode } = useTheme();
   const [open, setOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
   const [draftFamily, setDraftFamily] = useState<ThemeFamily>("default");
   const [draftTone, setDraftTone] = useState<ThemeTone>("light");
+  const [draftChangeColorMode, setDraftChangeColorMode] = useState<ChangeColorMode>(changeColorMode);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -134,6 +158,7 @@ export function ThemeToggle() {
 
     setDraftFamily(activeTheme.family);
     setDraftTone(activeTheme.tone);
+    setDraftChangeColorMode(changeColorMode);
     updatePopoverPosition();
     window.addEventListener("resize", updatePopoverPosition);
     window.addEventListener("scroll", updatePopoverPosition, true);
@@ -145,16 +170,18 @@ export function ThemeToggle() {
       window.visualViewport?.removeEventListener("resize", updatePopoverPosition);
       window.visualViewport?.removeEventListener("scroll", updatePopoverPosition);
     };
-  }, [activeTheme.family, activeTheme.tone, open, updatePopoverPosition]);
+  }, [activeTheme.family, activeTheme.tone, changeColorMode, open, updatePopoverPosition]);
 
   const onApply = () => {
     selectTheme(draftTheme.id);
+    selectChangeColorMode(draftChangeColorMode);
     setOpen(false);
   };
   const onToggle = () => {
     if (!open) {
       setDraftFamily(activeTheme.family);
       setDraftTone(activeTheme.tone);
+      setDraftChangeColorMode(changeColorMode);
       updatePopoverPosition();
     }
 
@@ -202,6 +229,22 @@ export function ThemeToggle() {
                     />
                   );
                 })}
+              </div>
+            </section>
+            <section className="theme-menu-group" aria-labelledby="theme-change-color-heading">
+              <p id="theme-change-color-heading" className="theme-menu-group-label">
+                등락률
+              </p>
+              <div className="theme-menu-options theme-menu-change-options">
+                {CHANGE_COLOR_MODES.map((mode) => (
+                  <ThemeChoiceButton
+                    key={mode}
+                    label={renderChangeColorLabel(mode)}
+                    ariaLabel={`등락률 색상 ${CHANGE_COLOR_LABELS[mode]}`}
+                    active={mode === draftChangeColorMode}
+                    onSelect={() => setDraftChangeColorMode(mode)}
+                  />
+                ))}
               </div>
             </section>
             <div className="theme-menu-actions">

@@ -1,5 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import {
+  CHANGE_COLOR_MODE_COOKIE_DEFINITION,
+  CHANGE_COLOR_MODE_REQUEST_HEADER,
+  DEFAULT_CHANGE_COLOR_MODE,
+  normalizeChangeColorMode
+} from "@/lib/change-color-mode";
 import { DEFAULT_THEME_ID, THEME_COOKIE_DEFINITION, THEME_PARAM_NAME, THEME_REQUEST_HEADER, normalizeThemeId } from "@/lib/theme";
 
 const CANONICAL_HOST = "goksorry.com";
@@ -58,10 +64,13 @@ export function middleware(request: NextRequest) {
     : null;
   const themeFromCookie = normalizeThemeId(request.cookies.get(THEME_COOKIE_DEFINITION.key)?.value);
   const initialThemeId = themeFromParam ?? themeFromCookie ?? DEFAULT_THEME_ID;
+  const initialChangeColorMode =
+    normalizeChangeColorMode(request.cookies.get(CHANGE_COLOR_MODE_COOKIE_DEFINITION.key)?.value) ?? DEFAULT_CHANGE_COLOR_MODE;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set(THEME_REQUEST_HEADER, initialThemeId);
+  requestHeaders.set(CHANGE_COLOR_MODE_REQUEST_HEADER, initialChangeColorMode);
 
   const response = NextResponse.next({
     request: {

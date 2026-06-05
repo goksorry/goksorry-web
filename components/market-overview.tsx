@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
+import { getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -274,7 +275,12 @@ export function MarketOverview({
         </div>
         <div className="overview-market-row">
           {marketPayload.market_indicators.map((indicator) => (
-            <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
+            <article
+              key={indicator.id}
+              className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}
+              data-market-context={getMarketColorContextForIndicator(indicator.id)}
+              data-market-indicator-id={indicator.id}
+            >
               <div className="overview-market-head">
                 <p className="overview-label">{indicator.label}</p>
                 <p className="overview-note" hidden={!indicator.note}>

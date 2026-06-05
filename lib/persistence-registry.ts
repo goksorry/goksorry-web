@@ -81,6 +81,23 @@ export const CLIENT_PERSISTENCE_DEFINITIONS = {
     maxAgeSeconds: ONE_YEAR_IN_SECONDS,
     path: "/",
     sameSite: "Lax"
+  },
+  changeColorMode: {
+    kind: "localStorage",
+    key: "goksorry-change-color-mode",
+    category: "essential",
+    label: "등락률 색상 설정",
+    description: "가격 및 지수 등락률 색상 체계를 저장합니다."
+  },
+  changeColorModeCookie: {
+    kind: "cookie",
+    key: "goksorry-change-color-mode",
+    category: "essential",
+    label: "등락률 색상 설정",
+    description: "첫 화면부터 선택한 등락률 색상 체계로 렌더링하기 위해 저장합니다.",
+    maxAgeSeconds: ONE_YEAR_IN_SECONDS,
+    path: "/",
+    sameSite: "Lax"
   }
 } as const satisfies Record<string, PersistenceDefinition>;
 

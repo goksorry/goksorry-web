@@ -30,6 +30,11 @@ import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getChatServerEnv } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
+import {
+  CHANGE_COLOR_MODE_REQUEST_HEADER,
+  DEFAULT_CHANGE_COLOR_MODE,
+  normalizeChangeColorMode
+} from "@/lib/change-color-mode";
 import { DEFAULT_THEME_ID, THEME_REQUEST_HEADER, getThemeAttributeValues, getThemeInitScript, normalizeThemeId } from "@/lib/theme";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
@@ -75,6 +80,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const chatEnv = getChatServerEnv();
   const requestHeaders = headers();
   const initialThemeId = normalizeThemeId(requestHeaders.get(THEME_REQUEST_HEADER)) ?? DEFAULT_THEME_ID;
+  const initialChangeColorMode =
+    normalizeChangeColorMode(requestHeaders.get(CHANGE_COLOR_MODE_REQUEST_HEADER)) ?? DEFAULT_CHANGE_COLOR_MODE;
   const initialThemeAttributes = getThemeAttributeValues(initialThemeId, "light");
 
   return (
@@ -87,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-theme-family={initialThemeAttributes.family}
       data-theme-tone={initialThemeAttributes.tone}
       data-theme-effective-tone={initialThemeAttributes.effectiveTone}
+      data-change-color-mode={initialChangeColorMode}
     >
       <body className={gowunBatang.variable}>
         <Script id="theme-init" strategy="beforeInteractive">
@@ -96,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CookieConsentProvider>
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
-              <ThemeProvider initialThemeId={initialThemeId}>
+              <ThemeProvider initialThemeId={initialThemeId} initialChangeColorMode={initialChangeColorMode}>
                 <ThemeFavicon />
                 <CleanFilterOverlay />
                 <CleanFilterFirstVisit />

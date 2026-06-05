@@ -1,4 +1,10 @@
 import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
+import {
+  CHANGE_COLOR_MODE_COOKIE_DEFINITION,
+  CHANGE_COLOR_MODE_STORAGE_DEFINITION,
+  CHANGE_COLOR_MODES,
+  DEFAULT_CHANGE_COLOR_MODE
+} from "@/lib/change-color-mode";
 
 export type ThemeTone = "light" | "dark" | "system";
 export type ThemeEffectiveTone = Exclude<ThemeTone, "system">;
@@ -354,6 +360,10 @@ export const getThemeInitScript = (): string => {
     try {
       const key = ${JSON.stringify(THEME_STORAGE_DEFINITION.key)};
       const cookieKey = ${JSON.stringify(THEME_COOKIE_DEFINITION.key)};
+      const changeColorKey = ${JSON.stringify(CHANGE_COLOR_MODE_STORAGE_DEFINITION.key)};
+      const changeColorCookieKey = ${JSON.stringify(CHANGE_COLOR_MODE_COOKIE_DEFINITION.key)};
+      const defaultChangeColorMode = ${JSON.stringify(DEFAULT_CHANGE_COLOR_MODE)};
+      const validChangeColorModes = new Set(${JSON.stringify(CHANGE_COLOR_MODES)});
       const defaultTheme = ${JSON.stringify(DEFAULT_THEME_ID)};
       const paramName = ${JSON.stringify(THEME_PARAM_NAME)};
       const themes = ${JSON.stringify(
@@ -404,6 +414,21 @@ export const getThemeInitScript = (): string => {
       })();
       const storedTheme = storedRaw ? normalize(storedRaw) || defaultTheme : null;
       const value = paramTheme || cookieTheme || storedTheme || defaultTheme;
+      const cookieChangeColorMode = readCookie(changeColorCookieKey);
+      const storedChangeColorModeRaw = (() => {
+        try {
+          return window.localStorage.getItem(changeColorKey);
+        } catch {
+          return null;
+        }
+      })();
+      const storedChangeColorMode = validChangeColorModes.has(String(storedChangeColorModeRaw || "").trim().toLowerCase())
+        ? String(storedChangeColorModeRaw).trim().toLowerCase()
+        : null;
+      const cookieChangeColorModeValue = validChangeColorModes.has(String(cookieChangeColorMode || "").trim().toLowerCase())
+        ? String(cookieChangeColorMode).trim().toLowerCase()
+        : null;
+      const changeColorMode = cookieChangeColorModeValue || storedChangeColorMode || defaultChangeColorMode;
       const option = themes[value] || themes[defaultTheme];
       const systemTone =
         window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -416,6 +441,7 @@ export const getThemeInitScript = (): string => {
       root.setAttribute("data-theme-family", option.family);
       root.setAttribute("data-theme-tone", option.tone);
       root.setAttribute("data-theme-effective-tone", effectiveTone);
+      root.setAttribute("data-change-color-mode", changeColorMode);
       const icon = familyIcons[option.family] || familyIcons.default;
       let favicon = document.querySelector('link[data-theme-favicon="true"]');
       if (!favicon) {
@@ -439,6 +465,7 @@ export const getThemeInitScript = (): string => {
       root.setAttribute("data-theme-family", "default");
       root.setAttribute("data-theme-tone", "light");
       root.setAttribute("data-theme-effective-tone", "light");
+      root.setAttribute("data-change-color-mode", ${JSON.stringify(DEFAULT_CHANGE_COLOR_MODE)});
       let favicon = document.querySelector('link[data-theme-favicon="true"]');
       if (!favicon) {
         favicon = document.createElement("link");

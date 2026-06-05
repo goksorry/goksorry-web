@@ -9,6 +9,14 @@ import {
   writeClientLocalStorageValue
 } from "@/lib/browser-persistence";
 import {
+  CHANGE_COLOR_MODE_COOKIE_DEFINITION,
+  CHANGE_COLOR_MODE_STORAGE_DEFINITION,
+  DEFAULT_CHANGE_COLOR_MODE,
+  applyChangeColorMode,
+  normalizeChangeColorMode,
+  type ChangeColorMode
+} from "@/lib/change-color-mode";
+import {
   DEFAULT_THEME_ID,
   THEME_COOKIE_DEFINITION,
   THEME_PARAM_NAME,
@@ -24,8 +32,10 @@ import { useCleanFilter } from "@/components/clean-filter-provider";
 
 type ThemeContextValue = {
   themeId: ThemeId;
+  changeColorMode: ChangeColorMode;
   showThemePrompt: boolean;
   selectTheme: (themeId: ThemeId) => void;
+  selectChangeColorMode: (mode: ChangeColorMode) => void;
   dismissThemePrompt: () => void;
 };
 
@@ -34,6 +44,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 const persistThemePreference = (themeId: ThemeId): void => {
   writeClientCookieValue(THEME_COOKIE_DEFINITION, themeId);
   writeClientLocalStorageValue(THEME_STORAGE_DEFINITION, themeId);
+};
+
+const persistChangeColorModePreference = (mode: ChangeColorMode): void => {
+  writeClientCookieValue(CHANGE_COLOR_MODE_COOKIE_DEFINITION, mode);
+  writeClientLocalStorageValue(CHANGE_COLOR_MODE_STORAGE_DEFINITION, mode);
 };
 
 const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: boolean } => {
@@ -61,6 +76,16 @@ const readStoredThemeId = (): { themeId: ThemeId | null; hasStoredPreference: bo
   };
 };
 
+const readStoredChangeColorMode = (): ChangeColorMode => {
+  const cookie = readClientCookieValue(CHANGE_COLOR_MODE_COOKIE_DEFINITION);
+  if (cookie) {
+    return normalizeChangeColorMode(cookie) ?? DEFAULT_CHANGE_COLOR_MODE;
+  }
+
+  const stored = readClientLocalStorageValue(CHANGE_COLOR_MODE_STORAGE_DEFINITION);
+  return normalizeChangeColorMode(stored) ?? DEFAULT_CHANGE_COLOR_MODE;
+};
+
 function ThemeUrlSync({ themeId }: { themeId: ThemeId }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,9 +98,18 @@ function ThemeUrlSync({ themeId }: { themeId: ThemeId }) {
   return null;
 }
 
-export function ThemeProvider({ children, initialThemeId }: { children: ReactNode; initialThemeId: ThemeId }) {
+export function ThemeProvider({
+  children,
+  initialThemeId,
+  initialChangeColorMode
+}: {
+  children: ReactNode;
+  initialThemeId: ThemeId;
+  initialChangeColorMode: ChangeColorMode;
+}) {
   const { showFirstVisitPrompt, isApplying } = useCleanFilter();
   const [themeId, setThemeId] = useState<ThemeId>(initialThemeId);
+  const [changeColorMode, setChangeColorMode] = useState<ChangeColorMode>(initialChangeColorMode);
   const [promptPending, setPromptPending] = useState(false);
   const [showThemePrompt, setShowThemePrompt] = useState(false);
   const [urlSyncEnabled, setUrlSyncEnabled] = useState(false);
@@ -90,9 +124,13 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
 
       setThemeId(nextTheme);
       applyThemeMode(nextTheme);
+      const nextChangeColorMode = readStoredChangeColorMode();
+      setChangeColorMode(nextChangeColorMode);
+      applyChangeColorMode(nextChangeColorMode);
       if (!hasThemeParam && stored.hasStoredPreference) {
         persistThemePreference(nextTheme);
       }
+      persistChangeColorModePreference(nextChangeColorMode);
       setPromptPending(!hasThemeParam && !stored.hasStoredPreference);
       setShowThemePrompt(false);
       setUrlSyncEnabled(shouldSyncUrl);
@@ -144,6 +182,12 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
     setShowThemePrompt(false);
   };
 
+  const selectChangeColorMode = (mode: ChangeColorMode) => {
+    setChangeColorMode(mode);
+    applyChangeColorMode(mode);
+    persistChangeColorModePreference(mode);
+  };
+
   const dismissThemePrompt = () => {
     selectTheme(themeId);
   };
@@ -152,8 +196,10 @@ export function ThemeProvider({ children, initialThemeId }: { children: ReactNod
     <ThemeContext.Provider
       value={{
         themeId,
+        changeColorMode,
         showThemePrompt,
         selectTheme,
+        selectChangeColorMode,
         dismissThemePrompt
       }}
     >

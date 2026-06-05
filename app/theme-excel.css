@@ -2050,12 +2050,18 @@
   text-align: right;
 }
 
-.theme-shell-excel .analysis-tone-up,
+.theme-shell-excel .analysis-tone-up {
+  box-shadow: inset 2px 0 0 var(--change-up), inset 0 0 0 1px var(--excel-cell-line);
+}
+
 .theme-shell-excel .analysis-tone-greed {
   box-shadow: inset 2px 0 0 var(--hope), inset 0 0 0 1px var(--excel-cell-line);
 }
 
-.theme-shell-excel .analysis-tone-down,
+.theme-shell-excel .analysis-tone-down {
+  box-shadow: inset 2px 0 0 var(--change-down), inset 0 0 0 1px var(--excel-cell-line);
+}
+
 .theme-shell-excel .analysis-tone-fear {
   box-shadow: inset 2px 0 0 var(--danger), inset 0 0 0 1px var(--excel-cell-line);
 }

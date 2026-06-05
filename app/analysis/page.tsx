@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ANALYSIS_SECTION_ORDER, fetchLatestAnalysisReport, type AnalysisItem, type AnalysisReport } from "@/lib/analysis-data";
+import { getMarketColorContextForAnalysisSection, getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import { getCachedMarketOverview, type MarketIndicator } from "@/lib/overview-data";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -85,7 +86,12 @@ const renderSectionItem = (sectionId: string) => (item: AnalysisItem, index: num
 };
 
 const renderMarketIndicator = (indicator: MarketIndicator) => (
-  <article key={indicator.id} className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}>
+  <article
+    key={indicator.id}
+    className={`overview-card overview-market-stat overview-tone-${indicator.tone ?? "flat"}`}
+    data-market-context={getMarketColorContextForIndicator(indicator.id)}
+    data-market-indicator-id={indicator.id}
+  >
     <div className="overview-market-head">
       <p className="overview-label">{indicator.label}</p>
       <p className="overview-note" hidden={!indicator.note}>
@@ -161,7 +167,11 @@ export default async function AnalysisPage() {
 
       <section className="analysis-grid" aria-label="분석 섹션">
         {sections.map((section) => (
-          <article key={section.id} className={`analysis-card analysis-card-${section.id}`}>
+          <article
+            key={section.id}
+            className={`analysis-card analysis-card-${section.id}`}
+            data-market-context={getMarketColorContextForAnalysisSection(section.id)}
+          >
             <div className="analysis-card-head">
               <h2>{section.title}</h2>
               <span>{section.items.length}건</span>

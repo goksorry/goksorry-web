@@ -4,6 +4,8 @@ const CLEAN_FILTER_COOKIE = "goksorry-clean-filter";
 const COOKIE_CONSENT_COOKIE = "goksorry-cookie-consent";
 const THEME_STORAGE_KEY = "goksorry-theme";
 const THEME_COOKIE = "goksorry-theme-mode";
+const CHANGE_COLOR_MODE_STORAGE_KEY = "goksorry-change-color-mode";
+const CHANGE_COLOR_MODE_COOKIE = "goksorry-change-color-mode";
 const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
 const EXCEL_CONTROL_RADIUS = 3;
 const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
@@ -14,7 +16,7 @@ const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
   jetbrains: "/theme-icons/jetbrains.svg"
 };
 
-const prepareThemePage = async (page: Page, storedTheme = "light") => {
+const prepareThemePage = async (page: Page, storedTheme = "light", storedChangeColorMode = "hybrid") => {
   await page.context().addCookies([
     {
       name: COOKIE_CONSENT_COOKIE,
@@ -33,13 +35,20 @@ const prepareThemePage = async (page: Page, storedTheme = "light") => {
       value: storedTheme,
       domain: "127.0.0.1",
       path: "/"
+    },
+    {
+      name: CHANGE_COLOR_MODE_COOKIE,
+      value: storedChangeColorMode,
+      domain: "127.0.0.1",
+      path: "/"
     }
   ]);
   await page.addInitScript(
-    ([key, value]) => {
-      window.localStorage.setItem(key, value);
+    ([themeKey, themeValue, changeColorModeKey, changeColorModeValue]) => {
+      window.localStorage.setItem(themeKey, themeValue);
+      window.localStorage.setItem(changeColorModeKey, changeColorModeValue);
     },
-    [THEME_STORAGE_KEY, storedTheme]
+    [THEME_STORAGE_KEY, storedTheme, CHANGE_COLOR_MODE_STORAGE_KEY, storedChangeColorMode]
   );
 };
 
@@ -61,6 +70,9 @@ const prepareThemeFirstVisitPage = async (page: Page) => {
   await page.addInitScript((key) => {
     window.localStorage.removeItem(key);
   }, THEME_STORAGE_KEY);
+  await page.addInitScript((key) => {
+    window.localStorage.removeItem(key);
+  }, CHANGE_COLOR_MODE_STORAGE_KEY);
 };
 
 const mockGuestChatSession = async (page: Page, onRequest?: () => void) => {
@@ -577,6 +589,160 @@ test.describe("program theme shells", () => {
         cookie: `${THEME_COOKIE}=vscode-dark`,
         storage: "vscode-dark"
       });
+  });
+
+  test("change color mode selection uses symbol labels and persists", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.goto("/");
+
+    await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "hybrid");
+    await page.getByRole("button", { name: /테마 선택/ }).click();
+
+    const koreanMode = page.getByRole("button", { name: "등락률 색상 한국식" });
+    const usMode = page.getByRole("button", { name: "등락률 색상 미국식" });
+    const hybridMode = page.getByRole("button", { name: "등락률 색상 하이브리드" });
+    await expect(koreanMode).toHaveText(/🇰🇷\s*↑\s*↓/);
+    await expect(usMode).toHaveText(/🇺🇸\s*↑\s*↓/);
+    await expect(hybridMode).toHaveText("🔀");
+
+    const arrowColors = await page.evaluate(() => {
+      const read = (selector: string) => window.getComputedStyle(document.querySelector(selector) as HTMLElement).color;
+      return {
+        krUp: read("[aria-label='등락률 색상 한국식'] .theme-menu-change-up"),
+        krDown: read("[aria-label='등락률 색상 한국식'] .theme-menu-change-down"),
+        usUp: read("[aria-label='등락률 색상 미국식'] .theme-menu-change-up"),
+        usDown: read("[aria-label='등락률 색상 미국식'] .theme-menu-change-down")
+      };
+    });
+    expect(arrowColors).toEqual({
+      krUp: "rgb(211, 47, 47)",
+      krDown: "rgb(30, 99, 216)",
+      usUp: "rgb(22, 138, 82)",
+      usDown: "rgb(195, 66, 54)"
+    });
+
+    await usMode.click();
+    await page.getByRole("button", { name: "적용" }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "us");
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          ([cookieName, storageKey]) => ({
+            cookie: document.cookie
+              .split(";")
+              .map((part) => part.trim())
+              .find((part) => part.startsWith(`${cookieName}=`)),
+            storage: window.localStorage.getItem(storageKey)
+          }),
+          [CHANGE_COLOR_MODE_COOKIE, CHANGE_COLOR_MODE_STORAGE_KEY]
+        )
+      )
+      .toEqual({
+        cookie: `${CHANGE_COLOR_MODE_COOKIE}=us`,
+        storage: "us"
+      });
+  });
+
+  test("change color mode maps market deltas by market context", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.clock.install();
+    await page.route("**/api/overview**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2999-01-01T00:00:00.000Z",
+          market_indicators: [
+            {
+              id: "kospi",
+              label: "KOSPI",
+              value_text: "9,876.54",
+              delta_text: "+12.34 (+0.12%)",
+              change_value: 12.34,
+              change_percent: 0.12,
+              tone: "up",
+              note: "테스트"
+            },
+            {
+              id: "kosdaq",
+              label: "KOSDAQ",
+              value_text: "1,234.56",
+              delta_text: "-3.21 (-0.26%)",
+              change_value: -3.21,
+              change_percent: -0.26,
+              tone: "down",
+              note: "테스트"
+            },
+            {
+              id: "nasdaq",
+              label: "NASDAQ",
+              value_text: "20,123.45",
+              delta_text: "+4.56 (+0.02%)",
+              change_value: 4.56,
+              change_percent: 0.02,
+              tone: "up",
+              note: "테스트"
+            },
+            {
+              id: "usdkrw",
+              label: "원/달러 환율",
+              value_text: "1,350.10",
+              delta_text: "-1.10 KRW (-0.08%)",
+              change_value: -1.1,
+              change_percent: -0.08,
+              tone: "down",
+              note: "테스트"
+            }
+          ],
+          market_adjustment_enabled: true,
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: []
+        })
+      });
+    });
+    await prepareThemePage(page, "light", "hybrid");
+    await page.goto("/");
+    await page.clock.runFor(61_000);
+    await expect(page.locator("[data-market-indicator-id='kospi'] .overview-value")).toHaveText("9,876.54");
+
+    const readDeltaColors = async () =>
+      page.evaluate(() => {
+        const read = (id: string) => {
+          const delta = document.querySelector(`[data-market-indicator-id='${id}'] .overview-delta`) as HTMLElement;
+          return window.getComputedStyle(delta).color;
+        };
+        return {
+          kospi: read("kospi"),
+          kosdaq: read("kosdaq"),
+          nasdaq: read("nasdaq"),
+          usdkrw: read("usdkrw")
+        };
+      });
+
+    await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "hybrid");
+    expect(await readDeltaColors()).toEqual({
+      kospi: "rgb(211, 47, 47)",
+      kosdaq: "rgb(30, 99, 216)",
+      nasdaq: "rgb(22, 138, 82)",
+      usdkrw: "rgb(30, 99, 216)"
+    });
+
+    await page.getByRole("button", { name: /테마 선택/ }).click();
+    await page.getByRole("button", { name: "등락률 색상 미국식" }).click();
+    await page.getByRole("button", { name: "적용" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "us");
+    expect(await readDeltaColors()).toEqual({
+      kospi: "rgb(22, 138, 82)",
+      kosdaq: "rgb(195, 66, 54)",
+      nasdaq: "rgb(22, 138, 82)",
+      usdkrw: "rgb(195, 66, 54)"
+    });
   });
 
   test("site share URL includes the active theme", async ({ page }) => {

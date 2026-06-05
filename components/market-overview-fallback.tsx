@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import { SOURCE_GROUPS, SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
 
 const overviewCommunityRowStyle: CSSProperties & { "--overview-community-columns": string } = {
@@ -16,10 +17,20 @@ export function MarketOverviewFallback({ selectedGroupIds = SOURCE_GROUP_IDS }: 
           <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
         </div>
         <div className="overview-market-row">
-          {["KOSPI", "KOSDAQ", "NASDAQ", "원/달러 환율"].map((label) => (
-            <article key={label} className="overview-card overview-market-stat overview-tone-flat">
+          {[
+            { id: "kospi", label: "KOSPI" },
+            { id: "kosdaq", label: "KOSDAQ" },
+            { id: "nasdaq", label: "NASDAQ" },
+            { id: "usdkrw", label: "원/달러 환율" }
+          ].map((indicator) => (
+            <article
+              key={indicator.id}
+              className="overview-card overview-market-stat overview-tone-flat"
+              data-market-context={getMarketColorContextForIndicator(indicator.id)}
+              data-market-indicator-id={indicator.id}
+            >
               <div className="overview-market-head">
-                <p className="overview-label">{label}</p>
+                <p className="overview-label">{indicator.label}</p>
                 <p className="overview-note">로딩중</p>
               </div>
               <div className="overview-market-main">
