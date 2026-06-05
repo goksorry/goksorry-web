@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   canManageGoksorryRoomItem,
+  isGoksorryRoomItemOwner,
   resolveExistingGoksorryRoomActor
 } from "@/lib/goksorry-room";
 import type {
@@ -12,6 +13,7 @@ import type {
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 type GoksorryRoomActor = Awaited<ReturnType<typeof resolveExistingGoksorryRoomActor>>["actor"];
+type GoksorryRoomUser = Awaited<ReturnType<typeof resolveExistingGoksorryRoomActor>>["user"];
 
 const ENTRY_SELECT_WITH_REPLY_COUNT =
   "id,author_kind,author_id,guest_owner_hash,author_label,content,created_at,reply_count";
@@ -23,6 +25,23 @@ const isMissingReplyCountError = (error: { code?: string | null; message?: strin
   return error?.code === "42703" || error?.code === "PGRST204" || message.includes("reply_count");
 };
 
+const getViewer = (user: GoksorryRoomUser): GoksorryRoomPayload["viewer"] => ({
+  kind: user ? "member" : "guest"
+});
+
+const getItemOwnership = (actor: GoksorryRoomActor, item: any) => {
+  const owner = {
+    author_kind: String(item.author_kind ?? ""),
+    author_id: item.author_id ? String(item.author_id) : null,
+    guest_owner_hash: item.guest_owner_hash ? String(item.guest_owner_hash) : null
+  };
+
+  return {
+    can_delete: canManageGoksorryRoomItem(actor, owner),
+    is_mine: isGoksorryRoomItemOwner(actor, owner)
+  };
+};
+
 const mapReply = (reply: any, actor: GoksorryRoomActor): GoksorryRoomReplyPayload => ({
   id: String(reply.id),
   entry_id: String(reply.entry_id),
@@ -30,11 +49,7 @@ const mapReply = (reply: any, actor: GoksorryRoomActor): GoksorryRoomReplyPayloa
   author_kind: reply.author_kind === "member" ? "member" : "guest",
   author_label: String(reply.author_label ?? "익명"),
   created_at: String(reply.created_at),
-  can_delete: canManageGoksorryRoomItem(actor, {
-    author_kind: String(reply.author_kind ?? ""),
-    author_id: reply.author_id ? String(reply.author_id) : null,
-    guest_owner_hash: reply.guest_owner_hash ? String(reply.guest_owner_hash) : null
-  })
+  ...getItemOwnership(actor, reply)
 });
 
 const mapEntry = (
@@ -49,11 +64,7 @@ const mapEntry = (
   author_label: String(entry.author_label ?? "익명"),
   created_at: String(entry.created_at),
   reply_count: replyCount,
-  can_delete: canManageGoksorryRoomItem(actor, {
-    author_kind: String(entry.author_kind ?? ""),
-    author_id: entry.author_id ? String(entry.author_id) : null,
-    guest_owner_hash: entry.guest_owner_hash ? String(entry.guest_owner_hash) : null
-  }),
+  ...getItemOwnership(actor, entry),
   replies
 });
 
@@ -154,11 +165,12 @@ export const readGoksorryRoomEntries = async ({
   cursor?: string | null;
   limit: number;
 }): Promise<{ payload: GoksorryRoomPayload; error: any; actor: GoksorryRoomActor }> => {
-  const { actor } = await resolveExistingGoksorryRoomActor(request);
+  const { user, actor } = await resolveExistingGoksorryRoomActor(request);
   const { entries, replyCounts, error } = await readEntryRows({ cursor, limit });
   if (error) {
     return {
       payload: {
+        viewer: getViewer(user),
         entries: [],
         next_cursor: null
       },
@@ -174,6 +186,7 @@ export const readGoksorryRoomEntries = async ({
 
   return {
     payload: {
+      viewer: getViewer(user),
       entries: mappedEntries,
       next_cursor: mappedEntries.length === limit && lastEntry ? lastEntry.created_at : null
     },

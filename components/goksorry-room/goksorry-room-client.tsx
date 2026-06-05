@@ -1,6 +1,9 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { readClientCookieValue, writeClientCookieValue } from "@/lib/browser-persistence";
+import { cleanGuestChatNicknameInput, normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
+import { CHAT_GUEST_NICKNAME_MAX_LENGTH } from "@/lib/chat-types";
 import { formatKstDateTime } from "@/lib/date-time";
 import {
   GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
@@ -9,8 +12,10 @@ import {
 import type {
   GoksorryRoomEntryPayload as RoomEntry,
   GoksorryRoomPayload,
-  GoksorryRoomReplyPayload as RoomReply
+  GoksorryRoomReplyPayload as RoomReply,
+  GoksorryRoomViewerPayload as RoomViewer
 } from "@/lib/goksorry-room-types";
+import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
 
 type RoomPayload = Partial<GoksorryRoomPayload> & {
   error?: string;
@@ -57,13 +62,26 @@ const removeRecordKey = (record: Record<string, string>, key: string): Record<st
   return next;
 };
 
+const renderAuthor = (item: Pick<RoomEntry | RoomReply, "author_kind" | "author_label" | "is_mine">) => (
+  <span className={`goksorry-room-author${item.is_mine ? " goksorry-room-author-mine" : ""}`}>
+    <span className="goksorry-room-author-name">{item.author_label}</span>
+    {item.author_kind === "guest" ? (
+      <span className="goksorry-room-guest-marker" aria-label="비회원">
+        *
+      </span>
+    ) : null}
+  </span>
+);
+
 export function GoksorryRoomClient({ initialPayload, initialError = null }: GoksorryRoomClientProps) {
   const listRegionRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const hasInitialPayload = initialPayload !== undefined && initialPayload !== null;
+  const [viewer, setViewer] = useState<RoomViewer>(() => initialPayload?.viewer ?? { kind: "guest" });
   const [entries, setEntries] = useState<RoomEntry[]>(() => initialPayload?.entries ?? []);
   const [entryDraft, setEntryDraft] = useState("");
+  const [guestNickname, setGuestNickname] = useState("");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyEntryId, setOpenReplyEntryId] = useState<string | null>(null);
   const [loadedReplyEntryIds, setLoadedReplyEntryIds] = useState<Set<string>>(
@@ -85,6 +103,18 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(initialError);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const isGuestViewer = viewer.kind === "guest";
+  const normalizedGuestNickname = isGuestViewer ? normalizeGuestChatNickname(guestNickname) : null;
+  const guestNicknameInvalid = isGuestViewer && guestNickname.trim().length > 0 && !normalizedGuestNickname;
+
+  useEffect(() => {
+    const storedNickname = normalizeGuestChatNickname(
+      readClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname)
+    );
+    if (storedNickname) {
+      setGuestNickname(storedNickname);
+    }
+  }, []);
 
   const loadEntries = useCallback(async (cursor?: string | null) => {
     const params = new URLSearchParams();
@@ -94,6 +124,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
 
     const payload = await fetchJson<RoomPayload>(`/api/goksorry-room${params.size ? `?${params}` : ""}`);
     const nextEntries = payload.entries ?? [];
+    setViewer(payload.viewer ?? { kind: "guest" });
     setNextCursor(payload.next_cursor ?? null);
     setEntries((current) => (cursor ? mergeUniqueEntries(current, nextEntries) : nextEntries));
   }, []);
@@ -212,6 +243,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
         }
 
         setEntries(payload.entries ?? []);
+        setViewer(payload.viewer ?? { kind: "guest" });
         setNextCursor(payload.next_cursor ?? null);
       } catch (loadError) {
         if (!cancelled) {
@@ -237,6 +269,10 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
     if (!content) {
       return;
     }
+    if (isGuestViewer && !normalizedGuestNickname) {
+      setError("비회원 닉네임을 입력하세요.");
+      return;
+    }
 
     setEntrySubmitting(true);
     setError(null);
@@ -246,11 +282,17 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({
+          content,
+          ...(isGuestViewer && normalizedGuestNickname ? { guest_nickname: normalizedGuestNickname } : {})
+        })
       });
 
       if (payload.entry) {
         setEntryDraft("");
+        if (isGuestViewer && normalizedGuestNickname) {
+          writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname, normalizedGuestNickname);
+        }
         startTransition(() => {
           setEntries((current) => [payload.entry as RoomEntry, ...current.filter((entry) => entry.id !== payload.entry?.id)]);
         });
@@ -267,6 +309,10 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
     if (!content) {
       return;
     }
+    if (isGuestViewer && !normalizedGuestNickname) {
+      setError("비회원 닉네임을 입력하세요.");
+      return;
+    }
 
     setReplySubmittingEntryId(entryId);
     setError(null);
@@ -278,12 +324,16 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
         },
         body: JSON.stringify({
           entry_id: entryId,
-          content
+          content,
+          ...(isGuestViewer && normalizedGuestNickname ? { guest_nickname: normalizedGuestNickname } : {})
         })
       });
 
       if (payload.reply) {
         setReplyDrafts((current) => ({ ...current, [entryId]: "" }));
+        if (isGuestViewer && normalizedGuestNickname) {
+          writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname, normalizedGuestNickname);
+        }
         setOpenReplyEntryId(entryId);
         setReplyLoadErrors((current) => removeRecordKey(current, entryId));
         setEntries((current) =>
@@ -341,9 +391,33 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
     }
   };
 
+  const handleGuestNicknameChange = (value: string) => {
+    setGuestNickname(cleanGuestChatNicknameInput(value));
+  };
+
+  const renderGuestNicknameInput = () =>
+    isGuestViewer ? (
+      <label className="goksorry-room-nickname-label">
+        <span className="sr-only">비회원 닉네임</span>
+        <input
+          type="text"
+          value={guestNickname}
+          onChange={(event) => handleGuestNicknameChange(event.target.value)}
+          maxLength={CHAT_GUEST_NICKNAME_MAX_LENGTH}
+          placeholder="닉네임"
+          autoComplete="nickname"
+          aria-invalid={guestNicknameInvalid}
+          required
+        />
+      </label>
+    ) : null;
+
   return (
     <section className="goksorry-room-shell">
-      <form className="goksorry-room-entry-form" onSubmit={submitEntry}>
+      <form
+        className={`goksorry-room-entry-form${isGuestViewer ? " goksorry-room-form-guest" : ""}`}
+        onSubmit={submitEntry}
+      >
         <label className="goksorry-room-input-label">
           <span className="sr-only">한줄 의견</span>
           <input
@@ -359,7 +433,8 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
           <span className="muted goksorry-room-count">
             {entryDraft.length}/{GOKSORRY_ROOM_ENTRY_MAX_LENGTH}
           </span>
-          <button type="submit" disabled={entrySubmitting || !entryDraft.trim()}>
+          {renderGuestNicknameInput()}
+          <button type="submit" disabled={entrySubmitting || !entryDraft.trim() || (isGuestViewer && !normalizedGuestNickname)}>
             {entrySubmitting ? "등록 중..." : "등록"}
           </button>
         </div>
@@ -380,7 +455,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                 <div className="goksorry-room-entry-main">
                   <p title={entry.content}>{entry.content}</p>
                   <div className="goksorry-room-meta">
-                    <span>{entry.author_label}</span>
+                    {renderAuthor(entry)}
                     <time dateTime={entry.created_at}>{formatKstDateTime(entry.created_at)}</time>
                   </div>
                 </div>
@@ -441,7 +516,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                           <div key={reply.id} className="goksorry-room-reply">
                             <p title={reply.content}>{reply.content}</p>
                             <div className="goksorry-room-meta">
-                              <span>{reply.author_label}</span>
+                              {renderAuthor(reply)}
                               <time dateTime={reply.created_at}>{formatKstDateTime(reply.created_at)}</time>
                               {reply.can_delete ? (
                                 <button
@@ -460,7 +535,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                     ) : null}
 
                     <form
-                      className="goksorry-room-reply-form"
+                      className={`goksorry-room-reply-form${isGuestViewer ? " goksorry-room-form-guest" : ""}`}
                       onSubmit={(event) => {
                         event.preventDefault();
                         void submitReply(entry.id);
@@ -486,7 +561,15 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
                         <span className="muted goksorry-room-count">
                           {replyDraft.length}/{GOKSORRY_ROOM_REPLY_MAX_LENGTH}
                         </span>
-                        <button type="submit" disabled={replySubmittingEntryId === entry.id || !replyDraft.trim()}>
+                        {renderGuestNicknameInput()}
+                        <button
+                          type="submit"
+                          disabled={
+                            replySubmittingEntryId === entry.id ||
+                            !replyDraft.trim() ||
+                            (isGuestViewer && !normalizedGuestNickname)
+                          }
+                        >
                           {replySubmittingEntryId === entry.id ? "등록 중..." : "등록"}
                         </button>
                       </div>

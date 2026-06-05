@@ -5,11 +5,8 @@ import type { NextResponse } from "next/server";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail, type AppAuthUser } from "@/lib/auth-server";
 import { getServerEnv } from "@/lib/env";
 import { hasNextAuthSessionCookie } from "@/lib/nextauth-cookie";
-export {
-  GOKSORRY_ROOM_ENTRY_MAX_LENGTH,
-  GOKSORRY_ROOM_REPLY_MAX_LENGTH
-} from "@/lib/goksorry-room-limits";
-import { SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
+export { GOKSORRY_ROOM_ENTRY_MAX_LENGTH, GOKSORRY_ROOM_REPLY_MAX_LENGTH } from "@/lib/goksorry-room-limits";
+import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
 
 export const GOKSORRY_ROOM_DEFAULT_LIMIT = 50;
 export const GOKSORRY_ROOM_MAX_LIMIT = 100;
@@ -103,6 +100,22 @@ export const setGoksorryRoomGuestCookie = (
   });
 };
 
+export const setGoksorryRoomGuestNicknameCookie = (response: NextResponse, nickname: string | null) => {
+  if (!nickname) {
+    return;
+  }
+
+  response.cookies.set({
+    name: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.key,
+    value: nickname,
+    httpOnly: false,
+    sameSite: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.sameSite.toLowerCase() as "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.path,
+    maxAge: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.maxAgeSeconds
+  });
+};
+
 export const resolveExistingGoksorryRoomActor = async (request: Request): Promise<MaybeActor> => {
   const cookieHeader = request.headers.get("cookie") ?? "";
   const user = hasNextAuthSessionCookie(cookieHeader) ? await getUserFromAuthorization(request) : null;
@@ -190,6 +203,21 @@ export const canManageGoksorryRoomItem = (
 
   if (actor.isAdmin) {
     return true;
+  }
+
+  if (actor.kind === "member") {
+    return item.author_kind === "member" && item.author_id === actor.id;
+  }
+
+  return item.author_kind === "guest" && Boolean(item.guest_owner_hash) && item.guest_owner_hash === actor.guestOwnerHash;
+};
+
+export const isGoksorryRoomItemOwner = (
+  actor: GoksorryRoomActor | null,
+  item: { author_kind: string | null; author_id: string | null; guest_owner_hash: string | null }
+): boolean => {
+  if (!actor) {
+    return false;
   }
 
   if (actor.kind === "member") {

@@ -6,6 +6,7 @@ export type GoksorryRoomReplyPayload = {
   author_label: string;
   created_at: string;
   can_delete: boolean;
+  is_mine: boolean;
 };
 
 export type GoksorryRoomEntryPayload = {
@@ -16,10 +17,16 @@ export type GoksorryRoomEntryPayload = {
   created_at: string;
   reply_count: number;
   can_delete: boolean;
+  is_mine: boolean;
   replies: GoksorryRoomReplyPayload[];
 };
 
+export type GoksorryRoomViewerPayload = {
+  kind: "member" | "guest";
+};
+
 export type GoksorryRoomPayload = {
+  viewer: GoksorryRoomViewerPayload;
   entries: GoksorryRoomEntryPayload[];
   next_cursor: string | null;
 };

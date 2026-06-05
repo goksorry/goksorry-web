@@ -2920,12 +2920,18 @@ button:disabled {
   background: var(--panel);
 }
 
-.goksorry-room-input-label {
+.goksorry-room-form-guest {
+  grid-template-columns: minmax(0, 1fr) auto minmax(6.8rem, 9rem) auto;
+}
+
+.goksorry-room-input-label,
+.goksorry-room-nickname-label {
   min-width: 0;
   display: grid;
 }
 
-.goksorry-room-input-label input {
+.goksorry-room-input-label input,
+.goksorry-room-nickname-label input {
   width: 100%;
   min-width: 0;
   min-height: 0;
@@ -2934,6 +2940,10 @@ button:disabled {
   border-radius: 6px;
   background: var(--panel-elevated);
   line-height: 1.35;
+}
+
+.goksorry-room-nickname-label input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
 }
 
 .goksorry-room-count {
@@ -3042,6 +3052,23 @@ div.goksorry-room-list-status {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.goksorry-room-author {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12rem;
+}
+
+.goksorry-room-author-mine .goksorry-room-author-name {
+  color: var(--ink-soft);
+  font-weight: 900;
+}
+
+.goksorry-room-guest-marker {
+  color: var(--muted);
+  font-weight: 700;
+  opacity: 0.62;
 }
 
 .goksorry-room-actions {
@@ -3974,6 +4001,28 @@ div.goksorry-room-list-status {
   .goksorry-room-replies,
   .goksorry-room-reply-form {
     margin-inline: 0;
+  }
+
+  .goksorry-room-form-guest {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .goksorry-room-form-guest .goksorry-room-input-label {
+    grid-column: 1 / -1;
+  }
+
+  .goksorry-room-form-guest .goksorry-room-count {
+    grid-column: 1 / -1;
+    padding-top: 0;
+  }
+
+  .goksorry-room-form-guest .goksorry-room-nickname-label {
+    grid-column: 1;
+  }
+
+  .goksorry-room-form-guest > button,
+  .goksorry-room-form-guest .goksorry-room-form-footer > button {
+    grid-column: 2;
   }
 
   .goksorry-room-reply {

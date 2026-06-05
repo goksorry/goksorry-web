@@ -249,6 +249,7 @@ const buildRoomEntry = (id: string, index: number) => ({
   created_at: new Date(Date.UTC(2026, 4, 17, 0, index, 0)).toISOString(),
   reply_count: 0,
   can_delete: false,
+  is_mine: false,
   replies: []
 });
 
@@ -1650,8 +1651,18 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".theme-shell-excel .goksorry-room-reply")).toHaveCount(1);
     await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form textarea")).toHaveCount(0);
     await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form textarea")).toHaveCount(0);
-    await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form input")).toHaveAttribute("maxlength", "160");
-    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form input")).toHaveAttribute("maxlength", "160");
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form .goksorry-room-input-label input")).toHaveAttribute(
+      "maxlength",
+      "160"
+    );
+    await expect(page.locator(".theme-shell-excel .goksorry-room-reply-form .goksorry-room-input-label input")).toHaveAttribute(
+      "maxlength",
+      "160"
+    );
+    await expect(page.locator(".theme-shell-excel .goksorry-room-entry-form .goksorry-room-nickname-label input")).toHaveAttribute(
+      "maxlength",
+      "10"
+    );
 
     const roomMetrics = await readExcelGridMetrics(page, [
       ".theme-shell-excel .goksorry-room-panel",
@@ -1659,6 +1670,7 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel .goksorry-room-entry-form",
       ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-input-label",
       ".theme-shell-excel .goksorry-room-entry-form input",
+      ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-nickname-label",
       ".theme-shell-excel .goksorry-room-entry-form .goksorry-room-count",
       ".theme-shell-excel .goksorry-room-list",
       ".theme-shell-excel .goksorry-room-entry",
@@ -1669,12 +1681,195 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel .goksorry-room-reply-form",
       ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-input-label",
       ".theme-shell-excel .goksorry-room-reply-form input",
+      ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-nickname-label",
       ".theme-shell-excel .goksorry-room-reply-form .goksorry-room-count"
     ]);
     expectExcelGridAligned(roomMetrics);
   });
 
-  test("excel mobile room forms use two input cells and one footer cell", async ({ page }) => {
+  test("goksorry room guest nickname is required and reused for entries and replies", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+
+    let entryPostBody: Record<string, unknown> | null = null;
+    let replyPostBody: Record<string, unknown> | null = null;
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const request = route.request();
+      const requestUrl = new URL(request.url());
+      const method = request.method();
+
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/entries") && method === "POST") {
+        entryPostBody = JSON.parse(request.postData() ?? "{}") as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            entry: {
+              id: "entry-created",
+              content: entryPostBody.content,
+              author_kind: "guest",
+              author_label: entryPostBody.guest_nickname,
+              created_at: "2026-05-18T01:00:00.000Z",
+              reply_count: 0,
+              can_delete: true,
+              is_mine: true,
+              replies: []
+            }
+          })
+        });
+        return;
+      }
+
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/replies") && method === "POST") {
+        replyPostBody = JSON.parse(request.postData() ?? "{}") as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            reply: {
+              id: "reply-created",
+              entry_id: replyPostBody.entry_id,
+              content: replyPostBody.content,
+              author_kind: "guest",
+              author_label: replyPostBody.guest_nickname,
+              created_at: "2026-05-18T01:01:00.000Z",
+              can_delete: true,
+              is_mine: true
+            }
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          viewer: { kind: "guest" },
+          entries: [
+            {
+              id: "entry-base",
+              content: "기존 익명 의견",
+              author_kind: "guest",
+              author_label: "기존닉",
+              created_at: "2026-05-18T00:00:00.000Z",
+              reply_count: 0,
+              can_delete: false,
+              is_mine: false,
+              replies: []
+            }
+          ],
+          next_cursor: null
+        })
+      });
+    });
+
+    await page.goto("/goksorry-room");
+    const entryForm = page.locator(".goksorry-room-entry-form");
+    await expect(entryForm.locator(".goksorry-room-nickname-label input")).toBeVisible();
+    await expect(entryForm.locator(".goksorry-room-nickname-label input")).toHaveAttribute("maxlength", "10");
+    await entryForm.locator(".goksorry-room-input-label input").fill("익명 글");
+    await expect(entryForm.locator("button[type='submit']")).toBeDisabled();
+    await entryForm.locator(".goksorry-room-nickname-label input").fill("개미");
+    await expect(entryForm.locator("button[type='submit']")).toBeEnabled();
+    await entryForm.locator("button[type='submit']").click();
+
+    await expect.poll(() => entryPostBody).toEqual({
+      content: "익명 글",
+      guest_nickname: "개미"
+    });
+    const createdEntry = page.locator(".goksorry-room-entry").first();
+    await expect(createdEntry.locator(".goksorry-room-author-name")).toHaveText("개미");
+    await expect(createdEntry.locator(".goksorry-room-guest-marker")).toHaveText("*");
+    const createdAuthorWeight = await createdEntry
+      .locator(".goksorry-room-author-name")
+      .evaluate((element) => Number.parseInt(window.getComputedStyle(element).fontWeight, 10));
+    expect(createdAuthorWeight).toBeGreaterThanOrEqual(700);
+    await expect
+      .poll(async () =>
+        page.evaluate((cookieName) => {
+          const entry = document.cookie
+            .split(";")
+            .map((part) => part.trim())
+            .find((part) => part.startsWith(`${cookieName}=`));
+          return entry ? decodeURIComponent(entry.slice(cookieName.length + 1)) : null;
+        }, "goksorry_guest_chat_nickname")
+      )
+      .toBe("개미");
+
+    await createdEntry.getByRole("button", { name: "덧글 0" }).click();
+    const replyForm = createdEntry.locator(".goksorry-room-reply-form");
+    await replyForm.locator(".goksorry-room-input-label input").fill("익명 덧글");
+    await replyForm.locator("button[type='submit']").click();
+    await expect.poll(() => replyPostBody).toEqual({
+      entry_id: "entry-created",
+      content: "익명 덧글",
+      guest_nickname: "개미"
+    });
+    await expect(createdEntry.locator(".goksorry-room-reply .goksorry-room-author-name")).toHaveText("개미");
+    await expect(createdEntry.locator(".goksorry-room-reply .goksorry-room-guest-marker")).toHaveText("*");
+  });
+
+  test("goksorry room author markers distinguish guest, owner, and admin-delete rows", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+    await page.route("**/api/goksorry-room**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          viewer: { kind: "member" },
+          entries: [
+            {
+              id: "entry-admin-delete",
+              content: "관리자는 삭제할 수 있지만 내 글은 아닙니다.",
+              author_kind: "guest",
+              author_label: "손님",
+              created_at: "2026-05-18T00:00:00.000Z",
+              reply_count: 0,
+              can_delete: true,
+              is_mine: false,
+              replies: []
+            },
+            {
+              id: "entry-mine",
+              content: "내 회원 글입니다.",
+              author_kind: "member",
+              author_label: "내닉",
+              created_at: "2026-05-18T00:01:00.000Z",
+              reply_count: 0,
+              can_delete: true,
+              is_mine: true,
+              replies: []
+            }
+          ],
+          next_cursor: null
+        })
+      });
+    });
+
+    await page.goto("/goksorry-room");
+    await expect(page.locator(".goksorry-room-nickname-label")).toHaveCount(0);
+    await expect(page.locator(".goksorry-room-entry")).toHaveCount(2);
+    const guestEntry = page.locator(".goksorry-room-entry").first();
+    const mineEntry = page.locator(".goksorry-room-entry").nth(1);
+    await expect(guestEntry.locator(".goksorry-room-guest-marker")).toHaveText("*");
+    await expect(guestEntry.getByRole("button", { name: "삭제" })).toBeVisible();
+    await expect(mineEntry.locator(".goksorry-room-guest-marker")).toHaveCount(0);
+
+    const weights = await page.evaluate(() => {
+      const read = (selector: string) =>
+        Number.parseInt(window.getComputedStyle(document.querySelector(selector) as HTMLElement).fontWeight, 10);
+      return {
+        guest: read(".goksorry-room-entry:first-child .goksorry-room-author-name"),
+        mine: read(".goksorry-room-entry:nth-child(2) .goksorry-room-author-name")
+      };
+    });
+    expect(weights.mine).toBeGreaterThanOrEqual(700);
+    expect(weights.guest).toBeLessThan(weights.mine);
+  });
+
+  test("excel mobile room guest forms split input and nickname footer without overflow", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemePage(page);
     await page.route("**/api/goksorry-room**", async (route) => {
@@ -1730,9 +1925,12 @@ test.describe("program theme shells", () => {
         const input = inputLabel.querySelector("input") as HTMLElement;
         const footer = form.querySelector(".goksorry-room-form-footer") as HTMLElement;
         const count = footer.querySelector(".goksorry-room-count") as HTMLElement;
+        const nickname = footer.querySelector(".goksorry-room-nickname-label") as HTMLElement;
+        const nicknameInput = nickname.querySelector("input") as HTMLElement;
         const button = footer.querySelector("button") as HTMLElement;
         const rect = (element: HTMLElement) => element.getBoundingClientRect();
         const inputStyle = window.getComputedStyle(input);
+        const nicknameStyle = window.getComputedStyle(nicknameInput);
         const buttonStyle = window.getComputedStyle(button);
 
         return {
@@ -1749,24 +1947,32 @@ test.describe("program theme shells", () => {
           footerDisplay: window.getComputedStyle(footer).display,
           countLeft: rect(count).left,
           countRight: rect(count).right,
+          nicknameWidth: rect(nickname).width,
+          nicknameInputWidth: rect(nicknameInput).width,
+          nicknameLeft: rect(nickname).left,
+          nicknameRight: rect(nickname).right,
           buttonLeft: rect(button).left,
           buttonRight: rect(button).right,
           buttonHeight: rect(button).height,
           inputFontSize: Number.parseFloat(inputStyle.fontSize),
+          nicknameFontSize: Number.parseFloat(nicknameStyle.fontSize),
           buttonFontSize: Number.parseFloat(buttonStyle.fontSize)
         };
       });
     const expectMobileFormCells = (layout: Awaited<ReturnType<typeof readMobileFormLayout>>) => {
-      expect(Math.abs(layout.formWidth - layout.columnWidth * 3)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.inputLabelWidth - layout.columnWidth * 2)).toBeLessThanOrEqual(2);
+      expect(layout.formWidth).toBeLessThanOrEqual(layout.columnWidth * 4 + 2);
+      expect(Math.abs(layout.inputLabelWidth - layout.footerWidth)).toBeLessThanOrEqual(2);
       expect(Math.abs(layout.inputWidth - layout.inputLabelWidth)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.footerWidth - layout.columnWidth)).toBeLessThanOrEqual(2);
       expect(layout.footerDisplay).toBe("grid");
       expect(layout.countLeft).toBeGreaterThanOrEqual(layout.footerLeft - 1);
       expect(layout.countRight).toBeLessThanOrEqual(layout.footerRight + 1);
+      expect(layout.nicknameLeft).toBeGreaterThanOrEqual(layout.footerLeft - 1);
+      expect(layout.nicknameRight).toBeLessThanOrEqual(layout.footerRight + 1);
+      expect(layout.nicknameInputWidth).toBeLessThanOrEqual(layout.nicknameWidth + 1);
       expect(layout.buttonLeft).toBeGreaterThanOrEqual(layout.footerLeft - 1);
       expect(layout.buttonRight).toBeLessThanOrEqual(layout.footerRight + 1);
       expect(layout.buttonHeight).toBeLessThan(layout.inputHeight);
+      expect(layout.nicknameFontSize).toBeLessThan(layout.inputFontSize);
       expect(layout.buttonFontSize).toBeLessThan(layout.inputFontSize);
       expect(layout.formScrollWidth).toBeLessThanOrEqual(layout.formClientWidth + 1);
     };

@@ -1491,7 +1491,12 @@
   overflow: hidden;
 }
 
-.theme-shell-excel .goksorry-room-input-label {
+.theme-shell-excel .goksorry-room-form-guest {
+  grid-template-columns: minmax(0, 1fr) var(--excel-column-width) var(--excel-column-width) var(--excel-column-width);
+}
+
+.theme-shell-excel .goksorry-room-input-label,
+.theme-shell-excel .goksorry-room-nickname-label {
   min-height: 0;
   display: grid;
   gap: 0;
@@ -1504,6 +1509,7 @@
 }
 
 .theme-shell-excel .goksorry-room-input-label input,
+.theme-shell-excel .goksorry-room-nickname-label input,
 .theme-shell-excel .goksorry-room-count,
 .theme-shell-excel .goksorry-room-form-footer > button {
   min-height: 0;
@@ -2184,6 +2190,18 @@
     justify-self: start;
   }
 
+  .theme-shell-excel .goksorry-room-form-guest {
+    width: min(100%, calc(var(--excel-column-width) * 4));
+    grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
+  }
+
+  .theme-shell-excel .goksorry-room-form-guest .goksorry-room-input-label,
+  .theme-shell-excel .goksorry-room-form-guest .goksorry-room-count,
+  .theme-shell-excel .goksorry-room-form-guest .goksorry-room-nickname-label,
+  .theme-shell-excel .goksorry-room-form-guest .goksorry-room-form-footer > button {
+    grid-column: auto;
+  }
+
   .theme-shell-excel .goksorry-room-form-footer {
     min-width: 0;
     height: var(--excel-row-height);
@@ -2199,7 +2217,13 @@
     overflow: hidden;
   }
 
+  .theme-shell-excel .goksorry-room-form-guest .goksorry-room-form-footer {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  }
+
   .theme-shell-excel .goksorry-room-form-footer .goksorry-room-count,
+  .theme-shell-excel .goksorry-room-form-footer .goksorry-room-nickname-label,
+  .theme-shell-excel .goksorry-room-form-footer .goksorry-room-nickname-label input,
   .theme-shell-excel .goksorry-room-form-footer > button {
     height: auto;
     min-height: 0;
@@ -2213,6 +2237,12 @@
     font-size: 0.62rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .theme-shell-excel .goksorry-room-form-footer .goksorry-room-nickname-label input {
+    width: 100%;
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
   }
 
   .theme-shell-excel .goksorry-room-form-footer > button {
