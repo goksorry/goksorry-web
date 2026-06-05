@@ -22,20 +22,7 @@ test.describe("public API surface", () => {
     expect(Object.keys(publicSpec.paths)).toEqual(["/api/overview"]);
     expect(Object.keys(adminSpec.paths)).toEqual(["/api/overview"]);
     expect(rawText).toContain("GET /api/overview");
-
-    for (const hiddenPath of [
-      "/api/community-indicators",
-      "/api/analysis/latest",
-      "/api/v1/health",
-      "/api/v1/signals/latest",
-      "/api/v1/tokens",
-      "/api/admin/tokens",
-      "/api/v1/detector/register"
-    ]) {
-      expect(rawText).not.toContain(hiddenPath);
-      expect(publicSpec.paths[hiddenPath]).toBeUndefined();
-      expect(adminSpec.paths[hiddenPath]).toBeUndefined();
-    }
+    expect(rawText.split("GET /api/").length - 1).toBe(1);
   });
 
   test("builds the minimal goksorry index payload", () => {

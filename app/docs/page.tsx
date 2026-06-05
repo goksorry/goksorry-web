@@ -4,11 +4,7 @@ import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs
 import { buildPageMetadata } from "@/lib/seo";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
-  "홈 공개": "현재 곡소리 지수만 반환하는 공개 API입니다.",
-  "트레이딩봇 조회": "외부에 제공하지 않습니다.",
-  "토큰 관리": "외부에 제공하지 않습니다.",
-  "관리자": "외부에 제공하지 않습니다.",
-  "내부": "내부 detector 워커가 web에 snapshot을 등록하는 비공개 성격의 API입니다."
+  "홈 공개": "현재 곡소리 지수만 반환하는 공개 API입니다."
 };
 
 const prettyJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
@@ -99,6 +95,29 @@ export default function DocsPage() {
                 </div>
 
                 <p>{endpoint.summary}</p>
+
+                {endpoint.responseFields?.length ? (
+                  <div className="table-wrap">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>응답 필드</th>
+                          <th>타입</th>
+                          <th>설명</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {endpoint.responseFields.map((field) => (
+                          <tr key={field.name}>
+                            <td>{field.name}</td>
+                            <td>{field.type}</td>
+                            <td>{field.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
 
                 {endpoint.pathParams?.length ? (
                   <div className="table-wrap">

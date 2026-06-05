@@ -1,14 +1,12 @@
-type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
-type AuthMode = "public" | "tradingbot" | "browser-session" | "admin-session" | "detector";
-type Visibility = "all" | "admin";
+type HttpMethod = "GET";
+type AuthMode = "public";
 
 export type ApiEndpointDoc = {
   method: HttpMethod;
   path: string;
-  section: "홈 공개" | "트레이딩봇 조회" | "토큰 관리" | "관리자" | "내부";
+  section: "홈 공개";
   summary: string;
   auth: AuthMode;
-  visibility?: Visibility;
   query?: Array<{ name: string; type: string; description: string }>;
   pathParams?: Array<{ name: string; type: string; description: string }>;
   headers?: Array<{ name: string; required?: boolean; description: string }>;
@@ -16,84 +14,18 @@ export type ApiEndpointDoc = {
     contentType: string;
     example: Record<string, unknown>;
   };
+  responseFields?: Array<{ name: string; type: string; description: string }>;
   responseExample: Record<string, unknown>;
   notes?: string[];
 };
 
-const tradingBotHeaders = [
-  { name: "Authorization", required: true, description: "Bearer <승인된 트레이딩봇 토큰>" },
-  { name: "X-Client-Id", required: true, description: "`trading-bot-`로 시작해야 합니다." },
-  { name: "X-Request-Id", required: true, description: "호출 측에서 만든 UUID" }
-] satisfies ApiEndpointDoc["headers"];
-
-const browserHeaders = [{ name: "Origin", required: true, description: "같은 출처 브라우저 요청만 허용" }] satisfies ApiEndpointDoc["headers"];
-
-export const apiSections = ["홈 공개", "트레이딩봇 조회", "토큰 관리", "관리자", "내부"] as const;
+export const apiSections = ["홈 공개"] as const;
 
 export const authModeDescriptions: Record<AuthMode, string> = {
-  public: "인증 없이 호출할 수 있습니다.",
-  tradingbot: "승인된 트레이딩봇 Bearer 토큰과 `X-Client-Id`, `X-Request-Id`가 필요합니다.",
-  "browser-session": "로그인된 브라우저 세션과 같은 출처 요청이 필요합니다.",
-  "admin-session": "관리자 브라우저 세션이 필요합니다.",
-  detector: "내부 detector Bearer 토큰이 필요합니다."
+  public: "인증 없이 호출할 수 있습니다."
 };
 
 export const apiEndpointDocs: ApiEndpointDoc[] = [
-  {
-    method: "GET",
-    path: "/api/community-indicators",
-    section: "홈 공개",
-    summary: "홈 커뮤니티 카드의 원감성 점수와 표시용 곡소리 지수를 조회합니다.",
-    auth: "public",
-    responseExample: {
-      generated_at: "2026-04-08T09:30:00.000Z",
-      market_adjustment_enabled: true,
-      overall_base_score: 5.4,
-      overall_market_adjustment: -0.32,
-      overall_sentiment_score: 5.1,
-      overall_goksorry_index: 4.8,
-      overall_sentiment_band: "neutral",
-      community_indicators: [
-        {
-          id: "ppomppu",
-          label: "뽐뿌 증권포럼 지수",
-          shortLabel: "뽐뿌",
-          mentions: 8,
-          bullish: 5,
-          bearish: 3,
-          neutral: 4,
-          base_score: 5.6,
-          market_adjustment: -0.21,
-          score: 5.4,
-          goksorry_index: 4.4,
-          sentiment_band: "neutral",
-          tone: "mixed",
-          rows: [
-            {
-              post_key: "ppomppu:12345",
-              source: "ppomppu_stock",
-              title: "오늘 국장 반등 보시나요",
-              clean_title: "오늘 국장 반등 보시나요",
-              url: "https://www.ppomppu.co.kr/zboard/view.php?id=stock&no=12345",
-              symbol: null,
-              symbol_name: null,
-              symbol_market: null,
-              label: "bullish",
-              sentiment_score: 7,
-              confidence: 0.82,
-              analyzed_at: "2026-04-08T09:28:00.000Z"
-            }
-          ]
-        }
-      ]
-    },
-    notes: [
-      "홈 상단 커뮤니티 카드와 동일한 집계 결과입니다.",
-      "`overall_sentiment_score` 와 각 섹션의 `score` 는 0~10 내부 원감성 점수이며 높을수록 희망입니다.",
-      "`overall_goksorry_index` 와 각 섹션의 `goksorry_index` 는 0~10 홈 표시용 반전 점수이며 높을수록 곡소리입니다.",
-      "소스 그룹은 토스증권, 뽐뿌, 블라인드, 디시 4종으로 고정됩니다."
-    ]
-  },
   {
     method: "GET",
     path: "/api/overview",
@@ -105,548 +37,48 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
       generated_at: "2026-04-08T09:30:00.000Z",
       ttl_sec: 60
     },
+    responseFields: [
+      { name: "goksorry_index", type: "number", description: "0~10 표시용 곡소리 지수입니다. 높을수록 곡소리입니다." },
+      { name: "generated_at", type: "string", description: "지수 계산 시각 ISO 문자열입니다." },
+      { name: "ttl_sec", type: "number", description: "캐시 권장 시간(초)입니다." }
+    ],
     notes: [
       "`goksorry_index` 는 0~10 표시용 점수이며 높을수록 곡소리입니다.",
       "`generated_at` 은 지수 계산 시각입니다.",
       "`ttl_sec` 동안 캐시된 값으로 취급할 수 있습니다."
     ]
-  },
-  {
-    method: "GET",
-    path: "/api/analysis/latest",
-    section: "홈 공개",
-    summary: "분석 페이지에 표시되는 최신 삐에로봇 리포트를 조회합니다.",
-    auth: "public",
-    responseExample: {
-      report: {
-        id: "uuid",
-        asof: "2026-06-04T14:30:00.000Z",
-        status: "ok",
-        summary: "한국/미국 뉴스, Top 10, 카테고리, PER/PBR, 차트 상세 요약입니다.",
-        payload: {
-          headline: "대형주 수급과 주요 지수 변동이 함께 관찰됩니다.",
-          brief: "삐에로봇 30분 분석 요약",
-          sections: {
-            korean_news: {
-              title: "한국 경제 뉴스",
-              summary: "국내 주요 헤드라인 요약",
-              items: [{ label: "뉴스", value: "헤드라인", note: "출처", tone: "mixed" }]
-            },
-            us_news: {
-              title: "미국 경제 뉴스",
-              summary: "미국 주요 헤드라인 요약",
-              items: [{ label: "News", value: "Headline", note: "source", tone: "mixed" }]
-            },
-            kr_top10: {
-              title: "한국 Top 10",
-              summary: "종목정보 기준 한국 상위 종목",
-              items: [{ label: "삼성전자 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래량 3477.1만 · 거래대금 12.3조", tone: "down" }]
-            },
-            us_top10: {
-              title: "미국 Top 10",
-              summary: "종목정보 기준 미국 상위 종목",
-              items: [{ label: "NVIDIA (NVDA)", value: "182.40 · +1.20%", note: "NASDAQ 시총 #1 · 거래량 9876.5만", tone: "up" }]
-            },
-            kr_categories: {
-              title: "한국 인기 카테고리",
-              summary: "ranking 카테고리별 선두/거래 요약",
-              items: [{ label: "KOSPI 시총", value: "1위 삼성전자 (005930) · 10개 종목", note: "상위 3: 삼성전자 (005930), SK하이닉스 (000660), LG에너지솔루션 (373220)", tone: "mixed" }]
-            },
-            us_categories: {
-              title: "미국 인기 카테고리",
-              summary: "ranking 카테고리별 선두/거래 요약",
-              items: [{ label: "NASDAQ 시총", value: "1위 NVIDIA (NVDA) · 10개 종목", note: "상위 3: NVIDIA (NVDA), Apple (AAPL), Microsoft (MSFT)", tone: "mixed" }]
-            }
-          },
-          important_symbols: ["삼성전자 (005930)", "NVDA"],
-          generated_from: {}
-        },
-        errors: [],
-        created_at: "2026-06-04T14:30:00.000Z"
-      }
-    },
-    notes: ["분석 생성은 삐에로봇이 담당하며 웹은 저장된 최신 결과만 반환합니다.", "응답 캐시는 30분 기준입니다."]
-  },
-  {
-    method: "GET",
-    path: "/api/v1/health",
-    section: "트레이딩봇 조회",
-    summary: "서비스 상태와 배포 버전을 확인합니다.",
-    auth: "public",
-    responseExample: {
-      status: "ok",
-      time: "2026-03-11T10:00:00.000Z",
-      version: "1.0.0"
-    },
-    notes: ["인증 없이 호출할 수 있습니다."]
-  },
-  {
-    method: "GET",
-    path: "/api/v1/signals/latest",
-    section: "트레이딩봇 조회",
-    summary: "한국·미국 시장의 최신 커뮤니티 기반 종목 신호를 조회합니다.",
-    auth: "tradingbot",
-    query: [
-      { name: "market", type: "kr|us|all", description: "시장 필터입니다. 기본값은 `all`입니다." },
-      { name: "symbols", type: "csv", description: "선택적 종목 CSV 목록입니다. 최대 100개까지 가능합니다." },
-      { name: "max_age_sec", type: "integer", description: "신호 신선도 기준(초)입니다. 기본값은 1800, 최대값은 86400입니다." }
-    ],
-    headers: tradingBotHeaders,
-    responseExample: {
-      status: "ok",
-      generated_at: "2026-03-11T10:00:00.000Z",
-      detector_mode: "normal",
-      signals: [
-        {
-          symbol: "AAPL",
-          market: "us",
-          asof: "2026-03-11T09:57:00.000Z",
-          freshness_sec: 180,
-          mentions: 42,
-          neg_count: 11,
-          pos_count: 20,
-          panic_score: 26.19,
-          euphoria_score: 47.62,
-          signal_quality: 0.81,
-          mention_velocity_z: 0,
-          confidence_grade: "A",
-          source_diversity: 3
-        }
-      ],
-      missing_symbols: [],
-      ttl_sec: 60
-    },
-    notes: [
-      "이 API는 커뮤니티에서 파생된 신호만 제공합니다.",
-      "공식 시세, 지수, 거시 지표 원데이터는 봇이 별도로 수집해야 합니다."
-    ]
-  },
-  {
-    method: "GET",
-    path: "/api/v1/tokens",
-    section: "토큰 관리",
-    summary: "내 토큰 요청 내역과 발급 완료된 토큰을 조회합니다.",
-    auth: "browser-session",
-    headers: browserHeaders,
-    responseExample: {
-      status: "ok",
-      tokens: [
-        {
-          id: "uuid",
-          name: "tradingbot-main",
-          token_prefix: "gkst_123456789ab",
-          scope: "tradingbot.read",
-          approval_status: "approved",
-          approval_requested_at: "2026-03-11T10:00:00.000Z",
-          approved_at: "2026-03-11T10:05:00.000Z",
-          rejected_at: null,
-          approval_note: null,
-          created_at: "2026-03-11T10:00:00.000Z",
-          last_used_at: "2026-03-11T10:06:00.000Z",
-          expires_at: "2027-03-11T10:05:00.000Z",
-          revoked_at: null,
-          token_claimed: true,
-          claim_ready: false
-        }
-      ]
-    },
-    notes: ["로그인이 필요합니다.", "같은 출처 브라우저 요청만 허용됩니다."]
-  },
-  {
-    method: "POST",
-    path: "/api/v1/tokens",
-    section: "토큰 관리",
-    summary: "새 토큰 발급 요청을 등록합니다. 관리자 승인이 필요합니다.",
-    auth: "browser-session",
-    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
-    requestBody: {
-      contentType: "application/json",
-      example: {
-        name: "tradingbot-main"
-      }
-    },
-    responseExample: {
-      status: "ok",
-      token_request: {
-        id: "uuid",
-        name: "tradingbot-main",
-        approval_status: "pending",
-        approval_requested_at: "2026-03-11T10:00:00.000Z",
-        claim_ready: false
-      },
-      note: "token request submitted. admin approval is required before the token can be revealed"
-    },
-    notes: [
-      "토큰을 실제로 확인한 시점부터 만료일은 항상 1년 뒤로 고정됩니다.",
-      "회원 1명당 폐기되지 않은 `pending` 또는 `approved` 상태 요청은 최대 3개까지 유지할 수 있습니다."
-    ]
-  },
-  {
-    method: "POST",
-    path: "/api/v1/tokens/{id}/claim",
-    section: "토큰 관리",
-    summary: "승인된 토큰의 실제 값을 1회 확인합니다.",
-    auth: "browser-session",
-    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
-    headers: browserHeaders,
-    responseExample: {
-      status: "ok",
-      token: {
-        id: "uuid",
-        name: "tradingbot-main",
-        token_prefix: "gkst_123456789ab",
-        scope: "tradingbot.read",
-        approved_at: "2026-03-11T10:05:00.000Z",
-        expires_at: "2027-03-11T10:05:00.000Z",
-        value: "gkst_full_secret_value"
-      },
-      note: "token value is shown only once"
-    },
-    notes: ["승인되었고 아직 실제 값을 확인하지 않은 요청만 claim할 수 있습니다."]
-  },
-  {
-    method: "POST",
-    path: "/api/v1/tokens/{id}/revoke",
-    section: "토큰 관리",
-    summary: "기존 토큰을 폐기하거나 대기 중인 요청을 취소합니다.",
-    auth: "browser-session",
-    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
-    headers: browserHeaders,
-    responseExample: {
-      status: "ok",
-      revoked: true,
-      token_id: "uuid"
-    }
-  },
-  {
-    method: "GET",
-    path: "/api/admin/tokens",
-    section: "관리자",
-    summary: "관리자 승인 대상 토큰 요청 목록을 조회합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    query: [{ name: "status", type: "pending|approved|rejected|all", description: "상태 필터입니다. 기본값은 `pending`입니다." }],
-    responseExample: {
-      status: "ok",
-      filter: "pending",
-      tokens: [
-        {
-          id: "uuid",
-          requester_nickname: "곡소리봇",
-          requester_email: "goksorrybot@gmail.com",
-          name: "tradingbot-main",
-          approval_status: "pending",
-          token_claimed: false
-        }
-      ]
-    },
-    notes: ["관리자 세션이 필요합니다."]
-  },
-  {
-    method: "POST",
-    path: "/api/admin/tokens/{id}",
-    section: "관리자",
-    summary: "대기 중인 토큰 요청을 승인하거나 거절합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
-    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
-    requestBody: {
-      contentType: "application/json",
-      example: {
-        decision: "approve",
-        note: "approved for trading bot integration"
-      }
-    },
-    responseExample: {
-      status: "ok",
-      token_id: "uuid",
-      decision: "approve"
-    }
-  },
-  {
-    method: "DELETE",
-    path: "/api/admin/tokens/{id}",
-    section: "관리자",
-    summary: "회원 토큰 또는 대기 중인 토큰 요청을 강제로 삭제합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "토큰 요청 ID" }],
-    headers: browserHeaders,
-    responseExample: {
-      status: "ok",
-      token_id: "uuid",
-      deleted: true
-    },
-    notes: ["이 화면에서는 관리자 본인 소유 토큰은 강제 삭제하지 못하게 보호됩니다."]
-  },
-  {
-    method: "GET",
-    path: "/api/admin/members",
-    section: "관리자",
-    summary: "페이징과 이메일·닉네임 검색 조건으로 회원 목록을 조회합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    query: [
-      { name: "page", type: "integer", description: "페이지 번호입니다. 기본값은 1입니다." },
-      { name: "page_size", type: "integer", description: "페이지당 행 수입니다. 기본값은 20, 최대값은 100입니다." },
-      { name: "q", type: "string", description: "이메일 또는 닉네임 검색어입니다." }
-    ],
-    responseExample: {
-      status: "ok",
-      query: "member",
-      members: [
-        {
-          id: "uuid",
-          email: "member@example.com",
-          nickname: "개미123",
-          role: "user",
-          created_at: "2026-03-11T09:00:00.000Z",
-          is_current_user: false
-        }
-      ],
-      pagination: {
-        page: 1,
-        page_size: 20,
-        total_count: 148,
-        total_pages: 8,
-        has_prev: false,
-        has_next: true
-      }
-    },
-    notes: ["관리자 회원 목록 테이블에는 이 API를 사용하고, 토큰 상세 목록은 회원 상세 API에서 조회합니다."]
-  },
-  {
-    method: "GET",
-    path: "/api/admin/members/{id}",
-    section: "관리자",
-    summary: "토큰 보유 현황을 포함한 회원 상세 1건을 조회합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
-    responseExample: {
-      status: "ok",
-      member: {
-        id: "uuid",
-        email: "member@example.com",
-        nickname: "개미123",
-        role: "user",
-        created_at: "2026-03-11T09:00:00.000Z",
-        nickname_confirmed_at: "2026-03-11T09:00:00.000Z",
-        nickname_changed_at: "2026-03-11T09:15:00.000Z",
-        is_current_user: false,
-        active_token_count: 1,
-        total_token_count: 2,
-        tokens: [
-          {
-            id: "uuid",
-            name: "tradingbot-main",
-            token_prefix: "gkst_123456789ab",
-            scope: "tradingbot.read",
-            approval_status: "approved",
-            approval_requested_at: "2026-03-11T10:00:00.000Z",
-            approved_at: "2026-03-11T10:05:00.000Z",
-            rejected_at: null,
-            approval_note: null,
-            created_at: "2026-03-11T10:00:00.000Z",
-            last_used_at: "2026-03-11T10:06:00.000Z",
-            expires_at: "2027-03-11T10:05:00.000Z",
-            revoked_at: null,
-            token_claimed: true,
-            claim_ready: false
-          }
-        ]
-      }
-    }
-  },
-  {
-    method: "PATCH",
-    path: "/api/admin/members/{id}",
-    section: "관리자",
-    summary: "회원 닉네임을 강제로 변경합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
-    headers: [{ name: "Content-Type", required: true, description: "`application/json`" }, ...browserHeaders],
-    requestBody: {
-      contentType: "application/json",
-      example: {
-        nickname: "새닉네임"
-      }
-    },
-    responseExample: {
-      status: "ok",
-      member: {
-        id: "uuid",
-        nickname: "새닉네임"
-      }
-    }
-  },
-  {
-    method: "DELETE",
-    path: "/api/admin/members/{id}",
-    section: "관리자",
-    summary: "회원 계정을 강제로 탈퇴 처리합니다.",
-    auth: "admin-session",
-    visibility: "admin",
-    pathParams: [{ name: "id", type: "uuid", description: "회원 프로필 ID" }],
-    headers: browserHeaders,
-    responseExample: {
-      status: "ok",
-      member_id: "uuid",
-      withdrawn: true
-    },
-    notes: ["프로필, 게시판 글/댓글, 투표, 신고, API 토큰이 함께 정리됩니다."]
-  },
-  {
-    method: "POST",
-    path: "/api/v1/detector/register",
-    section: "내부",
-    summary: "내부 detector 스냅샷을 upsert하는 엔드포인트입니다.",
-    auth: "detector",
-    visibility: "admin",
-    headers: [{ name: "Authorization", required: true, description: "Bearer <DETECTOR_WRITE_TOKEN>" }],
-    requestBody: {
-      contentType: "application/json",
-      example: {
-        signals: [],
-        market_state: [],
-        status: {}
-      }
-    },
-    responseExample: {
-      status: "ok",
-      request_id: "uuid",
-      upserted_signals: 12,
-      upserted_market_state: 2,
-      status_updated: true
-    },
-    notes: ["내부 worker가 web으로 데이터를 적재할 때 쓰는 API이며, 공개 클라이언트용이 아닙니다."]
-  },
-  {
-    method: "POST",
-    path: "/api/v1/analysis/report",
-    section: "내부",
-    summary: "삐에로봇 30분 분석 리포트를 저장하는 엔드포인트입니다.",
-    auth: "detector",
-    visibility: "admin",
-    headers: [{ name: "Authorization", required: true, description: "Bearer <DETECTOR_WRITE_TOKEN>" }],
-    requestBody: {
-      contentType: "application/json",
-      example: {
-        asof: "2026-06-04T14:30:00.000Z",
-        status: "ok",
-        summary: "삐에로봇 분석 요약",
-        payload: {
-          headline: "시장 요약",
-          brief: "분석 본문",
-          sections: {},
-          important_symbols: [],
-          generated_from: {}
-        },
-        errors: []
-      }
-    },
-    responseExample: {
-      status: "ok",
-      request_id: "uuid",
-      report: {
-        id: "uuid",
-        asof: "2026-06-04T14:30:00.000Z",
-        status: "ok"
-      }
-    },
-    notes: ["내부 worker 전용입니다.", "페이지 갱신 주기는 worker의 `ANALYSIS_REFRESH_MINUTES=30` 기준입니다."]
   }
 ];
 
-export const filterApiDocs = (isAdmin: boolean): ApiEndpointDoc[] => {
-  void isAdmin;
-  return apiEndpointDocs.filter((doc) => doc.method === "GET" && doc.path === "/api/overview");
-};
+export const filterApiDocs = (_isAdmin: boolean): ApiEndpointDoc[] => apiEndpointDocs;
 
-export const buildOpenApiSpec = () => {
-  return buildOpenApiSpecForRole(false);
-};
+export const buildOpenApiSpec = () => buildOpenApiSpecForRole(false);
 
-const buildPlainTextSection = (title: string, lines: string[]) => {
-  return [`[${title}]`, ...lines, ""].join("\n");
-};
-
-const renderParamBlock = (
-  label: string,
-  params: Array<{ name: string; type: string; description: string }> | undefined
-) => {
-  if (!params?.length) {
-    return [];
-  }
-
-  return [label, ...params.map((param) => `- ${param.name} (${param.type}): ${param.description}`)];
-};
-
-const renderHeaderBlock = (
-  headers: Array<{ name: string; required?: boolean; description: string }> | undefined
-) => {
-  if (!headers?.length) {
-    return [];
-  }
-
-  return [
-    "헤더",
-    ...headers.map((header) => `- ${header.name}${header.required ? " [필수]" : ""}: ${header.description}`)
-  ];
-};
+const buildPlainTextSection = (title: string, lines: string[]) => [`[${title}]`, ...lines, ""].join("\n");
 
 export const buildRawTextApiDocs = () => {
   const visibleDocs = filterApiDocs(false);
-  const publicAuthModes = [...new Set(visibleDocs.map((doc) => doc.auth))];
-  const sections = apiSections
-    .filter((section) => visibleDocs.some((doc) => doc.section === section))
-    .map((section) => ({
-      section,
-      items: visibleDocs.filter((doc) => doc.section === section)
-    }));
-
   const blocks: string[] = [
     "곡소리닷컴 API 텍스트 문서",
     "",
     "유저에게 제공되는 API는 현재 곡소리 지수를 반환하는 단일 endpoint입니다.",
-    "내부 앱, 관리자, detector, auth route는 문서화 대상이 아닙니다.",
     "",
-    buildPlainTextSection(
-      "인증 방식",
-      publicAuthModes.map((mode) => `- ${mode}: ${authModeDescriptions[mode]}`)
-    )
+    buildPlainTextSection("인증 방식", ["- public: 인증 없이 호출할 수 있습니다."])
   ];
 
-  for (const { section, items } of sections) {
+  for (const section of apiSections) {
     const sectionLines: string[] = [];
-
-    for (const endpoint of items) {
+    for (const endpoint of visibleDocs.filter((doc) => doc.section === section)) {
       sectionLines.push(`${endpoint.method} ${endpoint.path}`);
       sectionLines.push(`요약: ${endpoint.summary}`);
       sectionLines.push(`인증: ${endpoint.auth} - ${authModeDescriptions[endpoint.auth]}`);
-
-      const pathParams = renderParamBlock("경로 파라미터", endpoint.pathParams);
-      const queryParams = renderParamBlock("쿼리", endpoint.query);
-      const headers = renderHeaderBlock(endpoint.headers);
-      if (pathParams.length) {
-        sectionLines.push(...pathParams);
-      }
-      if (queryParams.length) {
-        sectionLines.push(...queryParams);
-      }
-      if (headers.length) {
-        sectionLines.push(...headers);
-      }
-
-      if (endpoint.requestBody) {
-        sectionLines.push(`요청 본문 예시 (${endpoint.requestBody.contentType})`);
-        sectionLines.push(JSON.stringify(endpoint.requestBody.example, null, 2));
-      }
-
       sectionLines.push("응답 예시");
       sectionLines.push(JSON.stringify(endpoint.responseExample, null, 2));
+
+      if (endpoint.responseFields?.length) {
+        sectionLines.push("응답 필드");
+        sectionLines.push(...endpoint.responseFields.map((field) => `- ${field.name} (${field.type}): ${field.description}`));
+      }
 
       if (endpoint.notes?.length) {
         sectionLines.push("비고");
@@ -662,62 +94,24 @@ export const buildRawTextApiDocs = () => {
   return blocks.join("\n").trimEnd() + "\n";
 };
 
-export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
-  const visibleDocs = filterApiDocs(isAdmin);
-
+export const buildOpenApiSpecForRole = (_isAdmin: boolean) => {
+  const visibleDocs = filterApiDocs(false);
   const paths = visibleDocs.reduce<Record<string, Record<string, unknown>>>((acc, doc) => {
-    const operation: Record<string, unknown> = {
-      tags: [doc.section],
-      summary: doc.summary,
-      parameters: [
-        ...(doc.pathParams ?? []).map((param) => ({
-          in: "path",
-          name: param.name,
-          required: true,
-          schema: { type: "string", ...(param.type === "uuid" ? { format: "uuid" } : {}) },
-          description: param.description
-        })),
-        ...(doc.query ?? []).map((param) => ({
-          in: "query",
-          name: param.name,
-          schema: { type: param.type.includes("integer") ? "integer" : "string" },
-          description: param.description
-        })),
-        ...(doc.headers ?? []).map((header) => ({
-          in: "header",
-          name: header.name,
-          required: Boolean(header.required),
-          schema: { type: "string" },
-          description: header.description
-        }))
-      ],
-      responses: {
-        [doc.path === "/api/v1/tokens" && doc.method === "POST" ? "202" : "200"]: {
-          description: doc.summary,
-          content: {
-            "application/json": {
-              example: doc.responseExample
+    acc[doc.path] = {
+      [doc.method.toLowerCase()]: {
+        tags: [doc.section],
+        summary: doc.summary,
+        responses: {
+          "200": {
+            description: doc.summary,
+            content: {
+              "application/json": {
+                example: doc.responseExample
+              }
             }
           }
         }
       }
-    };
-
-    if (doc.requestBody) {
-      operation.requestBody = {
-        required: true,
-        content: {
-          [doc.requestBody.contentType]: {
-            example: doc.requestBody.example
-          }
-        }
-      };
-    }
-
-    const existing = acc[doc.path] ?? {};
-    acc[doc.path] = {
-      ...existing,
-      [doc.method.toLowerCase()]: operation
     };
     return acc;
   }, {});
@@ -727,11 +121,10 @@ export const buildOpenApiSpecForRole = (isAdmin: boolean) => {
     info: {
       title: "곡소리닷컴 API",
       version: "1.0.0",
-      description:
-        "곡소리닷컴 현재 곡소리 지수를 반환하는 단일 공개 API입니다."
+      description: "곡소리닷컴 현재 곡소리 지수를 반환하는 단일 공개 API입니다."
     },
     servers: [{ url: "https://goksorry.com" }],
-    tags: [...new Set(visibleDocs.map((doc) => doc.section))].map((name) => ({ name })),
+    tags: apiSections.map((name) => ({ name })),
     paths
   };
 };

@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import { hashApiToken } from "@/lib/api-tokens";
 import { getServerEnv } from "@/lib/env";
-import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type ApiErrorCode =
   | "INVALID_QUERY"
@@ -111,107 +109,4 @@ export const requireDetectorWriteAuth = (
   }
 
   return { ok: true, requestId };
-};
-
-export const requireTradingBotReadAuth = async (
-  request: Request
-): Promise<
-  | { ok: true; requestId: string; clientId: string; tokenId: string; tokenOwnerUserId: string }
-  | { ok: false; response: NextResponse }
-> => {
-  const requestId = getRequestId(request);
-  const token = parseBearer(request);
-
-  if (!token) {
-    return {
-      ok: false,
-      response: jsonError(requestId, 401, "UNAUTHORIZED", "missing trading bot token")
-    };
-  }
-
-  const clientId = (request.headers.get("x-client-id") ?? "").trim();
-  if (!clientId.startsWith("trading-bot-")) {
-    return {
-      ok: false,
-      response: jsonError(requestId, 403, "FORBIDDEN", "x-client-id must start with trading-bot-")
-    };
-  }
-
-  if (!request.headers.get("x-request-id")) {
-    return {
-      ok: false,
-      response: jsonError(requestId, 400, "INVALID_QUERY", "x-request-id is required")
-    };
-  }
-
-  const tokenHash = hashApiToken(token);
-  const service = getServiceSupabaseClient();
-  const { data, error } = await service
-    .from("api_access_tokens")
-    .select("id,user_id,scope,approval_status,revoked_at,expires_at")
-    .eq("token_hash", tokenHash)
-    .maybeSingle();
-
-  if (error) {
-    logApiError("trading bot auth lookup failed", requestId, error);
-    return {
-      ok: false,
-      response: jsonError(requestId, 504, "UPSTREAM_TIMEOUT", "token lookup failed")
-    };
-  }
-
-  if (!data) {
-    return {
-      ok: false,
-      response: jsonError(requestId, 401, "UNAUTHORIZED", "invalid trading bot token")
-    };
-  }
-
-  if (data.revoked_at) {
-    return {
-      ok: false,
-      response: jsonError(requestId, 403, "FORBIDDEN", "token revoked")
-    };
-  }
-
-  if (String(data.approval_status) !== "approved") {
-    return {
-      ok: false,
-      response: jsonError(requestId, 403, "FORBIDDEN", "token pending admin approval")
-    };
-  }
-
-  if (data.expires_at) {
-    const expiresAtMs = new Date(String(data.expires_at)).getTime();
-    if (!Number.isNaN(expiresAtMs) && Date.now() >= expiresAtMs) {
-      return {
-        ok: false,
-        response: jsonError(requestId, 403, "FORBIDDEN", "token expired")
-      };
-    }
-  }
-
-  if (String(data.scope) !== "tradingbot.read") {
-    return {
-      ok: false,
-      response: jsonError(requestId, 403, "FORBIDDEN", "token scope forbidden")
-    };
-  }
-
-  try {
-    await service
-      .from("api_access_tokens")
-      .update({ last_used_at: new Date().toISOString() })
-      .eq("id", data.id);
-  } catch {
-    // last_used_at is best-effort metadata and should not block auth success
-  }
-
-  return {
-    ok: true,
-    requestId,
-    clientId,
-    tokenId: String(data.id),
-    tokenOwnerUserId: String(data.user_id)
-  };
 };

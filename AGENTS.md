@@ -28,14 +28,12 @@
 - Worker integration APIs:
   - `POST /api/ingest` (idempotent upsert)
   - `POST /api/v1/detector/register` (aggregated snapshot)
-- TradingBot read APIs (`/api/v1/health`, `/api/v1/signals/latest`)
-- Member-issued TradingBot token APIs (`/api/v1/tokens*`)
 
 ## Auth and Profile Setup Model
 - Google login creates an authenticated session first.
 - A `profiles` row is created only after the user completes `/profile` and presses `가입 완료`.
 - While `profile_setup_required = true`, the user is authenticated but not a completed member.
-- In that setup-required state, community write actions, chat participation, token flows, and admin features must stay blocked.
+- In that setup-required state, community write actions, chat participation, and admin features must stay blocked.
 - In that setup-required state, the chat nav link and chat dock should stay hidden.
 
 ## Policy Documents
@@ -63,7 +61,4 @@
 ## Security Rules
 - Never use anon key for privileged DB writes.
 - Detector write APIs must return `401` when token is missing/invalid.
-- TradingBot read token is member-issued and DB-backed (not env static token).
-- TradingBot read APIs expose community-derived signals only; official price/index feeds are fetched separately by the bot.
-- TradingBot token requests require admin approval before the user can claim the token from `내 프로필`.
 - Community input must be plain text only.
