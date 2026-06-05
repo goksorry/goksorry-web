@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { Gowun_Batang } from "next/font/google";
@@ -29,6 +30,7 @@ import { ThemeFavicon } from "@/components/theme-favicon";
 import { ThemeFirstVisit } from "@/components/theme-first-visit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getChatServerEnv } from "@/lib/env";
+import { authOptions } from "@/lib/auth";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import {
   CHANGE_COLOR_MODE_REQUEST_HEADER,
@@ -76,8 +78,9 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const chatEnv = getChatServerEnv();
+  const initialSession = await getServerSession(authOptions);
   const requestHeaders = headers();
   const initialThemeId = normalizeThemeId(requestHeaders.get(THEME_REQUEST_HEADER)) ?? DEFAULT_THEME_ID;
   const initialChangeColorMode =
@@ -100,7 +103,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script id="theme-init" strategy="beforeInteractive">
           {getThemeInitScript()}
         </Script>
-        <AuthSessionProvider>
+        <AuthSessionProvider session={initialSession}>
           <CookieConsentProvider>
             <AnalyticsScripts measurementId={googleAnalyticsMeasurementId} />
             <CleanFilterProvider>
