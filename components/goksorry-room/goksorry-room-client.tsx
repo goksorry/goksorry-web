@@ -73,6 +73,9 @@ const renderAuthor = (item: Pick<RoomEntry | RoomReply, "author_kind" | "author_
   </span>
 );
 
+const getViewerDefaultNickname = (viewer?: RoomViewer | null): string | null =>
+  viewer?.kind === "guest" ? normalizeGuestChatNickname(viewer.default_guest_nickname) : null;
+
 export function GoksorryRoomClient({ initialPayload, initialError = null }: GoksorryRoomClientProps) {
   const listRegionRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -81,7 +84,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
   const [viewer, setViewer] = useState<RoomViewer>(() => initialPayload?.viewer ?? { kind: "guest" });
   const [entries, setEntries] = useState<RoomEntry[]>(() => initialPayload?.entries ?? []);
   const [entryDraft, setEntryDraft] = useState("");
-  const [guestNickname, setGuestNickname] = useState("");
+  const [guestNickname, setGuestNickname] = useState(() => getViewerDefaultNickname(initialPayload?.viewer) ?? "");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyEntryId, setOpenReplyEntryId] = useState<string | null>(null);
   const [loadedReplyEntryIds, setLoadedReplyEntryIds] = useState<Set<string>>(
@@ -116,6 +119,14 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
     }
   }, []);
 
+  const applyViewer = useCallback((nextViewer: RoomViewer) => {
+    setViewer(nextViewer);
+    const defaultNickname = getViewerDefaultNickname(nextViewer);
+    if (defaultNickname) {
+      setGuestNickname((current) => (current.trim() ? current : defaultNickname));
+    }
+  }, []);
+
   const loadEntries = useCallback(async (cursor?: string | null) => {
     const params = new URLSearchParams();
     if (cursor) {
@@ -124,10 +135,10 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
 
     const payload = await fetchJson<RoomPayload>(`/api/goksorry-room${params.size ? `?${params}` : ""}`);
     const nextEntries = payload.entries ?? [];
-    setViewer(payload.viewer ?? { kind: "guest" });
+    applyViewer(payload.viewer ?? { kind: "guest" });
     setNextCursor(payload.next_cursor ?? null);
     setEntries((current) => (cursor ? mergeUniqueEntries(current, nextEntries) : nextEntries));
-  }, []);
+  }, [applyViewer]);
 
   const loadReplies = useCallback(
     async (entryId: string) => {
@@ -243,7 +254,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
         }
 
         setEntries(payload.entries ?? []);
-        setViewer(payload.viewer ?? { kind: "guest" });
+        applyViewer(payload.viewer ?? { kind: "guest" });
         setNextCursor(payload.next_cursor ?? null);
       } catch (loadError) {
         if (!cancelled) {
@@ -261,7 +272,7 @@ export function GoksorryRoomClient({ initialPayload, initialError = null }: Goks
     return () => {
       cancelled = true;
     };
-  }, [hasInitialPayload]);
+  }, [applyViewer, hasInitialPayload]);
 
   const submitEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

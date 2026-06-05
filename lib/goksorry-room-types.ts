@@ -21,9 +21,14 @@ export type GoksorryRoomEntryPayload = {
   replies: GoksorryRoomReplyPayload[];
 };
 
-export type GoksorryRoomViewerPayload = {
-  kind: "member" | "guest";
-};
+export type GoksorryRoomViewerPayload =
+  | {
+      kind: "member";
+    }
+  | {
+      kind: "guest";
+      default_guest_nickname?: string;
+    };
 
 export type GoksorryRoomPayload = {
   viewer: GoksorryRoomViewerPayload;

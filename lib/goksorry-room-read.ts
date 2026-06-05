@@ -3,7 +3,8 @@ import "server-only";
 import {
   canManageGoksorryRoomItem,
   isGoksorryRoomItemOwner,
-  resolveExistingGoksorryRoomActor
+  resolveExistingGoksorryRoomActor,
+  resolveGoksorryRoomGuestDefaultNickname
 } from "@/lib/goksorry-room";
 import type {
   GoksorryRoomEntryPayload,
@@ -25,9 +26,19 @@ const isMissingReplyCountError = (error: { code?: string | null; message?: strin
   return error?.code === "42703" || error?.code === "PGRST204" || message.includes("reply_count");
 };
 
-const getViewer = (user: GoksorryRoomUser): GoksorryRoomPayload["viewer"] => ({
-  kind: user ? "member" : "guest"
-});
+const getViewer = async (request: Request, user: GoksorryRoomUser): Promise<GoksorryRoomPayload["viewer"]> => {
+  if (user) {
+    return { kind: "member" };
+  }
+
+  const defaultGuestNickname = await resolveGoksorryRoomGuestDefaultNickname(request);
+  return defaultGuestNickname
+    ? {
+        kind: "guest",
+        default_guest_nickname: defaultGuestNickname
+      }
+    : { kind: "guest" };
+};
 
 const getItemOwnership = (actor: GoksorryRoomActor, item: any) => {
   const owner = {
@@ -166,11 +177,12 @@ export const readGoksorryRoomEntries = async ({
   limit: number;
 }): Promise<{ payload: GoksorryRoomPayload; error: any; actor: GoksorryRoomActor }> => {
   const { user, actor } = await resolveExistingGoksorryRoomActor(request);
+  const viewer = await getViewer(request, user);
   const { entries, replyCounts, error } = await readEntryRows({ cursor, limit });
   if (error) {
     return {
       payload: {
-        viewer: getViewer(user),
+        viewer,
         entries: [],
         next_cursor: null
       },
@@ -186,7 +198,7 @@ export const readGoksorryRoomEntries = async ({
 
   return {
     payload: {
-      viewer: getViewer(user),
+      viewer,
       entries: mappedEntries,
       next_cursor: mappedEntries.length === limit && lastEntry ? lastEntry.created_at : null
     },

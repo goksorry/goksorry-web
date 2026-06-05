@@ -1853,6 +1853,77 @@ test.describe("program theme shells", () => {
     await expect(createdEntry.locator(".goksorry-room-reply .goksorry-room-guest-marker")).toHaveText("*");
   });
 
+  test("goksorry room guest nickname defaults from chat nickname payload", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareThemePage(page);
+
+    const entryPostBodies: Record<string, unknown>[] = [];
+    await page.route("**/api/goksorry-room**", async (route) => {
+      const request = route.request();
+      const requestUrl = new URL(request.url());
+      const method = request.method();
+
+      if (requestUrl.pathname.endsWith("/api/goksorry-room/entries") && method === "POST") {
+        const entryPostBody = JSON.parse(request.postData() ?? "{}") as Record<string, unknown>;
+        entryPostBodies.push(entryPostBody);
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            entry: {
+              id: `entry-created-${entryPostBodies.length}`,
+              content: entryPostBody.content,
+              author_kind: "guest",
+              author_label: entryPostBody.guest_nickname,
+              created_at: "2026-05-18T01:00:00.000Z",
+              reply_count: 0,
+              can_delete: true,
+              is_mine: true,
+              replies: []
+            }
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          viewer: {
+            kind: "guest",
+            default_guest_nickname: "채팅닉"
+          },
+          entries: [],
+          next_cursor: null
+        })
+      });
+    });
+
+    await page.goto("/goksorry-room");
+    const entryForm = page.locator(".goksorry-room-entry-form");
+    const nicknameInput = entryForm.locator(".goksorry-room-nickname-label input");
+    const contentInput = entryForm.locator(".goksorry-room-input-label input");
+    const submitButton = entryForm.locator("button[type='submit']");
+
+    await expect(nicknameInput).toHaveValue("채팅닉");
+    await contentInput.fill("기본 닉 글");
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+    await expect.poll(() => entryPostBodies[0]).toEqual({
+      content: "기본 닉 글",
+      guest_nickname: "채팅닉"
+    });
+
+    await nicknameInput.fill("수정닉");
+    await contentInput.fill("수정 닉 글");
+    await submitButton.click();
+    await expect.poll(() => entryPostBodies[1]).toEqual({
+      content: "수정 닉 글",
+      guest_nickname: "수정닉"
+    });
+  });
+
   test("goksorry room author markers distinguish guest, owner, and admin-delete rows", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

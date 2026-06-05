@@ -3,7 +3,9 @@ import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { NextResponse } from "next/server";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail, type AppAuthUser } from "@/lib/auth-server";
-import { getServerEnv } from "@/lib/env";
+import { normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
+import { readGuestChatCookie } from "@/lib/chat-token";
+import { getChatServerEnv, getServerEnv } from "@/lib/env";
 import { hasNextAuthSessionCookie } from "@/lib/nextauth-cookie";
 export { GOKSORRY_ROOM_ENTRY_MAX_LENGTH, GOKSORRY_ROOM_REPLY_MAX_LENGTH } from "@/lib/goksorry-room-limits";
 import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
@@ -114,6 +116,24 @@ export const setGoksorryRoomGuestNicknameCookie = (response: NextResponse, nickn
     path: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.path,
     maxAge: CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.maxAgeSeconds
   });
+};
+
+export const resolveGoksorryRoomGuestDefaultNickname = async (request: Request): Promise<string | null> => {
+  const clientNickname = normalizeGuestChatNickname(
+    readCookieValue(request, CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname.key)
+  );
+  if (clientNickname) {
+    return clientNickname;
+  }
+
+  const chatEnv = getChatServerEnv();
+  const guestChatCookie = readCookieValue(request, SERVER_COOKIE_DEFINITIONS.guestChat.key);
+  if (!chatEnv.enabled || !guestChatCookie) {
+    return null;
+  }
+
+  const guestIdentity = await readGuestChatCookie(guestChatCookie, chatEnv.CHAT_TOKEN_SECRET).catch(() => null);
+  return normalizeGuestChatNickname(guestIdentity?.displayName);
 };
 
 export const resolveExistingGoksorryRoomActor = async (request: Request): Promise<MaybeActor> => {
