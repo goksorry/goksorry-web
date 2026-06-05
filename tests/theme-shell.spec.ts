@@ -394,7 +394,7 @@ test.describe("program theme shells", () => {
             <span class="tag">Micron Technology (MU)</span>
             <span class="tag">Broadcom (AVGO)</span>
             <span class="tag">NVIDIA (NVDA)</span>
-            <span class="tag">삼성전기보통주 (009150)</span>
+            <span class="tag">삼성전기 (009150)</span>
           </div>
         </section>`
       );

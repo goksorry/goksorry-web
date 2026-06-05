@@ -1,6 +1,7 @@
 import "server-only";
 
 import { unstable_noStore as noStore } from "next/cache";
+import { formatKoreanStockDisplayText } from "@/lib/stock-display";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AnalysisReportStatus = "ok" | "partial" | "error";
@@ -109,6 +110,10 @@ const asText = (value: unknown, fallback = "", maxLength = 500): string => {
   return normalized.slice(0, maxLength);
 };
 
+const asDisplayText = (value: unknown, fallback = "", maxLength = 500): string => {
+  return formatKoreanStockDisplayText(asText(value, fallback, maxLength));
+};
+
 const asTone = (value: unknown): AnalysisTone => {
   const text = asText(value, "mixed", 20).toLowerCase();
   return TONES.has(text as AnalysisTone) ? (text as AnalysisTone) : "mixed";
@@ -125,9 +130,9 @@ const normalizeItems = (value: unknown): AnalysisItem[] => {
       return [];
     }
 
-    const label = asText(record.label, "", 80);
-    const valueText = asText(record.value, "", 120);
-    const note = asText(record.note, "", 240);
+    const label = asDisplayText(record.label, "", 80);
+    const valueText = asDisplayText(record.value, "", 120);
+    const note = asDisplayText(record.note, "", 240);
     if (!label && !valueText && !note) {
       return [];
     }
@@ -147,8 +152,8 @@ const normalizeSection = (id: AnalysisSectionId, value: unknown): AnalysisSectio
   const record = asRecord(value) ?? {};
   return {
     id,
-    title: asText(record.title, SECTION_TITLES[id], 80),
-    summary: asText(record.summary, "분석 대기 중", 500),
+    title: asDisplayText(record.title, SECTION_TITLES[id], 80),
+    summary: asDisplayText(record.summary, "분석 대기 중", 500),
     items: normalizeItems(record.items)
   };
 };
@@ -161,11 +166,11 @@ export const normalizeAnalysisPayload = (value: unknown): AnalysisReportPayload 
   ) as Record<AnalysisSectionId, AnalysisSection>;
 
   return {
-    headline: asText(record.headline, "분석 대기 중", 160),
-    brief: asText(record.brief, "삐에로봇 분석 결과가 아직 없습니다.", 800),
+    headline: asDisplayText(record.headline, "분석 대기 중", 160),
+    brief: asDisplayText(record.brief, "삐에로봇 분석 결과가 아직 없습니다.", 800),
     sections,
     important_symbols: Array.isArray(record.important_symbols)
-      ? record.important_symbols.map((item) => asText(item, "", 80)).filter(Boolean).slice(0, 20)
+      ? record.important_symbols.map((item) => asDisplayText(item, "", 80)).filter(Boolean).slice(0, 20)
       : [],
     generated_from: asRecord(record.generated_from) ?? {}
   };

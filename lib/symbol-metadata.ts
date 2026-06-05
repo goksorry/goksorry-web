@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { formatSymbolDisplayName } from "@/lib/stock-display";
 
 const SYMBOL_METADATA_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const UPSTREAM_TIMEOUT_MS = 3500;
@@ -133,17 +134,19 @@ const fetchFromUpstream = async (
       };
     };
 
-    const displayName =
+    const rawDisplayName =
       String(payload.result?.name ?? payload.result?.detailName ?? payload.result?.companyName ?? "").trim() || null;
+    const market =
+      parseMarket(payload.result?.market) ??
+      parseMarket(payload.result?.marketType) ??
+      parseMarket(payload.result?.exchangeCode) ??
+      parseMarket(payload.result?.nationCode) ??
+      inferMarketFromSymbol(symbol);
+    const displayName = rawDisplayName ? formatSymbolDisplayName({ symbol, displayName: rawDisplayName, market }) : null;
 
     return {
       display_name: displayName,
-      market:
-        parseMarket(payload.result?.market) ??
-        parseMarket(payload.result?.marketType) ??
-        parseMarket(payload.result?.exchangeCode) ??
-        parseMarket(payload.result?.nationCode) ??
-        inferMarketFromSymbol(symbol),
+      market,
       status: displayName ? "ready" : "failed"
     };
   } catch {
@@ -214,10 +217,12 @@ export const loadSymbolMetadataMap = async (
         continue;
       }
 
+      const market = parseMarket(item.market);
+      const displayName = typeof item.display_name === "string" ? item.display_name : null;
       rows.set(symbol, {
         symbol,
-        display_name: typeof item.display_name === "string" ? item.display_name : null,
-        market: parseMarket(item.market),
+        display_name: displayName ? formatSymbolDisplayName({ symbol, displayName, market }) : null,
+        market,
         status:
           item.status === "ready" || item.status === "failed" || item.status === "pending"
             ? item.status

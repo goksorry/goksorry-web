@@ -199,7 +199,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
             kr_top10: {
               title: "한국 Top 10",
               summary: "KIS ranking 기준 한국 상위 종목",
-              items: [{ label: "삼성전자보통주 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래량 3477.1만 · 거래대금 12.3조", tone: "down" }]
+              items: [{ label: "삼성전자 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래량 3477.1만 · 거래대금 12.3조", tone: "down" }]
             },
             us_top10: {
               title: "미국 Top 10",
@@ -209,7 +209,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
             kr_categories: {
               title: "한국 인기 카테고리",
               summary: "ranking 카테고리별 선두/거래 요약",
-              items: [{ label: "KOSPI 시총", value: "1위 삼성전자보통주 (005930) · 10개 종목", note: "상위 3: 삼성전자보통주 (005930), SK하이닉스 (000660), LG에너지솔루션 (373220)", tone: "mixed" }]
+              items: [{ label: "KOSPI 시총", value: "1위 삼성전자 (005930) · 10개 종목", note: "상위 3: 삼성전자 (005930), SK하이닉스 (000660), LG에너지솔루션 (373220)", tone: "mixed" }]
             },
             us_categories: {
               title: "미국 인기 카테고리",
@@ -217,7 +217,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
               items: [{ label: "NASDAQ 시총", value: "1위 NVIDIA (NVDA) · 10개 종목", note: "상위 3: NVIDIA (NVDA), Apple (AAPL), Microsoft (MSFT)", tone: "mixed" }]
             }
           },
-          important_symbols: ["삼성전자보통주 (005930)", "NVDA"],
+          important_symbols: ["삼성전자 (005930)", "NVDA"],
           generated_from: {}
         },
         errors: [],
