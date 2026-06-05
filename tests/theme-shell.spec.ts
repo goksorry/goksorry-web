@@ -3413,6 +3413,7 @@ test.describe("program theme shells", () => {
       const secondLine = lineNumbers[1];
       const gutterStyle = window.getComputedStyle(gutter);
       const footer = element.querySelector(".site-footer") as HTMLElement;
+      const footerSourceText = footer.textContent ?? "";
       const documentRect = element.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
       const footerRect = footer.getBoundingClientRect();
@@ -3425,6 +3426,7 @@ test.describe("program theme shells", () => {
         fontFamily: documentStyle.fontFamily.toLowerCase(),
         frameBackground: frameStyle.backgroundImage,
         footerGap: documentRect.bottom - footerRect.bottom,
+        footerSourceText,
         frameFooterGap: frameRect.bottom - footerRect.bottom,
         frameScrollHeight: frame.scrollHeight,
         frameClientHeight: frame.clientHeight,
@@ -3441,6 +3443,7 @@ test.describe("program theme shells", () => {
     });
     expect(vscodeSurface.fontFamily).toContain("monospace");
     expect(vscodeSurface.frameBackground).toContain("linear-gradient");
+    expect(vscodeSurface.footerSourceText).toContain("한국투자증권(종목정보)");
     expect(vscodeSurface.footerGap).toBeLessThanOrEqual(32);
     expect(vscodeSurface.frameFooterGap).toBeLessThanOrEqual(32);
     expect(vscodeSurface.frameScrollHeight).toBeLessThanOrEqual(vscodeSurface.frameClientHeight + 2);

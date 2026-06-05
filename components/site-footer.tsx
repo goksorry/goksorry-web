@@ -11,6 +11,10 @@ const SOURCE_LINKS = [
     href: "https://www.tossinvest.com/"
   },
   {
+    label: "한국투자증권(종목정보)",
+    href: "https://securities.koreainvestment.com/"
+  },
+  {
     label: "블라인드 주식·투자",
     href: "https://www.teamblind.com/kr/topics/%EC%A3%BC%EC%8B%9D%C2%B7%ED%88%AC%EC%9E%90"
   },

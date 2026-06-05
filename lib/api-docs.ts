@@ -198,12 +198,12 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
             },
             kr_top10: {
               title: "한국 Top 10",
-              summary: "KIS ranking 기준 한국 상위 종목",
+              summary: "종목정보 기준 한국 상위 종목",
               items: [{ label: "삼성전자 (005930)", value: "351,500 · -2.50%", note: "KOSPI 시총 #1 · 거래량 3477.1만 · 거래대금 12.3조", tone: "down" }]
             },
             us_top10: {
               title: "미국 Top 10",
-              summary: "KIS ranking 기준 미국 상위 종목",
+              summary: "종목정보 기준 미국 상위 종목",
               items: [{ label: "NVIDIA (NVDA)", value: "182.40 · +1.20%", note: "NASDAQ 시총 #1 · 거래량 9876.5만", tone: "up" }]
             },
             kr_categories: {
