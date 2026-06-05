@@ -10,7 +10,13 @@ import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
-import { goksorryIndexFromScore, type SentimentBand } from "@/lib/sentiment-score";
+import {
+  GOKSORRY_INDEX_BANDS,
+  GOKSORRY_INDEX_FORMULA_TEXT,
+  GOKSORRY_INDEX_SHORT_DESCRIPTION,
+  goksorryIndexFromScore,
+  type SentimentBand
+} from "@/lib/sentiment-score";
 
 const toLocalTime = (iso: string): string => {
   const date = new Date(iso);
@@ -26,6 +32,15 @@ const toLocalTime = (iso: string): string => {
     timeZone: "Asia/Seoul"
   }).format(date);
 };
+
+const GOKSORRY_INDEX_EXTREME_RANGE_TEXT = `${GOKSORRY_INDEX_BANDS[0].range} ${GOKSORRY_INDEX_BANDS[0].label} · ${GOKSORRY_INDEX_BANDS[4].range} ${GOKSORRY_INDEX_BANDS[4].label}`;
+const GOKSORRY_INDEX_HELP_LINES = [
+  GOKSORRY_INDEX_SHORT_DESCRIPTION,
+  `산식: ${GOKSORRY_INDEX_FORMULA_TEXT}`,
+  GOKSORRY_INDEX_EXTREME_RANGE_TEXT,
+  "높을수록 공포, 낮을수록 희망입니다."
+];
+const GOKSORRY_INDEX_HELP_TITLE = GOKSORRY_INDEX_HELP_LINES.join("\n");
 
 type MarketOverviewProps = {
   marketOverview: Pick<OverviewPayload, "generated_at" | "market_indicators">;
@@ -305,7 +320,25 @@ export function MarketOverview({
           <div className="overview-heading">
             <div className="overview-heading-copy">
               <p className="overview-kicker">커뮤니티 체감</p>
-              <h2>곡소리 지수</h2>
+              <div className="overview-title-row">
+                <h2>곡소리 지수</h2>
+                <span className="overview-index-help">
+                  <button
+                    type="button"
+                    className="overview-index-help-trigger"
+                    aria-describedby="overview-index-help-tooltip"
+                    aria-label="곡소리 지수 계산 방식"
+                    title={GOKSORRY_INDEX_HELP_TITLE}
+                  >
+                    i
+                  </button>
+                  <span id="overview-index-help-tooltip" className="overview-index-help-tooltip" role="tooltip">
+                    {GOKSORRY_INDEX_HELP_LINES.map((line) => (
+                      <span key={line}>{line}</span>
+                    ))}
+                  </span>
+                </span>
+              </div>
               <p className="overview-timestamp">
                 {marketPayload.generated_at ? `업데이트 ${toLocalTime(marketPayload.generated_at)}` : "캐시 지수 준비 중"}
               </p>

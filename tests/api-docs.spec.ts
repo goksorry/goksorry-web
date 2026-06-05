@@ -15,13 +15,17 @@ test.describe("public API surface", () => {
   });
 
   test("openapi and raw text docs hide internal and token APIs", () => {
-    const publicSpec = buildOpenApiSpec() as { paths: Record<string, unknown> };
+    const publicSpec = buildOpenApiSpec() as { info: { description: string }; paths: Record<string, unknown> };
     const adminSpec = buildOpenApiSpecForRole(true) as { paths: Record<string, unknown> };
     const rawText = buildRawTextApiDocs();
 
     expect(Object.keys(publicSpec.paths)).toEqual(["/api/overview"]);
     expect(Object.keys(adminSpec.paths)).toEqual(["/api/overview"]);
     expect(rawText).toContain("GET /api/overview");
+    expect(rawText).toContain("goksorry_index = clamp(5 - (score - 5) * 1.6, 0, 10)");
+    expect(rawText).toContain("0.0~2.5 극단적 희망");
+    expect(rawText).toContain("7.5~10.0 극단적 공포");
+    expect(publicSpec.info.description).toContain("높을수록 공포, 낮을수록 희망입니다.");
     expect(rawText.split("GET /api/").length - 1).toBe(1);
   });
 

@@ -1,3 +1,5 @@
+import { GOKSORRY_INDEX_BANDS, GOKSORRY_INDEX_FORMULA_TEXT, GOKSORRY_INDEX_SHORT_DESCRIPTION } from "@/lib/sentiment-score";
+
 type HttpMethod = "GET";
 type AuthMode = "public";
 
@@ -25,6 +27,15 @@ export const authModeDescriptions: Record<AuthMode, string> = {
   public: "인증 없이 호출할 수 있습니다."
 };
 
+export const goksorryIndexCalculationNotes = [
+  GOKSORRY_INDEX_SHORT_DESCRIPTION,
+  "내부 sentiment score는 0~10이며 높을수록 희망입니다.",
+  "중립 5에서 벗어난 정도를 1.35배 증폭한 뒤 source/종목 시장에 맞는 시장보정을 더합니다.",
+  `표시 지수 변환식: ${GOKSORRY_INDEX_FORMULA_TEXT}`,
+  `표시 구간: ${GOKSORRY_INDEX_BANDS.map((band) => `${band.range} ${band.label}`).join(" · ")}`,
+  "높을수록 공포, 낮을수록 희망입니다."
+];
+
 export const apiEndpointDocs: ApiEndpointDoc[] = [
   {
     method: "GET",
@@ -44,6 +55,7 @@ export const apiEndpointDocs: ApiEndpointDoc[] = [
     ],
     notes: [
       "`goksorry_index` 는 0~10 표시용 점수이며 높을수록 곡소리입니다.",
+      ...goksorryIndexCalculationNotes,
       "`generated_at` 은 지수 계산 시각입니다.",
       "`ttl_sec` 동안 캐시된 값으로 취급할 수 있습니다."
     ]
@@ -63,6 +75,7 @@ export const buildRawTextApiDocs = () => {
     "",
     "유저에게 제공되는 API는 현재 곡소리 지수를 반환하는 단일 endpoint입니다.",
     "",
+    buildPlainTextSection("지수 계산 방식", goksorryIndexCalculationNotes.map((note) => `- ${note}`)),
     buildPlainTextSection("인증 방식", ["- public: 인증 없이 호출할 수 있습니다."])
   ];
 
@@ -121,7 +134,7 @@ export const buildOpenApiSpecForRole = (_isAdmin: boolean) => {
     info: {
       title: "곡소리닷컴 API",
       version: "1.0.0",
-      description: "곡소리닷컴 현재 곡소리 지수를 반환하는 단일 공개 API입니다."
+      description: `곡소리닷컴 현재 곡소리 지수를 반환하는 단일 공개 API입니다. ${goksorryIndexCalculationNotes.join(" ")}`
     },
     servers: [{ url: "https://goksorry.com" }],
     tags: apiSections.map((name) => ({ name })),

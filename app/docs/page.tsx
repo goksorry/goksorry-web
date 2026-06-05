@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { apiSections, authModeDescriptions, filterApiDocs } from "@/lib/api-docs";
+import { apiSections, authModeDescriptions, filterApiDocs, goksorryIndexCalculationNotes } from "@/lib/api-docs";
+import { GOKSORRY_INDEX_BANDS } from "@/lib/sentiment-score";
 import { buildPageMetadata } from "@/lib/seo";
 
 const sectionDescriptions: Record<(typeof apiSections)[number], string> = {
@@ -74,6 +75,37 @@ export default function DocsPage() {
         <pre className="docs-code">
           <code>{`curl -s "https://goksorry.com/api/overview"`}</code>
         </pre>
+      </article>
+
+      <article className="card docs-calculation">
+        <h2>지수 계산 방식</h2>
+        <p>
+          곡소리 지수는 커뮤니티 체감 지표입니다. API가 반환하는 `goksorry_index` 는 0~10 표시용 값이며 높을수록
+          공포, 낮을수록 희망입니다.
+        </p>
+        <ul>
+          {goksorryIndexCalculationNotes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>표시 지수</th>
+                <th>구간</th>
+              </tr>
+            </thead>
+            <tbody>
+              {GOKSORRY_INDEX_BANDS.map((band) => (
+                <tr key={band.range}>
+                  <td>{band.range}</td>
+                  <td>{band.label}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </article>
 
       {endpointGroups.map(({ section, items }) => (

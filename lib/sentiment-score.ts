@@ -24,6 +24,16 @@ const AGGREGATE_DOMINANCE_SHARE_MIN = 0.54;
 const AGGREGATE_SCORE_DRIFT_MULTIPLIER = 1.35;
 const EXTREME_INDEX_MULTIPLIER = 1.6;
 
+export const GOKSORRY_INDEX_FORMULA_TEXT = `goksorry_index = clamp(5 - (score - 5) * ${EXTREME_INDEX_MULTIPLIER}, 0, 10)`;
+export const GOKSORRY_INDEX_BANDS = [
+  { range: "0.0~2.5", label: "극단적 희망" },
+  { range: "2.6~4.5", label: "희망" },
+  { range: "4.6~5.5", label: "중립" },
+  { range: "5.6~7.4", label: "공포" },
+  { range: "7.5~10.0", label: "극단적 공포" }
+] as const;
+export const GOKSORRY_INDEX_SHORT_DESCRIPTION = "최근 6시간 공포/희망 글 평균을 시장 흐름으로 보정해 0~10으로 표시합니다.";
+
 export const clampSentimentScore = (value: number): number => {
   const clamped = Math.min(SENTIMENT_SCORE_MAX, Math.max(SENTIMENT_SCORE_MIN, value));
   return Number(clamped.toFixed(1));

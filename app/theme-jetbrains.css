@@ -844,6 +844,21 @@
   content: " ";
 }
 
+.theme-shell-jetbrains .theme-shell-page .main .overview-title-row,
+.theme-shell-jetbrains .theme-shell-page .main .overview-index-help,
+.theme-shell-jetbrains .theme-shell-page .main .overview-index-help-trigger {
+  display: inline-flex !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-index-help-tooltip {
+  display: grid !important;
+  margin: 0 !important;
+}
+
+.theme-shell-jetbrains .theme-shell-page .main .overview-index-help-tooltip span {
+  display: block !important;
+}
+
 .theme-shell-jetbrains .theme-shell-page .main .community-post-row,
 .theme-shell-jetbrains .theme-shell-page .main .sentiment-card,
 .theme-shell-jetbrains .theme-shell-page .main .goksorry-room-entry,

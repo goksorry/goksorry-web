@@ -888,6 +888,21 @@
   text-overflow: ellipsis;
 }
 
+.theme-shell-excel .overview-title-row {
+  margin: 0;
+  min-width: 0;
+}
+
+.theme-shell-excel .overview-heading-copy:has(.overview-index-help:hover),
+.theme-shell-excel .overview-heading-copy:has(.overview-index-help:focus-within) {
+  overflow: visible;
+  z-index: 6;
+}
+
+.theme-shell-excel .overview-index-help-tooltip {
+  white-space: normal;
+}
+
 .theme-shell-excel .overview-section {
   height: calc(var(--excel-row-height) * 2);
   gap: 0;

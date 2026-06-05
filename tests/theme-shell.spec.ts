@@ -883,6 +883,17 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".overview-market-adjustment-button")).toHaveCount(0);
     await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정");
     await expect(page.locator(".overview-market-adjustment-meta")).not.toContainText("미반영");
+    const indexHelpTrigger = page.getByRole("button", { name: "곡소리 지수 계산 방식" });
+    const indexHelpTooltip = page.locator("#overview-index-help-tooltip");
+    await expect(indexHelpTrigger).toBeVisible();
+    await expect(indexHelpTrigger).toHaveAttribute("title", /goksorry_index = clamp/);
+    await expect(indexHelpTooltip).toBeHidden();
+    await indexHelpTrigger.hover();
+    await expect(indexHelpTooltip).toBeVisible();
+    await expect(indexHelpTooltip).toContainText("최근 6시간 공포/희망 글 평균");
+    await expect(indexHelpTooltip).toContainText("산식: goksorry_index = clamp(5 - (score - 5) * 1.6, 0, 10)");
+    await expect(indexHelpTooltip).toContainText("0.0~2.5 극단적 희망");
+    await expect(indexHelpTooltip).toContainText("7.5~10.0 극단적 공포");
 
     await page.clock.runFor(61_000);
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
