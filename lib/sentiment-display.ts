@@ -26,12 +26,12 @@ export const SENTIMENT_BAND_DISPLAY: Record<
   { emoji: string; label: string; shortLabel: string }
 > = {
   extreme_bearish: {
-    emoji: "😱",
+    emoji: "🤡",
     label: "극단적 공포",
     shortLabel: "극공"
   },
   bearish: {
-    emoji: "🤡",
+    emoji: "😱",
     label: "공포",
     shortLabel: "공포"
   },
