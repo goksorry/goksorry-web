@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "분석",
-  description: "삐에로봇이 30분 주기로 한국/미국 뉴스, Top 10, 인기 카테고리, PER/PBR, 차트 상세를 분석한 결과입니다.",
+  description: "삐에로봇이 LLM 평가를 1시간 주기로 실행해 한국/미국 뉴스, Top 10, 인기 카테고리, PER/PBR, 차트 상세를 분석한 결과입니다.",
   path: "/analysis"
 });
 
@@ -38,7 +38,15 @@ const formatNewsTime = (value: string): string => {
 
 const isReportStale = (report: AnalysisReport): boolean => {
   const asofMs = new Date(report.asof).getTime();
-  return Number.isNaN(asofMs) || Date.now() - asofMs > 60 * 60 * 1000;
+  return Number.isNaN(asofMs) || Date.now() - asofMs > 2 * 60 * 60 * 1000;
+};
+
+const formatReportError = (error: string): string => {
+  if (error === "analysis_llm:budget exhausted") {
+    return "LLM 평가 예산이 부족해 이번 리포트는 기본 산식 기반으로 생성되었습니다.";
+  }
+
+  return error;
 };
 
 const renderChartValue = (item: AnalysisItem) => {
@@ -161,7 +169,7 @@ export default async function AnalysisPage() {
         <section className="panel analysis-empty">
           <p className="overview-kicker">삐에로봇 분석</p>
           <h1>분석</h1>
-          <p className="muted">아직 저장된 분석 결과가 없습니다. 삐에로봇 첫 30분 분석 이후 표시됩니다.</p>
+          <p className="muted">아직 저장된 분석 결과가 없습니다. 삐에로봇 첫 LLM 평가 이후 표시됩니다.</p>
         </section>
       </div>
     );
@@ -185,16 +193,16 @@ export default async function AnalysisPage() {
           <span className={`analysis-status analysis-status-${report.status}`}>{report.status}</span>
           {stale ? <span className="analysis-status analysis-status-stale">stale</span> : null}
           <p>업데이트 {formatKst(report.asof)}</p>
-          <p>30분 주기</p>
+          <p>LLM 평가 1시간 주기</p>
         </div>
       </section>
 
       {report.errors.length > 0 ? (
         <section className="panel analysis-error-panel">
-          <h2>수집 오류</h2>
+          <h2>리포트 알림</h2>
           <ul>
             {report.errors.map((error) => (
-              <li key={error}>{error}</li>
+              <li key={error}>{formatReportError(error)}</li>
             ))}
           </ul>
         </section>

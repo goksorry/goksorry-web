@@ -378,7 +378,7 @@ test.describe("program theme shells", () => {
           <div class="analysis-status-card">
             <span class="analysis-status analysis-status-ok">ok</span>
             <p>업데이트 06.05 02:30</p>
-            <p>30분 주기</p>
+            <p>LLM 평가 1시간 주기</p>
           </div>
         </section>
         <section id="excel-analysis-grid" class="analysis-grid" aria-label="Excel 분석 섹션">
