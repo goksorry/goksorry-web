@@ -96,6 +96,12 @@ const SECTION_TITLES: Record<AnalysisSectionId, string> = {
 const TONES = new Set<AnalysisTone>(["up", "down", "flat", "fear", "greed", "mixed"]);
 const VALUATION_SECTION_IDS = new Set<AnalysisSectionId>(["kr_valuation", "us_valuation"]);
 const ZERO_VALUATION_METRIC_PATTERN = /^(?:PER|PBR)?\s*[:=]?\s*[+-]?(?:0+(?:\.0+)?|0?\.0+)(?:\s*(?:배|x))?$/i;
+const ANALYSIS_HEADLINE_LIMIT = 180;
+const ANALYSIS_BRIEF_LIMIT = 2500;
+const ANALYSIS_SECTION_SUMMARY_LIMIT = 1200;
+const ANALYSIS_ITEM_VALUE_LIMIT = 360;
+const ANALYSIS_ITEM_NOTE_LIMIT = 900;
+const ANALYSIS_TRANSLATION_LIMIT = 600;
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -138,9 +144,9 @@ const normalizeItems = (sectionId: AnalysisSectionId, value: unknown): AnalysisI
     }
 
     const label = asDisplayText(record.label, "", 80);
-    let valueText = asDisplayText(record.value, "", 120);
-    let note = asDisplayText(record.note, "", 240);
-    const translation = asText(record.translation, "", 240);
+    let valueText = asDisplayText(record.value, "", ANALYSIS_ITEM_VALUE_LIMIT);
+    let note = asDisplayText(record.note, "", ANALYSIS_ITEM_NOTE_LIMIT);
+    const translation = asText(record.translation, "", ANALYSIS_TRANSLATION_LIMIT);
     if (VALUATION_SECTION_IDS.has(sectionId)) {
       valueText = hideZeroValuationMetric(valueText);
       note = hideZeroValuationMetric(note);
@@ -169,7 +175,7 @@ const normalizeSection = (id: AnalysisSectionId, value: unknown): AnalysisSectio
   return {
     id,
     title: asDisplayText(record.title, SECTION_TITLES[id], 80),
-    summary: asDisplayText(record.summary, "분석 대기 중", 500),
+    summary: asDisplayText(record.summary, "분석 대기 중", ANALYSIS_SECTION_SUMMARY_LIMIT),
     items: normalizeItems(id, record.items)
   };
 };
@@ -182,8 +188,8 @@ export const normalizeAnalysisPayload = (value: unknown): AnalysisReportPayload 
   ) as Record<AnalysisSectionId, AnalysisSection>;
 
   return {
-    headline: asDisplayText(record.headline, "분석 대기 중", 160),
-    brief: asDisplayText(record.brief, "삐에로봇 분석 결과가 아직 없습니다.", 800),
+    headline: asDisplayText(record.headline, "분석 대기 중", ANALYSIS_HEADLINE_LIMIT),
+    brief: asDisplayText(record.brief, "삐에로봇 분석 결과가 아직 없습니다.", ANALYSIS_BRIEF_LIMIT),
     sections,
     important_symbols: Array.isArray(record.important_symbols)
       ? record.important_symbols.map((item) => asDisplayText(item, "", 80)).filter(Boolean).slice(0, 20)
@@ -209,7 +215,7 @@ const normalizeStatus = (value: unknown): AnalysisReportStatus => {
 
 const normalizeReport = (row: ReportRow): AnalysisReport => {
   const payload = normalizeAnalysisPayload(row.payload);
-  const summary = asText(row.summary, payload.brief, 1000);
+  const summary = asText(row.summary, payload.brief, ANALYSIS_BRIEF_LIMIT);
 
   return {
     id: asText(row.id, "", 80),

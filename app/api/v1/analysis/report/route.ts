@@ -3,6 +3,8 @@ import { jsonError, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth
 import { normalizeAnalysisPayload, type AnalysisReportStatus } from "@/lib/analysis-data";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
+const ANALYSIS_BRIEF_LIMIT = 2500;
+
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
   const row = {
     asof: parseAsOf(body.asof ?? rawPayload.asof),
     status: parseStatus(body.status),
-    summary: clipText(body.summary, payload.brief, 1000),
+    summary: clipText(body.summary, payload.brief, ANALYSIS_BRIEF_LIMIT),
     payload,
     errors: parseErrors(body.errors)
   };
