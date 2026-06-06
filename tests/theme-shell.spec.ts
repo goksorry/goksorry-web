@@ -70,6 +70,35 @@ const prepareSetupHintFirstVisitPage = async (page: Page) => {
   );
 };
 
+const readFirstVisitHintTargetMetrics = async (page: Page) =>
+  page.evaluate(() => {
+    const header = document.querySelector(".header") as HTMLElement;
+    const hint = document.querySelector(".first-visit-header-hint") as HTMLElement;
+    const controls = document.querySelector(".header .header-controls") as HTMLElement;
+    const themeButton = document.querySelector(".header .theme-menu-trigger") as HTMLElement;
+    const loginButton = document.querySelector(
+      ".header-profile .header-login-button, .header-profile .header-auth-shell"
+    ) as HTMLElement;
+    const hintRect = hint.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    const themeButtonRect = themeButton.getBoundingClientRect();
+    const loginRect = loginButton.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
+    const pointerX = Number.parseFloat(window.getComputedStyle(hint).getPropertyValue("--first-visit-hint-pointer-x"));
+    const pointerPageX = hintRect.left + pointerX;
+    const controlsCenter = controlsRect.left + controlsRect.width / 2;
+
+    return {
+      topGap: hintRect.top - headerRect.bottom,
+      leftGap: hintRect.left - headerRect.left,
+      pointerToControlsCenter: Math.abs(pointerPageX - controlsCenter),
+      pointerInsideControls: pointerPageX >= controlsRect.left && pointerPageX <= controlsRect.right,
+      themeLeftOfLogin: themeButtonRect.right < loginRect.left,
+      pointerLeftOfLogin: pointerPageX < loginRect.left,
+      themeButtonLeftDelta: Math.abs(hintRect.left - themeButtonRect.left)
+    };
+  });
+
 const mockGuestChatSession = async (page: Page, onRequest?: () => void) => {
   await page.route("**/api/chat/session", async (route) => {
     onRequest?.();
@@ -3218,19 +3247,11 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toBeVisible();
     await expect(page.locator(".header").locator(".clean-filter-toggle")).toBeVisible();
 
-    const hintPlacement = await page.evaluate(() => {
-      const header = document.querySelector(".header") as HTMLElement;
-      const hint = document.querySelector(".first-visit-header-hint") as HTMLElement;
-      const headerRect = header.getBoundingClientRect();
-      const hintRect = hint.getBoundingClientRect();
-
-      return {
-        topGap: hintRect.top - headerRect.bottom,
-        rightGap: window.innerWidth - hintRect.right
-      };
-    });
+    const hintPlacement = await readFirstVisitHintTargetMetrics(page);
     expect(hintPlacement.topGap).toBeGreaterThanOrEqual(-4);
-    expect(hintPlacement.rightGap).toBeGreaterThanOrEqual(8);
+    expect(hintPlacement.leftGap).toBeGreaterThanOrEqual(8);
+    expect(hintPlacement.themeButtonLeftDelta).toBeLessThanOrEqual(8);
+    expect(hintPlacement.pointerInsideControls).toBe(true);
 
     await hint.getByRole("button", { name: "초기 설정 안내 닫기" }).click();
     await expect(hint).toHaveCount(0);
@@ -3248,6 +3269,24 @@ test.describe("program theme shells", () => {
 
     await page.reload();
     await expect(page.getByRole("note", { name: "초기 설정 안내" })).toHaveCount(0);
+  });
+
+  test("desktop first visit setup hint points at theme controls before login", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await prepareSetupHintFirstVisitPage(page);
+    await page.goto("/");
+
+    const hint = page.getByRole("note", { name: "초기 설정 안내" });
+    await expect(hint).toBeVisible();
+    await expect(page.locator(".header").getByRole("button", { name: /테마 선택/ })).toBeVisible();
+    await expect(page.locator(".header").getByRole("button", { name: "구글 로그인" })).toBeVisible();
+
+    const hintPlacement = await readFirstVisitHintTargetMetrics(page);
+    expect(hintPlacement.topGap).toBeGreaterThanOrEqual(8);
+    expect(hintPlacement.pointerToControlsCenter).toBeLessThanOrEqual(2);
+    expect(hintPlacement.pointerInsideControls).toBe(true);
+    expect(hintPlacement.themeLeftOfLogin).toBe(true);
+    expect(hintPlacement.pointerLeftOfLogin).toBe(true);
   });
 
   test("ide concept themes render page content as plain editor text", async ({ page }) => {
