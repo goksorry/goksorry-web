@@ -383,6 +383,8 @@ test.describe("program theme shells", () => {
         </section>
         <section id="excel-analysis-grid" class="analysis-grid" aria-label="Excel 분석 섹션">
           ${[
+            "kr_categories",
+            "us_categories",
             "korean_news",
             "us_news",
             "kr_top10",
@@ -462,6 +464,8 @@ test.describe("program theme shells", () => {
     const desktopMetrics = await readExcelGridMetrics(page, [
       ".theme-shell-excel #excel-analysis-hero",
       ".theme-shell-excel #excel-analysis-grid",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_categories",
+      ".theme-shell-excel #excel-analysis-grid .analysis-card-us_categories",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-korean_news",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_valuation",
       ".theme-shell-excel #excel-analysis-grid .analysis-card-kr_large_popular_changes",
@@ -472,6 +476,9 @@ test.describe("program theme shells", () => {
       ".theme-shell-excel #excel-analysis-symbols .analysis-symbols .tag"
     ]);
     expectExcelGridAligned(desktopMetrics);
+
+    await expect(page.locator("#excel-analysis-grid .analysis-card").nth(0)).toHaveClass(/analysis-card-kr_categories/);
+    await expect(page.locator("#excel-analysis-grid .analysis-card").nth(1)).toHaveClass(/analysis-card-us_categories/);
 
     const desktopLayout = await page.evaluate(() => {
       const ids = ["kr_large_popular_changes", "us_large_popular_changes", "kr_chart_states", "us_chart_states"];

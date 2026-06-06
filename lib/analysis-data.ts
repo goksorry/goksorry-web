@@ -64,12 +64,12 @@ type ReportRow = {
 };
 
 export const ANALYSIS_SECTION_ORDER: AnalysisSectionId[] = [
+  "kr_categories",
+  "us_categories",
   "korean_news",
   "us_news",
   "kr_top10",
   "us_top10",
-  "kr_categories",
-  "us_categories",
   "kr_valuation",
   "us_valuation",
   "kr_large_popular_changes",
