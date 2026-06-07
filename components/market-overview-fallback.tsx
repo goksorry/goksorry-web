@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import { SOURCE_GROUPS, SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
+import { MARKET_SOURCE_COPY } from "@/lib/market-copy";
 
 const overviewCommunityRowStyle: CSSProperties & { "--overview-community-columns": string } = {
   "--overview-community-columns": String(SOURCE_GROUPS.length)
@@ -14,7 +15,7 @@ export function MarketOverviewFallback({ selectedGroupIds = SOURCE_GROUP_IDS }: 
       <section className="overview-market-block">
         <div className="overview-section-head">
           <h3>시장</h3>
-          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
+          <p className="overview-section-copy">{MARKET_SOURCE_COPY}</p>
         </div>
         <div className="overview-market-row">
           {[

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ANALYSIS_SECTION_ORDER, fetchLatestAnalysisReport, type AnalysisItem, type AnalysisReport } from "@/lib/analysis-data";
 import { resolveChartTrendTone, splitChartTrendText } from "@/lib/analysis-trend";
 import { getMarketColorContextForAnalysisSection, getMarketColorContextForIndicator } from "@/lib/change-color-mode";
+import { MARKET_SOURCE_COPY } from "@/lib/market-copy";
 import { getCachedMarketOverview, type MarketIndicator } from "@/lib/overview-data";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -152,7 +153,7 @@ const renderMarketStrip = (indicators: MarketIndicator[]) => (
   <section className="overview-market-block analysis-market-strip" aria-label="주요 시장 지표">
     <div className="overview-section-head">
       <h3>시장</h3>
-      <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
+      <p className="overview-section-copy">{MARKET_SOURCE_COPY}</p>
     </div>
     <div className="overview-market-row">{indicators.map(renderMarketIndicator)}</div>
   </section>

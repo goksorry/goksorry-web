@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
+import { MARKET_CHANGE_BASIS_COPY } from "@/lib/market-copy";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import {
   buildSourceGroupSummaries,
@@ -162,7 +163,7 @@ const formatRegime = (value: string): string => {
   }
 };
 
-const fallbackIndicator = (id: string, label: string, note: string): MarketIndicator => ({
+const fallbackIndicator = (id: string, label: string): MarketIndicator => ({
   id,
   label,
   value_text: "--",
@@ -170,7 +171,7 @@ const fallbackIndicator = (id: string, label: string, note: string): MarketIndic
   change_value: null,
   change_percent: null,
   tone: "flat",
-  note
+  note: MARKET_CHANGE_BASIS_COPY
 });
 
 export const hasUsableMarketIndicator = (indicator: MarketIndicator): boolean => {
@@ -183,7 +184,7 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
     const payload = JSON.parse(raw) as NaverServiceIndexResponse;
     const item = payload.result?.areas?.find((area) => area.name === "SERVICE_INDEX")?.datas?.[0];
     if (!item || typeof item.nv !== "number" || typeof item.cv !== "number" || typeof item.cr !== "number") {
-      return fallbackIndicator(code.toLowerCase(), label, "지수 대기 중");
+      return fallbackIndicator(code.toLowerCase(), label);
     }
 
     const value = item.nv / 100;
@@ -198,10 +199,10 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
       change_value: change,
       change_percent: item.cr,
       tone,
-      note: item.ms === "CLOSE" ? "장 마감 기준" : ""
+      note: MARKET_CHANGE_BASIS_COPY
     };
   } catch {
-    return fallbackIndicator(code.toLowerCase(), label, "네이버 지수 응답 지연");
+    return fallbackIndicator(code.toLowerCase(), label);
   }
 };
 
@@ -226,7 +227,7 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
     const signedPercent = resolveDirectionalValue(percent, tone, percentHtml);
 
     if (!value) {
-      return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 대기 중");
+      return fallbackIndicator("nasdaq", "NASDAQ");
     }
 
     return {
@@ -237,10 +238,10 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       change_value: signedDelta,
       change_percent: signedPercent,
       tone,
-      note: "네이버 해외지수"
+      note: MARKET_CHANGE_BASIS_COPY
     };
   } catch {
-    return fallbackIndicator("nasdaq", "NASDAQ", "해외 지수 응답 지연");
+    return fallbackIndicator("nasdaq", "NASDAQ");
   }
 };
 
@@ -252,7 +253,7 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
     const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
     const valueNumber = parseNumber(stripTags(todayBlock));
     if (valueNumber === null) {
-      return fallbackIndicator("usdkrw", "원/달러 환율", "환율 데이터 대기 중");
+      return fallbackIndicator("usdkrw", "원/달러 환율");
     }
 
     const tone: IndicatorTone =
@@ -281,10 +282,10 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
       change_value: signedChange,
       change_percent: signedPercent,
       tone,
-      note: "네이버 환율"
+      note: MARKET_CHANGE_BASIS_COPY
     };
   } catch {
-    return fallbackIndicator("usdkrw", "원/달러 환율", "환율 응답 지연");
+    return fallbackIndicator("usdkrw", "원/달러 환율");
   }
 };
 

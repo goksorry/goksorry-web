@@ -9,6 +9,7 @@ import { getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
 import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
+import { MARKET_SOURCE_COPY } from "@/lib/market-copy";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
 import {
   GOKSORRY_INDEX_BANDS,
@@ -286,7 +287,7 @@ export function MarketOverview({
       <section className="overview-market-block">
         <div className="overview-section-head">
           <h3>시장</h3>
-          <p className="overview-section-copy">주요 지수와 환율의 최근 흐름 · 약 5분 캐시</p>
+          <p className="overview-section-copy">{MARKET_SOURCE_COPY}</p>
         </div>
         <div className="overview-market-row">
           {marketPayload.market_indicators.map((indicator) => (
