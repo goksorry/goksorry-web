@@ -30,7 +30,7 @@ export const authModeDescriptions: Record<AuthMode, string> = {
 export const goksorryIndexCalculationNotes = [
   GOKSORRY_INDEX_SHORT_DESCRIPTION,
   "내부 sentiment score는 0~10이며 높을수록 희망입니다.",
-  "중립 5에서 벗어난 정도를 1.35배 증폭한 뒤 source/종목 시장에 맞는 시장보정을 더합니다.",
+  "중립 5에서 벗어난 정도를 1.35배 증폭한 뒤 source/종목 시장에 맞는 시장보정을 더합니다. 시장보정은 장 마감 후 6시간 동안 감쇠될 수 있습니다.",
   `표시 지수 변환식: ${GOKSORRY_INDEX_FORMULA_TEXT}`,
   `표시 구간: ${GOKSORRY_INDEX_BANDS.map((band) => `${band.range} ${band.label}`).join(" · ")}`,
   "높을수록 공포, 낮을수록 희망입니다."

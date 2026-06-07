@@ -1,5 +1,11 @@
 import { unstable_cache } from "next/cache";
-import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
+import {
+  buildMarketAdjustmentSnapshot,
+  calculateMarketAdjustmentTiming,
+  hasActiveMarketAdjustmentInput,
+  resolveMarketAdjustmentStatus,
+  type MarketAdjustmentStatus
+} from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import {
   buildSourceGroupSummaries,
@@ -24,12 +30,16 @@ export type MarketIndicator = {
   change_percent: number | null;
   tone: IndicatorTone;
   note: string;
+  market_adjustment_basis_at: string | null;
+  market_adjustment_weight: number;
+  market_adjustment_status: MarketAdjustmentStatus;
 };
 
 export type OverviewPayload = {
   generated_at: string;
   market_indicators: MarketIndicator[];
   market_adjustment_enabled: boolean;
+  market_adjustment_status: MarketAdjustmentStatus;
   overall_base_score: number;
   overall_market_adjustment: number;
   overall_sentiment_score: number;
@@ -41,6 +51,7 @@ export type OverviewPayload = {
 export type CommunityIndicatorsPayload = {
   generated_at: string;
   market_adjustment_enabled: boolean;
+  market_adjustment_status: MarketAdjustmentStatus;
   overall_base_score: number;
   overall_market_adjustment: number;
   overall_sentiment_score: number;
@@ -69,6 +80,8 @@ type NaverIndexPriceRow = {
 const MARKET_TTL_SEC = 300;
 const COMMUNITY_TTL_SEC = 60;
 const COMMUNITY_WINDOW_HOURS = 6;
+const KR_MARKET_TIME_ZONE = "Asia/Seoul";
+const US_MARKET_TIME_ZONE = "America/New_York";
 
 const fetchText = async (url: string): Promise<string> => {
   const controller = new AbortController();
@@ -113,12 +126,12 @@ const parseNumber = (value: string): number | null => {
 const formatMarketBasisDate = (value: string | undefined): string | null => {
   const match = String(value ?? "")
     .trim()
-    .match(/^(\d{4})[.-]?(\d{2})[.-]?(\d{2})/);
+    .match(/^(\d{4})[.-]?(\d{1,2})[.-]?(\d{1,2})/);
   if (!match) {
     return null;
   }
 
-  return `${match[2]}.${match[3]}`;
+  return `${match[2].padStart(2, "0")}.${match[3].padStart(2, "0")}`;
 };
 
 const formatCloseBasisNote = (value: string | undefined): string => {
@@ -131,23 +144,31 @@ const formatExchangeBasisNote = (value: string | undefined): string => {
   return date ? `${date} 매매기준율 대비` : "기준값 없음";
 };
 
-const parsePreviousIndexTradeDate = (raw: string): string | undefined => {
+const parseIndexTradeDates = (raw: string): { currentDate?: string; previousDate?: string } => {
   try {
     const rows = JSON.parse(raw) as NaverIndexPriceRow[];
-    return Array.isArray(rows) ? rows[1]?.localTradedAt : undefined;
+    return Array.isArray(rows)
+      ? { currentDate: rows[0]?.localTradedAt, previousDate: rows[1]?.localTradedAt }
+      : {};
   } catch {
-    return undefined;
+    return {};
   }
 };
 
-const parsePreviousWorldIndexTradeDate = (html: string): string | undefined => {
+const parseWorldIndexTradeDates = (html: string): { currentDate?: string; previousDate?: string } => {
   const rows = [...html.matchAll(/<tr[^>]*>\s*<td class="tb_td">([^<]+)<\/td>[\s\S]*?<\/tr>/gi)];
-  return rows[1]?.[1]?.trim();
+  return {
+    currentDate: rows[0]?.[1]?.trim(),
+    previousDate: rows[1]?.[1]?.trim()
+  };
 };
 
-const parsePreviousExchangeQuoteDate = (html: string): string | undefined => {
+const parseExchangeQuoteDates = (html: string): { currentDate?: string; previousDate?: string } => {
   const rows = [...html.matchAll(/<td class="date">([^<]+)<\/td>/gi)];
-  return rows[1]?.[1]?.trim();
+  return {
+    currentDate: rows[0]?.[1]?.trim(),
+    previousDate: rows[1]?.[1]?.trim()
+  };
 };
 
 const hasExplicitNumericSign = (html: string): boolean => /[+-]/.test(stripTags(html));
@@ -212,21 +233,24 @@ const fallbackIndicator = (id: string, label: string): MarketIndicator => ({
   change_value: null,
   change_percent: null,
   tone: "flat",
-  note: "기준값 없음"
+  note: "기준값 없음",
+  market_adjustment_basis_at: null,
+  market_adjustment_weight: 0,
+  market_adjustment_status: "unavailable"
 });
 
 export const hasUsableMarketIndicator = (indicator: MarketIndicator): boolean => {
   return indicator.value_text !== "--" && indicator.delta_text !== "데이터 없음";
 };
 
-const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promise<MarketIndicator> => {
+const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string, asOf: Date): Promise<MarketIndicator> => {
   try {
     const [raw, priceRaw] = await Promise.all([
       fetchText(`https://m.stock.naver.com/api/index/${code}/basic`),
       fetchText(`https://m.stock.naver.com/api/index/${code}/price?page=1&pageSize=2`)
     ]);
     const item = JSON.parse(raw) as NaverIndexBasicResponse;
-    const previousTradeDate = parsePreviousIndexTradeDate(priceRaw);
+    const tradeDates = parseIndexTradeDates(priceRaw);
     const value = parseNumber(String(item.closePrice ?? ""));
     const change = parseNumber(String(item.compareToPreviousClosePrice ?? ""));
     const percent = parseNumber(String(item.fluctuationsRatio ?? ""));
@@ -235,6 +259,13 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
     }
 
     const tone: IndicatorTone = change > 0 ? "up" : change < 0 ? "down" : "flat";
+    const adjustmentTiming = calculateMarketAdjustmentTiming({
+      basisDate: item.localTradedAt ?? tradeDates.currentDate,
+      timeZone: KR_MARKET_TIME_ZONE,
+      closeHour: 15,
+      closeMinute: 30,
+      asOf
+    });
 
     return {
       id: code.toLowerCase(),
@@ -244,19 +275,22 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string): Promi
       change_value: change,
       change_percent: percent,
       tone,
-      note: formatCloseBasisNote(previousTradeDate)
+      note: formatCloseBasisNote(tradeDates.previousDate),
+      market_adjustment_basis_at: adjustmentTiming.basis_at,
+      market_adjustment_weight: adjustmentTiming.weight,
+      market_adjustment_status: adjustmentTiming.status
     };
   } catch {
     return fallbackIndicator(code.toLowerCase(), label);
   }
 };
 
-const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
+const fetchNasdaqIndicator = async (asOf: Date): Promise<MarketIndicator> => {
   try {
     const html = await fetchText("https://finance.naver.com/world/sise.naver?symbol=NAS@IXIC");
     const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
     const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const previousTradeDate = parsePreviousWorldIndexTradeDate(html);
+    const tradeDates = parseWorldIndexTradeDates(html);
     const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
     const value = compactInlineNumber(todayBlock);
     const tone: IndicatorTone =
@@ -275,6 +309,13 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
     if (!value) {
       return fallbackIndicator("nasdaq", "NASDAQ");
     }
+    const adjustmentTiming = calculateMarketAdjustmentTiming({
+      basisDate: tradeDates.currentDate,
+      timeZone: US_MARKET_TIME_ZONE,
+      closeHour: 16,
+      closeMinute: 0,
+      asOf
+    });
 
     return {
       id: "nasdaq",
@@ -284,14 +325,17 @@ const fetchNasdaqIndicator = async (): Promise<MarketIndicator> => {
       change_value: signedDelta,
       change_percent: signedPercent,
       tone,
-      note: formatCloseBasisNote(previousTradeDate)
+      note: formatCloseBasisNote(tradeDates.previousDate),
+      market_adjustment_basis_at: adjustmentTiming.basis_at,
+      market_adjustment_weight: adjustmentTiming.weight,
+      market_adjustment_status: adjustmentTiming.status
     };
   } catch {
     return fallbackIndicator("nasdaq", "NASDAQ");
   }
 };
 
-const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
+const fetchUsdKrwIndicator = async (asOf: Date): Promise<MarketIndicator> => {
   try {
     const [html, dailyHtml] = await Promise.all([
       fetchText("https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_USDKRW"),
@@ -299,7 +343,7 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
     ]);
     const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
     const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const previousQuoteDate = parsePreviousExchangeQuoteDate(dailyHtml);
+    const quoteDates = parseExchangeQuoteDates(dailyHtml);
     const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
     const valueNumber = parseNumber(stripTags(todayBlock));
     if (valueNumber === null) {
@@ -318,6 +362,13 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
     const percentNumber = parseNumber(compactInlineNumber(percentHtml).replace(/[()]/g, ""));
     const signedChange = resolveDirectionalValue(changeNumber, tone, changeHtml);
     const signedPercent = resolveDirectionalValue(percentNumber, tone, percentHtml);
+    const adjustmentTiming = calculateMarketAdjustmentTiming({
+      basisDate: quoteDates.currentDate,
+      timeZone: KR_MARKET_TIME_ZONE,
+      closeHour: 15,
+      closeMinute: 30,
+      asOf
+    });
 
     return {
       id: "usdkrw",
@@ -332,7 +383,10 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
       change_value: signedChange,
       change_percent: signedPercent,
       tone,
-      note: formatExchangeBasisNote(previousQuoteDate)
+      note: formatExchangeBasisNote(quoteDates.previousDate),
+      market_adjustment_basis_at: adjustmentTiming.basis_at,
+      market_adjustment_weight: adjustmentTiming.weight,
+      market_adjustment_status: adjustmentTiming.status
     };
   } catch {
     return fallbackIndicator("usdkrw", "원/달러 환율");
@@ -340,15 +394,16 @@ const fetchUsdKrwIndicator = async (): Promise<MarketIndicator> => {
 };
 
 const buildMarketOverview = async (): Promise<Pick<OverviewPayload, "generated_at" | "market_indicators">> => {
+  const asOf = new Date();
   const marketIndicators = await Promise.all([
-    fetchServiceIndex("KOSPI", "KOSPI"),
-    fetchServiceIndex("KOSDAQ", "KOSDAQ"),
-    fetchNasdaqIndicator(),
-    fetchUsdKrwIndicator()
+    fetchServiceIndex("KOSPI", "KOSPI", asOf),
+    fetchServiceIndex("KOSDAQ", "KOSDAQ", asOf),
+    fetchNasdaqIndicator(asOf),
+    fetchUsdKrwIndicator(asOf)
   ]);
 
   return {
-    generated_at: new Date().toISOString(),
+    generated_at: asOf.toISOString(),
     market_indicators: marketIndicators
   };
 };
@@ -401,6 +456,8 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   const asOf = new Date();
   const marketOverview = await getCachedMarketOverview();
   const marketAdjustmentSnapshot = buildMarketAdjustmentSnapshot(marketOverview.generated_at, marketOverview.market_indicators);
+  const marketAdjustmentEnabled = hasActiveMarketAdjustmentInput(marketOverview.market_indicators);
+  const marketAdjustmentStatus = resolveMarketAdjustmentStatus(marketOverview.market_indicators);
   const communityIndicators = buildSourceGroupSummaries(rows, {
     marketAdjustmentSnapshot,
     asOf
@@ -409,7 +466,8 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
 
   return {
     generated_at: asOf.toISOString(),
-    market_adjustment_enabled: true,
+    market_adjustment_enabled: marketAdjustmentEnabled,
+    market_adjustment_status: marketAdjustmentStatus,
     overall_base_score: overall.overall_base_score,
     overall_market_adjustment: overall.overall_market_adjustment,
     overall_sentiment_score: overall.overall_sentiment_score,
@@ -433,6 +491,7 @@ export const buildOverviewData = async (): Promise<OverviewPayload> => {
     generated_at: marketOverview.generated_at,
     market_indicators: marketOverview.market_indicators,
     market_adjustment_enabled: communityOverview.market_adjustment_enabled,
+    market_adjustment_status: communityOverview.market_adjustment_status,
     overall_base_score: communityOverview.overall_base_score,
     overall_market_adjustment: communityOverview.overall_market_adjustment,
     overall_sentiment_score: communityOverview.overall_sentiment_score,

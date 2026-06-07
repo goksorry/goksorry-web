@@ -148,6 +148,8 @@ export function MarketOverview({
         setPayload({
           generated_at: data.generated_at,
           market_adjustment_enabled: data.market_adjustment_enabled,
+          market_adjustment_status:
+            data.market_adjustment_status ?? (data.market_adjustment_enabled ? "active" : "inactive"),
           overall_base_score: data.overall_base_score,
           overall_market_adjustment: data.overall_market_adjustment,
           overall_sentiment_score: data.overall_sentiment_score,
@@ -281,6 +283,15 @@ export function MarketOverview({
     goksorryMarketAdjustment >= 0
       ? `+${goksorryMarketAdjustment.toFixed(2)}`
       : goksorryMarketAdjustment.toFixed(2);
+  const marketAdjustmentStatus = payload?.market_adjustment_enabled
+    ? payload.market_adjustment_status ?? "active"
+    : "inactive";
+  const marketAdjustmentMetaText =
+    marketAdjustmentStatus === "inactive" || marketAdjustmentStatus === "unavailable"
+      ? "시장보정 일시중지"
+      : marketAdjustmentStatus === "decaying"
+        ? `시장보정 감쇠 ${signedGoksorryMarketAdjustment}`
+        : `시장보정 ${signedGoksorryMarketAdjustment}`;
 
   return (
     <>
@@ -344,7 +355,7 @@ export function MarketOverview({
                 {marketPayload.generated_at ? `업데이트 ${toLocalTime(marketPayload.generated_at)}` : "캐시 지수 준비 중"}
               </p>
               <p className="overview-market-adjustment-meta">
-                {`기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · 시장보정 ${signedGoksorryMarketAdjustment}`}
+                {`기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · ${marketAdjustmentMetaText}`}
               </p>
             </div>
             <div className="overview-overall-score" aria-live="polite">

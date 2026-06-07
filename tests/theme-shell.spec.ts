@@ -798,6 +798,7 @@ test.describe("program theme shells", () => {
             }
           ],
           market_adjustment_enabled: true,
+          market_adjustment_status: "decaying",
           overall_base_score: 5,
           overall_market_adjustment: 0,
           overall_sentiment_score: 5,
@@ -937,6 +938,7 @@ test.describe("program theme shells", () => {
             }
           ],
           market_adjustment_enabled: true,
+          market_adjustment_status: "decaying",
           overall_base_score: 5,
           overall_market_adjustment: 0,
           overall_sentiment_score: 5,
@@ -967,6 +969,7 @@ test.describe("program theme shells", () => {
 
     await page.clock.runFor(61_000);
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
+    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정 감쇠");
     await expect(page.locator(".overview-market-block").first().locator(".overview-section-copy")).toHaveText(
       "출처: 네이버 금융 · 약 5분 캐시"
     );
@@ -982,6 +985,48 @@ test.describe("program theme shells", () => {
       expect(url.pathname).toBe("/api/internal/overview");
       expect(url.searchParams.has("market_adjustment")).toBe(false);
     }
+  });
+
+  test("market overview shows paused adjustment when market inputs are inactive", async ({ page }) => {
+    await page.clock.install();
+    await page.route("**/api/internal/overview**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2999-01-01T00:00:00.000Z",
+          market_indicators: [
+            {
+              id: "kospi",
+              label: "KOSPI",
+              value_text: "9,876.54",
+              delta_text: "+12.34 (+0.12%)",
+              change_value: 12.34,
+              change_percent: 0.12,
+              tone: "up",
+              note: "06.04 종가 대비",
+              market_adjustment_basis_at: "2026-06-05T06:30:00.000Z",
+              market_adjustment_weight: 0,
+              market_adjustment_status: "inactive"
+            }
+          ],
+          market_adjustment_enabled: false,
+          market_adjustment_status: "inactive",
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: []
+        })
+      });
+    });
+
+    await prepareThemePage(page);
+    await page.goto("/");
+    await page.clock.runFor(61_000);
+
+    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정 일시중지");
   });
 
   test("feed lane headers show intensity percentages instead of row counts", async ({ page }) => {
