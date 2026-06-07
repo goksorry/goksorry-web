@@ -5,6 +5,7 @@ export type SentimentBand =
   | "neutral"
   | "bullish"
   | "extreme_bullish";
+export type SentimentIntensityTone = "fear" | "hope";
 
 export const SENTIMENT_SCORE_MIN = 0;
 export const SENTIMENT_SCORE_MAX = 10;
@@ -219,6 +220,19 @@ export const fearIndexFromScore = (score: number): number => {
 export const euphoriaIndexFromScore = (score: number): number => {
   const index = 50 + amplifiedDistanceFromNeutral(score) * 10;
   return clampIndexValue(index, 100, 2);
+};
+
+export const sentimentIntensityPercentFromScores = (
+  scores: number[],
+  tone: SentimentIntensityTone
+): number | null => {
+  if (scores.length === 0) {
+    return null;
+  }
+
+  const averageScore = averageSentimentScore(scores);
+  const index = tone === "fear" ? fearIndexFromScore(averageScore) : euphoriaIndexFromScore(averageScore);
+  return Math.round(index);
 };
 
 export const goksorryIndexFromScore = (score: number): number => {

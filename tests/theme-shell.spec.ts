@@ -968,6 +968,105 @@ test.describe("program theme shells", () => {
     }
   });
 
+  test("feed lane headers show intensity percentages instead of row counts", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.route("**/api/internal/overview**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2999-01-01T00:00:00.000Z",
+          market_indicators: [],
+          market_adjustment_enabled: true,
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: []
+        })
+      });
+    });
+    await page.route("**/api/feed**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows: [
+            {
+              post_key: "fear-low",
+              source: "dc_stock",
+              title: "fear low",
+              clean_title: null,
+              url: "https://example.com/fear-low",
+              symbol: null,
+              symbol_name: null,
+              symbol_market: null,
+              label: "bearish",
+              sentiment_score: 2,
+              confidence: 0.9,
+              analyzed_at: "2999-01-01T00:00:00.000Z"
+            },
+            {
+              post_key: "fear-mid",
+              source: "dc_stock",
+              title: "fear mid",
+              clean_title: null,
+              url: "https://example.com/fear-mid",
+              symbol: null,
+              symbol_name: null,
+              symbol_market: null,
+              label: "bearish",
+              sentiment_score: 4,
+              confidence: 0.8,
+              analyzed_at: "2999-01-01T00:00:01.000Z"
+            },
+            {
+              post_key: "hope-high",
+              source: "toss_stock_community_005930",
+              title: "hope high",
+              clean_title: null,
+              url: "https://example.com/hope-high",
+              symbol: "005930",
+              symbol_name: "삼성전자",
+              symbol_market: "kr",
+              label: "bullish",
+              sentiment_score: 7,
+              confidence: 0.9,
+              analyzed_at: "2999-01-01T00:00:02.000Z"
+            },
+            {
+              post_key: "hope-extreme",
+              source: "toss_stock_community_005930",
+              title: "hope extreme",
+              clean_title: null,
+              url: "https://example.com/hope-extreme",
+              symbol: "005930",
+              symbol_name: "삼성전자",
+              symbol_market: "kr",
+              label: "bullish",
+              sentiment_score: 8,
+              confidence: 0.9,
+              analyzed_at: "2999-01-01T00:00:03.000Z"
+            }
+          ],
+          nextOffset: null,
+          hasMore: false,
+          errorMessage: ""
+        })
+      });
+    });
+
+    await prepareThemePage(page);
+    await page.goto("/?theme=excel-light");
+
+    await expect(page.locator(".sentiment-lane-fear .sentiment-intensity-tag")).toHaveText("공포도 82%");
+    await expect(page.locator(".sentiment-lane-hope .sentiment-intensity-tag")).toHaveText("희망도 90%");
+    await expect(page.locator(".sentiment-lane-fear .sentiment-lane-head")).not.toContainText(/\d+건/);
+    await expect(page.locator(".sentiment-lane-hope .sentiment-lane-head")).not.toContainText(/\d+건/);
+    await expect(page.locator(".sentiment-count-tag")).toHaveCount(0);
+  });
+
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

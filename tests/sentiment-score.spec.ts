@@ -4,6 +4,7 @@ import {
   euphoriaIndexFromScore,
   fearIndexFromScore,
   goksorryIndexFromScore,
+  sentimentIntensityPercentFromScores,
   sentimentBandFromGoksorryIndex,
   sentimentBandFromScore,
   sentimentLabelFromScore,
@@ -72,5 +73,14 @@ test.describe("sentiment score levels", () => {
     expect(goksorryIndexFromScore(5)).toBe(5);
     expect(goksorryIndexFromScore(7.5)).toBe(1);
     expect(goksorryIndexFromScore(10)).toBe(0);
+  });
+
+  test("derives lane intensity percentages from visible row scores", () => {
+    expect(sentimentIntensityPercentFromScores([], "fear")).toBeNull();
+    expect(sentimentIntensityPercentFromScores([], "hope")).toBeNull();
+    expect(sentimentIntensityPercentFromScores([2, 4], "fear")).toBe(82);
+    expect(sentimentIntensityPercentFromScores([7, 8], "hope")).toBe(90);
+    expect(sentimentIntensityPercentFromScores([-1, 11], "fear")).toBe(50);
+    expect(sentimentIntensityPercentFromScores([-1, 11], "hope")).toBe(50);
   });
 });

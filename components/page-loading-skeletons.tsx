@@ -17,7 +17,7 @@ function LoadingFeedLane({ tone, label }: FeedLaneProps) {
       <div className="sentiment-lane-head">
         <h2>
           {label}
-          <span className="tag sentiment-count-tag">로딩</span>
+          <span className="tag sentiment-intensity-tag">{label === "공포" ? "공포도" : "희망도"} 로딩</span>
         </h2>
         <span className={`sentiment-lane-watermark sentiment-lane-watermark-${tone}`} aria-hidden="true">
           {tone === "fear" ? "🤡" : "🥂"}

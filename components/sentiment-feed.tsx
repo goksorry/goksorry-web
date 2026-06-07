@@ -6,6 +6,7 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
+import { sentimentIntensityPercentFromScores, type SentimentIntensityTone } from "@/lib/sentiment-score";
 import { useEffect, useRef, useState } from "react";
 
 type SymbolBadge = {
@@ -76,6 +77,23 @@ const buildSymbolBadges = (rows: FeedRow[]) => {
       name,
       count
     }));
+};
+
+const buildSentimentIntensityLabel = (
+  rows: FeedRow[],
+  tone: SentimentIntensityTone,
+  loading: boolean
+): string => {
+  const label = tone === "fear" ? "공포도" : "희망도";
+  if (loading) {
+    return `${label} 로딩`;
+  }
+
+  const percent = sentimentIntensityPercentFromScores(
+    rows.map((row) => row.sentiment_score),
+    tone
+  );
+  return percent === null ? `${label} --` : `${label} ${percent}%`;
 };
 
 function SymbolBadgeList({ badges, ariaLabel }: { badges: SymbolBadge[]; ariaLabel: string }) {
@@ -187,6 +205,8 @@ export function SentimentFeed({
   const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
   const fearRows = actionableRows.filter((row) => row.label === "bearish");
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
+  const fearIntensityLabel = buildSentimentIntensityLabel(fearRows, "fear", loading);
+  const hopeIntensityLabel = buildSentimentIntensityLabel(hopeRows, "hope", loading);
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
   const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
@@ -324,7 +344,7 @@ export function SentimentFeed({
             <div className="sentiment-lane-head">
               <h2>
                 공포
-                <span className="tag sentiment-count-tag">{loading ? "로딩" : `${fearRows.length}건`}</span>
+                <span className="tag sentiment-intensity-tag">{fearIntensityLabel}</span>
               </h2>
               <span className="sentiment-lane-watermark sentiment-lane-watermark-fear" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bearish.emoji}
@@ -348,7 +368,7 @@ export function SentimentFeed({
             <div className="sentiment-lane-head">
               <h2>
                 희망
-                <span className="tag sentiment-count-tag">{loading ? "로딩" : `${hopeRows.length}건`}</span>
+                <span className="tag sentiment-intensity-tag">{hopeIntensityLabel}</span>
               </h2>
               <span className="sentiment-lane-watermark sentiment-lane-watermark-hope" aria-hidden="true">
                 {SENTIMENT_DISPLAY.bullish.emoji}
