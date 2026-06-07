@@ -357,10 +357,10 @@ test.describe("program theme shells", () => {
     await expect(page.locator(".analysis-market-strip .overview-market-stat")).toHaveCount(4);
     await expect(page.locator(".analysis-market-strip .overview-section-copy")).toHaveText("출처: 네이버 금융 · 약 5분 캐시");
     await expect(page.locator(".analysis-market-strip .overview-note")).toHaveText([
-      "전일 대비",
-      "전일 대비",
-      "전일 대비",
-      "전일 대비"
+      /^(\d{2}\.\d{2} 종가 대비|기준값 없음)$/,
+      /^(\d{2}\.\d{2} 종가 대비|기준값 없음)$/,
+      /^(\d{2}\.\d{2} 종가 대비|기준값 없음)$/,
+      /^(\d{2}\.\d{2} 매매기준율 대비|기준값 없음)$/
     ]);
     await expect(page.locator(".analysis-card-exchange")).toHaveCount(0);
     await expect(page.locator(".analysis-card-market")).toHaveCount(0);
@@ -764,7 +764,7 @@ test.describe("program theme shells", () => {
               change_value: 12.34,
               change_percent: 0.12,
               tone: "up",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "kosdaq",
@@ -774,7 +774,7 @@ test.describe("program theme shells", () => {
               change_value: -3.21,
               change_percent: -0.26,
               tone: "down",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "nasdaq",
@@ -784,7 +784,7 @@ test.describe("program theme shells", () => {
               change_value: 4.56,
               change_percent: 0.02,
               tone: "up",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "usdkrw",
@@ -794,7 +794,7 @@ test.describe("program theme shells", () => {
               change_value: -1.1,
               change_percent: -0.08,
               tone: "down",
-              note: "전일 대비"
+              note: "06.04 매매기준율 대비"
             }
           ],
           market_adjustment_enabled: true,
@@ -903,7 +903,7 @@ test.describe("program theme shells", () => {
               change_value: 12.34,
               change_percent: 0.12,
               tone: "up",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "kosdaq",
@@ -913,7 +913,7 @@ test.describe("program theme shells", () => {
               change_value: 3.21,
               change_percent: 0.26,
               tone: "up",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "nasdaq",
@@ -923,7 +923,7 @@ test.describe("program theme shells", () => {
               change_value: -4.56,
               change_percent: -0.02,
               tone: "down",
-              note: "전일 대비"
+              note: "06.04 종가 대비"
             },
             {
               id: "usdkrw",
@@ -933,7 +933,7 @@ test.describe("program theme shells", () => {
               change_value: 1.1,
               change_percent: 0.08,
               tone: "up",
-              note: "전일 대비"
+              note: "06.04 매매기준율 대비"
             }
           ],
           market_adjustment_enabled: true,
@@ -971,10 +971,10 @@ test.describe("program theme shells", () => {
       "출처: 네이버 금융 · 약 5분 캐시"
     );
     await expect(page.locator(".overview-market-stat .overview-note")).toHaveText([
-      "전일 대비",
-      "전일 대비",
-      "전일 대비",
-      "전일 대비"
+      "06.04 종가 대비",
+      "06.04 종가 대비",
+      "06.04 종가 대비",
+      "06.04 매매기준율 대비"
     ]);
     expect(overviewRequestUrls.length).toBeGreaterThan(0);
     for (const requestUrl of overviewRequestUrls) {
