@@ -1438,6 +1438,200 @@ a:hover {
   height: 2rem;
 }
 
+.page-skeleton {
+  --page-skeleton-muted: color-mix(in srgb, var(--ink) 10%, transparent);
+  --page-skeleton-strong: color-mix(in srgb, var(--ink) 17%, transparent);
+}
+
+.page-skeleton-line,
+.page-skeleton-tag {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--page-skeleton-muted, color-mix(in srgb, var(--ink) 9%, transparent)) 0%,
+    var(--page-skeleton-strong, color-mix(in srgb, var(--ink) 15%, transparent)) 45%,
+    var(--page-skeleton-muted, color-mix(in srgb, var(--ink) 9%, transparent)) 90%
+  );
+  background-size: 220% 100%;
+  animation: feed-skeleton-shimmer 1.15s linear infinite;
+}
+
+.page-skeleton-line {
+  width: min(100%, 24rem);
+  height: 0.92rem;
+}
+
+.page-skeleton-tag {
+  width: 5.6rem;
+  height: 1.65rem;
+}
+
+.page-skeleton-line:nth-child(2n) {
+  width: min(86%, 21rem);
+}
+
+.page-skeleton-line:nth-child(3n) {
+  width: min(72%, 18rem);
+}
+
+.page-skeleton-heading {
+  width: 8.5rem;
+  height: 1.08rem;
+}
+
+.page-skeleton-count {
+  width: 2.6rem;
+  height: 0.78rem;
+}
+
+.page-skeleton-item-label {
+  width: 8rem;
+}
+
+.page-skeleton-item-value {
+  width: 5rem;
+}
+
+.page-skeleton-input {
+  width: min(100%, 28rem);
+  height: 2.5rem;
+  border-radius: 8px;
+}
+
+.page-skeleton-textarea {
+  width: 100%;
+  height: 10rem;
+  border-radius: 8px;
+}
+
+.page-skeleton-button {
+  width: 7rem;
+  height: 2.35rem;
+  border-radius: 8px;
+}
+
+.page-skeleton-policy {
+  width: min(100%, 32rem);
+  height: 3rem;
+  border-radius: 8px;
+}
+
+.page-skeleton-analysis .overview-market-stat {
+  display: grid;
+  align-content: center;
+  gap: 0.55rem;
+}
+
+.page-skeleton-analysis .analysis-hero-copy,
+.page-skeleton-analysis .analysis-status-card,
+.page-skeleton-docs .docs-hero > div,
+.page-skeleton-policy-page article,
+.page-skeleton-form > div,
+.page-skeleton-auth > div,
+.page-skeleton-article-body {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.page-skeleton-analysis .analysis-card-summary .page-skeleton-line,
+.page-skeleton-analysis .analysis-item p .page-skeleton-line {
+  width: 100%;
+}
+
+.page-skeleton-board-card {
+  min-height: 5.8rem;
+  display: grid;
+  align-items: center;
+}
+
+.page-skeleton-post-list .community-post-row {
+  pointer-events: none;
+}
+
+.page-skeleton-board-label {
+  width: 4.2rem;
+}
+
+.page-skeleton-post-title {
+  width: min(100%, 24rem);
+}
+
+.page-skeleton-post-meta {
+  justify-self: end;
+  width: 9rem;
+}
+
+.page-skeleton-post-detail-title {
+  width: min(100%, 34rem);
+  height: 1.45rem;
+}
+
+.page-skeleton-post-meta-wide {
+  width: min(100%, 28rem);
+}
+
+.page-skeleton-form-title {
+  width: min(100%, 16rem);
+  height: 1.35rem;
+}
+
+.page-skeleton-room .goksorry-room-form {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.page-skeleton-room-entry {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 4rem;
+  padding: 0.72rem;
+}
+
+.page-skeleton-chat-log {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.9rem 0;
+}
+
+.page-skeleton-chat-bubble {
+  width: min(72%, 32rem);
+  height: 2.1rem;
+  border-radius: 12px;
+}
+
+.page-skeleton-chat-bubble-alt {
+  justify-self: end;
+  width: min(58%, 25rem);
+}
+
+.page-skeleton-chat-input,
+.page-skeleton-admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.page-skeleton-auth-button {
+  width: min(100%, 17rem);
+  height: 2.6rem;
+  border-radius: 8px;
+}
+
+.page-skeleton-docs .card,
+.page-skeleton-admin-table {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.page-skeleton-admin-table {
+  min-width: 42rem;
+  padding: 0.8rem;
+}
+
 @keyframes feed-skeleton-shimmer {
   from {
     background-position: 100% 0;
