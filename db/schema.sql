@@ -561,7 +561,9 @@ create table if not exists public.detector_status (
   us_cooldown_until timestamptz,
   withdrawn_accounts_purged_at timestamptz,
   hold_list jsonb not null default '[]'::jsonb,
-  updated_at timestamptz not null default now()
+  collection_policy jsonb not null default '{"sources":[]}'::jsonb,
+  updated_at timestamptz not null default now(),
+  constraint detector_status_collection_policy_object check (jsonb_typeof(collection_policy) = 'object')
 );
 
 create index if not exists detector_symbol_signals_market_asof_idx

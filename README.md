@@ -63,7 +63,7 @@
 
 ## 운영 메모
 
-- 외부 출처의 `robots.txt`를 다시 확인하면 [`components/site-footer.tsx`](./components/site-footer.tsx)의 출처 안내 확인 시각도 함께 갱신합니다.
+- Pierrot 워커가 detector status로 보낸 `robots.txt` / 이용약관 확인 결과를 footer 출처 목록에 반영합니다. 수집 비허용 출처는 목록에서 지우지 않고 취소선으로 표시합니다.
 
 ## 성능 / 안정성 작업 메모
 

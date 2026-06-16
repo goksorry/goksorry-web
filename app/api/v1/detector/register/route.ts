@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { jsonError, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
+import { COLLECTION_POLICY_CACHE_TAG } from "@/lib/collection-policy-status";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
@@ -43,6 +45,85 @@ type MarketRow = {
   regime: unknown;
   fear_index: unknown;
   payload?: unknown;
+};
+
+type CollectionPolicySourceRow = {
+  source_name?: unknown;
+  site_key?: unknown;
+  checked_at?: unknown;
+  allow_fetch?: unknown;
+  allow_detail?: unknown;
+  postponed?: unknown;
+  reason?: unknown;
+  robots_url?: unknown;
+  terms_url?: unknown;
+};
+
+type CollectionPolicyPayload = {
+  checked_at?: unknown;
+  refresh_hours?: unknown;
+  sources?: CollectionPolicySourceRow[];
+};
+
+const sanitizeStatusText = (value: unknown, maxLength: number): string | null => {
+  const text = String(value ?? "").replace(/[<>]/g, "").trim();
+  if (!text) {
+    return null;
+  }
+  return text.slice(0, maxLength);
+};
+
+const asOptionalIso = (value: unknown): string | null => {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+};
+
+const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const payload = value as CollectionPolicyPayload;
+  const sources = Array.isArray(payload.sources) ? payload.sources : [];
+  const normalizedSources = sources.slice(0, 80).flatMap((source) => {
+    const sourceName = sanitizeStatusText(source.source_name, 120);
+    if (!sourceName) {
+      return [];
+    }
+
+    return [
+      {
+        source_name: sourceName,
+        site_key: sanitizeStatusText(source.site_key, 80),
+        checked_at: asOptionalIso(source.checked_at),
+        allow_fetch: Boolean(source.allow_fetch),
+        allow_detail: Boolean(source.allow_detail),
+        postponed: Boolean(source.postponed),
+        reason: sanitizeStatusText(source.reason, 120),
+        robots_url: sanitizeStatusText(source.robots_url, 500),
+        terms_url: sanitizeStatusText(source.terms_url, 500)
+      }
+    ];
+  });
+
+  const checkedAt = asOptionalIso(payload.checked_at);
+  const sourceCheckedAtValues = normalizedSources
+    .map((source) => asOptionalIso(source.checked_at))
+    .filter((value): value is string => Boolean(value))
+    .sort();
+  return {
+    checked_at: checkedAt ?? sourceCheckedAtValues[sourceCheckedAtValues.length - 1] ?? null,
+    refresh_hours: Math.floor(toNumber(payload.refresh_hours, 1, 24 * 14, 24)),
+    sources: normalizedSources
+  };
 };
 
 export async function POST(request: Request) {
@@ -147,8 +228,9 @@ export async function POST(request: Request) {
   let statusUpdated = false;
   if (body.status && typeof body.status === "object") {
     const payload = body.status;
+    const collectionPolicy = normalizeCollectionPolicy(payload.collection_policy);
 
-    const row = {
+    const row: Record<string, unknown> = {
       singleton: true,
       collector_last_run_at: asIso(payload.collector_last_run_at),
       collector_errors: Math.floor(toNumber(payload.collector_errors, 0, 1_000_000, 0)),
@@ -160,10 +242,17 @@ export async function POST(request: Request) {
       hold_list: Array.isArray(payload.hold_list) ? payload.hold_list.slice(0, 200) : []
     };
 
+    if (collectionPolicy) {
+      row.collection_policy = collectionPolicy;
+    }
+
     const { error } = await service.from("detector_status").upsert(row, { onConflict: "singleton" });
     if (error) {
       logApiError("detector status upsert failed", auth.requestId, error);
       return jsonError(auth.requestId, 504, "UPSTREAM_TIMEOUT", "status upsert failed");
+    }
+    if (collectionPolicy) {
+      revalidateTag(COLLECTION_POLICY_CACHE_TAG);
     }
     statusUpdated = true;
   }

@@ -660,6 +660,16 @@ a:hover {
   color: var(--ink-soft);
 }
 
+.site-footer-source-link-inactive {
+  opacity: 0.58;
+  text-decoration-line: underline line-through;
+  text-decoration-thickness: from-font;
+}
+
+.site-footer-source-link-detail-disabled {
+  opacity: 0.78;
+}
+
 .site-footer-info {
   position: relative;
 }
