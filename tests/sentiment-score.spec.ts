@@ -5,6 +5,7 @@ import {
   fearIndexFromScore,
   goksorryIndexFromScore,
   sentimentIntensityPercentFromScores,
+  sentimentIntensityPercentPairFromScores,
   sentimentBandFromGoksorryIndex,
   sentimentBandFromScore,
   sentimentLabelFromScore,
@@ -82,5 +83,12 @@ test.describe("sentiment score levels", () => {
     expect(sentimentIntensityPercentFromScores([7, 8], "hope")).toBe(90);
     expect(sentimentIntensityPercentFromScores([-1, 11], "fear")).toBe(50);
     expect(sentimentIntensityPercentFromScores([-1, 11], "hope")).toBe(50);
+  });
+
+  test("derives paired lane intensity percentages that sum to 100", () => {
+    expect(sentimentIntensityPercentPairFromScores([])).toBeNull();
+    expect(sentimentIntensityPercentPairFromScores([2, 4])).toEqual({ fear: 82, hope: 18 });
+    expect(sentimentIntensityPercentPairFromScores([7, 8])).toEqual({ fear: 10, hope: 90 });
+    expect(sentimentIntensityPercentPairFromScores([2, 4, 7, 8])).toEqual({ fear: 45, hope: 55 });
   });
 });

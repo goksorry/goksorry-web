@@ -8,7 +8,13 @@ import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { getMarketColorContextForIndicator } from "@/lib/change-color-mode";
 import type { CommunityIndicatorsPayload, OverviewPayload } from "@/lib/overview-data";
 import type { SourceGroupSummary } from "@/lib/feed-data";
-import { SOURCE_GROUPS, isSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "@/lib/feed-source-groups";
+import {
+  SOURCE_GROUPS,
+  SOURCE_GROUP_IDS,
+  isSourceGroupId,
+  parseSourceGroupSelection,
+  type SourceGroupId
+} from "@/lib/feed-source-groups";
 import { MARKET_SOURCE_COPY } from "@/lib/market-copy";
 import { SENTIMENT_BAND_DISPLAY, SENTIMENT_DISPLAY, TONE_EMOJI } from "@/lib/sentiment-display";
 import {
@@ -101,6 +107,11 @@ const MARKET_RETRY_MS = 15_000;
 
 const hasMissingMarketIndicator = (indicator: Pick<OverviewPayload["market_indicators"][number], "value_text" | "delta_text">) => {
   return indicator.value_text === "--" || indicator.delta_text === "데이터 없음";
+};
+
+const buildHomeUrl = (searchParams: URLSearchParams): string => {
+  const query = searchParams.toString();
+  return query ? `/?${query}` : "/";
 };
 
 export function MarketOverview({
@@ -218,15 +229,39 @@ export function MarketOverview({
     };
   }, [activeGroupId]);
 
+  const selectedGroupIdsFromUrl = (() => {
+    const channels = searchParams.get("channels") ?? "";
+    const legacyChannel = searchParams.get("channel") ?? "";
+
+    if (channels.length > 0) {
+      return parseSourceGroupSelection(channels);
+    }
+
+    if (isSourceGroupId(legacyChannel)) {
+      return [legacyChannel];
+    }
+
+    return initialSelectedGroupIds;
+  })();
+  const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
+  const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
+
   const onCommunityIndicatorClick = (groupId: SourceGroupId) => {
     if (pathname === "/") {
       const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set("channels", groupId);
       nextParams.delete("channel");
       nextParams.delete("source");
-      setOptimisticGroupIds([groupId]);
+
+      if (selectedFeedGroupId === groupId) {
+        nextParams.delete("channels");
+        setOptimisticGroupIds([...SOURCE_GROUP_IDS]);
+      } else {
+        nextParams.set("channels", groupId);
+        setOptimisticGroupIds([groupId]);
+      }
+
       startTransition(() => {
-        router.replace(`/?${nextParams.toString()}`, { scroll: false });
+        router.replace(buildHomeUrl(nextParams), { scroll: false });
       });
       return;
     }
@@ -246,22 +281,6 @@ export function MarketOverview({
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
-  const selectedGroupIdsFromUrl = (() => {
-    const channels = searchParams.get("channels") ?? "";
-    const legacyChannel = searchParams.get("channel") ?? "";
-
-    if (channels.length > 0) {
-      return parseSourceGroupSelection(channels);
-    }
-
-    if (isSourceGroupId(legacyChannel)) {
-      return [legacyChannel];
-    }
-
-    return initialSelectedGroupIds;
-  })();
-  const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
-  const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
   const overallCommunityBaseScore = payload?.overall_base_score ?? 5;
   const overallCommunityMarketAdjustment = payload?.overall_market_adjustment ?? 0;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;

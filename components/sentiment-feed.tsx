@@ -6,7 +6,7 @@ import { useFeedSelection } from "@/components/feed-selection-provider";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
-import { sentimentIntensityPercentFromScores, type SentimentIntensityTone } from "@/lib/sentiment-score";
+import { sentimentIntensityPercentPairFromScores, type SentimentIntensityTone } from "@/lib/sentiment-score";
 import { useEffect, useRef, useState } from "react";
 
 type SymbolBadge = {
@@ -80,7 +80,7 @@ const buildSymbolBadges = (rows: FeedRow[]) => {
 };
 
 const buildSentimentIntensityLabel = (
-  rows: FeedRow[],
+  percent: number | null,
   tone: SentimentIntensityTone,
   loading: boolean
 ): string => {
@@ -89,10 +89,6 @@ const buildSentimentIntensityLabel = (
     return `${label} 로딩`;
   }
 
-  const percent = sentimentIntensityPercentFromScores(
-    rows.map((row) => row.sentiment_score),
-    tone
-  );
   return percent === null ? `${label} --` : `${label} ${percent}%`;
 };
 
@@ -205,8 +201,9 @@ export function SentimentFeed({
   const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
   const fearRows = actionableRows.filter((row) => row.label === "bearish");
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
-  const fearIntensityLabel = buildSentimentIntensityLabel(fearRows, "fear", loading);
-  const hopeIntensityLabel = buildSentimentIntensityLabel(hopeRows, "hope", loading);
+  const intensityPercentPair = sentimentIntensityPercentPairFromScores(actionableRows.map((row) => row.sentiment_score));
+  const fearIntensityLabel = buildSentimentIntensityLabel(intensityPercentPair?.fear ?? null, "fear", loading);
+  const hopeIntensityLabel = buildSentimentIntensityLabel(intensityPercentPair?.hope ?? null, "hope", loading);
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
   const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
