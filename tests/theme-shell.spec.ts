@@ -1121,11 +1121,129 @@ test.describe("program theme shells", () => {
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
 
-    await expect(page.locator(".sentiment-lane-fear .sentiment-intensity-tag")).toHaveText("공포도 82%");
-    await expect(page.locator(".sentiment-lane-hope .sentiment-intensity-tag")).toHaveText("희망도 90%");
+    await expect(page.locator(".sentiment-lane-fear .sentiment-intensity-tag")).toHaveText("공포도 45%");
+    await expect(page.locator(".sentiment-lane-hope .sentiment-intensity-tag")).toHaveText("희망도 55%");
     await expect(page.locator(".sentiment-lane-fear .sentiment-lane-head")).not.toContainText(/\d+건/);
     await expect(page.locator(".sentiment-lane-hope .sentiment-lane-head")).not.toContainText(/\d+건/);
     await expect(page.locator(".sentiment-count-tag")).toHaveCount(0);
+  });
+
+  test("market overview community cards toggle home feed selection back to all", async ({ page }) => {
+    await page.clock.install();
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.route("**/api/internal/overview**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2999-01-01T00:00:00.000Z",
+          market_indicators: [],
+          market_adjustment_enabled: true,
+          market_adjustment_status: "active",
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: [
+            {
+              id: "toss",
+              label: "토스증권 커뮤니티 지수",
+              shortLabel: "토스증권",
+              mentions: 2,
+              bullish: 1,
+              bearish: 1,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: []
+            },
+            {
+              id: "ppomppu",
+              label: "뽐뿌 증권포럼 지수",
+              shortLabel: "뽐뿌",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: []
+            },
+            {
+              id: "blind",
+              label: "블라인드 주식투자 지수",
+              shortLabel: "블라인드",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: []
+            },
+            {
+              id: "dc",
+              label: "디시 주갤·국장갤·미장갤·해주갤 지수",
+              shortLabel: "디시 4종",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: []
+            }
+          ]
+        })
+      });
+    });
+    await page.route("**/api/feed**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows: [],
+          nextOffset: null,
+          hasMore: false,
+          errorMessage: ""
+        })
+      });
+    });
+
+    await prepareThemePage(page);
+    await page.goto("/");
+    await page.clock.runFor(61_000);
+
+    const tossCard = page.getByRole("button", { name: /토스증권 커뮤니티 지수/ });
+    await expect(tossCard).toBeVisible();
+    const selectAllButton = page.getByRole("button", { name: "전체", exact: true });
+    await expect(selectAllButton).toHaveClass(/filter-chip-active/);
+
+    await tossCard.click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("channels")).toBe("toss");
+    await expect(tossCard).toHaveClass(/overview-card-active/);
+
+    await tossCard.click();
+    await expect.poll(() => new URL(page.url()).searchParams.has("channels")).toBe(false);
+    await expect(selectAllButton).toHaveClass(/filter-chip-active/);
+    await expect(tossCard).not.toHaveClass(/overview-card-active/);
   });
 
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {

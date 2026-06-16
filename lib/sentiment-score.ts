@@ -235,6 +235,21 @@ export const sentimentIntensityPercentFromScores = (
   return Math.round(index);
 };
 
+export const sentimentIntensityPercentPairFromScores = (
+  scores: number[]
+): { fear: number; hope: number } | null => {
+  if (scores.length === 0) {
+    return null;
+  }
+
+  const averageScore = averageSentimentScore(scores);
+  const fear = Math.round(fearIndexFromScore(averageScore));
+  return {
+    fear,
+    hope: 100 - fear
+  };
+};
+
 export const goksorryIndexFromScore = (score: number): number => {
   const index = SENTIMENT_SCORE_NEUTRAL - amplifiedDistanceFromNeutral(score);
   return clampIndexValue(index, SENTIMENT_SCORE_MAX, 1);
