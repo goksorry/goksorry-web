@@ -36,8 +36,6 @@ const SOURCE_LINKS = [
   }
 ];
 
-const ROBOTS_TXT_LAST_CHECKED_AT = "2026-05-17 22:24 KST";
-
 export function SiteFooter() {
   return (
     <footer className="site-footer">
@@ -79,8 +77,7 @@ export function SiteFooter() {
                   관리합니다.
                 </p>
                 <p className="site-footer-info-timestamp">
-                  robots.txt 마지막 확인:{" "}
-                  <time dateTime="2026-05-17T22:24:04+09:00">{ROBOTS_TXT_LAST_CHECKED_AT}</time>
+                  robots.txt와 이용약관 확인은 Pierrot 수집 워커가 24시간 캐시 기준으로 자동 갱신합니다.
                 </p>
               </div>
             </details>
