@@ -42,6 +42,21 @@ const ageSecFromIso = (iso: string | null, nowMs: number): number | null => {
   return Math.max(0, Math.floor((nowMs - ms) / 1000));
 };
 
+const latestIso = (...values: Array<string | null>): string | null => {
+  const timestamps = values
+    .map((value) => {
+      if (!value) {
+        return null;
+      }
+      const ms = new Date(value).getTime();
+      return Number.isNaN(ms) ? null : { iso: new Date(ms).toISOString(), ms };
+    })
+    .filter((value): value is { iso: string; ms: number } => value !== null)
+    .sort((a, b) => b.ms - a.ms);
+
+  return timestamps[0]?.iso ?? null;
+};
+
 const freshnessStatus = (ageSec: number | null): HealthLevel => {
   if (ageSec === null) {
     return "stale";
@@ -111,14 +126,19 @@ export async function GET(request: Request) {
 
   const collectorAgeSec = ageSecFromIso(collectorLastRunAt, nowMs);
   const llmAgeSec = ageSecFromIso(llmLastRunAt, nowMs);
+  const detectorUpdatedAgeSec = ageSecFromIso(detectorUpdatedAt, nowMs);
   const feedAgeSec = ageSecFromIso(latestFeedAt, nowMs);
   const signalAgeSec = ageSecFromIso(latestSignalAt, nowMs);
-
-  const detectorBaseStatus = worstStatus(
-    freshnessStatus(collectorAgeSec),
-    freshnessStatus(llmAgeSec),
-    freshnessStatus(detectorUpdatedAt ? ageSecFromIso(detectorUpdatedAt, nowMs) : null)
+  const detectorEffectiveLastRunAt = latestIso(
+    collectorLastRunAt,
+    llmLastRunAt,
+    detectorUpdatedAt,
+    latestFeedAt,
+    latestSignalAt
   );
+  const detectorEffectiveAgeSec = ageSecFromIso(detectorEffectiveLastRunAt, nowMs);
+
+  const detectorBaseStatus = freshnessStatus(detectorEffectiveAgeSec);
   const detectorStatus =
     statusResult.data?.llm_degraded || String(statusResult.data?.detector_mode ?? "normal") !== "normal"
       ? worstStatus(detectorBaseStatus, "degraded")
@@ -145,7 +165,10 @@ export async function GET(request: Request) {
         llm_age_sec: llmAgeSec,
         llm_degraded: Boolean(statusResult.data?.llm_degraded),
         detector_mode: String(statusResult.data?.detector_mode ?? "normal"),
-        updated_at: detectorUpdatedAt
+        updated_at: detectorUpdatedAt,
+        updated_age_sec: detectorUpdatedAgeSec,
+        effective_last_run_at: detectorEffectiveLastRunAt,
+        effective_age_sec: detectorEffectiveAgeSec
       },
       feed: {
         status: feedStatus,
