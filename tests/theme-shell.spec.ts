@@ -1246,6 +1246,132 @@ test.describe("program theme shells", () => {
     await expect(tossCard).not.toHaveClass(/overview-card-active/);
   });
 
+  test("market overview disables collection-problem community cards", async ({ page }) => {
+    await page.clock.install();
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.route("**/api/internal/overview**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2999-01-01T00:00:00.000Z",
+          market_indicators: [],
+          market_adjustment_enabled: true,
+          market_adjustment_status: "active",
+          overall_base_score: 5,
+          overall_market_adjustment: 0,
+          overall_sentiment_score: 5,
+          overall_goksorry_index: 5,
+          overall_sentiment_band: "neutral",
+          community_indicators: [
+            {
+              id: "toss",
+              label: "토스증권 커뮤니티 지수",
+              shortLabel: "토스증권",
+              mentions: 2,
+              bullish: 1,
+              bearish: 1,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: [],
+              collection_problem: false,
+              collection_disabled: false,
+              collection_reason: null,
+              article_count: 2
+            },
+            {
+              id: "ppomppu",
+              label: "뽐뿌 증권포럼 지수",
+              shortLabel: "뽐뿌",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: [],
+              collection_problem: true,
+              collection_disabled: true,
+              collection_reason: "no_articles",
+              article_count: 0
+            },
+            {
+              id: "blind",
+              label: "블라인드 주식투자 지수",
+              shortLabel: "블라인드",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: [],
+              collection_problem: false,
+              collection_disabled: false,
+              collection_reason: null,
+              article_count: 1
+            },
+            {
+              id: "dc",
+              label: "디시 주갤·국장갤·미장갤·해주갤 지수",
+              shortLabel: "디시 4종",
+              mentions: 0,
+              bullish: 0,
+              bearish: 0,
+              neutral: 0,
+              base_score: 5,
+              market_adjustment: 0,
+              score: 5,
+              goksorry_index: 5,
+              sentiment_band: "neutral",
+              tone: "mixed",
+              rows: [],
+              collection_problem: false,
+              collection_disabled: false,
+              collection_reason: null,
+              article_count: 1
+            }
+          ]
+        })
+      });
+    });
+    await page.route("**/api/feed**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows: [],
+          nextOffset: null,
+          hasMore: false,
+          errorMessage: ""
+        })
+      });
+    });
+
+    await prepareThemePage(page);
+    await page.goto("/");
+    await page.clock.runFor(61_000);
+
+    const ppomppuCard = page.locator(".overview-card-community").filter({ hasText: "뽐뿌 증권포럼 지수" });
+    await expect(ppomppuCard).toBeDisabled();
+    await expect(ppomppuCard).toHaveClass(/overview-card-disabled/);
+    await expect(ppomppuCard.locator(".overview-collection-warning")).toHaveText("!");
+    await expect(ppomppuCard.locator(".overview-score-badge")).toHaveText("제외");
+  });
+
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);

@@ -57,6 +57,8 @@ type CollectionPolicySourceRow = {
   reason?: unknown;
   robots_url?: unknown;
   terms_url?: unknown;
+  article_count?: unknown;
+  collection_problem?: unknown;
 };
 
 type CollectionPolicyPayload = {
@@ -86,6 +88,14 @@ const asOptionalIso = (value: unknown): string | null => {
   return date.toISOString();
 };
 
+const toOptionalInteger = (value: unknown, min: number, max: number): number | null => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return null;
+  }
+  return Math.floor(toNumber(num, min, max, min));
+};
+
 const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object") {
     return null;
@@ -99,17 +109,25 @@ const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | nu
       return [];
     }
 
+    const allowFetch = Boolean(source.allow_fetch);
+    const postponed = Boolean(source.postponed);
+    const articleCount = toOptionalInteger(source.article_count, 0, 1_000_000);
+    const collectionProblem =
+      Boolean(source.collection_problem) || !allowFetch || postponed || articleCount === 0;
+
     return [
       {
         source_name: sourceName,
         site_key: sanitizeStatusText(source.site_key, 80),
         checked_at: asOptionalIso(source.checked_at),
-        allow_fetch: Boolean(source.allow_fetch),
+        allow_fetch: allowFetch,
         allow_detail: Boolean(source.allow_detail),
-        postponed: Boolean(source.postponed),
+        postponed,
         reason: sanitizeStatusText(source.reason, 120),
         robots_url: sanitizeStatusText(source.robots_url, 500),
-        terms_url: sanitizeStatusText(source.terms_url, 500)
+        terms_url: sanitizeStatusText(source.terms_url, 500),
+        article_count: articleCount,
+        collection_problem: collectionProblem
       }
     ];
   });

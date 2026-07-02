@@ -1206,6 +1206,19 @@ a:hover {
   border-color: var(--overview-card-hover-line);
 }
 
+.overview-card-community:disabled,
+.overview-card-community.overview-card-disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.overview-card-community:disabled:hover,
+.overview-card-community.overview-card-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--overview-card-line);
+}
+
 .overview-card-community.overview-card-active {
   transform: translateY(-1px);
   box-shadow: var(--overview-card-hover-shadow);
@@ -1234,6 +1247,24 @@ a:hover {
   font-weight: 700;
   line-height: 1.28;
   color: var(--ink-soft);
+}
+
+.overview-collection-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.34rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+  color: var(--danger);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .overview-value {

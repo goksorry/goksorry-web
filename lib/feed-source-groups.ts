@@ -70,7 +70,12 @@ export const getSourceGroupById = (groupId: SourceGroupId): (typeof SOURCE_GROUP
 
 export const matchesSourceGroup = (source: string, groupId: SourceGroupId): boolean => {
   if (groupId === "toss") {
-    return source.startsWith("toss_stock_community_") || source.startsWith("toss_lounge_");
+    return (
+      source === "toss_stock_community" ||
+      source === "toss_lounge" ||
+      source.startsWith("toss_stock_community_") ||
+      source.startsWith("toss_lounge_")
+    );
   }
   if (groupId === "ppomppu") {
     return source === "ppomppu_stock";
@@ -79,6 +84,10 @@ export const matchesSourceGroup = (source: string, groupId: SourceGroupId): bool
     return source === "blind_stock_invest";
   }
   return source === "dc_stock" || source === "dc_krstock" || source === "dc_usstock" || source === "dc_tenbagger";
+};
+
+export const matchesSourceName = (source: string, sourceName: string): boolean => {
+  return source === sourceName || source.startsWith(`${sourceName}_`);
 };
 
 export const getSourceGroupId = (source: string): SourceGroupId | null => {

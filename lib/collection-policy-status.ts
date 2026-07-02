@@ -15,6 +15,8 @@ export type FooterCollectionPolicySource = {
   reason: string | null;
   robotsUrl: string | null;
   termsUrl: string | null;
+  articleCount: number | null;
+  collectionProblem: boolean;
 };
 
 export type FooterCollectionPolicy = {
@@ -61,6 +63,11 @@ const textOrNull = (value: unknown): string | null => {
   return text ? text : null;
 };
 
+const numberOrNull = (value: unknown): number | null => {
+  const num = Number(value);
+  return Number.isFinite(num) ? Math.max(0, Math.floor(num)) : null;
+};
+
 const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy | null => {
   if (!value || typeof value !== "object") {
     return null;
@@ -79,17 +86,25 @@ const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy | null =
       return [];
     }
 
+    const articleCount = numberOrNull(source.article_count);
+    const allowFetch = Boolean(source.allow_fetch);
+    const postponed = Boolean(source.postponed);
+    const collectionProblem =
+      Boolean(source.collection_problem) || !allowFetch || postponed || articleCount === 0;
+
     return [
       {
         sourceName,
         siteKey: textOrNull(source.site_key),
         checkedAt: parseIso(source.checked_at),
-        allowFetch: Boolean(source.allow_fetch),
+        allowFetch,
         allowDetail: Boolean(source.allow_detail),
-        postponed: Boolean(source.postponed),
+        postponed,
         reason: textOrNull(source.reason),
         robotsUrl: textOrNull(source.robots_url),
-        termsUrl: textOrNull(source.terms_url)
+        termsUrl: textOrNull(source.terms_url),
+        articleCount,
+        collectionProblem
       }
     ];
   });

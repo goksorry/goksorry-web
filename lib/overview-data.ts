@@ -8,16 +8,20 @@ import {
 } from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import {
+  buildOverallFromSourceGroupSummaries,
   buildSourceGroupSummaries,
   fetchRecentFeedRows,
+  type SourceGroupCollectionStatus,
   type SourceGroupSummary
 } from "@/lib/feed-data";
 import {
-  clampSentimentScore,
-  goksorryIndexFromScore,
-  sentimentBandFromGoksorryIndex,
-  type SentimentBand
-} from "@/lib/sentiment-score";
+  COLLECTION_POLICY_CACHE_TAG,
+  getFooterCollectionPolicy,
+  type FooterCollectionPolicy,
+  type FooterCollectionPolicySource
+} from "@/lib/collection-policy-status";
+import { SOURCE_GROUP_IDS, getSourceGroupId, type SourceGroupId } from "@/lib/feed-source-groups";
+import { type SentimentBand } from "@/lib/sentiment-score";
 
 type IndicatorTone = "up" | "down" | "flat" | "fear" | "greed" | "mixed";
 
@@ -408,61 +412,87 @@ const buildMarketOverview = async (): Promise<Pick<OverviewPayload, "generated_a
   };
 };
 
-const buildOverallFromCommunityIndicators = (
-  communityIndicators: SourceGroupSummary[]
-): Pick<
-  CommunityIndicatorsPayload,
-  | "overall_base_score"
-  | "overall_market_adjustment"
-  | "overall_sentiment_score"
-  | "overall_goksorry_index"
-  | "overall_sentiment_band"
-> => {
-  if (communityIndicators.length === 0) {
-    return {
-      overall_base_score: 5,
-      overall_market_adjustment: 0,
-      overall_sentiment_score: 5,
-      overall_goksorry_index: goksorryIndexFromScore(5),
-      overall_sentiment_band: "neutral"
+const collectionProblemReason = (source: FooterCollectionPolicySource): string | null => {
+  if (!source.allowFetch || source.postponed) {
+    return source.reason ?? "collection_policy";
+  }
+  if (source.articleCount === 0 || source.collectionProblem) {
+    return source.reason ?? "no_articles";
+  }
+  return null;
+};
+
+const isCollectionProblemSource = (source: FooterCollectionPolicySource): boolean => {
+  return Boolean(collectionProblemReason(source));
+};
+
+const buildCollectionStatusFilters = (
+  policy: FooterCollectionPolicy | null
+): {
+  excludedSourceNames: Set<string>;
+  collectionStatuses: Partial<Record<SourceGroupId, SourceGroupCollectionStatus>>;
+} => {
+  const excludedSourceNames = new Set<string>();
+  const statusesByGroup = new Map<SourceGroupId, FooterCollectionPolicySource[]>();
+
+  for (const source of policy?.sources ?? []) {
+    const groupId = getSourceGroupId(source.sourceName);
+    if (!groupId) {
+      continue;
+    }
+
+    const groupStatuses = statusesByGroup.get(groupId) ?? [];
+    groupStatuses.push(source);
+    statusesByGroup.set(groupId, groupStatuses);
+
+    if (isCollectionProblemSource(source)) {
+      excludedSourceNames.add(source.sourceName);
+    }
+  }
+
+  const collectionStatuses: Partial<Record<SourceGroupId, SourceGroupCollectionStatus>> = {};
+  for (const groupId of SOURCE_GROUP_IDS) {
+    const statuses = statusesByGroup.get(groupId) ?? [];
+    if (!statuses.length) {
+      continue;
+    }
+
+    const problemStatuses = statuses.filter(isCollectionProblemSource);
+    const articleCounts = statuses
+      .map((source) => source.articleCount)
+      .filter((count): count is number => typeof count === "number");
+    collectionStatuses[groupId] = {
+      problem: problemStatuses.length > 0,
+      disabled: problemStatuses.length === statuses.length,
+      reason: problemStatuses.map(collectionProblemReason).find((reason): reason is string => Boolean(reason)) ?? null,
+      articleCount: articleCounts.length > 0 ? articleCounts.reduce((sum, count) => sum + count, 0) : null
     };
   }
 
-  const sectionCount = communityIndicators.length;
-  const average = (values: number[], digits: number): number => {
-    const total = values.reduce((sum, value) => sum + value, 0);
-    return Number((total / sectionCount).toFixed(digits));
-  };
-
-  const overallBaseScore = clampSentimentScore(average(communityIndicators.map((group) => group.base_score), 1));
-  const overallMarketAdjustment = average(communityIndicators.map((group) => group.market_adjustment), 2);
-  const overallSentimentScore = clampSentimentScore(average(communityIndicators.map((group) => group.score), 1));
-  const overallGoksorryIndex = goksorryIndexFromScore(overallSentimentScore);
-
-  return {
-    overall_base_score: overallBaseScore,
-    overall_market_adjustment: overallMarketAdjustment,
-    overall_sentiment_score: overallSentimentScore,
-    overall_goksorry_index: overallGoksorryIndex,
-    overall_sentiment_band: sentimentBandFromGoksorryIndex(overallGoksorryIndex)
-  };
+  return { excludedSourceNames, collectionStatuses };
 };
 
 export const getCachedMarketOverview = buildMarketOverview;
 
 export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
   const service = getServiceSupabaseClient();
-  const { rows } = await fetchRecentFeedRows(service, { hours: COMMUNITY_WINDOW_HOURS, limit: 600 });
+  const [{ rows }, collectionPolicy] = await Promise.all([
+    fetchRecentFeedRows(service, { hours: COMMUNITY_WINDOW_HOURS, limit: 600 }),
+    getFooterCollectionPolicy()
+  ]);
   const asOf = new Date();
   const marketOverview = await getCachedMarketOverview();
   const marketAdjustmentSnapshot = buildMarketAdjustmentSnapshot(marketOverview.generated_at, marketOverview.market_indicators);
   const marketAdjustmentEnabled = hasActiveMarketAdjustmentInput(marketOverview.market_indicators);
   const marketAdjustmentStatus = resolveMarketAdjustmentStatus(marketOverview.market_indicators);
+  const { excludedSourceNames, collectionStatuses } = buildCollectionStatusFilters(collectionPolicy);
   const communityIndicators = buildSourceGroupSummaries(rows, {
     marketAdjustmentSnapshot,
-    asOf
+    asOf,
+    excludedSourceNames,
+    collectionStatuses
   });
-  const overall = buildOverallFromCommunityIndicators(communityIndicators);
+  const overall = buildOverallFromSourceGroupSummaries(communityIndicators);
 
   return {
     generated_at: asOf.toISOString(),
@@ -478,7 +508,8 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
 };
 
 export const getCachedCommunityIndicators = unstable_cache(buildCommunityIndicatorsData, ["community-indicators"], {
-  revalidate: COMMUNITY_TTL_SEC
+  revalidate: COMMUNITY_TTL_SEC,
+  tags: [COLLECTION_POLICY_CACHE_TAG]
 });
 
 export const buildOverviewData = async (): Promise<OverviewPayload> => {

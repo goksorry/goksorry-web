@@ -98,7 +98,11 @@ const EMPTY_COMMUNITY_GROUPS: SourceGroupSummary[] = SOURCE_GROUPS.map((group) =
   goksorry_index: goksorryIndexFromScore(5),
   sentiment_band: "neutral",
   tone: "mixed",
-  rows: []
+  rows: [],
+  collection_problem: false,
+  collection_disabled: false,
+  collection_reason: null,
+  article_count: null
 }));
 
 const COMMUNITY_REFRESH_MS = 60_000;
@@ -247,6 +251,11 @@ export function MarketOverview({
   const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
 
   const onCommunityIndicatorClick = (groupId: SourceGroupId) => {
+    const group = communityGroups.find((item) => item.id === groupId);
+    if (group?.collection_disabled) {
+      return;
+    }
+
     if (pathname === "/") {
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.delete("channel");
@@ -277,7 +286,7 @@ export function MarketOverview({
     });
   };
 
-  const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId) ?? null;
+  const activeGroup = payload?.community_indicators.find((group) => group.id === activeGroupId && !group.collection_disabled) ?? null;
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
@@ -394,30 +403,50 @@ export function MarketOverview({
 
         <section className="overview-section">
           <div className="overview-bottom-row" style={overviewCommunityRowStyle}>
-            {communityGroups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                className={`overview-card overview-card-community overview-tone-${group.tone}${selectedFeedGroupId === group.id ? " overview-card-active" : ""}`}
-                onClick={() => onCommunityIndicatorClick(group.id)}
-                disabled={communityLoading}
-                aria-pressed={selectedFeedGroupId === group.id}
-              >
-                <div className="overview-community-head">
-                  <p className="overview-label">{group.label}</p>
-                  <span className="overview-score-badge">
-                    {communityLoading ? (
-                      <span>로딩중</span>
-                    ) : (
-                      <>
-                        <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
-                        <span>{group.goksorry_index.toFixed(1)}</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {communityGroups.map((group) => {
+              const collectionProblemTitle = group.collection_reason
+                ? `수집 문제: ${group.collection_reason}`
+                : "수집 문제";
+              const disabled = communityLoading || group.collection_disabled;
+
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  className={`overview-card overview-card-community overview-tone-${group.tone}${
+                    selectedFeedGroupId === group.id ? " overview-card-active" : ""
+                  }${group.collection_disabled ? " overview-card-disabled" : ""}`}
+                  onClick={() => onCommunityIndicatorClick(group.id)}
+                  disabled={disabled}
+                  aria-pressed={selectedFeedGroupId === group.id}
+                  aria-disabled={disabled}
+                  title={group.collection_problem ? collectionProblemTitle : undefined}
+                >
+                  <div className="overview-community-head">
+                    <p className="overview-label">
+                      {group.label}
+                      {group.collection_problem ? (
+                        <span className="overview-collection-warning" aria-label={collectionProblemTitle}>
+                          !
+                        </span>
+                      ) : null}
+                    </p>
+                    <span className="overview-score-badge">
+                      {communityLoading ? (
+                        <span>로딩중</span>
+                      ) : group.collection_disabled ? (
+                        <span>제외</span>
+                      ) : (
+                        <>
+                          <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
+                          <span>{group.goksorry_index.toFixed(1)}</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
       </section>

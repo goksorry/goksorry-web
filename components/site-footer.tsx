@@ -90,12 +90,12 @@ const sourcePolicyState = (
     return null;
   }
 
-  const inactiveStatus = statuses.find((status) => !status.allowFetch || status.postponed);
+  const inactiveStatus = statuses.find((status) => !status.allowFetch || status.postponed || status.collectionProblem);
   const detailDisabled = !inactiveStatus && statuses.some((status) => !status.allowDetail);
   return {
     inactive: Boolean(inactiveStatus),
     detailDisabled,
-    reason: inactiveStatus?.reason ?? null,
+    reason: inactiveStatus?.reason ?? (inactiveStatus?.articleCount === 0 ? "no_articles" : null),
     checkedAt: latestCheckedAt(statuses)
   };
 };

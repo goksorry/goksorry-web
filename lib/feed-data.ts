@@ -1,13 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { averageRowMarketAdjustment } from "@/lib/community-market-adjustment";
-import { SOURCE_GROUPS, getSourceGroupId, matchesSourceGroup, type SourceGroupId } from "@/lib/feed-source-groups";
+import {
+  SOURCE_GROUPS,
+  getSourceGroupId,
+  matchesSourceGroup,
+  matchesSourceName,
+  type SourceGroupId
+} from "@/lib/feed-source-groups";
 import {
   aggregateSentimentBand,
   amplifyAggregateSentimentScore,
   clampSentimentScore,
   averageSentimentScore,
   goksorryIndexFromScore,
+  sentimentBandFromGoksorryIndex,
   resolveSentimentScore,
   sentimentLabelFromScore,
   sentimentToneFromBand,
@@ -65,6 +72,10 @@ export type SourceGroupSummary = {
   sentiment_band: SentimentBand;
   tone: "bullish" | "bearish" | "mixed";
   rows: FeedRow[];
+  collection_problem: boolean;
+  collection_disabled: boolean;
+  collection_reason: string | null;
+  article_count: number | null;
 };
 
 export type FeedScoreOverview = {
@@ -75,9 +86,26 @@ export type FeedScoreOverview = {
   sentiment_band: SentimentBand;
 };
 
+export type SourceGroupCollectionStatus = {
+  problem: boolean;
+  disabled: boolean;
+  reason: string | null;
+  articleCount: number | null;
+};
+
+export type OverallFeedScoreSummary = {
+  overall_base_score: number;
+  overall_market_adjustment: number;
+  overall_sentiment_score: number;
+  overall_goksorry_index: number;
+  overall_sentiment_band: SentimentBand;
+};
+
 type FeedScoreBuildOptions = {
   marketAdjustmentSnapshot?: MarketAdjustmentSnapshot | null;
   asOf?: Date;
+  excludedSourceNames?: ReadonlySet<string>;
+  collectionStatuses?: Partial<Record<SourceGroupId, SourceGroupCollectionStatus>>;
 };
 
 const chunk = <T>(items: T[], size: number): T[][] => {
@@ -224,6 +252,18 @@ export const filterRowsBySourceGroups = (rows: FeedRow[], groupIds: SourceGroupI
 
 const getActionableRows = (rows: FeedRow[]): FeedRow[] => rows.filter((row) => row.label !== "neutral");
 
+const isExcludedSource = (source: string, excludedSourceNames?: ReadonlySet<string>): boolean => {
+  if (!excludedSourceNames?.size) {
+    return false;
+  }
+  for (const sourceName of excludedSourceNames) {
+    if (matchesSourceName(source, sourceName)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const buildAggregateVisibleScore = (
   actionableRows: FeedRow[],
   {
@@ -258,13 +298,16 @@ export const buildSourceGroupSummaries = (
   options?: FeedScoreBuildOptions
 ): SourceGroupSummary[] => {
   return SOURCE_GROUPS.map((group) => {
-    const groupRows = rows.filter((row) => matchesSourceGroup(row.source, group.id));
+    const groupRows = rows.filter(
+      (row) => matchesSourceGroup(row.source, group.id) && !isExcludedSource(row.source, options?.excludedSourceNames)
+    );
     const actionableRows = getActionableRows(groupRows);
     const bullish = actionableRows.filter((row) => row.label === "bullish").length;
     const bearish = actionableRows.filter((row) => row.label === "bearish").length;
     const neutral = groupRows.length - actionableRows.length;
     const overview = buildAggregateVisibleScore(actionableRows, options);
     const tone = sentimentToneFromBand(overview.sentiment_band);
+    const collectionStatus = options?.collectionStatuses?.[group.id];
 
     return {
       id: group.id,
@@ -280,9 +323,48 @@ export const buildSourceGroupSummaries = (
       goksorry_index: overview.goksorry_index,
       sentiment_band: overview.sentiment_band,
       tone,
-      rows: actionableRows.slice(0, 12)
+      rows: actionableRows.slice(0, 12),
+      collection_problem: collectionStatus?.problem ?? false,
+      collection_disabled: collectionStatus?.disabled ?? false,
+      collection_reason: collectionStatus?.reason ?? null,
+      article_count: collectionStatus?.articleCount ?? null
     };
   });
+};
+
+export const buildOverallFromSourceGroupSummaries = (
+  communityIndicators: SourceGroupSummary[]
+): OverallFeedScoreSummary => {
+  const activeIndicators = communityIndicators.filter((group) => !group.collection_disabled);
+
+  if (activeIndicators.length === 0) {
+    return {
+      overall_base_score: 5,
+      overall_market_adjustment: 0,
+      overall_sentiment_score: 5,
+      overall_goksorry_index: goksorryIndexFromScore(5),
+      overall_sentiment_band: "neutral"
+    };
+  }
+
+  const sectionCount = activeIndicators.length;
+  const average = (values: number[], digits: number): number => {
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return Number((total / sectionCount).toFixed(digits));
+  };
+
+  const overallBaseScore = clampSentimentScore(average(activeIndicators.map((group) => group.base_score), 1));
+  const overallMarketAdjustment = average(activeIndicators.map((group) => group.market_adjustment), 2);
+  const overallSentimentScore = clampSentimentScore(average(activeIndicators.map((group) => group.score), 1));
+  const overallGoksorryIndex = goksorryIndexFromScore(overallSentimentScore);
+
+  return {
+    overall_base_score: overallBaseScore,
+    overall_market_adjustment: overallMarketAdjustment,
+    overall_sentiment_score: overallSentimentScore,
+    overall_goksorry_index: overallGoksorryIndex,
+    overall_sentiment_band: sentimentBandFromGoksorryIndex(overallGoksorryIndex)
+  };
 };
 
 export const buildFeedScoreOverview = (
