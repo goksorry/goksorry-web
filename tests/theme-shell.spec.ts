@@ -953,8 +953,7 @@ test.describe("program theme shells", () => {
     await page.goto("/?market_adjustment=off");
 
     await expect(page.locator(".overview-market-adjustment-button")).toHaveCount(0);
-    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정");
-    await expect(page.locator(".overview-market-adjustment-meta")).not.toContainText("미반영");
+    await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
     const indexHelpTrigger = page.getByRole("button", { name: "곡소리 지수 계산 방식" });
     const indexHelpTooltip = page.locator("#overview-index-help-tooltip");
     await expect(indexHelpTrigger).toBeVisible();
@@ -969,7 +968,7 @@ test.describe("program theme shells", () => {
 
     await page.clock.runFor(61_000);
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
-    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정 감쇠");
+    await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
     await expect(page.locator(".overview-market-block").first().locator(".overview-section-copy")).toHaveText(
       "출처: 네이버 금융 · 약 5분 캐시"
     );
@@ -1026,7 +1025,7 @@ test.describe("program theme shells", () => {
     await page.goto("/");
     await page.clock.runFor(61_000);
 
-    await expect(page.locator(".overview-market-adjustment-meta")).toContainText("시장보정 일시중지");
+    await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
   });
 
   test("feed lane headers show intensity percentages instead of row counts", async ({ page }) => {

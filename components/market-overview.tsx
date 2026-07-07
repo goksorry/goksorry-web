@@ -290,10 +290,7 @@ export function MarketOverview({
   const communityGroups = payload?.community_indicators ?? EMPTY_COMMUNITY_GROUPS;
   const communityLoading = payload === null && !error;
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
-  const overallCommunityBaseScore = payload?.overall_base_score ?? 5;
-  const overallCommunityMarketAdjustment = payload?.overall_market_adjustment ?? 0;
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
-  const overallBaseGoksorryIndex = goksorryIndexFromScore(overallCommunityBaseScore);
   const overallGoksorryIndex = payload?.overall_goksorry_index ?? goksorryIndexFromScore(overallCommunityScore);
   const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading
@@ -306,21 +303,6 @@ export function MarketOverview({
   const overviewCommunityRowStyle: OverviewCommunityRowStyle = {
     "--overview-community-columns": String(communityGroups.length || SOURCE_GROUPS.length)
   };
-  const goksorryMarketAdjustment = Number((overallGoksorryIndex - overallBaseGoksorryIndex).toFixed(2));
-  const signedGoksorryMarketAdjustment =
-    goksorryMarketAdjustment >= 0
-      ? `+${goksorryMarketAdjustment.toFixed(2)}`
-      : goksorryMarketAdjustment.toFixed(2);
-  const marketAdjustmentStatus = payload?.market_adjustment_enabled
-    ? payload.market_adjustment_status ?? "active"
-    : "inactive";
-  const marketAdjustmentMetaText =
-    marketAdjustmentStatus === "inactive" || marketAdjustmentStatus === "unavailable"
-      ? "시장보정 일시중지"
-      : marketAdjustmentStatus === "decaying"
-        ? `시장보정 감쇠 ${signedGoksorryMarketAdjustment}`
-        : `시장보정 ${signedGoksorryMarketAdjustment}`;
-
   return (
     <>
       <section className="overview-market-block">
@@ -381,9 +363,6 @@ export function MarketOverview({
               </div>
               <p className="overview-timestamp">
                 {marketPayload.generated_at ? `업데이트 ${toLocalTime(marketPayload.generated_at)}` : "캐시 지수 준비 중"}
-              </p>
-              <p className="overview-market-adjustment-meta">
-                {`기준 곡소리 ${overallBaseGoksorryIndex.toFixed(1)} · ${marketAdjustmentMetaText}`}
               </p>
             </div>
             <div className="overview-overall-score" aria-live="polite">
