@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { Gowun_Batang } from "next/font/google";
 import Script from "next/script";
 import "@/app/globals.css";
 import "@/app/theme-tokens.css";
@@ -39,14 +38,6 @@ import {
 import { DEFAULT_THEME_ID, THEME_REQUEST_HEADER, getThemeAttributeValues, getThemeInitScript, normalizeThemeId } from "@/lib/theme";
 
 const googleAnalyticsMeasurementId = "G-9X029VJV3K";
-
-// next/font metadata for Gowun Batang does not expose a korean preload subset.
-const gowunBatang = Gowun_Batang({
-  weight: ["400", "700"],
-  display: "swap",
-  preload: false,
-  variable: "--font-gowun-batang"
-});
 
 export const metadata: Metadata = {
   title: {
@@ -98,7 +89,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-theme-effective-tone={initialThemeAttributes.effectiveTone}
       data-change-color-mode={initialChangeColorMode}
     >
-      <body className={gowunBatang.variable}>
+      <body>
         <Script id="theme-init" strategy="beforeInteractive">
           {getThemeInitScript()}
         </Script>

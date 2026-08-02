@@ -3516,6 +3516,30 @@ test.describe("program theme shells", () => {
     expect(excelChrome.backgroundColor).not.toBe(vscodeChrome.backgroundColor);
   });
 
+  test("default themes use the system sans-serif font stack", async ({ page }) => {
+    await prepareThemePage(page);
+
+    for (const theme of ["light", "dark", "system"]) {
+      await page.goto(`/?theme=${theme}`);
+      const typography = await page.evaluate(() => {
+        const rootStyle = getComputedStyle(document.documentElement);
+        const bodyStyle = getComputedStyle(document.body);
+
+        return {
+          siteFont: rootStyle.getPropertyValue("--site-font").toLowerCase(),
+          bodyFont: bodyStyle.fontFamily.toLowerCase(),
+          bodyFontSize: bodyStyle.fontSize
+        };
+      });
+
+      expect(typography.siteFont).toContain("apple sd gothic neo");
+      expect(typography.siteFont).toContain("sans-serif");
+      expect(typography.siteFont).not.toContain("gowun");
+      expect(typography.bodyFont).not.toContain("gowun");
+      expect(typography.bodyFontSize).toBe("15px");
+    }
+  });
+
   test("mobile concept theme menu opens outside header overflow", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareThemePage(page);
