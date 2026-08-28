@@ -116,66 +116,6 @@
   --header-blur: 2px;
 }
 
-:root[data-theme="powerpoint-light"] {
-  color-scheme: light;
-  --bg: #f4f3f2;
-  --panel: #ffffff;
-  --panel-soft: #f7f2ee;
-  --panel-elevated: #ffffff;
-  --ink: #1f1f1f;
-  --ink-soft: #3b3a39;
-  --muted: #605e5c;
-  --line: #e1d6ce;
-  --brand: #b7472a;
-  --brand-strong: #8f2e18;
-  --danger: #a12c1b;
-  --hope: #2f7d6f;
-  --shadow: rgba(183, 71, 42, 0.12);
-  --header-bg: rgba(247, 242, 238, 0.94);
-  --button-bg: #b7472a;
-  --button-line: #9f321a;
-  --button-ink: #ffffff;
-  --chip-active-bg: #b7472a;
-  --chip-active-line: #9f321a;
-  --chip-active-ink: #ffffff;
-  --site-font: "Aptos", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: radial-gradient(circle at 12% 18%, rgba(183, 71, 42, 0.06), transparent 22rem);
-  --panel-shadow: 0 18px 38px rgba(183, 71, 42, 0.1);
-  --radius-panel: 6px;
-  --radius-card: 5px;
-  --radius-control: 5px;
-}
-
-:root[data-theme="powerpoint-dark"] {
-  color-scheme: dark;
-  --bg: #171514;
-  --panel: #1f1d1c;
-  --panel-soft: #2a2421;
-  --panel-elevated: #342b26;
-  --ink: #f9f1ec;
-  --ink-soft: #e4ccc1;
-  --muted: #ad9185;
-  --line: #4b3b34;
-  --brand: #d35230;
-  --brand-strong: #ff9a73;
-  --danger: #ff7b6e;
-  --hope: #62c7b6;
-  --shadow: rgba(0, 0, 0, 0.36);
-  --header-bg: rgba(23, 21, 20, 0.94);
-  --button-bg: #b7472a;
-  --button-line: #d35230;
-  --button-ink: #ffffff;
-  --chip-active-bg: #d35230;
-  --chip-active-line: #ff9a73;
-  --chip-active-ink: #171514;
-  --site-font: "Aptos", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: radial-gradient(circle at 86% 10%, rgba(211, 82, 48, 0.1), transparent 23rem);
-  --panel-shadow: 0 20px 46px rgba(0, 0, 0, 0.38);
-  --radius-panel: 6px;
-  --radius-card: 5px;
-  --radius-control: 5px;
-}
-
 :root[data-theme="docs-light"] {
   color-scheme: light;
   --bg: #f8fafd;
@@ -300,66 +240,6 @@
   --radius-control: 3px;
 }
 
-:root[data-theme="jetbrains-light"] {
-  color-scheme: light;
-  --bg: #f4f4f4;
-  --panel: #ffffff;
-  --panel-soft: #f2f3f5;
-  --panel-elevated: #e9ebef;
-  --ink: #1f2328;
-  --ink-soft: #3c4148;
-  --muted: #6c7078;
-  --line: #d3d7de;
-  --brand: #3574f0;
-  --brand-strong: #0f5fff;
-  --danger: #db5c5c;
-  --hope: #2e7d32;
-  --shadow: rgba(31, 35, 40, 0.1);
-  --header-bg: rgba(242, 243, 245, 0.94);
-  --button-bg: #3574f0;
-  --button-line: #0f5fff;
-  --button-ink: #ffffff;
-  --chip-active-bg: #3574f0;
-  --chip-active-line: #0f5fff;
-  --chip-active-ink: #ffffff;
-  --site-font: "JetBrains Sans", "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: none;
-  --panel-shadow: 0 12px 30px rgba(31, 35, 40, 0.1);
-  --radius-panel: 6px;
-  --radius-card: 6px;
-  --radius-control: 5px;
-}
-
-:root[data-theme="jetbrains-dark"] {
-  color-scheme: dark;
-  --bg: #1e1f22;
-  --panel: #1e1f22;
-  --panel-soft: #2b2d30;
-  --panel-elevated: #303236;
-  --ink: #f0f0f0;
-  --ink-soft: #c9ccd1;
-  --muted: #9da0a8;
-  --line: #3c3f41;
-  --brand: #3574f0;
-  --brand-strong: #548af7;
-  --danger: #db5c5c;
-  --hope: #6aab73;
-  --shadow: rgba(0, 0, 0, 0.36);
-  --header-bg: rgba(30, 31, 34, 0.94);
-  --button-bg: #3574f0;
-  --button-line: #548af7;
-  --button-ink: #ffffff;
-  --chip-active-bg: #3574f0;
-  --chip-active-line: #548af7;
-  --chip-active-ink: #ffffff;
-  --site-font: "JetBrains Sans", "Inter", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --bg-pattern: none;
-  --panel-shadow: 0 16px 42px rgba(0, 0, 0, 0.38);
-  --radius-panel: 6px;
-  --radius-card: 6px;
-  --radius-control: 5px;
-}
-
 :root[data-theme-shell="excel"] {
   --layout-gap: 0.62rem;
   --layout-padding: 0.62rem;
@@ -371,13 +251,6 @@
   --button-padding-x: 0.56rem;
 }
 
-:root[data-theme-shell="powerpoint"] {
-  --layout-gap: 0.8rem;
-  --layout-padding: 0.8rem;
-  --panel-padding: 0.8rem;
-  --card-padding: 0.68rem;
-}
-
 :root[data-theme-shell="docs"] {
   --layout-gap: 0.72rem;
   --layout-padding: 0.72rem;
@@ -385,8 +258,7 @@
   --card-padding: 0.62rem;
 }
 
-:root[data-theme-shell="vscode"],
-:root[data-theme-shell="jetbrains"] {
+:root[data-theme-shell="vscode"] {
   --layout-gap: 0.58rem;
   --layout-padding: 0.58rem;
   --panel-padding: 0.62rem;

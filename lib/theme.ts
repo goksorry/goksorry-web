@@ -8,7 +8,7 @@ import {
 
 export type ThemeTone = "light" | "dark" | "system";
 export type ThemeEffectiveTone = Exclude<ThemeTone, "system">;
-export type ThemeFamily = "default" | "excel" | "powerpoint" | "docs" | "vscode" | "jetbrains";
+export type ThemeFamily = "default" | "excel" | "docs" | "vscode";
 export type ThemeShellType = ThemeFamily;
 
 export type ThemeId =
@@ -18,18 +18,12 @@ export type ThemeId =
   | "excel-light"
   | "excel-dark"
   | "excel-system"
-  | "powerpoint-light"
-  | "powerpoint-dark"
-  | "powerpoint-system"
   | "docs-light"
   | "docs-dark"
   | "docs-system"
   | "vscode-light"
   | "vscode-dark"
-  | "vscode-system"
-  | "jetbrains-light"
-  | "jetbrains-dark"
-  | "jetbrains-system";
+  | "vscode-system";
 
 export type ThemeMode = ThemeId;
 
@@ -73,66 +67,12 @@ export const THEME_OPTIONS: ThemeOption[] = [
   buildThemeOption("excel-light", "엑셀 라이트", "excel", "Excel", "light", "excel", ["#f3f2f1", "#217346", "#ffffff"]),
   buildThemeOption("excel-dark", "엑셀 다크", "excel", "Excel", "dark", "excel", ["#181f1b", "#21a366", "#27332b"]),
   buildThemeOption("excel-system", "엑셀 시스템", "excel", "Excel", "system", "excel", ["#f3f2f1", "#181f1b", "#217346"]),
-  buildThemeOption(
-    "powerpoint-light",
-    "파워포인트 라이트",
-    "powerpoint",
-    "PowerPoint",
-    "light",
-    "powerpoint",
-    ["#f4f3f2", "#b7472a", "#ffffff"]
-  ),
-  buildThemeOption(
-    "powerpoint-dark",
-    "파워포인트 다크",
-    "powerpoint",
-    "PowerPoint",
-    "dark",
-    "powerpoint",
-    ["#1f1d1c", "#d35230", "#342b26"]
-  ),
-  buildThemeOption(
-    "powerpoint-system",
-    "파워포인트 시스템",
-    "powerpoint",
-    "PowerPoint",
-    "system",
-    "powerpoint",
-    ["#f4f3f2", "#1f1d1c", "#b7472a"]
-  ),
   buildThemeOption("docs-light", "Docs 라이트", "docs", "Docs", "light", "docs", ["#f8fafd", "#1a73e8", "#edf2fa"]),
   buildThemeOption("docs-dark", "Docs 다크", "docs", "Docs", "dark", "docs", ["#131314", "#a8c7fa", "#303134"]),
   buildThemeOption("docs-system", "Docs 시스템", "docs", "Docs", "system", "docs", ["#f8fafd", "#131314", "#1a73e8"]),
   buildThemeOption("vscode-light", "VS Code 라이트", "vscode", "VS Code", "light", "vscode", ["#f3f3f3", "#007acc", "#c586c0"]),
   buildThemeOption("vscode-dark", "VS Code 다크", "vscode", "VS Code", "dark", "vscode", ["#1e1e1e", "#007acc", "#ce9178"]),
-  buildThemeOption("vscode-system", "VS Code 시스템", "vscode", "VS Code", "system", "vscode", ["#f3f3f3", "#1e1e1e", "#007acc"]),
-  buildThemeOption(
-    "jetbrains-light",
-    "JetBrains 라이트",
-    "jetbrains",
-    "JetBrains",
-    "light",
-    "jetbrains",
-    ["#f4f4f4", "#3574f0", "#e9ebef"]
-  ),
-  buildThemeOption(
-    "jetbrains-dark",
-    "JetBrains 다크",
-    "jetbrains",
-    "JetBrains",
-    "dark",
-    "jetbrains",
-    ["#1e1f22", "#3574f0", "#303236"]
-  ),
-  buildThemeOption(
-    "jetbrains-system",
-    "JetBrains 시스템",
-    "jetbrains",
-    "JetBrains",
-    "system",
-    "jetbrains",
-    ["#f4f4f4", "#1e1f22", "#3574f0"]
-  )
+  buildThemeOption("vscode-system", "VS Code 시스템", "vscode", "VS Code", "system", "vscode", ["#f3f3f3", "#1e1e1e", "#007acc"])
 ];
 
 const THEME_IDS = new Set<string>(THEME_OPTIONS.map((option) => option.id));
@@ -149,11 +89,6 @@ export const THEME_FAMILY_ICONS: Record<ThemeFamily, ThemeFamilyIcon> = {
     label: "Excel",
     mimeType: "image/svg+xml"
   },
-  powerpoint: {
-    href: "/theme-icons/powerpoint.svg",
-    label: "PowerPoint",
-    mimeType: "image/svg+xml"
-  },
   docs: {
     href: "/theme-icons/docs.svg",
     label: "Docs",
@@ -162,11 +97,6 @@ export const THEME_FAMILY_ICONS: Record<ThemeFamily, ThemeFamilyIcon> = {
   vscode: {
     href: "/theme-icons/vscode.svg",
     label: "VS Code",
-    mimeType: "image/svg+xml"
-  },
-  jetbrains: {
-    href: "/theme-icons/jetbrains.svg",
-    label: "JetBrains",
     mimeType: "image/svg+xml"
   }
 };
@@ -182,11 +112,6 @@ const FAMILY_TONE_THEME_IDS: Record<ThemeFamily, Record<ThemeTone, ThemeId>> = {
     dark: "excel-dark",
     system: "excel-system"
   },
-  powerpoint: {
-    light: "powerpoint-light",
-    dark: "powerpoint-dark",
-    system: "powerpoint-system"
-  },
   docs: {
     light: "docs-light",
     dark: "docs-dark",
@@ -196,11 +121,6 @@ const FAMILY_TONE_THEME_IDS: Record<ThemeFamily, Record<ThemeTone, ThemeId>> = {
     light: "vscode-light",
     dark: "vscode-dark",
     system: "vscode-system"
-  },
-  jetbrains: {
-    light: "jetbrains-light",
-    dark: "jetbrains-dark",
-    system: "jetbrains-system"
   }
 };
 
@@ -211,15 +131,11 @@ const THEME_ALIASES: Record<string, ThemeId> = {
   "default-system": "system",
   system: "system",
   excel: "excel-system",
-  powerpoint: "powerpoint-system",
-  ppt: "powerpoint-system",
   docs: "docs-system",
   document: "docs-system",
   techdocs: "docs-system",
   vscode: "vscode-system",
-  "vs-code": "vscode-system",
-  jetbrain: "jetbrains-system",
-  jetbrains: "jetbrains-system"
+  "vs-code": "vscode-system"
 };
 
 export const normalizeThemeId = (value: string | null | undefined): ThemeId | null => {

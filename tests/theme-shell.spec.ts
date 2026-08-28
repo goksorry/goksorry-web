@@ -10,10 +10,8 @@ const CHAT_LAYOUT_ENABLED = Boolean(process.env.CHAT_WS_BASE_URL);
 const EXCEL_CONTROL_RADIUS = 3;
 const THEME_ICON_PATH_BY_SHELL: Record<string, string> = {
   excel: "/theme-icons/excel.svg",
-  powerpoint: "/theme-icons/powerpoint.svg",
   docs: "/theme-icons/docs.svg",
-  vscode: "/theme-icons/vscode.svg",
-  jetbrains: "/theme-icons/jetbrains.svg"
+  vscode: "/theme-icons/vscode.svg"
 };
 
 const prepareThemePage = async (page: Page, storedTheme = "light", storedChangeColorMode = "hybrid") => {
@@ -153,12 +151,6 @@ const expectConceptHeaderReplacesSiteHeader = async (page: Page, shell: string) 
     await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
     await expect(page.getByTestId("excel-ribbon").getByRole("button", { name: "Home" })).toBeVisible();
     await expect(page.getByTestId("excel-sheet-tabs").getByRole("link", { name: "피드" })).toBeVisible();
-  } else if (shell === "powerpoint") {
-    await expect(header.getByRole("link", { name: "피드" })).toHaveCount(0);
-    await expect(header.getByRole("link", { name: "게시판" })).toHaveCount(0);
-    await expect(header.getByRole("link", { name: "곡소리방" })).toHaveCount(0);
-    await expect(page.getByTestId("powerpoint-ribbon").getByRole("button", { name: "Home" })).toBeVisible();
-    await expect(page.getByTestId("powerpoint-slide-rail").getByRole("link", { name: "1 피드 slide" })).toBeVisible();
   } else {
     await expect(header.getByRole("link", { name: "곡소리닷컴 홈" })).toHaveText("곡소리닷컴");
     await expect(header.getByRole("link", { name: "피드" })).toBeVisible();
@@ -280,10 +272,8 @@ const buildRoomEntry = (id: string, index: number) => ({
 const roomThemeCases = [
   { url: "/goksorry-room", shell: "default", root: "" },
   { url: "/goksorry-room?theme=excel-light", shell: "excel", root: ".theme-shell-excel" },
-  { url: "/goksorry-room?theme=powerpoint-light", shell: "powerpoint", root: ".theme-shell-powerpoint" },
   { url: "/goksorry-room?theme=docs-light", shell: "docs", root: ".theme-shell-docs" },
-  { url: "/goksorry-room?theme=vscode-light", shell: "vscode", root: ".theme-shell-vscode" },
-  { url: "/goksorry-room?theme=jetbrains-light", shell: "jetbrains", root: ".theme-shell-jetbrains" }
+  { url: "/goksorry-room?theme=vscode-light", shell: "vscode", root: ".theme-shell-vscode" }
 ];
 
 const roomSelector = (root: string, selector: string) => `${root ? `${root} ` : ""}${selector}`;
@@ -629,7 +619,7 @@ test.describe("program theme shells", () => {
   test("theme shell is server-rendered from URL and cookie preferences", async ({ request }) => {
     const urlThemeResponse = await request.get("/?theme=vscode-dark", {
       headers: {
-        cookie: `${THEME_COOKIE}=jetbrains-dark`
+        cookie: `${THEME_COOKIE}=docs-dark`
       }
     });
     const urlThemeHtml = await urlThemeResponse.text();
@@ -640,14 +630,25 @@ test.describe("program theme shells", () => {
 
     const cookieThemeResponse = await request.get("/", {
       headers: {
-        cookie: `${THEME_COOKIE}=jetbrains-dark`
+        cookie: `${THEME_COOKIE}=docs-dark`
       }
     });
     const cookieThemeHtml = await cookieThemeResponse.text();
     expect(cookieThemeResponse.ok()).toBe(true);
-    expect(cookieThemeHtml).toContain('data-theme-id="jetbrains-dark"');
-    expect(cookieThemeHtml).toContain('data-theme-shell="jetbrains"');
-    expect(cookieThemeHtml).toContain("theme-shell-jetbrains");
+    expect(cookieThemeHtml).toContain('data-theme-id="docs-dark"');
+    expect(cookieThemeHtml).toContain('data-theme-shell="docs"');
+    expect(cookieThemeHtml).toContain("theme-shell-docs");
+
+    const removedThemeResponse = await request.get("/", {
+      headers: {
+        cookie: `${THEME_COOKIE}=powerpoint-dark`
+      }
+    });
+    const removedThemeHtml = await removedThemeResponse.text();
+    expect(removedThemeResponse.ok()).toBe(true);
+    expect(removedThemeHtml).toContain('data-theme-id="light"');
+    expect(removedThemeHtml).toContain('data-theme-shell="default"');
+    expect(removedThemeHtml).not.toContain("theme-shell-powerpoint");
   });
 
   test("theme selection persists to cookie and local storage", async ({ page }) => {
@@ -1823,123 +1824,6 @@ test.describe("program theme shells", () => {
     expect(titlebarLayout.conceptActionsScrollWidth).toBeLessThanOrEqual(titlebarLayout.conceptActionsClientWidth + 1);
   });
 
-  test("powerpoint theme renders an Office web slide editor shell", async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1180, height: 760 });
-    await prepareThemePage(page);
-    await page.goto("/?theme=powerpoint-light");
-
-    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-light");
-    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "powerpoint");
-    await expectConceptHeaderReplacesSiteHeader(page, "powerpoint");
-    await expectConceptHeaderFixed(page);
-    await expect(page.getByTestId("powerpoint-ribbon")).toBeVisible();
-    await expect(page.getByTestId("powerpoint-single-line-ribbon")).toBeVisible();
-    await expect(page.getByTestId("powerpoint-slide-rail")).toBeVisible();
-    await expect(page.getByTestId("powerpoint-slide-canvas")).toBeVisible();
-    await expect(page.getByTestId("powerpoint-notes")).toBeVisible();
-    await expect(page.getByTestId("program-header").getByRole("button", { name: "Microsoft 365 app launcher mock command" })).toBeVisible();
-    await expect(page.getByTestId("program-header").getByText("Saved to Goksorry")).toBeVisible();
-    await expect(page.getByTestId("program-header").getByText("Saved to OneDrive")).toHaveCount(0);
-    await expect(page.getByTestId("program-header").getByRole("search", { name: "PowerPoint 검색" })).toBeVisible();
-    await expect(page.getByTestId("program-header").getByRole("button", { name: "Comments mock command" })).toBeVisible();
-    await expect(page.getByTestId("program-header").getByRole("button", { name: "Present mock command" })).toBeVisible();
-    await expect(page.getByTestId("program-header").getByRole("button", { name: "Editing mode mock command" })).toBeVisible();
-    await expect(page.getByTestId("program-header").getByRole("button", { name: "Share presentation mock command" })).toBeVisible();
-
-    const powerpointRibbonMetrics = await page.evaluate(() => {
-      const commandButtons = Array.from(document.querySelectorAll(".powerpoint-ribbon-command")) as HTMLElement[];
-      const plainCommandButtons = Array.from(
-        document.querySelectorAll(".powerpoint-ribbon-command:not(.powerpoint-ribbon-command-select)")
-      ) as HTMLElement[];
-      const selectButtons = Array.from(document.querySelectorAll(".powerpoint-ribbon-command-select")) as HTMLElement[];
-      const commandRects = commandButtons.map((button) => button.getBoundingClientRect());
-      const ribbonRect = (document.querySelector("[data-testid='powerpoint-single-line-ribbon']") as HTMLElement).getBoundingClientRect();
-      const commandTops = commandRects.map((rect) => Math.round(rect.top));
-      const plainCommandStyles = plainCommandButtons.map((button) => window.getComputedStyle(button));
-      const selectButtonStyles = selectButtons.map((button) => window.getComputedStyle(button));
-
-      return {
-        tabCount: document.querySelectorAll(".powerpoint-tabs button").length,
-        commandCount: commandButtons.length,
-        iconCount: document.querySelectorAll(".powerpoint-ribbon-command .powerpoint-command-icon").length,
-        groupLabelCount: document.querySelectorAll(".powerpoint-command-group p").length,
-        separatorCount: document.querySelectorAll(".powerpoint-ribbon-separator").length,
-        selectCount: selectButtons.length,
-        commandHeights: commandRects.map((rect) => Math.round(rect.height)),
-        plainCommandBorderWidths: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
-        plainCommandRadii: plainCommandStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
-        selectCommandBorderWidths: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
-        selectCommandRadii: selectButtonStyles.map((style) => Number.parseFloat(style.borderTopLeftRadius)),
-        topSpread: Math.max(...commandTops) - Math.min(...commandTops),
-        ribbonHeight: Math.round(ribbonRect.height)
-      };
-    });
-    expect(powerpointRibbonMetrics.tabCount).toBe(11);
-    expect(powerpointRibbonMetrics.commandCount).toBeGreaterThanOrEqual(14);
-    expect(powerpointRibbonMetrics.iconCount).toBeGreaterThanOrEqual(powerpointRibbonMetrics.commandCount - 2);
-    expect(powerpointRibbonMetrics.groupLabelCount).toBe(0);
-    expect(powerpointRibbonMetrics.separatorCount).toBeGreaterThanOrEqual(3);
-    expect(powerpointRibbonMetrics.selectCount).toBeGreaterThanOrEqual(2);
-    expect(new Set(powerpointRibbonMetrics.commandHeights).size).toBe(1);
-    expect(new Set(powerpointRibbonMetrics.plainCommandBorderWidths)).toEqual(new Set([0]));
-    expect(new Set(powerpointRibbonMetrics.plainCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
-    expect(new Set(powerpointRibbonMetrics.selectCommandBorderWidths)).toEqual(new Set([1]));
-    expect(new Set(powerpointRibbonMetrics.selectCommandRadii)).toEqual(new Set([EXCEL_CONTROL_RADIUS]));
-    expect(powerpointRibbonMetrics.topSpread).toBeLessThanOrEqual(1);
-    expect(powerpointRibbonMetrics.ribbonHeight).toBeLessThanOrEqual(52);
-
-    const powerpointSlideMetrics = await page.evaluate(() => {
-      const rail = document.querySelector("[data-testid='powerpoint-slide-rail']") as HTMLElement;
-      const slideLinks = Array.from(rail.querySelectorAll("a")) as HTMLElement[];
-      const thumbnails = Array.from(rail.querySelectorAll(".powerpoint-slide-thumbnail")) as HTMLElement[];
-      const activeSlide = rail.querySelector("a.theme-shell-active") as HTMLElement;
-      const canvas = document.querySelector(".powerpoint-canvas") as HTMLElement;
-      const slide = document.querySelector("[data-testid='powerpoint-slide-canvas']") as HTMLElement;
-      const frame = document.querySelector(".powerpoint-content-frame") as HTMLElement;
-      const notes = document.querySelector("[data-testid='powerpoint-notes']") as HTMLElement;
-      const canvasStyle = window.getComputedStyle(canvas);
-      const slideRect = slide.getBoundingClientRect();
-      const frameRect = frame.getBoundingClientRect();
-      const thumbnailRects = thumbnails.map((thumbnail) => thumbnail.getBoundingClientRect());
-      const activeStyle = window.getComputedStyle(activeSlide);
-      const canvasInnerWidth =
-        canvas.clientWidth - parseFloat(canvasStyle.paddingLeft) - parseFloat(canvasStyle.paddingRight);
-      const canvasInnerHeight =
-        canvas.clientHeight - parseFloat(canvasStyle.paddingTop) - parseFloat(canvasStyle.paddingBottom);
-
-      return {
-        slideCount: slideLinks.length,
-        thumbnailAspectRatios: thumbnailRects.map((rect) => rect.width / rect.height),
-        activeBorderColor: activeStyle.borderTopColor,
-        inactiveBorderColor: window.getComputedStyle(slideLinks[1]).borderTopColor,
-        canvasInnerWidth,
-        canvasInnerHeight,
-        frameWidth: frameRect.width,
-        frameHeight: frameRect.height,
-        slideWidth: slideRect.width,
-        slideHeight: slideRect.height,
-        canvasBackground: window.getComputedStyle(canvas).backgroundColor,
-        slideBackground: window.getComputedStyle(slide).backgroundColor,
-        frameBackground: window.getComputedStyle(frame).backgroundColor,
-        notesDisplay: window.getComputedStyle(notes).display,
-        notesText: notes.textContent ?? ""
-      };
-    });
-    expect(powerpointSlideMetrics.slideCount).toBeGreaterThanOrEqual(6);
-    expect(powerpointSlideMetrics.thumbnailAspectRatios.every((ratio) => Math.abs(ratio - 16 / 9) < 0.04)).toBe(true);
-    expect(powerpointSlideMetrics.activeBorderColor).not.toBe(powerpointSlideMetrics.inactiveBorderColor);
-    expect(Math.abs(powerpointSlideMetrics.slideWidth - powerpointSlideMetrics.canvasInnerWidth)).toBeLessThanOrEqual(2);
-    expect(Math.abs(powerpointSlideMetrics.slideHeight - powerpointSlideMetrics.canvasInnerHeight)).toBeLessThanOrEqual(2);
-    expect(Math.abs(powerpointSlideMetrics.frameWidth - powerpointSlideMetrics.slideWidth)).toBeLessThanOrEqual(1);
-    expect(Math.abs(powerpointSlideMetrics.frameHeight - powerpointSlideMetrics.slideHeight)).toBeLessThanOrEqual(1);
-    expect(powerpointSlideMetrics.canvasBackground).not.toBe(powerpointSlideMetrics.slideBackground);
-    expect(powerpointSlideMetrics.frameBackground).toBe(powerpointSlideMetrics.slideBackground);
-    expect(powerpointSlideMetrics.notesDisplay).toBe("grid");
-    expect(powerpointSlideMetrics.notesText).toContain("Click to add notes");
-
-    await page.screenshot({ path: testInfo.outputPath("powerpoint-desktop.png"), fullPage: false });
-  });
-
   test("excel theme aligns feed, community, and room content blocks to worksheet cells", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
@@ -2945,7 +2829,6 @@ test.describe("program theme shells", () => {
 
     const cases = [
       { url: "/", shell: "default" },
-      { url: "/?theme=powerpoint-light", shell: "powerpoint" },
       { url: "/?theme=docs-light", shell: "docs" }
     ];
 
@@ -3065,10 +2948,8 @@ test.describe("program theme shells", () => {
 
   test("each concept theme has distinct chrome and no legacy header", async ({ page }, testInfo) => {
     const cases = [
-      { theme: "powerpoint-dark", shell: "powerpoint", locator: "powerpoint-slide-rail" },
       { theme: "docs-light", shell: "docs", locator: "docs-sidebar" },
-      { theme: "vscode-dark", shell: "vscode", locator: "vscode-sidebar" },
-      { theme: "jetbrains-light", shell: "jetbrains", locator: "jetbrains-sidebar" }
+      { theme: "vscode-dark", shell: "vscode", locator: "vscode-sidebar" }
     ];
 
     for (const item of cases) {
@@ -3091,10 +2972,8 @@ test.describe("program theme shells", () => {
     const cases = [
       { theme: "light", shell: "default" },
       { theme: "excel-light", shell: "excel" },
-      { theme: "powerpoint-dark", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
-      { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" }
+      { theme: "vscode-dark", shell: "vscode" }
     ];
 
     for (const item of cases) {
@@ -3191,7 +3070,7 @@ test.describe("program theme shells", () => {
       } else {
         expect(layoutSeparation.documentScrollable).toBe(false);
         expect(layoutSeparation.workspaceOverflowY).toBe("hidden");
-        expect(layoutSeparation.contentOverflowY).toBe(item.shell === "jetbrains" ? "visible" : "auto");
+        expect(layoutSeparation.contentOverflowY).toBe("auto");
       }
     }
 
@@ -3222,10 +3101,8 @@ test.describe("program theme shells", () => {
 
     const cases = [
       { theme: "excel-light", shell: "excel" },
-      { theme: "powerpoint-light", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
-      { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" }
+      { theme: "vscode-dark", shell: "vscode" }
     ];
 
     for (const item of cases) {
@@ -3308,20 +3185,7 @@ test.describe("program theme shells", () => {
     }
   });
 
-  test("jetbrains header uses site navigation as the main menu and keeps run controls", async ({ page }) => {
-    await prepareThemePage(page);
-    await page.goto("/?theme=jetbrains-light");
-
-    const header = page.getByTestId("program-header");
-    await expectConceptHeaderReplacesSiteHeader(page, "jetbrains");
-    for (const menu of ["File", "Edit", "View", "Navigate", "Code", "Tools", "Git"]) {
-      await expect(header.getByRole("button", { name: menu })).toHaveCount(0);
-    }
-    await expect(header.getByRole("button", { name: "Run mock command" })).toBeVisible();
-    await expect(header.getByRole("button", { name: "Debug mock command" })).toBeVisible();
-  });
-
-  test("ide left rail buttons use brighter restrained chrome", async ({ page }) => {
+  test("VS Code left rail buttons use brighter restrained chrome", async ({ page }) => {
     await prepareThemePage(page);
     await page.goto("/?theme=vscode-dark");
 
@@ -3353,36 +3217,6 @@ test.describe("program theme shells", () => {
     expect(vscodeRailChrome.activeBackground).not.toBe(vscodeRailChrome.inactiveBackground);
     expect(vscodeRailChrome.activeColor).not.toBe(vscodeRailChrome.inactiveColor);
     expect(vscodeRailChrome.activeShadow).not.toBe("none");
-
-    await page.goto("/?theme=jetbrains-dark");
-    const jetbrainsRailChrome = await page.locator(".jetbrains-tool-window-bar").evaluate((bar) => {
-      const active = bar.querySelector(".theme-shell-active") as HTMLElement;
-      const inactive = Array.from(bar.querySelectorAll("button")).find((button) => button !== active) as HTMLElement;
-      const activeStyle = window.getComputedStyle(active);
-      const inactiveStyle = window.getComputedStyle(inactive);
-      const barStyle = window.getComputedStyle(bar);
-      const shellStyle = window.getComputedStyle(document.querySelector(".theme-shell-jetbrains") as Element);
-      const brightness = (value: string) => {
-        const channels = value.match(/\d+(\.\d+)?/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
-        return channels.reduce((sum, channel) => sum + channel, 0);
-      };
-
-      return {
-        barBackgroundImage: barStyle.backgroundImage,
-        barBrightness: brightness(barStyle.backgroundColor),
-        shellBrightness: brightness(shellStyle.backgroundColor),
-        activeBackground: activeStyle.backgroundColor,
-        activeColor: activeStyle.color,
-        activeShadow: activeStyle.boxShadow,
-        inactiveBackground: inactiveStyle.backgroundColor,
-        inactiveColor: inactiveStyle.color
-      };
-    });
-    expect(jetbrainsRailChrome.barBackgroundImage).toBe("none");
-    expect(jetbrainsRailChrome.barBrightness).toBeGreaterThan(jetbrainsRailChrome.shellBrightness);
-    expect(jetbrainsRailChrome.activeBackground).not.toBe(jetbrainsRailChrome.inactiveBackground);
-    expect(jetbrainsRailChrome.activeColor).not.toBe(jetbrainsRailChrome.inactiveColor);
-    expect(jetbrainsRailChrome.activeShadow).not.toBe("none");
   });
 
   test("concept theme section colors follow product chrome references", async ({ page }) => {
@@ -3403,28 +3237,6 @@ test.describe("program theme shells", () => {
     await expect.poll(async () => page.locator(".excel-content-frame").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
       "rgb(255, 255, 255)"
     );
-
-    await page.goto("/?theme=powerpoint-light");
-    expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft"])).toMatchObject({
-      "--brand": "#b7472a",
-      "--bg": "#f4f3f2",
-      "--panel-soft": "#f7f2ee"
-    });
-    await expect
-      .poll(async () => page.locator(".powerpoint-titlebar").evaluate((element) => getComputedStyle(element).backgroundColor))
-      .toBe("rgb(248, 248, 248)");
-    const powerpointChrome = await page.evaluate(() => ({
-      ribbon: getComputedStyle(document.querySelector(".powerpoint-ribbon") as HTMLElement).backgroundColor,
-      canvas: getComputedStyle(document.querySelector(".powerpoint-canvas") as HTMLElement).backgroundColor,
-      slide: getComputedStyle(document.querySelector("[data-testid='powerpoint-slide-canvas']") as HTMLElement).backgroundColor,
-      frame: getComputedStyle(document.querySelector(".powerpoint-content-frame") as HTMLElement).backgroundColor
-    }));
-    expect(powerpointChrome).toMatchObject({
-      ribbon: "rgb(255, 255, 255)",
-      canvas: "rgb(243, 242, 241)",
-      slide: "rgb(255, 255, 255)",
-      frame: "rgb(255, 255, 255)"
-    });
 
     await page.goto("/?theme=docs-light");
     expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft", "--ink"])).toMatchObject({
@@ -3465,28 +3277,56 @@ test.describe("program theme shells", () => {
       explorer: "rgb(243, 243, 243)",
       status: "rgb(0, 122, 204)"
     });
+  });
 
-    await page.goto("/?theme=jetbrains-dark");
-    await expect(page.locator(".jetbrains-content-frame")).toBeVisible();
-    expect(await readRootThemeVars(page, ["--brand", "--jetbrains-toolbar-bg", "--jetbrains-tool-window-bar-bg", "--jetbrains-editor-bg"])).toMatchObject({
-      "--brand": "#3574f0",
-      "--jetbrains-toolbar-bg": "#2b2d30",
-      "--jetbrains-tool-window-bar-bg": "#303236",
-      "--jetbrains-editor-bg": "#1e1f22"
-    });
-    const jetbrainsChrome = await page.evaluate(() => ({
-      toolbarImage: getComputedStyle(document.querySelector(".jetbrains-toolbar") as HTMLElement).backgroundImage,
-      toolbar: getComputedStyle(document.querySelector(".jetbrains-toolbar") as HTMLElement).backgroundColor,
-      toolWindow: getComputedStyle(document.querySelector(".jetbrains-tool-window-bar") as HTMLElement).backgroundColor,
-      editor: getComputedStyle(document.querySelector(".jetbrains-content-frame") as HTMLElement).backgroundColor
-    }));
-    expect(jetbrainsChrome).toMatchObject({
-      toolbarImage: "none",
-      toolbar: "rgb(43, 45, 48)",
-      toolWindow: "rgb(48, 50, 54)",
-      editor: "rgb(30, 31, 34)"
+  test("docs dark feed uses dark lane surfaces and sentiment dividers", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await prepareThemePage(page);
+    await page.goto("/?theme=docs-system");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "docs-system");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "docs-dark");
+
+    const metrics = await page.evaluate(() => {
+      const addCard = (tone: "fear" | "hope") => {
+        const list = document.querySelector(`.sentiment-lane-${tone} .sentiment-list`) as HTMLElement;
+        const card = document.createElement("article");
+        card.className = `sentiment-card sentiment-card-${tone}`;
+        card.textContent = `${tone} feed divider fixture`;
+        list.append(card);
+        return card;
+      };
+      const brightness = (value: string) => {
+        const channels = value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+        const scale = channels.every((channel) => channel <= 1) ? 255 : 1;
+        return channels.reduce((sum, channel) => sum + channel * scale, 0);
+      };
+      const fearLane = document.querySelector(".sentiment-lane-fear") as HTMLElement;
+      const hopeLane = document.querySelector(".sentiment-lane-hope") as HTMLElement;
+      const fearCard = addCard("fear");
+      const hopeCard = addCard("hope");
+      const fearLaneStyle = window.getComputedStyle(fearLane);
+      const hopeLaneStyle = window.getComputedStyle(hopeLane);
+      const fearBackground = fearLaneStyle.backgroundColor;
+      const hopeBackground = hopeLaneStyle.backgroundColor;
+
+      return {
+        fearBackground,
+        hopeBackground,
+        fearBackgroundBrightness: brightness(fearBackground),
+        hopeBackgroundBrightness: brightness(hopeBackground),
+        fearLaneBorder: fearLaneStyle.borderTopColor,
+        hopeLaneBorder: hopeLaneStyle.borderTopColor,
+        fearCardBorder: window.getComputedStyle(fearCard).borderBottomColor,
+        hopeCardBorder: window.getComputedStyle(hopeCard).borderBottomColor
+      };
     });
 
+    expect(metrics.fearBackgroundBrightness).toBeLessThan(180);
+    expect(metrics.hopeBackgroundBrightness).toBeLessThan(180);
+    expect(metrics.fearBackground).not.toBe(metrics.hopeBackground);
+    expect(metrics.fearLaneBorder).not.toBe(metrics.hopeLaneBorder);
+    expect(metrics.fearCardBorder).not.toBe(metrics.hopeCardBorder);
   });
 
   test("concept header action buttons use theme-specific chrome", async ({ page }) => {
@@ -3546,10 +3386,8 @@ test.describe("program theme shells", () => {
 
     const cases = [
       { theme: "excel-light", shell: "excel" },
-      { theme: "powerpoint-light", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
-      { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" }
+      { theme: "vscode-dark", shell: "vscode" }
     ];
 
     for (const item of cases) {
@@ -3562,6 +3400,8 @@ test.describe("program theme shells", () => {
       await expect(menu.getByText("테마", { exact: true })).toBeVisible();
       await expect(menu.getByText("색상", { exact: true })).toBeVisible();
       await expect(menu.getByRole("button", { name: "테마 Excel" })).toHaveText("Excel");
+      await expect(menu.getByRole("button", { name: "테마 PowerPoint" })).toHaveCount(0);
+      await expect(menu.getByRole("button", { name: "테마 JetBrains" })).toHaveCount(0);
       await expect(menu.getByRole("button", { name: "색상 라이트" })).toHaveText("라이트");
       await expect(menu.getByRole("button", { name: "색상 다크" })).toHaveText("다크");
       await expect(menu.getByRole("button", { name: "색상 시스템" })).toHaveText("시스템");
@@ -3598,19 +3438,19 @@ test.describe("program theme shells", () => {
 
     await page.goto("/?theme=excel-dark");
     await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
-    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "테마 PowerPoint" }).click();
+    await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "테마 Docs" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
     await expect(page.getByRole("menu", { name: "테마 선택" })).toBeVisible();
     await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "적용" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-dark");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "docs-dark");
     await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
 
     await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
     await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "색상 시스템" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-dark");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "docs-dark");
     await expect(page.getByRole("menu", { name: "테마 선택" })).toBeVisible();
     await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "적용" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "powerpoint-system");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "docs-system");
     await expect(page.getByRole("menu", { name: "테마 선택" })).toHaveCount(0);
   });
 
@@ -3620,10 +3460,8 @@ test.describe("program theme shells", () => {
 
     const cases = [
       { theme: "excel-light", shell: "excel" },
-      { theme: "powerpoint-light", shell: "powerpoint" },
       { theme: "docs-light", shell: "docs" },
-      { theme: "vscode-dark", shell: "vscode" },
-      { theme: "jetbrains-light", shell: "jetbrains" }
+      { theme: "vscode-dark", shell: "vscode" }
     ];
 
     for (const item of cases) {
@@ -3723,13 +3561,10 @@ test.describe("program theme shells", () => {
     expect(hintPlacement.pointerLeftOfLogin).toBe(true);
   });
 
-  test("ide concept themes render page content as plain editor text", async ({ page }) => {
+  test("VS Code concept theme renders page content as plain editor text", async ({ page }) => {
     await prepareThemePage(page);
 
-    const cases = [
-      { theme: "vscode-dark", shell: "vscode", shellClass: "theme-shell-vscode" },
-      { theme: "jetbrains-dark", shell: "jetbrains", shellClass: "theme-shell-jetbrains" }
-    ];
+    const cases = [{ theme: "vscode-dark", shell: "vscode", shellClass: "theme-shell-vscode" }];
     const readOverviewEditorLayout = async (shellClass: string) => {
       return page.evaluate((targetShellClass) => {
         const root = document.querySelector(`.${targetShellClass} .theme-shell-page .main`) as HTMLElement;
@@ -4477,77 +4312,6 @@ test.describe("program theme shells", () => {
     expect(Number(vscodeScroll.lastLine)).toBe(vscodeScroll.lineCount);
     expect(vscodeScroll.lastLineBottom).toBeGreaterThanOrEqual(vscodeScroll.documentBottom - vscodeScroll.lineHeight);
 
-    await page.goto("/auth/login?theme=jetbrains-light");
-    await expect.poll(async () => page.locator(".jetbrains-gutter span").count()).toBeGreaterThan(1);
-    const jetbrainsSurface = await page.evaluate(() => {
-      const gutter = document.querySelector(".jetbrains-gutter") as HTMLElement;
-      const lineNumbers = [...gutter.querySelectorAll("span")] as HTMLElement[];
-      const firstLine = lineNumbers[0];
-      const secondLine = lineNumbers[1];
-      const documentElement = document.querySelector(".theme-shell-jetbrains .theme-shell-content-document") as HTMLElement;
-      const gutterStyle = window.getComputedStyle(gutter);
-      const documentStyle = window.getComputedStyle(documentElement);
-      const body = document.querySelector(".jetbrains-editor-body") as HTMLElement;
-      const frame = document.querySelector(".jetbrains-content-frame") as HTMLElement;
-      const bodyStyle = window.getComputedStyle(body);
-      const frameStyle = window.getComputedStyle(frame);
-      const firstLineRect = firstLine.getBoundingClientRect();
-      const secondLineRect = secondLine.getBoundingClientRect();
-      const documentRect = documentElement.getBoundingClientRect();
-      const documentLineHeight = parseFloat(documentStyle.lineHeight);
-      const documentPaddingTop = parseFloat(documentStyle.paddingTop);
-
-      return {
-        lineCount: lineNumbers.length,
-        bodyOverflowY: bodyStyle.overflowY,
-        bodyScrollHeight: body.scrollHeight,
-        bodyClientHeight: body.clientHeight,
-        frameOverflowY: frameStyle.overflowY,
-        gutterGap: gutterStyle.gap,
-        gutterLineHeight: parseFloat(gutterStyle.lineHeight),
-        documentLineHeight,
-        firstLineOffset: firstLineRect.top - (documentRect.top + documentPaddingTop),
-        lineStep: secondLineRect.top - firstLineRect.top
-      };
-    });
-    expect(jetbrainsSurface.lineCount).toBeGreaterThan(0);
-    expect(jetbrainsSurface.bodyOverflowY).toBe("auto");
-    expect(jetbrainsSurface.bodyScrollHeight).toBeLessThanOrEqual(jetbrainsSurface.bodyClientHeight + 2);
-    expect(jetbrainsSurface.frameOverflowY).toBe("visible");
-    expect(jetbrainsSurface.gutterGap).toBe("0px");
-    expect(Math.abs(jetbrainsSurface.gutterLineHeight - jetbrainsSurface.documentLineHeight)).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(jetbrainsSurface.firstLineOffset)).toBeLessThanOrEqual(1);
-    expect(Math.abs(jetbrainsSurface.lineStep - jetbrainsSurface.documentLineHeight)).toBeLessThanOrEqual(1);
-
-    await page.goto("/docs?theme=jetbrains-light");
-    await expect(page.locator(".jetbrains-editor-body")).toBeVisible();
-    const jetbrainsScroll = await page.evaluate(() => {
-      const body = document.querySelector(".jetbrains-editor-body") as HTMLElement;
-      const frame = document.querySelector(".jetbrains-content-frame") as HTMLElement;
-      const documentElement = document.querySelector(".theme-shell-jetbrains .theme-shell-content-document") as HTMLElement;
-      const gutter = document.querySelector(".jetbrains-gutter") as HTMLElement;
-      const firstLine = gutter.querySelector("span") as HTMLElement;
-      const beforeFirstLineTop = firstLine.getBoundingClientRect().top;
-      body.scrollTop = body.scrollHeight;
-      const afterFirstLineTop = firstLine.getBoundingClientRect().top;
-      return {
-        bodyClientHeight: body.clientHeight,
-        bodyScrollHeight: body.scrollHeight,
-        bodyScrollTop: body.scrollTop,
-        frameScrollTop: frame.scrollTop,
-        firstLineDelta: afterFirstLineTop - beforeFirstLineTop,
-        bodyBackground: window.getComputedStyle(body).backgroundColor,
-        frameBackground: window.getComputedStyle(frame).backgroundColor,
-        documentBackground: window.getComputedStyle(documentElement).backgroundColor
-      };
-    });
-    expect(jetbrainsScroll.bodyScrollHeight).toBeGreaterThan(jetbrainsScroll.bodyClientHeight);
-    expect(jetbrainsScroll.bodyScrollTop).toBeGreaterThan(100);
-    expect(jetbrainsScroll.frameScrollTop).toBe(0);
-    expect(jetbrainsScroll.firstLineDelta).toBeLessThan(-100);
-    expect(jetbrainsScroll.documentBackground).toBe(jetbrainsScroll.frameBackground);
-    expect(jetbrainsScroll.bodyBackground).toBe(jetbrainsScroll.frameBackground);
-
     await page.goto("/?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {
       const style = window.getComputedStyle(element);
@@ -4620,7 +4384,7 @@ test.describe("program theme shells", () => {
       { theme: "excel-light", iconPath: "/theme-icons/excel.svg" },
       { theme: "excel-dark", iconPath: "/theme-icons/excel.svg" },
       { theme: "excel-system", iconPath: "/theme-icons/excel.svg" },
-      { theme: "powerpoint-dark", iconPath: "/theme-icons/powerpoint.svg" },
+      { theme: "docs-dark", iconPath: "/theme-icons/docs.svg" },
       { theme: "light", iconPath: "/favicon.ico" }
     ];
 
@@ -4664,6 +4428,30 @@ test.describe("program theme shells", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
     await expect(page.getByTestId("program-shell")).toHaveCount(0);
+    await expect(page.locator(".header")).toBeVisible();
+  });
+
+  test("removed theme values fall back to the default theme", async ({ page }) => {
+    await prepareThemePage(page, "powerpoint-dark");
+    await page.goto("/?theme=jetbrains-system");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
+    await expect(page.getByTestId("program-shell")).toHaveCount(0);
+
+    await page.context().clearCookies({ name: THEME_COOKIE });
+    await page.evaluate(
+      ([themeKey, removedTheme]) => {
+        window.localStorage.setItem(themeKey, removedTheme);
+      },
+      [THEME_STORAGE_KEY, "jetbrains-dark"]
+    );
+    await page.goto("/");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
     await expect(page.locator(".header")).toBeVisible();
   });
 });
