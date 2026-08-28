@@ -25,6 +25,14 @@
   --docs-ruler-bg: #242629;
   --docs-ruler-ink: #bdc1c6;
   --docs-button-ink: #e8eaed;
+  --fear-bg: color-mix(in srgb, var(--docs-page-bg) 90%, var(--danger) 10%);
+  --fear-line: color-mix(in srgb, var(--danger) 28%, transparent);
+  --hope-bg: color-mix(in srgb, var(--docs-page-bg) 90%, var(--hope) 10%);
+  --hope-line: color-mix(in srgb, var(--hope) 28%, transparent);
+  --lane-line-soft: color-mix(in srgb, var(--theme-shell-line) 52%, transparent);
+  --fear-divider: color-mix(in srgb, var(--danger) 18%, transparent);
+  --hope-divider: color-mix(in srgb, var(--hope) 18%, transparent);
+  --surface-hover: color-mix(in srgb, var(--theme-shell-accent) 6%, transparent);
 }
 
 .theme-shell-docs {
@@ -497,6 +505,14 @@
 .theme-shell-docs .goksorry-room-reply {
   border-color: color-mix(in srgb, var(--theme-shell-line) 82%, var(--theme-shell-accent));
   background: color-mix(in srgb, var(--docs-page-bg) 92%, transparent);
+}
+
+.theme-shell-docs .sentiment-card-fear {
+  border-bottom-color: var(--fear-divider);
+}
+
+.theme-shell-docs .sentiment-card-hope {
+  border-bottom-color: var(--hope-divider);
 }
 
 .theme-shell-docs h1,

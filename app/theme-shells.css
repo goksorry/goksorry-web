@@ -311,10 +311,8 @@
 }
 
 .excel-titlebar,
-.powerpoint-titlebar,
 .docs-app-header,
-.vscode-titlebar,
-.jetbrains-toolbar {
+.vscode-titlebar {
   position: sticky;
   top: 0;
   z-index: 45;
@@ -358,10 +356,8 @@
   }
 
   .excel-titlebar,
-  .powerpoint-titlebar,
   .docs-titlebar,
-  .vscode-titlebar,
-  .jetbrains-toolbar {
+  .vscode-titlebar {
     padding-right: calc(var(--theme-shell-mobile-auth-width) + 0.85rem);
   }
 
