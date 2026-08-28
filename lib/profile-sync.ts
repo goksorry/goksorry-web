@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "crypto";
-import { getServerEnv } from "@/lib/env";
+import { getAdminEmail } from "@/lib/env";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 export type AppRole = "admin" | "user";
@@ -257,7 +257,7 @@ export const isAdminEmail = (email?: string | null): boolean => {
     return false;
   }
 
-  const adminEmail = getServerEnv().ADMIN_EMAIL.trim().toLowerCase();
+  const adminEmail = getAdminEmail().trim().toLowerCase();
   if (!adminEmail) {
     return false;
   }

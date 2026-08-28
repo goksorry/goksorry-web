@@ -5,7 +5,7 @@ import type { NextResponse } from "next/server";
 import { getCompletedProfileForUser, getUserFromAuthorization, isAdminEmail, type AppAuthUser } from "@/lib/auth-server";
 import { normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
 import { readGuestChatCookie } from "@/lib/chat-token";
-import { getChatServerEnv, getServerEnv } from "@/lib/env";
+import { getChatServerEnv, getNextAuthSecret } from "@/lib/env";
 import { hasNextAuthSessionCookie } from "@/lib/nextauth-cookie";
 export { GOKSORRY_ROOM_ENTRY_MAX_LENGTH, GOKSORRY_ROOM_REPLY_MAX_LENGTH } from "@/lib/goksorry-room-limits";
 import { CLIENT_PERSISTENCE_DEFINITIONS, SERVER_COOKIE_DEFINITIONS } from "@/lib/persistence-registry";
@@ -54,7 +54,7 @@ const readCookieValue = (request: Request, name: string): string => {
 };
 
 const signOwnerId = (ownerId: string): string => {
-  return createHmac("sha256", getServerEnv().NEXTAUTH_SECRET).update(ownerId).digest("base64url");
+  return createHmac("sha256", getNextAuthSecret()).update(ownerId).digest("base64url");
 };
 
 const createOwnerToken = (ownerId: string): string => {
@@ -78,7 +78,7 @@ const readOwnerIdFromToken = (token: string): string | null => {
 };
 
 const hashGuestOwnerId = (ownerId: string): string => {
-  return createHmac("sha256", getServerEnv().NEXTAUTH_SECRET)
+  return createHmac("sha256", getNextAuthSecret())
     .update(`goksorry-room:${ownerId}`)
     .digest("hex");
 };

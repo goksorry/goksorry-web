@@ -3,7 +3,7 @@ import "server-only";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
-import { getServerEnv } from "@/lib/env";
+import { getAuthServerEnv } from "@/lib/env";
 import {
   ACCOUNT_REJOIN_COOLDOWN_DAYS,
   buildLegacyProfileIdFromEmail,
@@ -85,8 +85,10 @@ const seedTokenIdentity = (
   return token;
 };
 
+const authEnv = getAuthServerEnv();
+
 export const authOptions: NextAuthOptions = {
-  secret: getServerEnv().NEXTAUTH_SECRET,
+  secret: authEnv.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt"
   },
@@ -95,8 +97,8 @@ export const authOptions: NextAuthOptions = {
   },
   providers: [
     GoogleProvider({
-      clientId: getServerEnv().GOOGLE_CLIENT_ID,
-      clientSecret: getServerEnv().GOOGLE_CLIENT_SECRET
+      clientId: authEnv.GOOGLE_CLIENT_ID,
+      clientSecret: authEnv.GOOGLE_CLIENT_SECRET
     })
   ],
   callbacks: {

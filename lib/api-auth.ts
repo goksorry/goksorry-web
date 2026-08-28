@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/lib/env";
+import { getDetectorWriteToken } from "@/lib/env";
 
 export type ApiErrorCode =
   | "INVALID_QUERY"
@@ -100,8 +100,7 @@ export const requireDetectorWriteAuth = (
 ): { ok: true; requestId: string } | { ok: false; response: NextResponse } => {
   const requestId = getRequestId(request);
   const token = parseBearer(request);
-  const env = getServerEnv();
-  if (!token || token !== env.DETECTOR_WRITE_TOKEN) {
+  if (!token || token !== getDetectorWriteToken()) {
     return {
       ok: false,
       response: jsonError(requestId, 401, "UNAUTHORIZED", "invalid detector token")

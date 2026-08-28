@@ -46,7 +46,7 @@
 
 필수:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_URL` (서버 전용, 기존 `NEXT_PUBLIC_SUPABASE_URL`은 마이그레이션 기간에만 fallback 지원)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXTAUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
@@ -54,9 +54,10 @@
 - `DETECTOR_WRITE_TOKEN`
 - `ADMIN_EMAIL`
 
+Vercel에서는 Production과 Preview에 각각 해당 환경용 값을 설정합니다. Preview에 production `SUPABASE_SERVICE_ROLE_KEY`를 복제하지 않습니다.
+
 선택:
 
-- `APP_VERSION`
 - `DEFAULT_TIMEZONE`
 - `CHAT_TOKEN_SECRET`
 - `CHAT_WS_BASE_URL`

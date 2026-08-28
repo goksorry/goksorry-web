@@ -4,8 +4,8 @@ const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 8;
 const DEFAULT_RETRY_HOURS = 24;
 
-const requiredEnv = (name) => {
-  const value = process.env[name];
+const requiredEnv = (name, legacyName) => {
+  const value = process.env[name] ?? (legacyName ? process.env[legacyName] : undefined);
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
@@ -30,12 +30,16 @@ const getOptions = () => {
 };
 
 const createServiceClient = () => {
-  return createClient(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
+  return createClient(
+    requiredEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+    requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
     }
-  });
+  );
 };
 
 const parseMarket = (value) => {

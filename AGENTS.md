@@ -8,7 +8,7 @@
 - Deploy target assumption: Vercel
 
 ## Required Environment Variables
-- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_URL` (server-only; legacy `NEXT_PUBLIC_SUPABASE_URL` fallback during migration)
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
 - `NEXTAUTH_SECRET` (server-only)
 - `GOOGLE_CLIENT_ID` (server-only)
@@ -16,7 +16,6 @@
 - `DETECTOR_WRITE_TOKEN` (server-only)
 - `ADMIN_EMAIL` (server-only)
 - `DEFAULT_TIMEZONE` (optional, default `Asia/Seoul`)
-- `APP_VERSION` (optional)
 - `CHAT_TOKEN_SECRET` (optional)
 - `CHAT_WS_BASE_URL` (optional)
 
