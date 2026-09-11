@@ -21,6 +21,7 @@ type IngestPayloadItem = {
     label?: unknown;
     sentiment_score?: unknown;
     confidence?: unknown;
+    model?: unknown;
   };
 };
 
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
         label,
         sentiment_score: sentimentScore,
         confidence,
-        model: "gemini-2.5-flash-lite",
+        model: sanitizeOptionalPlainText(item.analysis?.model, "model", 120) ?? "gemini-2.5-flash-lite",
         analyzed_at: new Date().toISOString()
       });
     } catch {
