@@ -139,8 +139,9 @@ export async function GET(request: Request) {
   const detectorEffectiveAgeSec = ageSecFromIso(detectorEffectiveLastRunAt, nowMs);
 
   const detectorBaseStatus = freshnessStatus(detectorEffectiveAgeSec);
+  const collectorErrors = Number(statusResult.data?.collector_errors ?? 0);
   const detectorStatus =
-    statusResult.data?.llm_degraded || String(statusResult.data?.detector_mode ?? "normal") !== "normal"
+    collectorErrors > 0 || statusResult.data?.llm_degraded || String(statusResult.data?.detector_mode ?? "normal") !== "normal"
       ? worstStatus(detectorBaseStatus, "degraded")
       : detectorBaseStatus;
   const feedStatus = freshnessStatus(feedAgeSec);
@@ -160,7 +161,7 @@ export async function GET(request: Request) {
         status: detectorStatus,
         collector_last_run_at: collectorLastRunAt,
         collector_age_sec: collectorAgeSec,
-        collector_errors: Number(statusResult.data?.collector_errors ?? 0),
+        collector_errors: collectorErrors,
         llm_last_run_at: llmLastRunAt,
         llm_age_sec: llmAgeSec,
         llm_degraded: Boolean(statusResult.data?.llm_degraded),

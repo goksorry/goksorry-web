@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { parseNaverNasdaqQuote, parseNaverUsdKrwQuote } from "@/lib/naver-market-data";
 import {
   buildMarketAdjustmentSnapshot,
   calculateMarketAdjustmentTiming,
@@ -110,14 +111,6 @@ const fetchText = async (url: string): Promise<string> => {
   }
 };
 
-const stripTags = (html: string): string => {
-  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-};
-
-const compactInlineNumber = (html: string): string => {
-  return stripTags(html).replace(/\s+/g, "");
-};
-
 const parseNumber = (value: string): number | null => {
   const normalized = value.replace(/[^0-9+.,-]/g, "").replace(/,/g, "");
   if (!normalized) {
@@ -157,32 +150,6 @@ const parseIndexTradeDates = (raw: string): { currentDate?: string; previousDate
   } catch {
     return {};
   }
-};
-
-const parseWorldIndexTradeDates = (html: string): { currentDate?: string; previousDate?: string } => {
-  const rows = [...html.matchAll(/<tr[^>]*>\s*<td class="tb_td">([^<]+)<\/td>[\s\S]*?<\/tr>/gi)];
-  return {
-    currentDate: rows[0]?.[1]?.trim(),
-    previousDate: rows[1]?.[1]?.trim()
-  };
-};
-
-const parseExchangeQuoteDates = (html: string): { currentDate?: string; previousDate?: string } => {
-  const rows = [...html.matchAll(/<td class="date">([^<]+)<\/td>/gi)];
-  return {
-    currentDate: rows[0]?.[1]?.trim(),
-    previousDate: rows[1]?.[1]?.trim()
-  };
-};
-
-const hasExplicitNumericSign = (html: string): boolean => /[+-]/.test(stripTags(html));
-
-const resolveDirectionalValue = (value: number | null, tone: IndicatorTone, html: string): number | null => {
-  if (value === null || tone === "flat" || hasExplicitNumericSign(html)) {
-    return value;
-  }
-
-  return value * (tone === "down" ? -1 : 1);
 };
 
 const formatNumber = (value: number, digits = 2): string => {
@@ -291,30 +258,17 @@ const fetchServiceIndex = async (code: "KOSPI" | "KOSDAQ", label: string, asOf: 
 
 const fetchNasdaqIndicator = async (asOf: Date): Promise<MarketIndicator> => {
   try {
-    const html = await fetchText("https://finance.naver.com/world/sise.naver?symbol=NAS@IXIC");
-    const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const tradeDates = parseWorldIndexTradeDates(html);
-    const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
-    const value = compactInlineNumber(todayBlock);
-    const tone: IndicatorTone =
-      exdayBlock.includes("ico minus") || exdayBlock.includes("no_down")
-        ? "down"
-        : exdayBlock.includes("no_up")
-          ? "up"
-          : "flat";
-    const deltaHtml = exdayEmMatches[0]?.[1] ?? "";
-    const percentHtml = exdayEmMatches[1]?.[1] ?? "";
-    const delta = parseNumber(compactInlineNumber(deltaHtml));
-    const percent = parseNumber(compactInlineNumber(percentHtml).replace(/[()]/g, ""));
-    const signedDelta = resolveDirectionalValue(delta, tone, deltaHtml);
-    const signedPercent = resolveDirectionalValue(percent, tone, percentHtml);
-
-    if (!value) {
-      return fallbackIndicator("nasdaq", "NASDAQ");
-    }
+    const [raw, prices] = await Promise.all([
+      fetchText("https://stock.naver.com/api/securityService/index/.IXIC/basic"),
+      fetchText("https://stock.naver.com/api/securityService/index/.IXIC/price?page=1&pageSize=2")
+        .then((raw): unknown => JSON.parse(raw)).catch(() => [])
+    ]);
+    const quote = parseNaverNasdaqQuote(JSON.parse(raw), prices);
+    if (!quote) return fallbackIndicator("nasdaq", "NASDAQ");
+    const { value, change, percent, currentDate, previousDate } = quote;
+    const tone: IndicatorTone = change > 0 ? "up" : change < 0 ? "down" : "flat";
     const adjustmentTiming = calculateMarketAdjustmentTiming({
-      basisDate: tradeDates.currentDate,
+      basisDate: currentDate,
       timeZone: US_MARKET_TIME_ZONE,
       closeHour: 16,
       closeMinute: 0,
@@ -324,12 +278,12 @@ const fetchNasdaqIndicator = async (asOf: Date): Promise<MarketIndicator> => {
     return {
       id: "nasdaq",
       label: "NASDAQ",
-      value_text: value,
-      delta_text: formatDeltaWithPercent(signedDelta, signedPercent),
-      change_value: signedDelta,
-      change_percent: signedPercent,
+      value_text: formatNumber(value, 2),
+      delta_text: formatDeltaWithPercent(change, percent),
+      change_value: change,
+      change_percent: percent,
       tone,
-      note: formatCloseBasisNote(tradeDates.previousDate),
+      note: formatCloseBasisNote(previousDate),
       market_adjustment_basis_at: adjustmentTiming.basis_at,
       market_adjustment_weight: adjustmentTiming.weight,
       market_adjustment_status: adjustmentTiming.status
@@ -341,33 +295,17 @@ const fetchNasdaqIndicator = async (asOf: Date): Promise<MarketIndicator> => {
 
 const fetchUsdKrwIndicator = async (asOf: Date): Promise<MarketIndicator> => {
   try {
-    const [html, dailyHtml] = await Promise.all([
-      fetchText("https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_USDKRW"),
-      fetchText("https://finance.naver.com/marketindex/exchangeDailyQuote.naver?marketindexCd=FX_USDKRW&page=1")
+    const [raw, daily] = await Promise.all([
+      fetchText("https://stock.naver.com/api/stockSecurity/exchange-rates/v2/market-index/FX_USDKRW/latest"),
+      fetchText("https://stock.naver.com/api/stockSecurity/exchange-rates/v2/USD/daily?bankType=hana&size=2")
+        .then((raw): unknown => JSON.parse(raw)).catch(() => ({}))
     ]);
-    const todayBlock = html.match(/<p class="no_today">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const exdayBlock = html.match(/<p class="no_exday">([\s\S]*?)<\/p>/i)?.[1] ?? "";
-    const quoteDates = parseExchangeQuoteDates(dailyHtml);
-    const exdayEmMatches = [...exdayBlock.matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)];
-    const valueNumber = parseNumber(stripTags(todayBlock));
-    if (valueNumber === null) {
-      return fallbackIndicator("usdkrw", "원/달러 환율");
-    }
-
-    const tone: IndicatorTone =
-      exdayBlock.includes('class="ico down"') || exdayBlock.includes("no_down")
-        ? "down"
-        : exdayBlock.includes('class="ico up"') || exdayBlock.includes("no_up")
-          ? "up"
-          : "flat";
-    const changeHtml = exdayEmMatches[0]?.[1] ?? "";
-    const percentHtml = exdayEmMatches[1]?.[1] ?? "";
-    const changeNumber = parseNumber(compactInlineNumber(changeHtml));
-    const percentNumber = parseNumber(compactInlineNumber(percentHtml).replace(/[()]/g, ""));
-    const signedChange = resolveDirectionalValue(changeNumber, tone, changeHtml);
-    const signedPercent = resolveDirectionalValue(percentNumber, tone, percentHtml);
+    const quote = parseNaverUsdKrwQuote(JSON.parse(raw), daily);
+    if (!quote) return fallbackIndicator("usdkrw", "원/달러 환율");
+    const { value, change, percent, currentDate, previousDate } = quote;
+    const tone: IndicatorTone = change > 0 ? "up" : change < 0 ? "down" : "flat";
     const adjustmentTiming = calculateMarketAdjustmentTiming({
-      basisDate: quoteDates.currentDate,
+      basisDate: currentDate,
       timeZone: KR_MARKET_TIME_ZONE,
       closeHour: 15,
       closeMinute: 30,
@@ -377,17 +315,12 @@ const fetchUsdKrwIndicator = async (asOf: Date): Promise<MarketIndicator> => {
     return {
       id: "usdkrw",
       label: "원/달러 환율",
-      value_text: formatNumber(valueNumber, 2),
-      delta_text:
-        signedChange === null && signedPercent === null
-          ? "변동 정보 없음"
-          : `${signedChange === null ? "" : `${formatSignedNumber(signedChange, 2)} KRW`}${
-              signedPercent === null ? "" : ` (${formatSignedNumber(signedPercent, 2)}%)`
-            }`.trim(),
-      change_value: signedChange,
-      change_percent: signedPercent,
+      value_text: formatNumber(value, 2),
+      delta_text: `${formatSignedNumber(change, 2)} KRW (${formatSignedNumber(percent, 2)}%)`,
+      change_value: change,
+      change_percent: percent,
       tone,
-      note: formatExchangeBasisNote(quoteDates.previousDate),
+      note: formatExchangeBasisNote(previousDate),
       market_adjustment_basis_at: adjustmentTiming.basis_at,
       market_adjustment_weight: adjustmentTiming.weight,
       market_adjustment_status: adjustmentTiming.status
