@@ -75,7 +75,7 @@ const worstStatus = (...statuses: HealthLevel[]): HealthLevel =>
 
 export async function GET(request: Request) {
   const requestId = getRequestId(request);
-  const service = getServiceSupabaseClient();
+  const service = getServiceSupabaseClient({ cache: "no-store" });
 
   const [statusResult, feedResult, signalResult] = await Promise.all([
     service
