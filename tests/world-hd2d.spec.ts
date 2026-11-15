@@ -96,7 +96,7 @@ test("portrait zooms one wall section; arrows pan the camera and overview shows 
   await expect.poll(async () => (await wallMetrics(page)).settled && await inside("market")).toBe(false);
 });
 
-test("perspective camera turns toward the visitor and keeps every panel on screen", async ({ page }) => {
+test("perspective camera turns toward the visitor and brings it nearer the middle", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
@@ -105,11 +105,12 @@ test("perspective camera turns toward the visitor and keeps every panel on scree
   await page.mouse.click(box.x + 150, box.y + box.height - 150); // Walk to the left side of the floor.
   await expect.poll(async () => (await wallMetrics(page)).yaw, { timeout: 15_000 }).toBeGreaterThan(.05);
   const turned = await wallMetrics(page);
-  // The camera swings right to look left: the right panel comes closer, the left one recedes.
-  expect(turned.rects.feed.height).toBeGreaterThan(rest.rects.feed.height);
-  expect(turned.rects.market.height).toBeLessThan(rest.rects.market.height);
-  for (const r of Object.values(turned.rects)) { expect(r.x).toBeGreaterThan(0); expect(r.x + r.width).toBeLessThan(box.width); expect(r.y).toBeGreaterThan(0); }
+  // The camera pans left toward the ant: the wall slides right, so the ant sits nearer the middle.
+  expect(turned.rects.market.x).toBeGreaterThan(rest.rects.market.x + 100);
+  expect(turned.rects.pierrot.x).toBeGreaterThan(rest.rects.pierrot.x + 100);
+  // The side the ant stands on stays fully on screen; the far end may leave the frame.
+  for (const id of ["market", "room", "pierrot", "index"] as const) { const r = turned.rects[id]; expect(r.x).toBeGreaterThan(0); expect(r.x + r.width).toBeLessThan(box.width); expect(r.y).toBeGreaterThan(0); }
   // Panel buttons follow the turned wall.
-  const r = turned.rects.feed; await page.mouse.click(box.x + r.x + r.width / 2, box.y + r.y + r.height / 2);
-  await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
+  const r = turned.rects.room; await page.mouse.click(box.x + r.x + r.width / 2, box.y + r.y + r.height / 2);
+  await expect(page.getByRole("tab", { name: "곡소리방", exact: true })).toHaveAttribute("aria-selected", "true");
 });

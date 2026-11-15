@@ -99,9 +99,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     room.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); staticRoot.remove(room); room = new THREE.Group(); staticRoot.add(room);
     // Frontal stage: one flat 9-high back wall carries the information panels.
     // Floor and brick repeat past the side walls so wide viewports never show void.
-    for (const x of [-23, 0, 23]) box(x, -.38, 0, 23, .75, 17, floorMat);
-    for (const x of [-16.8, -5.6, 5.6, 16.8]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
-    box(0, 9.12, -5.2, 45, .24, 1.1, metalMat);
+    // The follow camera pans sideways and swings the frame's lower corners forward, so the wall runs
+    // as wide as the floor and a front strip continues the floor toward the camera.
+    for (const x of [-23, 0, 23]) { box(x, -.38, 0, 23, .75, 17, floorMat); box(x, -.38, 10.5, 23, .75, 4, floorMat); }
+    for (const x of [-28, -16.8, -5.6, 5.6, 16.8, 28]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
+    box(0, 9.12, -5.2, 68, .24, 1.1, metalMat);
     box(0, .4, -4.2, 21.2, .8, 1.5, plasterMat);
     for (let j = 0; j < 3; j++) box(0, .1 + j * .12, -3.3 - j * .32, 19.8, .2, .45, brickMat);
     for (const sign of [-1, 1]) {
@@ -198,7 +200,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
   let width = 0, height = 0, direction = 0;
   const CAMERA_DISTANCE = 32, CAMERA_HEIGHT = 8.4, WALL_Y0 = wallScreenY(0, WALL_PANEL_Z);
-  let yaw = 0, front = 7;
+  // While turning, the camera also slides this far (world units per radian) toward the visitor.
+  const CAMERA_SLIDE = 8;
+  let yaw = 0, orbit = 0, front = 7;
   const corner = new THREE.Vector3();
   let view: WallView = { layout: "wide", section: 1, overview: false, hudBottom: 0 };
   let fit: WallFit = wallFit(1200, 680, { plaza: state.scene === "plaza", ...view });
@@ -217,9 +221,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count;
   }
   const zoomed = () => state.scene === "plaza" && view.layout === "sectioned" && !view.overview;
-  // Gaze follows the visitor: the camera swings to the far side and looks toward the ant.
+  // Gaze follows the visitor. Whole-wall views pan (and slide a little) toward the ant so it sits nearer
+  // the middle of the screen; the far end of the wall may leave the frame. The zoomed single-section view
+  // has no spare margin, so there the camera orbits the section instead and the panel stays framed.
   const yawTarget = () => {
-    const close = zoomed(), reach = close ? 4 : 10, max = (close ? 4 : 7) * Math.PI / 180;
+    const close = zoomed(), reach = close ? 4 : 10;
+    let max = (close ? 4 : 10) * Math.PI / 180;
+    // Very wide frames turn less so the frame edge stays on the built wall (x within ±33).
+    while (!close && max > .01 && CAMERA_SLIDE * max + CAMERA_DISTANCE * Math.tan(max + Math.atan(fit.halfW / CAMERA_DISTANCE)) > 33) max -= .005;
     return Math.max(-1, Math.min(1, (fit.cx - position.x) / reach)) * max || 0;
   };
   /** Deepest floor z the frame shows above the bottom HUD (camera at rest). */
@@ -236,7 +245,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     camera.projectionMatrix.makePerspective(-lens.halfW * k, lens.halfW * k,
       ((lens.top - WALL_Y0) / WALL_COS - CAMERA_HEIGHT) * k, ((lens.bottom - WALL_Y0) / WALL_COS - CAMERA_HEIGHT) * k, near, 140);
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-    camera.position.set(lens.cx + CAMERA_DISTANCE * Math.sin(yaw), CAMERA_HEIGHT, WALL_PANEL_Z + CAMERA_DISTANCE * Math.cos(yaw));
+    // `orbit` blends the two poses: 1 = orbit the wall pivot, 0 = turn in place and slide toward the visitor.
+    camera.position.set(lens.cx + orbit * CAMERA_DISTANCE * Math.sin(yaw) - (1 - orbit) * CAMERA_SLIDE * yaw, CAMERA_HEIGHT,
+      WALL_PANEL_Z + CAMERA_DISTANCE * (orbit * Math.cos(yaw) + 1 - orbit));
     camera.rotation.set(0, yaw, 0); camera.updateMatrixWorld();
     const plaza = state.scene === "plaza";
     // Screen bounds of each panel's four corners: exact rectangles at rest, bounding boxes while turned.
@@ -269,8 +280,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     fit = wallFit(w, h, { plaza: state.scene === "plaza", ...view });
     front = visibleFront();
     // Keep the visitor on the floor the new frame still shows.
-    if (position.z > front - .35) { position.z = front - .35; path = []; }
-    if (snap) { snap = false; Object.assign(lens, { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); yaw = yawTarget(); }
+    if (position.z > front - .35) {
+      position.z = front - .35; path = [];
+      // The clamped row can cut through crates / side buildings: slide inward until the spot is walkable.
+      const obstacles = worldObstacles(state.scene);
+      while (!walkable(position, obstacles) && Math.abs(position.x) > .1) position.x -= Math.sign(position.x) * .1;
+      if (!walkable(position, obstacles)) position.x = 0;
+    }
+    if (snap) { snap = false; Object.assign(lens, { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); yaw = yawTarget(); orbit = zoomed() ? 1 : 0; }
     applyCamera();
   }
   function paintWall() {
@@ -327,10 +344,12 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (distance < dt * 3) { position.x = target.x; position.z = target.z; path.shift(); }
       else { position.x += dx / distance * dt * 3; position.z += dz / distance * dt * 3; }
     }
-    const turn = yawTarget();
-    if (yaw !== turn) {
+    const turn = yawTarget(), mode = zoomed() ? 1 : 0;
+    if (yaw !== turn || orbit !== mode) {
       yaw += (turn - yaw) * (state.paused ? 1 : 1 - Math.exp(-dt * 3));
+      orbit += (mode - orbit) * (state.paused ? 1 : 1 - Math.exp(-dt * 10));
       if (Math.abs(turn - yaw) < 1e-4) yaw = turn;
+      if (Math.abs(mode - orbit) < 1e-3) orbit = mode;
       applyCamera();
     }
     const sum = summary();
@@ -386,6 +405,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   function click(x: number, y: number) {
     raycaster.setFromCamera(new THREE.Vector2(x / width * 2 - 1, 1 - y / height * 2), camera);
+    ants.boundingSphere = null; // Instances move every frame: never pick against a stale sphere.
     const hit = raycaster.intersectObject(ants)[0];
     if (hit && hit.instanceId !== undefined && hit.instanceId < sideList.length) { events.evidence?.(sideList[hit.instanceId]); return; }
     const target = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
@@ -398,7 +418,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // The floor is only walkable where the framed view shows it.
   const limitZ = (z: number) => Math.min(z, front - .35);
   function update(next: RenderState) {
-    const changed = state.scene !== next.scene; state = next;
+    const changed = state.scene !== next.scene, density = state.mobile !== next.mobile; state = next;
     if (changed) {
       path = []; snap = true;
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
@@ -406,7 +426,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       buildRoom();
     }
     if (state.paused) { lastTime = lastRender = 0; }
-    population(); width = 0;
+    population();
+    // Re-fit without treating a props change as a new frame (that would cancel the camera eases);
+    // only the pixel budget needs the full resize path.
+    viewDirty = true; if (density) width = 0;
   }
   const lost = (event: Event) => { event.preventDefault(); events.failure?.(); }; canvas.addEventListener("webglcontextlost", lost);
   buildRoom(); population();
