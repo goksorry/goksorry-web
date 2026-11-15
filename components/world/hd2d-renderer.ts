@@ -3,12 +3,12 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdDistribution } from "@/lib/world-presentation";
 import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
-import { WALL_CAMERA_DISTANCE, WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SIN, projectPanel, wallBodyPx, wallFit, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallTextPanelId, type WallView } from "@/lib/world-wall";
+import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallTextPanelId, type WallView } from "@/lib/world-wall";
 import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
 import antAtlas from "./ant-atlas.json";
 
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean };
-export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number };
+export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null };
 export type WorldRenderer = {
   update: (state: RenderState) => void;
@@ -41,8 +41,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   renderer.shadowMap.autoUpdate = false;
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x101b23, 34, 68);
-  const camera = new THREE.OrthographicCamera(-15, 15, 10, -10, .1, 100);
-  camera.position.set(0, WALL_CAMERA_DISTANCE * WALL_SIN, WALL_CAMERA_DISTANCE * WALL_COS); camera.lookAt(0, 0, 0);
+  // Perspective camera with a level axis and a shifted frustum (lens shift): at rest the wall plane
+  // maps exactly like the old orthographic frame, so panels stay rectangles, while depth gets real
+  // perspective. The camera orbits the wall around the vertical axis to keep looking toward the visitor.
+  const camera = new THREE.PerspectiveCamera();
   const hemi = new THREE.HemisphereLight(0x9ebbd0, 0x3a2c21, 2.2); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xb8c6d0, 2.5); sun.position.set(-8, 18, 8); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -16; sun.shadow.camera.right = 16; sun.shadow.camera.top = 16; sun.shadow.camera.bottom = -14; sun.shadow.bias = -.002;
@@ -195,7 +197,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
   let width = 0, height = 0, direction = 0;
-  const cameraUp = new THREE.Vector3(0, WALL_COS, -WALL_SIN);
+  const CAMERA_DISTANCE = 32, CAMERA_HEIGHT = 8.4, WALL_Y0 = wallScreenY(0, WALL_PANEL_Z);
+  let yaw = 0, front = 7;
+  const corner = new THREE.Vector3();
   let view: WallView = { layout: "wide", section: 1, overview: false, hudBottom: 0 };
   let fit: WallFit = wallFit(1200, 680, { plaza: state.scene === "plaza", ...view });
   // Eased camera frame; `fit` is the target.
@@ -212,15 +216,40 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
     ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count;
   }
+  const zoomed = () => state.scene === "plaza" && view.layout === "sectioned" && !view.overview;
+  // Gaze follows the visitor: the camera swings to the far side and looks toward the ant.
+  const yawTarget = () => {
+    const close = zoomed(), reach = close ? 4 : 10, max = (close ? 4 : 7) * Math.PI / 180;
+    return Math.max(-1, Math.min(1, (fit.cx - position.x) / reach)) * max || 0;
+  };
+  /** Deepest floor z the frame shows above the bottom HUD (camera at rest). */
+  function visibleFront() {
+    const hud = height < WALL_SHORT_STAGE ? 0 : Math.max(0, view.hudBottom);
+    const y = (fit.bottom + hud / fit.ppu - WALL_Y0) / WALL_COS; // height on the wall plane at the frame's lower edge
+    const depth = y >= 0 ? 0 : -y * CAMERA_DISTANCE / (CAMERA_HEIGHT - y);
+    return Math.max(state.scene === "plaza" ? .8 : 4, Math.min(7, WALL_PANEL_Z + depth));
+  }
   function applyCamera() {
-    camera.left = -lens.halfW; camera.right = lens.halfW; camera.top = lens.top; camera.bottom = lens.bottom;
-    camera.position.set(lens.cx, WALL_CAMERA_DISTANCE * WALL_SIN, WALL_CAMERA_DISTANCE * WALL_COS); camera.lookAt(lens.cx, 0, 0);
-    camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    // Frame window on the wall plane, as seen from the camera's own height. Vertical is scaled by
+    // WALL_COS like the former tilted view, so wallFit / projectPanel still describe the rest pose.
+    const near = .5, k = near / CAMERA_DISTANCE;
+    camera.projectionMatrix.makePerspective(-lens.halfW * k, lens.halfW * k,
+      ((lens.top - WALL_Y0) / WALL_COS - CAMERA_HEIGHT) * k, ((lens.bottom - WALL_Y0) / WALL_COS - CAMERA_HEIGHT) * k, near, 140);
+    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+    camera.position.set(lens.cx + CAMERA_DISTANCE * Math.sin(yaw), CAMERA_HEIGHT, WALL_PANEL_Z + CAMERA_DISTANCE * Math.cos(yaw));
+    camera.rotation.set(0, yaw, 0); camera.updateMatrixWorld();
     const plaza = state.scene === "plaza";
-    const current = { ...fit, ...lens, ppu: width / (2 * lens.halfW) };
-    const rects = Object.fromEntries(WALL_PANEL_IDS.map((id) => [id, projectPanel(id, current)])) as Record<WallPanelId, WallRect>;
+    // Screen bounds of each panel's four corners: exact rectangles at rest, bounding boxes while turned.
+    const rects = Object.fromEntries(WALL_PANEL_IDS.map((id) => {
+      const p = WALL_PANELS[id]; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+        const q = project(corner.set(p.x + sx * p.w / 2, p.y + sy * p.h / 2, WALL_PANEL_Z));
+        x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+      }
+      return [id, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
+    })) as Record<WallPanelId, WallRect>;
     const settled = lens.cx === fit.cx && lens.halfW === fit.halfW && lens.top === fit.top;
-    metrics.wall = plaza ? { rects, drawn, body: metrics.wall?.body ?? 0, ppu: current.ppu, section: view.section, overview: view.overview, settled, front: fit.front } : null;
+    metrics.wall = plaza ? { rects, drawn, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw } : null;
     const key = plaza ? WALL_PANEL_IDS.map((id) => `${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|") : "";
     if (key !== rectKey) { rectKey = key; events.panels?.(plaza ? rects : null); }
   }
@@ -238,9 +267,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (!viewDirty) return;
     viewDirty = false; wallDirty = true;
     fit = wallFit(w, h, { plaza: state.scene === "plaza", ...view });
-    if (snap) { snap = false; Object.assign(lens, { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); }
+    front = visibleFront();
     // Keep the visitor on the floor the new frame still shows.
-    if (state.scene === "plaza" && position.z > fit.front - .35) { position.z = fit.front - .35; path = []; }
+    if (position.z > front - .35) { position.z = front - .35; path = []; }
+    if (snap) { snap = false; Object.assign(lens, { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); yaw = yawTarget(); }
     applyCamera();
   }
   function paintWall() {
@@ -297,6 +327,12 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (distance < dt * 3) { position.x = target.x; position.z = target.z; path.shift(); }
       else { position.x += dx / distance * dt * 3; position.z += dz / distance * dt * 3; }
     }
+    const turn = yawTarget();
+    if (yaw !== turn) {
+      yaw += (turn - yaw) * (state.paused ? 1 : 1 - Math.exp(-dt * 3));
+      if (Math.abs(turn - yaw) < 1e-4) yaw = turn;
+      applyCamera();
+    }
     const sum = summary();
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
@@ -327,7 +363,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       offsets[i * 4] = rect[0] / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = rect[2] / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
       const scale = (visitor ? 1.12 : .9 + i % 3 * .06) * 1.45 / 235;
-      dummy.position.set(x, shift, z).addScaledVector(cameraUp, rect[3] * scale / 2); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, rect[3] * scale, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
+      // The frame squeezes heights by WALL_COS; sprites are stretched back so they keep their proportions.
+      const tall = rect[3] * scale / WALL_COS;
+      dummy.position.set(x, shift + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
       ants.setColorAt(i, color.set(visitor ? state.color : "#ffffff"));
       dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(1, .55, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
     }
@@ -357,8 +395,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (Math.hypot(target.x - position.x, target.z - position.z) < 1e-3) return; // Already there after clamping.
     path = findWorldPath(position, target, worldObstacles(state.scene)); if (path.length) events.step?.();
   }
-  // The plaza floor is only walkable where the framed view shows it.
-  const limitZ = (z: number) => state.scene === "plaza" ? Math.min(z, fit.front - .35) : z;
+  // The floor is only walkable where the framed view shows it.
+  const limitZ = (z: number) => Math.min(z, front - .35);
   function update(next: RenderState) {
     const changed = state.scene !== next.scene; state = next;
     if (changed) {

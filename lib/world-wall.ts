@@ -7,8 +7,11 @@ import { pickDisplayTitle } from "./clean-filter";
 import { stockPierrotArt } from "./stock-pierrot";
 import { worldSummary, type WorldFrame, type WorldSummary } from "./world";
 
-// Frontal orthographic camera: no yaw, fixed 22° elevation. Wall x maps 1:1 to
-// screen x and wall y is only foreshortened by cos, so wall panels stay rectangles.
+// Rest pose of the wall frame. It was designed for a frontal orthographic camera at 22° elevation:
+// wall x maps 1:1 to screen x and wall y is scaled by cos, so wall panels are rectangles. The renderer
+// now uses a perspective camera whose shifted frustum reproduces exactly this mapping on the wall
+// plane (and turns toward the visitor), so these functions describe the un-turned view; the visible
+// floor depth (`front`) is recomputed by the renderer for perspective.
 export const WALL_SIN = Math.sin(22 * Math.PI / 180);
 export const WALL_COS = Math.cos(22 * Math.PI / 180);
 export const WALL_CAMERA_DISTANCE = 28;
