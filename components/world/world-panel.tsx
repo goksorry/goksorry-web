@@ -2,8 +2,10 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 export type PanelOrigin = { x: number; y: number; width: number; height: number };
-export function WorldPanel({ title, name, children, onClose, modal = false, origin = null }: {
-  title: string; name: string; children: ReactNode; onClose: () => void; modal?: boolean; origin?: PanelOrigin | null;
+// Which side of the screen a modal docks to on wide layouts; narrow layouts are a full-width sheet.
+export type PanelSide = "left" | "center" | "right";
+export function WorldPanel({ title, name, children, onClose, modal = false, origin = null, side = "right" }: {
+  title: string; name: string; children: ReactNode; onClose: () => void; modal?: boolean; origin?: PanelOrigin | null; side?: PanelSide;
 }) {
   const panel = useRef<HTMLElement>(null);
   // Capture before the background becomes inert during the commit.
@@ -53,5 +55,5 @@ export function WorldPanel({ title, name, children, onClose, modal = false, orig
     <div className="world-panel-heading"><h2>{title}</h2><button type="button" aria-label={`${title} 닫기`} onClick={onClose}>✕</button></div>
     <div className="world-panel-body">{children}</div>
   </section>;
-  return modal ? <div className="world-modal-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); onClose(); } }}>{content}</div> : content;
+  return modal ? <div className="world-modal-backdrop" data-side={side} onPointerDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); onClose(); } }}>{content}</div> : content;
 }

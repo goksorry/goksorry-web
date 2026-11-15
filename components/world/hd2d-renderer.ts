@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
-import { ANT_DIRS, antFrameCandidates, createCrowd, facing4, facing8, type AntPose, type AntVariant } from "@/lib/world-crowd";
+import { antFrameCandidates, antWalkFrame, createCrowd, facing4, facing8, leanOf, type AntPose, type AntVariant } from "@/lib/world-crowd";
 import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
 import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallTextPanelId, type WallView } from "@/lib/world-wall";
 import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
@@ -218,11 +218,12 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const FRAMES = antAtlas.frames as Record<string, number[] | undefined>;
   type AntFrame = { rect: number[]; mirror: boolean; posed: boolean };
   const frameMemo = new Map<string, AntFrame>();
-  const frameOf = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number): AntFrame => {
-    const id = `${variant}.${pose}.${dir8}.${dir4}`;
+  const hasFrame = (key: string) => !!FRAMES[key];
+  const frameOf = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number, lean: number): AntFrame => {
+    const id = `${variant}.${pose}.${dir8}.${dir4}.${lean}`;
     let frame = frameMemo.get(id);
     if (!frame) {
-      const found = antFrameCandidates(variant, pose, dir8, dir4).find((candidate) => FRAMES[candidate.key]);
+      const found = antFrameCandidates(variant, pose, dir8, dir4, lean).find((candidate) => FRAMES[candidate.key]);
       frame = found ? { rect: FRAMES[found.key]!, mirror: found.mirror, posed: found.posed } : { rect: [...antAtlas.cells[0][0], 1, antAtlas.cells[0][0][2] / 2], mirror: false, posed: false };
       frameMemo.set(id, frame);
     }
@@ -232,7 +233,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
-  let width = 0, height = 0, direction = 0, heading8 = 0;
+  let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1;
   const CAMERA_DISTANCE = 32, CAMERA_HEIGHT = 8.4, WALL_Y0 = wallScreenY(0, WALL_PANEL_Z);
   // While turning, the camera also slides this far (world units per radian) toward the visitor.
   const CAMERA_SLIDE = 8;
@@ -381,6 +382,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const target = path[0], dx = target.x - position.x, dz = target.z - position.z, distance = Math.hypot(dx, dz);
       direction = Math.abs(dx) > Math.abs(dz) ? dx < 0 ? 1 : 2 : dz < 0 ? 3 : 0;
       heading8 = facing8(dx, dz);
+      if (distance > 1e-6) visitorLean = leanOf(dx / distance, visitorLean);
       if (distance < dt * 3) { position.x = target.x; position.z = target.z; path.shift(); }
       else { position.x += dx / distance * dt * 3; position.z += dz / distance * dt * 3; }
     }
@@ -450,13 +452,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const dir4 = a ? facing4(a.hx, a.hz) : [0, 2, 6, 4][direction];
       const variant: AntVariant = side === "bearish" ? "fear" : side === "bullish" ? "hope" : "neutral";
       let dir8 = a ? facing8(a.hx, a.hz) : heading8, pose: AntPose = a ? a.pose : moving ? Math.floor(time / 180) % 2 ? "walk-b" : "walk-a" : "idle";
-      if (a && a.state === "walk") {
-        // A walk must not change costume or facing between steps: where this variant has no diagonal walk art it walks
-        // 4-way, and where it has no passing frame the cycle is the two stepping frames at half rate.
-        if (dir8 % 2 && !FRAMES[`${variant}.walk-a.${ANT_DIRS[dir8]}`]) dir8 = dir4;
-        if (pose === "walk-p" && !FRAMES[`${variant}.walk-p.${ANT_DIRS[dir8]}`]) pose = Math.floor(a.stride / .48) % 2 ? "walk-b" : "walk-a";
-      }
-      const frame = frameOf(a ? variant : "neutral", pose, dir8, dir4);
+      if (a && a.state === "walk") ({ pose, dir8 } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, a.stride));
+      // Camera-facing art is a three-quarter view: `lean` turns it to the side the ant is heading (mirrored where needed).
+      const lean = a ? a.lean : visitorLean;
+      const frame = frameOf(a ? variant : "neutral", pose, dir8, dir4, lean);
       const rect = frame.rect, k = rect[4] ?? 1;
       offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
@@ -475,11 +474,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (a && cueCount < 48) {
         const high = rect[3] * scale / WALL_COS;
         if (a.state === "phone" && !frame.posed && dir4 !== 4) {
-          const off = dir4 === 0 ? .12 : dir4 === 2 ? -.2 : .2;
+          const off = dir4 === 0 ? .12 * lean : dir4 === 2 ? -.2 : .2;
           cue(false, x + right.x * off, high * .62, z + right.z * off, .16, .22);
         } else if (sighing >= .15 && sighing <= .85) {
           // The breath leaves the mouth (beside the hidden face in the back view), drifts outward and rises.
-          const off = (dir4 === 0 ? .3 : dir4 === 2 ? -.36 : dir4 === 6 ? .36 : .3) * (1 + sighing * .25), size = .3 * (.6 + sighing);
+          const off = (dir4 === 0 ? .3 * lean : dir4 === 2 ? -.36 : dir4 === 6 ? .36 : .3) * (1 + sighing * .25), size = .3 * (.6 + sighing);
           cue(true, x + right.x * off, high * (dir4 === 4 ? .66 : dir4 === 0 ? .5 : .56) + sighing * .4, z + right.z * off, size, size);
         }
       }

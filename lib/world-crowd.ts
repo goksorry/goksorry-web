@@ -7,7 +7,8 @@ export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh"
 export type AntVariant = "neutral" | "fear" | "hope";
 export type CrowdState = "walk" | "gaze" | "phone" | "sigh";
 export type CrowdAnt = { x: number; z: number; hx: number; hz: number; state: CrowdState; pose: AntPose;
-  t: number; span: number; path: Point[]; goal: Point; speed: number; stride: number; wait: number; moved: boolean; rng: number };
+  t: number; span: number; path: Point[]; goal: Point; speed: number; stride: number; wait: number; moved: boolean; rng: number;
+  lean: number }; // side a camera-facing sprite turns to: -1 the viewer's left, 1 the right (see leanOf)
 export type CrowdView = { cx: number; halfW: number; camZ: number; dist: number; zoomed: boolean };
 export type CrowdEnv = { obstacles: Obstacle[]; front: number; visitor: Point; view: CrowdView; restless?: boolean };
 // gap is the least distance between standing spots; `wide` and `deep` stretch it to the sprite's footprint on screen (a
@@ -17,6 +18,11 @@ export const CROWD = { back: -2.9, side: 9.4, radius: .35, gap: .7, wide: 1.1, d
 export const facing8 = (dx: number, dz: number): number => ((Math.round(Math.atan2(-dx, dz) / (Math.PI / 4)) % 8) + 8) % 8;
 // Same 4-way split as the visitor rule in hd2d-renderer, expressed as ANT_DIRS indices.
 export const facing4 = (dx: number, dz: number): number => Math.abs(dx) > Math.abs(dz) ? (dx < 0 ? 2 : 6) : (dz < 0 ? 4 : 0);
+// The camera-facing ("f") art is a three-quarter view, so it always turns to one side. `lean` says which: -1 the viewer's
+// left, 1 the right. It follows the sideways part of the heading and holds its last value inside the dead zone (about 11
+// degrees either side of straight toward the camera), so a walker heading almost straight down never flips back and forth.
+export const LEAN_DEAD = .2;
+export const leanOf = (hx: number, previous: number): number => Math.abs(hx) > LEAN_DEAD ? (hx < 0 ? -1 : 1) : previous < 0 ? -1 : 1;
 // The visible floor is a trapezoid: half-width at depth z, minus a margin for the sprite.
 export const viewHalf = (view: CrowdView, z: number): number => view.halfW * (view.camZ - z) / view.dist - CROWD.edge;
 export const inView = (p: Point, view: CrowdView): boolean => Math.abs(p.x - view.cx) <= viewHalf(view, p.z);
@@ -112,7 +118,8 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
   };
   const spawn = (index: number, env: CrowdEnv) => {
     const a: CrowdAnt = { x: 0, z: (CROWD.back + limit(env)) / 2, hx: 0, hz: -1, state: "gaze", pose: "idle", t: 0, span: 0,
-      path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: hash(seed, index) };
+      path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: hash(seed, index),
+      lean: hash(seed ^ 0x5EED, index) & 1 ? 1 : -1 }; // a stable side of its own until its first sideways walk
     let spot: Point | null = null;
     for (let i = 0; i < 80; i++) {
       const must = mustSee(a, env), p = sample(a, env, must, false);
@@ -161,6 +168,7 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
       if (a.wait > .5) { roam(a, env); return; }
       if (!slid) return;
     } else a.wait = 0;
+    a.lean = leanOf(a.hx, a.lean);
     a.x = next.x; a.z = next.z; a.moved = true; a.stride += slid ? reach : Math.min(distance, reach);
     a.pose = WALK_CYCLE[Math.floor(a.stride / .24) % 4];
     if (arrive && !slid) { a.path.shift(); if (!a.path.length) gaze(a, gazeSpan(a, env)); }
@@ -203,9 +211,15 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
   };
 }
 
+// "f" frames drawn turned to the viewer's left; every other one turns right. Within the fear and hope walks the second
+// stride came out the other way round from the first (the briefcase and the scarf tail swap sides), so tracking this per
+// frame also keeps the costume on one side through the whole cycle.
+const FRONT_LEFT = new Set(["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f"]);
+
 // Frame lookup order for a pose: exact art first, then the nearest pose and direction that
 // exists. With only the 20 base frames the chain always ends on one of them.
-export function antFrameCandidates(variant: AntVariant, pose: AntPose, dir8: number, dir4: number): { key: string; mirror: boolean; posed: boolean }[] {
+// `lean` (-1 left, 1 right) mirrors a camera-facing frame that is drawn turned the other way; 0 leaves the art as drawn.
+export function antFrameCandidates(variant: AntVariant, pose: AntPose, dir8: number, dir4: number, lean = 0): { key: string; mirror: boolean; posed: boolean }[] {
   const poses: AntPose[] = pose === "idle" ? ["idle"] : pose === "walk-a" || pose === "walk-b" ? [pose] : pose === "sigh" ? ["sigh", "phone", "idle"] : [pose, "idle"];
   const variants: AntVariant[] = variant === "neutral" ? ["neutral"] : [variant, "neutral"];
   // sigh interleaves: own sigh, own phone, neutral sigh, neutral phone, then idle.
@@ -215,5 +229,17 @@ export function antFrameCandidates(variant: AntVariant, pose: AntPose, dir8: num
   const dirs: [number, boolean][] = dir8 % 2 ? [[dir8, false], [8 - dir8, true]] : [];
   dirs.push([dir4, false]);
   if (dir4 === 2 || dir4 === 6) dirs.push([8 - dir4, true]);
-  return pairs.flatMap(([v, p]) => dirs.map(([d, mirror]) => ({ key: `${v}.${p}.${ANT_DIRS[d]}`, mirror, posed: p === pose })));
+  return pairs.flatMap(([v, p]) => dirs.map(([d, mirror]) => {
+    const key = `${v}.${p}.${ANT_DIRS[d]}`;
+    return { key, mirror: d === 0 && lean ? (FRONT_LEFT.has(key) ? -1 : 1) !== (lean < 0 ? -1 : 1) : mirror, posed: p === pose };
+  }));
+}
+
+// A walk must not change costume or facing between steps: where this variant has no diagonal walk art it walks 4-way
+// (toward the camera that is the "f" frame, turned by `lean`), and where it has no passing frame the cycle is the two
+// stepping frames at half rate.
+export function antWalkFrame(has: (key: string) => boolean, variant: AntVariant, pose: AntPose, dir8: number, dir4: number, stride: number): { pose: AntPose; dir8: number } {
+  if (dir8 % 2 && !has(`${variant}.walk-a.${ANT_DIRS[dir8]}`)) dir8 = dir4;
+  if (pose === "walk-p" && !has(`${variant}.walk-p.${ANT_DIRS[dir8]}`)) pose = Math.floor(stride / .48) % 2 ? "walk-b" : "walk-a";
+  return { pose, dir8 };
 }

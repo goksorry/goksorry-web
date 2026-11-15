@@ -71,6 +71,8 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-postcard-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding-top:16px; font-size:14px; }
 .world-theater-controls [role=status] { display:block; font-size:14px; margin-top:8px; }
 .world-modal-backdrop { position:fixed; inset:0; z-index:80; background:#040e1499; display:flex; justify-content:flex-end; align-items:center; padding:24px; }
+/* A dialog docks to the side of whatever opened it; below 960px it is a full-width sheet either way. */
+.world-modal-backdrop[data-side=left] { justify-content:flex-start; }.world-modal-backdrop[data-side=center] { justify-content:center; }
 .world-panel { width:min(740px,calc(100vw - 60px)); max-height:calc(100dvh - 48px); height:840px; display:flex; flex-direction:column; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; box-shadow:0 10px 90px #0008; outline:0; overflow:hidden; }
 .world-panel-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 20px; background:var(--panel-soft); border-bottom:1px solid var(--line); flex-shrink:0; }
 .world-panel-heading h2 { margin:0; font-size:17px; color:var(--ink); }.world-panel-heading > button { width:44px; flex-shrink:0; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
@@ -101,7 +103,8 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 .world-pierrot img { display:block; width:100%; height:auto; object-fit:contain; }
 .world-pierrot figcaption { padding:7px 10px; color:#e5d6b7; text-align:center; font-size:14px; }
 
-@media(min-width:960px) { .world-panel:has(.feed-lanes-panel) { width:min(1160px,calc(100vw - 60px)); } }
+/* Only the visible feed tab widens the dialog; the hidden one must not stretch the index or room tabs. */
+@media(min-width:960px) { .world-panel:has(#world-tabpanel-feed:not([hidden]) .feed-lanes-panel) { width:min(1160px,calc(100vw - 60px)); } }
 @media(max-width:959px) {
   .world-stock-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.world-stock-list button { padding:12px 9px; grid-template-columns:1fr; gap:7px; }.world-stock-list .world-rank { display:none; }.world-stock-list button > span:not(.world-rank),.world-stock-list button small { grid-column:1; font-size:14px; }.world-stock-list button strong { font-size:15px; }
   .world-camps { gap:9px; grid-template-columns:1fr 1fr; }.world-camps button:last-child { grid-column:span 2; grid-template-columns:1fr 1fr; align-items:center; text-align:left; }.world-camps button:last-child > span:last-child { grid-column:span 2; }.world-camps strong { font-size:28px; }.world-battle-overlay p { line-height:1.6; }

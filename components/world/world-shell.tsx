@@ -20,7 +20,7 @@ import { SOURCE_GROUP_IDS, serializeSourceGroupSelection, type SourceGroupId } f
 import { buildWallModel, WALL_PANELS, type WallPanelId, type WallSection, type WallView } from "@/lib/world-wall";
 import { buildWorldFrame, percent, WORLD_SCENES, worldDate, worldDayBounds, type WorldFrame, type WorldScene } from "@/lib/world";
 import { frameStatus, worldHeadline, WORLD_COLORS } from "@/lib/world-presentation";
-import { WorldPanel, type PanelOrigin } from "./world-panel";
+import { WorldPanel, type PanelOrigin, type PanelSide } from "./world-panel";
 import { usePierrotDark } from "./world-pierrot";
 import { usePolled } from "./use-wall-data";
 import { WorldEvidence } from "./world-evidence";
@@ -45,6 +45,9 @@ type DetailTab = "index" | "feed" | "room";
 const TAB_LABEL: Record<DetailTab, string> = { index: "지수", feed: "피드", room: "곡소리방" };
 const PANEL_TAB: Record<WallPanelId, DetailTab> = { market: "index", pierrot: "index", index: "index", feed: "feed", room: "room" };
 const SECTION_LABEL = ["시장 지수·곡소리방", "삐에로·곡소리 지수", "곡소리 피드"];
+// A dialog opens on the side of what opened it: by wall section, or by thirds of the stage width.
+const SECTION_SIDE: PanelSide[] = ["left", "center", "right"];
+const thirdOf = (fraction: number): PanelSide => fraction < 1 / 3 ? "left" : fraction > 2 / 3 ? "right" : "center";
 // Height reserved for the bottom scene nav when framing the wall.
 const HUD_BOTTOM = 60;
 
@@ -71,7 +74,9 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   const [origin, setOrigin] = useState<PanelOrigin | null>(null), [roomRefresh, setRoomRefresh] = useState(0);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState("");
   const [visible, setVisible] = useState(true), [menuOpen, setMenuOpen] = useState(false);
-  const [tab, setTab] = useState<DetailTab | null>(null);
+  const [tab, setTab] = useState<DetailTab | null>(null), [side, setSide] = useState<PanelSide>("right");
+  // Horizontal position (0..1 of the stage) of the last click in the scene: an ant, a camp, a list button.
+  const clickAt = useRef<number | null>(null);
   const [selection, setSelection] = useState<EvidenceSelection | null>(null);
   const [color, setColor] = useState(WORLD_COLORS[0]), [muted, setMuted] = useState(true), [emote, setEmote] = useState("");
   const [reinforcement, setReinforcement] = useState(0), [clock, setClock] = useState(Date.now()), [retry, setRetry] = useState(0);
@@ -86,8 +91,8 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   const onScene = useCallback((next: WorldScene) => { setUrl("scene", next === "plaza" ? "" : next); setTab(null); setSelection(null); playSound(next === "broadcast" ? "signal" : "step"); }, [setUrl, playSound]);
   const onDate = useCallback((value: string) => { setReplayFrame(null); setUrl("date", value); }, [setUrl]);
   const onFrame = useCallback((value: WorldFrame | null) => setReplayFrame(value), []);
-  const open = (next: DetailTab, from: PanelOrigin | null = null) => { setOrigin(from); setSelection(null); setTab(next); setMenuOpen(false); };
-  const evidence = (value: EvidenceSelection) => { setOrigin(null); setSelection(scene === "theater" ? { ...value, recordedAt: shown.generated_at } : value); setTab("feed"); setMenuOpen(false); };
+  const open = (next: DetailTab, from: PanelOrigin | null = null, at?: PanelSide) => { setSide(at ?? (from ? thirdOf((from.x + from.width / 2) / window.innerWidth) : "right")); setOrigin(from); setSelection(null); setTab(next); setMenuOpen(false); };
+  const evidence = (value: EvidenceSelection) => { if (!tab) setSide(clickAt.current === null ? "right" : thirdOf(clickAt.current)); setOrigin(null); setSelection(scene === "theater" ? { ...value, recordedAt: shown.generated_at } : value); setTab("feed"); setMenuOpen(false); };
   const close = () => { if (tab === "room") setRoomRefresh((n) => n + 1); setTab(null); if (params.get("feed") === "1") setUrl("feed", ""); };
   // Deep link: ?feed=1 opens the full feed dialog.
   useEffect(() => { if (new URLSearchParams(window.location.search).get("feed") === "1") setTab("feed"); }, []);
@@ -168,10 +173,14 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       {liveBadge}
       <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>피드</button><ModeSwitch /><button className="world-menu-button" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}>메뉴 <span aria-hidden="true">☰</span></button></div>
     </header>
-    <div className="world-scene-stage" aria-busy={!loaded && !error}>
+    <div className="world-scene-stage" aria-busy={!loaded && !error} onClickCapture={(event) => {
+      const bounds = event.currentTarget.getBoundingClientRect(), target = (event.target as Element).getBoundingClientRect();
+      // Keyboard activation carries no pointer position; use the control itself.
+      clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
+    }}>
       <div className="world-scene-heading"><h1 className={plaza ? "sr-only" : undefined}>{info.title}</h1></div>
       <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onEvidence={(side) => evidence({ title: scene === "theater" ? "극장 기록" : item?.name ?? "전체 커뮤니티", summary: activeSummary, symbol: scene === "theater" ? undefined : item?.symbol, recordedAt: scene === "theater" ? shown.generated_at : undefined, side })}>
-        {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect)} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
+        {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>
           <button className="world-wall-zoom" aria-pressed={overview} onClick={() => setOverview((value) => !value)}>{overview ? "확대" : "전체보기"}</button>
@@ -187,7 +196,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>
     </div>
-    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 근거` : "전체 커뮤니티 · 지수와 피드"} name="detail" modal origin={origin} onClose={close}>
+    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 근거` : "전체 커뮤니티 · 지수와 피드"} name="detail" modal origin={origin} side={side} onClose={close}>
       <div className="world-detail-tabs" role="tablist" aria-label="정보 전환">{tabs.map((value, i) => <button key={value} id={`world-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`world-tabpanel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1] : tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; setTab(next); document.getElementById(`world-tab-${next}`)?.focus(); } }}>{TAB_LABEL[value]}</button>)}{currentSelection && <button className="world-reset-selection" onClick={() => setSelection(null)}>전체 보기</button>}</div>
       {currentSelection && <div className="world-selected-summary"><SummaryNumbers summary={currentSelection.summary} /><p className="world-note">선택 범위: {currentSelection.title} · 최근 6시간 분석 표본</p></div>}
       <div id="world-tabpanel-index" role="tabpanel" aria-labelledby="world-tab-index" hidden={tab !== "index"}>

@@ -199,6 +199,35 @@ test("WebGL and asset failures use same static art with working screens", async 
   await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();
 });
 
+test("a dialog opens on the side of the wall panel that opened it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
+  const centre = async () => { const box = (await dialog(page).boundingBox())!; return box.x + box.width / 2; };
+  const settled = async () => { await expect(dialog(page)).toBeVisible(); await expect.poll(async () => dialog(page).evaluate((node) => node.getAnimations().length)).toBe(0); };
+  // Left of the wall: market indices and the room.
+  for (const name of ["시장 지수 자세히", "곡소리방 열기·글쓰기"]) {
+    await page.getByRole("button", { name }).click(); await settled();
+    await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", "left");
+    expect(await centre()).toBeLessThan(1440 / 3);
+    await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+  }
+  // Middle of the wall: the Pierrot portrait and the index.
+  for (const name of ["삐에로·지수 자세히", "산식·시장 지표"]) {
+    await page.getByRole("button", { name }).click(); await settled();
+    await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", "center");
+    const x = await centre(); expect(x).toBeGreaterThan(1440 / 3); expect(x).toBeLessThan(1440 * 2 / 3);
+    await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+  }
+  // Right of the wall: the feed. Its two-lane tab is wider than a third of the screen, so it is
+  // checked against the right edge; the standard-width tab of the same dialog sits in the right third.
+  await page.getByRole("button", { name: "곡소리 피드 전체 보기" }).click(); await settled();
+  await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", "right");
+  const feed = (await dialog(page).boundingBox())!;
+  expect(1440 - (feed.x + feed.width)).toBeLessThanOrEqual(25); expect(feed.x).toBeGreaterThan(1440 - (feed.x + feed.width));
+  await dialog(page).getByRole("tab", { name: "지수" }).click();
+  await expect.poll(centre).toBeGreaterThan(1440 * 2 / 3);
+  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+});
+
 test("plaza shows about twenty roaming ants that mostly face the wall; a gazing ant opens its evidence", async ({ page }) => {
   test.setTimeout(60_000);
   const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd());
@@ -224,6 +253,8 @@ test("plaza shows about twenty roaming ants that mostly face the wall; a gazing 
     expect(picked).not.toBeNull();
     await page.mouse.click(box.x + picked!.sx, box.y + picked!.sy);
     await expect(dialog(page).locator(".world-evidence-tabs")).toBeVisible({ timeout: 2000 });
+    // The evidence dialog opens on the side of the stage where the clicked ant stands.
+    await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", picked!.sx < box.width / 3 ? "left" : picked!.sx > box.width * 2 / 3 ? "right" : "center");
   }).toPass({ timeout: 20_000 });
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await webgl(page);

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { ANT_DIRS, CROWD, antFrameCandidates, createCrowd, facing4, facing8, inView, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
+import antAtlas from "../components/world/ant-atlas.json";
+import { ANT_DIRS, CROWD, LEAN_DEAD, antFrameCandidates, antWalkFrame, createCrowd, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
 import { walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
@@ -197,4 +198,99 @@ test("facing4 matches the renderer's visitor rule and facing8 the eight sprite d
     expect(facing4(dx, dz)).toBe([0, 2, 6, 4][direction]);
   }
   expect([[0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1]].map(([dx, dz]) => facing8(dx, dz))).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
+// What the renderer draws for a heading, resolved against the real atlas: the side the sprite ends up turned to.
+// The art facts are restated here on purpose: these four "f" frames are drawn turned to the viewer's left, the rest right.
+const ATLAS = antAtlas.frames as Record<string, unknown>, hasArt = (key: string) => key in ATLAS;
+const DRAWN_LEFT = ["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f"];
+const shown = (variant: AntVariant, pose: AntPose, hx: number, hz: number, lean: number, walking = true) => {
+  const dir4 = facing4(hx, hz), step = walking ? antWalkFrame(hasArt, variant, pose, facing8(hx, hz), dir4, 0) : { pose, dir8: facing8(hx, hz) };
+  const found = antFrameCandidates(variant, step.pose, step.dir8, dir4, lean).find((c) => hasArt(c.key))!;
+  const dir = found.key.split(".")[2], drawn = dir === "f" ? (DRAWN_LEFT.includes(found.key) ? -1 : 1) : dir.endsWith("l") ? -1 : dir.endsWith("r") ? 1 : 0;
+  return { ...found, dir, side: found.mirror ? -drawn : drawn };
+};
+const at = (degree: number) => ({ hx: Math.sin(degree * Math.PI / 180), hz: Math.cos(degree * Math.PI / 180) }); // 0 = straight toward the camera, positive = viewer's right
+
+test("an ant walking toward the camera turns to the side it is heading, in every costume", () => {
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const pose of ["walk-a", "walk-b", "walk-p"] as const) {
+    for (let degree = -89; degree <= 89; degree++) {
+      const { hx, hz } = at(degree);
+      if (Math.abs(hx) <= LEAN_DEAD) continue;
+      // Whatever side it leaned to before, a heading outside the dead zone decides.
+      for (const before of [-1, 1]) {
+        const frame = shown(variant, pose, hx, hz, leanOf(hx, before));
+        expect(frame.side, `${variant}.${pose} at ${degree} deg -> ${frame.key}${frame.mirror ? " mirrored" : ""}`).toBe(degree < 0 ? -1 : 1);
+        expect(frame.key.startsWith(`${variant}.`), `${variant} keeps its costume at ${degree} deg (${frame.key})`).toBe(true);
+      }
+    }
+    // Straight down has no side of its own: it shows the camera-facing frame turned to the ant's remembered side.
+    for (const lean of [-1, 1]) { const frame = shown(variant, pose, 0, 1, lean); expect(frame.dir).toBe("f"); expect(frame.side).toBe(lean); }
+  }
+  // The cases from the report: down-left and down-right, 45 degrees off.
+  expect(shown("neutral", "walk-a", -1, 1, -1)).toMatchObject({ key: "neutral.walk-a.fl", mirror: false });
+  expect(shown("neutral", "walk-a", 1, 1, 1)).toMatchObject({ key: "neutral.walk-a.fr", mirror: false });
+  for (const variant of ["fear", "hope"] as const) {
+    expect(shown(variant, "walk-a", -.6, .8, -1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: true });
+    expect(shown(variant, "walk-a", .6, .8, 1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: false });
+    // The second stride is drawn the other way round, so it is the one mirrored when heading right.
+    expect(shown(variant, "walk-b", -.6, .8, -1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: false });
+    expect(shown(variant, "walk-b", .6, .8, 1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: true });
+  }
+  // Standing poses that face the camera follow the same side; lean 0 leaves every frame as drawn.
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const pose of ["idle", "phone", "sigh"] as const) for (const lean of [-1, 1]) {
+    expect(shown(variant, pose, 0, 1, lean, false).side, `${variant}.${pose} lean ${lean}`).toBe(lean);
+  }
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const pose of ["idle", "walk-a", "walk-b", "walk-p", "phone", "sigh"] as const) for (let dir = 0; dir < 8; dir += 2) {
+    expect(antFrameCandidates(variant, pose, dir, dir, 0).every((c) => !c.mirror || c.key.endsWith(".l") || c.key.endsWith(".r"))).toBe(true);
+    // Sideways and away from the camera the side makes no difference.
+    if (dir) expect(antFrameCandidates(variant, pose, dir, dir, -1)).toEqual(antFrameCandidates(variant, pose, dir, dir, 1));
+  }
+});
+
+test("the side holds inside the dead zone instead of flipping from frame to frame", () => {
+  // A heading that wobbles around straight down keeps whichever side it had.
+  for (const start of [-1, 1]) {
+    let lean = start;
+    for (let i = 0; i < 400; i++) {
+      lean = leanOf(Math.sin(i * 1.7) * LEAN_DEAD * .99, lean);
+      expect(lean).toBe(start);
+    }
+  }
+  // A slow sweep from left to right and back flips once each way, and only past the far edge of the dead zone.
+  let lean = -1, flips = 0;
+  const sweep = [...Array.from({ length: 201 }, (_, i) => -1 + i / 100), ...Array.from({ length: 201 }, (_, i) => 1 - i / 100)];
+  for (const hx of sweep) {
+    const next = leanOf(hx, lean);
+    if (next !== lean) { flips++; expect(Math.abs(hx)).toBeGreaterThan(LEAN_DEAD); expect(next).toBe(Math.sign(hx)); }
+    lean = next;
+  }
+  expect(flips).toBe(2);
+  expect(leanOf(0, 0)).toBe(1); // unset reads as the art's own side
+
+  // In the running crowd: a side only changes on a step that really heads that way, both sides occur among the ants
+  // that face the camera, and standing ants never change side.
+  const crowd = createCrowd(11), e = env();
+  crowd.sync(20, e);
+  expect(new Set(crowd.ants.map((a) => a.lean)).size).toBe(2); // not everyone starts on the same side
+  let before = crowd.ants.map((a) => ({ lean: a.lean, walking: a.state === "walk" })), changes = 0, standingFlips = 0, wrong = 0;
+  const facing = { left: 0, right: 0 }, standing = { left: 0, right: 0 };
+  run(crowd, 180, e, () => {
+    crowd.ants.forEach((a, i) => {
+      if (Math.abs(a.lean) !== 1) wrong++;
+      // Only a walking step changes the side (the step that arrives already shows the next standing state).
+      if (a.lean !== before[i].lean) { changes++; if (!before[i].walking && a.state !== "walk") standingFlips++; }
+      if (a.state === "walk" && a.moved && Math.abs(a.hx) > LEAN_DEAD && a.lean !== Math.sign(a.hx)) wrong++;
+      if (facing4(a.hx, a.hz) === 0) { const tally = a.state === "walk" ? facing : standing; if (a.lean < 0) tally.left++; else tally.right++; }
+    });
+    before = crowd.ants.map((a) => ({ lean: a.lean, walking: a.state === "walk" }));
+  });
+  expect(standingFlips).toBe(0);
+  expect(wrong).toBe(0);
+  note(`lean: ${changes} side changes in 180 s for 20 ants; camera-facing walk frames left ${facing.left} / right ${facing.right}, standing left ${standing.left} / right ${standing.right}`);
+  expect(changes).toBeGreaterThan(0);
+  for (const tally of [facing, standing]) {
+    expect(tally.left / (tally.left + tally.right)).toBeGreaterThan(.25);
+    expect(tally.left / (tally.left + tally.right)).toBeLessThan(.75);
+  }
 });
