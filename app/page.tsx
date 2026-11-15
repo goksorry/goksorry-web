@@ -11,7 +11,7 @@ type QueryValue = string | string[] | undefined;
 
 const homeMetadata = buildPageMetadata({
   title: "홈",
-  description: "커뮤니티의 희망과 공포가 살아 움직이는 곡소리 개미 월드. 개미굴, 심리 전장, 삐에로 재난방송과 하루 30초 개미극장을 탐색하세요.",
+  description: "곡소리 지수와 커뮤니티 원문을 한 화면에서 확인하세요. 삐에로와 개미 월드, 공포·희망 좌우 피드와 통합 보기, 개미극장 기록을 제공합니다.",
   path: "/"
 });
 
@@ -58,7 +58,7 @@ export default async function Home({
   const timezone = getTimezone();
 
   return (
-    <Suspense fallback={<p className="world-loading">개미 광장을 여는 중…</p>}>
+    <Suspense fallback={<p className="world-loading">데이터 조회 중…</p>}>
       <WorldShell timezone={timezone} selectedGroupIds={selectedGroupIds}
         menu={<><SiteHeader /><Suspense fallback={null}><SiteFooter /></Suspense></>} />
     </Suspense>

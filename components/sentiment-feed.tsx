@@ -190,13 +190,14 @@ export function SentimentFeed({
   errorMessage,
   timezone,
   loading = false,
-  summary, sentiment, onSentimentChange
+  summary, sentiment, onSentimentChange, compact = false
 }: {
   rows: FeedRow[];
   errorMessage: string;
   timezone: string;
   loading?: boolean;
   summary?: FeedPage["summary"];
+  compact?: boolean;
   sentiment: "all" | "bearish" | "bullish" | "neutral";
   onSentimentChange: (value: "all" | "bearish" | "bullish" | "neutral") => void;
 }) {
@@ -323,8 +324,8 @@ export function SentimentFeed({
                 <span>{supportsHoverReveal ? "해제" : isRowRevealActive ? "적용" : "해제"}</span>
               </button>
             ) : null}
-            <time className="sentiment-time" dateTime={row.analyzed_at}>
-              {toLocalTime(row.analyzed_at, timezone)}
+            <time className="sentiment-time" dateTime={row.analyzed_at} title={toLocalTime(row.analyzed_at, timezone)}>
+              {compact ? new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).format(new Date(row.analyzed_at)) : toLocalTime(row.analyzed_at, timezone)}
             </time>
           </div>
         </div>

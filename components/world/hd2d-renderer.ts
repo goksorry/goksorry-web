@@ -190,12 +190,15 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     camera.position.set(state.mobile ? 7.8 : 6, 15, 22); camera.lookAt(state.mobile ? 1.8 : 0, 1, 0); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     cameraUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     boards.forEach((board, i) => {
-      const boardWidth = state.mobile ? 330 : Math.min(380, Math.max(310, w * .28));
+      const boardWidth = state.mobile ? 330 : w * (i ? .58 : .28);
+      const boardHeight = i ? 650 : 500;
+      const x = w * (i ? .65 : .19), y = 32 + boardHeight / 2;
       const unitsPerPixel = 2 * halfH / h;
-      board.scale.set(boardWidth * unitsPerPixel, 282 * unitsPerPixel, 1);
+      board.scale.set(boardWidth * unitsPerPixel, boardHeight * unitsPerPixel, 1);
       board.quaternion.copy(camera.quaternion);
-      const p = SCREEN_POINTS[i ? "feed" : "index"].clone().project(camera);
-      events.anchor?.(i ? "feed" : "index", (p.x + 1) * w / 2, (1 - p.y) * h / 2, boardWidth - 18);
+      const depth = SCREEN_POINTS[i ? "feed" : "index"].clone().project(camera).z;
+      board.position.copy(new THREE.Vector3(x / w * 2 - 1, 1 - y / h * 2, depth).unproject(camera));
+      events.anchor?.(i ? "feed" : "index", x, y, boardWidth - 18);
     });
   }
   const project = (point: THREE.Vector3) => { const p = point.project(camera); return { x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }; };
@@ -213,7 +216,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const sum = summary();
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
-    boardGroup.visible = state.scene === "plaza";
+    boardGroup.visible = state.scene === "plaza" && !state.mobile;
     const obstacles = worldObstacles(state.scene);
     for (let i = 0; i < ants.count; i++) {
       const visitor = i === sideList.length, side = sideList[i];
@@ -222,8 +225,20 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (!visitor && state.scene === "battle") { x = side === "bullish" ? -6.4 + (i * 29 % 45) / 10 : side === "bearish" ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (side === "neutral") z = 5.8; }
       if (!visitor && !walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
       const shift = state.paused || visitor ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
-      const row = visitor ? moving ? 1 + Math.floor(time / 180) % 2 : 0 : side === "bearish" ? 3 : side === "bullish" ? 4 : 0;
-      const column = visitor ? direction : i % 4;
+      let row = visitor ? moving ? 1 + Math.floor(time / 180) % 2 : 0 : side === "bearish" ? 3 : side === "bullish" ? 4 : 0;
+      let column = visitor ? direction : i % 4;
+      // Mixed sentiment: short steps, pauses, and turns in opposite directions.
+      // Phase offsets keep the crowd from moving in unison. Counts and evidence stay unchanged.
+      if (!visitor && !state.paused && sum.mood === "mixed" && side !== "neutral") {
+        const phase = (time / 900 + i * .73) % 4;
+        const goingRight = phase < 2;
+        const stepping = phase < 1 || (phase >= 2 && phase < 3);
+        const progress = stepping ? phase % 1 : 1;
+        const offset = goingRight ? -.28 + .56 * progress : .28 - .56 * progress;
+        if (walkable({ x: x + offset, z }, obstacles)) x += offset;
+        column = goingRight ? 2 : 1;
+        row = stepping ? 1 + Math.floor(time / 180 + i) % 2 : 0;
+      }
       const rect = antAtlas.cells[row][column];
       offsets[i * 4] = rect[0] / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = rect[2] / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;

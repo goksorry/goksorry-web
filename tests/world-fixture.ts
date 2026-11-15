@@ -1,3 +1,5 @@
+import { readFeedSelection } from "../lib/feed-scope";
+import { getSourceGroupId } from "../lib/feed-source-groups";
 import { test, type Page } from "@playwright/test";
 import { buildWorldFrame, buildWorldReplay, worldDate, worldDayBounds } from "../lib/world";
 import { buildOverallFromSourceGroupSummaries, buildSourceGroupSummaries, type FeedRow } from "../lib/feed-data";
@@ -32,8 +34,12 @@ export async function prepareWorld(page: Page) {
   await page.route("**/api/auth/session", (route) => route.fulfill({ json: {} }));
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: frame }));
   await page.route("**/api/feed?*", (route) => {
-    const offset = Number(new URL(route.request().url()).searchParams.get("offset") ?? 0);
-    return route.fulfill({ json: { rows: rows.slice(offset, offset + 80), nextOffset: offset + 80 < rows.length ? offset + 80 : null, hasMore: offset + 80 < rows.length, errorMessage: "" } });
+    const params = new URL(route.request().url()).searchParams;
+    const { channels, symbol, sentiment } = readFeedSelection(params);
+    const offset = Number(params.get("offset") ?? 0), limit = Number(params.get("limit") ?? 80);
+    const filtered = rows.filter(row => channels.includes(getSourceGroupId(row.source)!) && (!symbol || row.symbol === symbol) && (sentiment === "all" || row.label === sentiment));
+    // Legacy payload deliberately lacks summary; API/browser integration tests use the full backend.
+    return route.fulfill({ json: { rows: filtered.slice(offset, offset + limit), nextOffset: offset + limit < filtered.length ? offset + limit : null, hasMore: offset + limit < filtered.length, errorMessage: "" } });
   });
   await page.route("**/api/internal/overview", (route) => route.fulfill({ json: {
     generated_at: new Date().toISOString(), market_indicators: ["kospi", "kosdaq", "nasdaq", "usdkrw"].map((id) => ({ id, label: id.toUpperCase(), value_text: "1,234.56", delta_text: "+10 (1%)", tone: "up", note: "테스트 기준", change_value: 10, change_percent: 1 })),

@@ -10,6 +10,7 @@ export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
   latest.current = props;
+  const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState("loading");
   const [nearby, setNearby] = useState<WorldScene | null>(null);
   const nearbyRef = useRef<WorldScene | null>(null);
@@ -42,12 +43,12 @@ export default function HD2DWorld(props: Props) {
   }, [props.reduced]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
-    instance.update(props);
-  }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, mode]);
+    instance.update({ ...props, paused: props.paused || !onScreen });
+  }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, mode, onScreen]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     cancelAnimationFrame(animation.current);
-    if (props.paused) return;
+    if (props.paused || !onScreen) return;
     let last = 0;
     const tick = (time: number) => {
       if (document.hidden || latest.current.paused) return;
@@ -57,7 +58,13 @@ export default function HD2DWorld(props: Props) {
     };
     animation.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animation.current);
-  }, [props.mobile, props.paused, mode]);
+  }, [props.mobile, props.paused, mode, onScreen]);
+  useEffect(() => {
+    if (!canvas.current || mode !== "webgl") return;
+    const observer = new IntersectionObserver(entries => setOnScreen(entries[0].isIntersecting));
+    observer.observe(canvas.current);
+    return () => observer.disconnect();
+  }, [mode]);
   useEffect(() => {
     const observer = new ResizeObserver(() => { if (!latest.current.paused) renderer.current?.draw(); });
     if (host.current) observer.observe(host.current); return () => observer.disconnect();
@@ -78,9 +85,9 @@ export default function HD2DWorld(props: Props) {
     }} />
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
-    <WorldPierrot summary={summary} recorded={props.scene === "theater"} />
+    {props.scene !== "plaza" && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
     {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
-    <p className="world-render-note">{mode === "loading" ? "골목을 여는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동 · 개미 선택으로 근거 확인"}</p>
+    <p className="world-render-note">{mode === "loading" ? "화면 불러오는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동 · 개미 선택으로 근거 확인"}</p>
   </div>;
 }

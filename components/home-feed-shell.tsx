@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { SourceGroupId } from "@/lib/feed-source-groups";
 import { serializeSourceGroupSelection } from "@/lib/feed-source-groups";
 import type { FeedPage } from "@/lib/feed-scope";
@@ -12,6 +12,7 @@ import type { FeedRow } from "@/lib/feed-data";
 type FeedApiPayload = {
   rows: FeedRow[];
   summary?: FeedPage["summary"];
+  stocks?: FeedPage["stocks"];
   generated_at?: string;
   nextOffset: number | null;
   hasMore: boolean;
@@ -22,6 +23,7 @@ const DEFAULT_FEED_ERROR = "피드 데이터를 준비하지 못했습니다.";
 
 const normalizeFeedPayload = (payload: Partial<FeedApiPayload> | null): FeedApiPayload => ({
   summary: payload?.summary,
+  stocks: payload?.stocks,
   generated_at: payload?.generated_at,
   rows: Array.isArray(payload?.rows) ? payload.rows : [],
   nextOffset: typeof payload?.nextOffset === "number" ? payload.nextOffset : null,
@@ -37,6 +39,9 @@ type Props = {
   windowHours: number;
   initialLimit: number;
   scope?: { symbol?: string; community?: SourceGroupId };
+  embedded?: boolean;
+  scopeControl?: ReactNode;
+  onSummary?: (summary: FeedPage["summary"] | undefined, error: string, loading: boolean, stocks: FeedPage["stocks"] | undefined) => void;
 };
 
 export function HomeFeedShell(props: Props) {
@@ -45,13 +50,14 @@ export function HomeFeedShell(props: Props) {
   </FeedSelectionProvider>;
 }
 
-function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, scope }: Props) {
+function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, scope, embedded = false, scopeControl, onSummary }: Props) {
   const { activeGroupIds } = useFeedSelection();
   const channels = serializeSourceGroupSelection(activeGroupIds);
   const symbol = scope?.symbol ?? "";
   const asOfRef = useRef("");
   const [sentiment, setSentiment] = useState<"all" | "bearish" | "bullish" | "neutral">("all");
   const [summary, setSummary] = useState<FeedPage["summary"]>();
+  const [stocks, setStocks] = useState<FeedPage["stocks"]>();
   const [rows, setRows] = useState<FeedRow[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -111,6 +117,7 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
 
         setRows(payload.rows);
         setSummary(payload.summary);
+        setStocks(payload.stocks);
         asOfRef.current = payload.generated_at ?? "";
         setErrorMessage(payload.errorMessage);
         setHasMore(payload.hasMore && !payload.errorMessage);
@@ -153,6 +160,7 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
         if (controller.signal.aborted) return;
         setRows([...new Map(fresh.map(row => [row.post_key, row])).values()]);
         setSummary(first.summary);
+        setStocks(first.stocks);
         asOfRef.current = first.generated_at ?? "";
         setHasMore(last.hasMore); setNextOffset(last.nextOffset);
         setErrorMessage(""); setLoadMoreError("");
@@ -171,6 +179,8 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
       loadMoreControllerRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => { onSummary?.(summary, errorMessage, loadingInitial, stocks); }, [summary, errorMessage, loadingInitial, stocks, onSummary]);
 
   const onRetryInitial = () => {
     setReloadKey((current) => current + 1);
@@ -216,18 +226,13 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
 
   return (
     <>
-      <section id="feed-top" aria-busy={refreshing} className="panel feed-filter-panel scroll-anchor">
-        <h1>외부 감성 피드</h1>
-        <p className="muted">
-          외부 커뮤니티의 공포와 희망을 좌우로 비교합니다. 통합 보기에서는 중립을 포함한 글을 최신순으로 볼 수 있습니다. 글
-          분류는 AI가 제목과 공개된 범위의 정보만 바탕으로 추정해 진행하므로, 일부 글은 잘못 분류될 수 있습니다.
-        </p>
-        {!scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
-        {scope && <p className="muted">선택 범위에 해당하는 글만 표시합니다. 더 보기로 이전 분석 글을 이어서 조회합니다.</p>}
+      <section id="feed-top" aria-busy={refreshing} className={`panel feed-filter-panel scroll-anchor${embedded ? " feed-embedded-controls" : ""}`}>
+        {!embedded && <><h1>최근 글</h1><p className="muted">최근 {windowHours}시간 분석 글. AI 분류에는 오류가 있을 수 있습니다.</p></>}
+        {embedded ? <div className="feed-scope-controls">{scopeControl}<details className="feed-source-picker"><summary>출처 선택</summary><FeedFilterControls selectedGroupIds={selectedGroupIds} /></details></div>
+          : !scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
       </section>
-
-      {summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
-      <SentimentFeed sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
+      {!embedded && summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
+      <SentimentFeed compact={embedded} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
 
       <div className="feed-pagination" aria-live="polite">
         {loadMoreError ? <p className="error">추가 피드를 불러오지 못했습니다: {loadMoreError}</p> : null}

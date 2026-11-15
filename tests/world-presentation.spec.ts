@@ -30,8 +30,8 @@ test("index 0, 5, 10 spans full graph and missing slots split segments", () => {
 });
 test("headlines distinguish empty, neutral-only and sparse data from calm", () => {
   const rows = worldRows().slice(0, 4);
-  expect(worldHeadline(worldSummary([]))).toContain("없습니다");
-  expect(worldHeadline(worldSummary(rows.slice(0, 1)))).toContain("지켜봅니다");
+  expect(worldHeadline(worldSummary([]))).toBe("분석 표본 없음");
+  expect(worldHeadline(worldSummary(rows.slice(0, 1)))).toBe("표본 부족");
   expect(worldHeadline(worldSummary(rows.map((r) => ({ ...r, label: "neutral" as WorldSide }))))).toContain("중립");
   const frame = buildWorldFrame(rows);
   expect(frameStatus(frame, false, "", Date.now())).toContain("최초");

@@ -144,7 +144,7 @@ export function buildWorldReplay(date: string, snapshots: WorldSlot[]): WorldRep
 }
 
 export const MOOD_COPY: Record<WorldMood, string> = {
-  hope: "희망 · 어둠 속 작은 환호", fear: "공포 · 짐 싸는 중", mixed: "팽팽 · 입구에서 실랑이",
-  neutral: "중립 · 방향성 판단 보류", watching: "관찰 중 · 표본 3건 미만"
+  hope: "희망 우세", fear: "공포 우세", mixed: "혼조",
+  neutral: "중립", watching: "표본 부족 · 3건 미만"
 };
 export const percent = (ratio: number | null): string => ratio === null ? "—" : `${Math.round(ratio * 100)}%`;

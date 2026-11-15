@@ -57,7 +57,7 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
     setOptimisticGroupIds(nextGroupIds);
     debounceRef.current = setTimeout(() => {
       startTransition(() => {
-        router.replace(buildFeedHref({ groupIds: nextGroupIds, baseSearch: searchParams.toString() }), { scroll: false });
+        router.push(buildFeedHref({ groupIds: nextGroupIds, baseSearch: searchParams.toString() }), { scroll: false });
       });
     }, 500);
   };

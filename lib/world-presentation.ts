@@ -24,12 +24,10 @@ export function recentEvidence(summary: WorldSummary, limit = 3): FeedRow[] {
 }
 
 export function worldHeadline(summary: WorldSummary): string {
-  if (!summary.total) return "아직, 들려온 목소리가 없습니다.";
-  if (summary.total < 3) return "몇 개의 목소리. 조금 더 지켜봅니다.";
-  if (!summary.bullish && !summary.bearish) return "중립의 목소리만 모인 새벽.";
-  if (summary.mood === "fear") return "오늘은, 짐을 든 개미가 많습니다.";
-  if (summary.mood === "hope") return "어두운 골목에도, 작은 희망은 있습니다.";
-  return "같은 골목, 엇갈리는 마음.";
+  if (!summary.total) return "분석 표본 없음";
+  if (summary.total < 3) return "표본 부족";
+  if (!summary.bullish && !summary.bearish) return "중립만 집계됨";
+  return `희망 ${Math.round((summary.hope_ratio ?? 0) * 100)}% · 공포 ${Math.round((summary.fear_ratio ?? 0) * 100)}%`;
 }
 
 export const timelineY = (index: number) => 60 - Math.max(0, Math.min(10, index)) / 10 * 52;

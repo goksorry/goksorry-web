@@ -9,24 +9,26 @@ const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "월드 장면 선택" }).getByRole("button", { name, exact: true });
 async function webgl(page: Page) { await requireWebGL2(page); await expect(stage(page)).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 }); }
 
-test("two screens, one detail layer, tab keys, close and focus restore", async ({ page }) => {
-  const errors: string[] = []; page.on("pageerror", (e) => errors.push(e.message));
+test("wall data and original links need no modal; optional details support keyboard and focus restore", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
   const frame = await prepareWorld(page); await page.goto("/");
-  const index = page.getByRole("button", { name: "지수 스크린 · 상세 열기" });
-  const feed = page.getByRole("button", { name: "피드 스크린 · 실제 글 열기" });
+  const index = page.locator("#world-index-wall"), feed = page.locator("#world-feed-wall");
   await expect(index).toContainText(`분석 표본 ${frame.overall.total}건`);
-  await expect(feed.locator(".world-preview-row")).toHaveCount(3);
+  await expect(feed.locator(".sentiment-title").first()).toBeVisible();
+  await expect(feed.locator(".sentiment-title").first()).toHaveAttribute("href", /^https:\/\/example.com/);
   await expect(feed).not.toContainText("시발");
-  await index.click(); await expect(dialog(page)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("같은 골목, 엇갈리는 마음");
+  const details = index.getByRole("button", { name: "산식·시장 지표" });
+  await details.click(); await expect(dialog(page)).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.getByRole("tab", { name: "지수", exact: true }).focus(); await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("End"); await expect(page.getByRole("tab", { name: "피드", exact: true })).toBeFocused();
   await page.keyboard.press("Home"); await expect(page.getByRole("tab", { name: "지수", exact: true })).toBeFocused();
-  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0); await expect(index).toBeFocused();
-  await feed.click(); await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
-  await page.locator(".world-modal-backdrop").click({ position: { x: 4, y: 4 } });
-  await expect(dialog(page)).toHaveCount(0); await expect(feed).toBeFocused();
+  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0); await expect(details).toBeFocused();
+  await details.click(); await page.locator(".world-modal-backdrop").click({ position: { x: 4, y: 4 } });
+  await expect(dialog(page)).toHaveCount(0); await expect(details).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -46,18 +48,22 @@ test("stock and community scope stays in same layer; evidence filter and origina
   await page.getByRole("button", { name: "전체 보기", exact: true }).click();
   await expect(dialog(page)).toHaveAccessibleName("전체 커뮤니티 · 지수와 피드");
   await page.keyboard.press("Escape"); await expect(page).toHaveURL(/stock=S0/);
-  await nav(page, "곡소리 재난방송").click(); await expect(page.getByText("삐에로 앵커 · 실제 분석 표본으로 전하는 새벽")).toBeVisible();
+  await nav(page, "곡소리 재난방송").click(); await expect(page.getByRole("heading", { name: "커뮤니티별 현황", level: 1 })).toBeVisible();
   await page.locator(".world-community-list").getByRole("button").first().click(); await expect(dialog(page)).toHaveAccessibleName(/현장/);
 });
 
 test("existing feed deep links, filters, more, theme and auth stay accessible", async ({ page }) => {
   await prepareWorld(page); await page.goto("/?channels=toss&feed=1");
-  await expect(dialog(page)).toBeVisible();
-  await expect(dialog(page).locator(".feed-channel-buttons .filter-chip-active")).toHaveText("토스증권");
-  await dialog(page).getByRole("button", { name: "더 보기", exact: true }).click();
-  await dialog(page).getByRole("button", { name: "더 보기", exact: true }).click();
-  await expect(dialog(page).locator(".feed-pagination")).toContainText("최근 6시간 피드를 모두 불러왔습니다.");
-  await page.getByRole("tab", { name: "지수", exact: true }).click();
+  const wall = page.locator("#world-feed-wall");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await wall.locator(".feed-source-picker summary").click();
+  await expect(wall.locator(".feed-channel-buttons .filter-chip-active")).toHaveText("토스증권");
+  while (await wall.getByRole("button", { name: "더 보기", exact: true }).count()) {
+    await wall.getByRole("button", { name: "더 보기", exact: true }).click();
+    await expect(wall.getByRole("button", { name: "불러오는 중...", exact: true })).toHaveCount(0);
+  }
+  await expect(wall.locator(".feed-pagination")).toContainText("최근 6시간 피드를 모두 불러왔습니다.");
+  await page.getByRole("button", { name: "산식·시장 지표" }).click();
   await expect(dialog(page).locator(".overview-value").first()).toHaveText("1,234.56");
   await page.keyboard.press("Escape"); await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   const menu = page.locator('[data-world-panel="menu"]');
@@ -71,19 +77,20 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-dark"); await expect(page.getByTestId("program-shell")).toHaveCount(0);
 });
 
-test("mobile shortcuts and screens open same sheet, readable stock list and 44px targets", async ({ page }) => {
+test("mobile shortcuts reach inline walls; readable stock list and 44px targets", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await prepareWorld(page); await page.goto("/");
   await page.evaluate(() => window.scrollTo(0, 700));
   await expect.poll(() => page.locator(".world-topbar").evaluate((node) => node.getBoundingClientRect().top)).toBe(0);
   const shortcut = page.locator(".world-index-toggle"); await shortcut.click();
-  await expect(dialog(page)).toBeVisible(); await page.getByRole("tab", { name: "피드", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(1); await page.keyboard.press("Escape"); await expect(shortcut).toBeFocused();
-  await page.getByRole("button", { name: "지수 스크린 · 상세 열기" }).click();
-  await expect(dialog(page)).toHaveAccessibleName("전체 커뮤니티 · 지수와 피드"); await page.keyboard.press("Escape");
+  await expect(page.locator("#world-index-wall")).toBeInViewport();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.locator('.world-hud-actions a[href$="#world-feed-wall"]').click();
+  await expect(page.locator("#world-feed-wall .sentiment-title").first()).toBeInViewport();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await nav(page, "개미 생태계").click();
   const labels = await page.locator(".world-stock-list strong").evaluateAll((elements) => elements.map((e) => parseFloat(getComputedStyle(e).fontSize)));
   expect(labels.every((value) => value >= 14)).toBe(true);
-  const targets = await page.locator(".world-stock-list button,.world-hud-actions button").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
+  const targets = await page.locator(".world-stock-list button,.world-hud-actions button,.world-hud-actions a").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
   expect(targets.every((value) => value >= 44)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -127,8 +134,8 @@ for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: buildWorldFrame(filtered) }));
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/");
   await expect(stage(page)).toHaveAttribute("data-renderer", "reduced");
-  if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "47"); await expect(page.locator(".world-scene-heading h1")).toContainText("짐"); }
-  if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "47"); await expect(page.locator(".world-scene-heading h1")).toContainText("희망"); }
+  if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "47"); await expect(page.locator(".world-ratios")).toContainText("공포 100%"); }
+  if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "47"); await expect(page.locator(".world-ratios")).toContainText("희망 100%"); }
   if (kind === "neutral") { await expect(stage(page)).toHaveAttribute("data-neutral", "47"); await expect(page.locator(".world-ratios")).toContainText("—"); }
   if (kind === "sparse") { await expect(stage(page)).toHaveAttribute("data-population", "2"); await expect(page.locator(".world-live-badge")).toContainText("소표본"); }
   if (kind === "empty") { await expect(stage(page)).toHaveAttribute("data-population", "1"); await expect(page.locator(".world-index-number strong")).toHaveText("—"); }
@@ -156,7 +163,7 @@ test("WebGL and asset failures use same static art with working screens", async 
   await prepareWorld(page); await page.route("**/world/ants.png", (route) => route.abort()); await page.goto("/");
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
-  await page.getByRole("button", { name: "지수 스크린 · 상세 열기" }).click(); await expect(dialog(page)).toBeVisible();
+  await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();
 });
 
 test("first visit guidance lives inside menu; cookie banner does not cover information", async ({ page }) => {
@@ -165,10 +172,10 @@ test("first visit guidance lives inside menu; cookie banner does not cover infor
   await expect(page.getByRole("note", { name: "초기 설정 안내" })).toHaveCount(0);
   await expect(page.locator(".cookie-consent-banner")).toHaveCSS("position", "relative");
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.locator(".world-index-toggle").click();
+  await page.getByRole("button", { name: "산식·시장 지표" }).click();
   await expect(page.locator(".cookie-consent-banner")).toBeHidden();
   await page.keyboard.press("Escape"); await expect(page.locator(".cookie-consent-banner")).toBeVisible();
-  await page.getByRole("button", { name: "지수 스크린 · 상세 열기" }).click(); await expect(dialog(page)).toBeVisible(); await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible(); await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   await expect(page.getByRole("note", { name: "초기 설정 안내" })).toBeVisible();
 });
@@ -208,4 +215,26 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
     }
   }
   const path = testInfo.outputPath("world-render-performance.json"); await writeFile(path, JSON.stringify(results, null, 2)); await testInfo.attach("render-performance", { path, contentType: "application/json" });
+});
+
+
+test("graphic ants animate out of phase and stop offscreen, hidden and reduced motion", async ({ page }) => {
+  const frame = await prepareWorld(page);
+  await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, overall: { ...frame.overall, mood: "mixed" } } }));
+  await page.setViewportSize({ width: 360, height: 640 }); await page.goto("/");
+  const ants = page.locator(".world-wall-ants");
+  await expect(ants).toHaveAttribute("data-mood", "mixed");
+  await expect(ants).toHaveAttribute("data-visible", "true");
+  const first = ants.locator("i").first(), second = ants.locator("i").last();
+  const style = () => first.evaluate(node => getComputedStyle(node).transform);
+  const start = await style(); await expect.poll(style).not.toBe(start);
+  expect(await first.evaluate(node => getComputedStyle(node).animationDelay)).not.toBe(await second.evaluate(node => getComputedStyle(node).animationDelay));
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(ants).toHaveAttribute("data-visible", "false");
+  await expect(first).toHaveCSS("animation-play-state", "paused");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  await expect(first).toHaveCSS("animation-play-state", "paused");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(first).toHaveCSS("animation-name", "none");
 });

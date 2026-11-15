@@ -5,10 +5,11 @@ export function WorldPanel({ title, name, children, onClose, modal = false }: {
   title: string; name: string; children: ReactNode; onClose: () => void; modal?: boolean;
 }) {
   const panel = useRef<HTMLElement>(null);
+  // Capture before the background becomes inert during the commit.
+  const previous = useRef<HTMLElement | null>(typeof document === "undefined" ? null : document.activeElement as HTMLElement | null);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
     panel.current?.focus();
     const key = (event: KeyboardEvent) => {
       const floating = [...document.querySelectorAll('[role="menu"], [role="dialog"][aria-modal="true"]')]
@@ -31,7 +32,7 @@ export function WorldPanel({ title, name, children, onClose, modal = false }: {
       else if (!event.shiftKey && (outside || document.activeElement === last || document.activeElement === panel.current)) { event.preventDefault(); first?.focus(); }
     };
     document.addEventListener("keydown", key);
-    return () => { document.removeEventListener("keydown", key); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+    return () => { document.removeEventListener("keydown", key); if (previous.current?.isConnected) previous.current.focus({ preventScroll: true }); };
   }, [modal]);
   const content = <section ref={panel} tabIndex={-1} role="dialog" aria-modal={modal || undefined} aria-label={title}
     className={`world-panel world-panel-${name}`} data-world-panel={name}>
