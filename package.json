@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:world": "playwright test --config playwright.world.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",

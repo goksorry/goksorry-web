@@ -17,3 +17,10 @@
 
 - 곡소리방 덧글 최대 길이는 160자입니다.
 - `goksorry_room_entries.reply_count`는 덧글 insert/update/delete trigger로 유지합니다.
+
+개미 월드 기록:
+
+- `026_world_snapshots.sql` / `20261114171745_world_snapshots.sql`: RLS를 켠 서버 전용 10분 기록 테이블입니다.
+- 수집 완료 register 경로에서 같은 버킷을 갱신하며 7일 이전 버킷을 정리합니다. 방문자 GET은 기록하지 않습니다.
+- 기존 기록 backfill은 없습니다. 마이그레이션 적용 후 첫 수집 완료부터 기록됩니다.
+- 임시 로컬 PostgreSQL 검증: `psql "$WORLD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/world-schema.sql` (저장소 루트에서 실행). 검사는 트랜잭션을 롤백합니다.

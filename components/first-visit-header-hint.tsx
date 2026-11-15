@@ -13,7 +13,7 @@ const HINT_MARGIN = 12;
 const HINT_GAP = 10;
 
 const findHeaderTarget = (): HTMLElement | null => {
-  return document.querySelector(".header .header-controls") ?? document.querySelector("[data-testid='concept-header-actions']");
+  return document.querySelector(".world-menu-button") ?? document.querySelector(".header .header-controls") ?? document.querySelector("[data-testid='concept-header-actions']");
 };
 
 export function FirstVisitHeaderHint() {
@@ -38,7 +38,7 @@ export function FirstVisitHeaderHint() {
           return;
         }
 
-        const header = target.closest(".header, [data-testid='program-header']") as HTMLElement | null;
+        const header = target.closest(".world-topbar, .header, [data-testid='program-header']") as HTMLElement | null;
         const targetRect = target.getBoundingClientRect();
         const headerRect = header?.getBoundingClientRect();
         const hintWidth = Math.min(hint.getBoundingClientRect().width || 320, window.innerWidth - HINT_MARGIN * 2);
@@ -59,7 +59,7 @@ export function FirstVisitHeaderHint() {
     updatePosition();
     const resizeObserver = new ResizeObserver(updatePosition);
     const target = findHeaderTarget();
-    const header = target?.closest(".header, [data-testid='program-header']");
+    const header = target?.closest(".world-topbar, .header, [data-testid='program-header']");
     if (target) {
       resizeObserver.observe(target);
     }

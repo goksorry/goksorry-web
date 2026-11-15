@@ -68,7 +68,7 @@ const numberOrNull = (value: unknown): number | null => {
   return Number.isFinite(num) ? Math.max(0, Math.floor(num)) : null;
 };
 
-const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy | null => {
+export const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy | null => {
   if (!value || typeof value !== "object") {
     return null;
   }

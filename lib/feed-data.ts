@@ -120,19 +120,20 @@ const chunk = <T>(items: T[], size: number): T[][] => {
 
 export const fetchRecentFeedRows = async (
   service: SupabaseClient,
-  { hours = 24, limit = 500, offset = 0 }: { hours?: number; limit?: number; offset?: number } = {}
-): Promise<{ rows: FeedRow[]; errorMessage: string }> => {
+  { hours = 24, limit = 500, offset = 0, asOf = new Date() }: { hours?: number; limit?: number; offset?: number; asOf?: Date } = {}
+): Promise<{ rows: FeedRow[]; errorMessage: string; scannedCount: number }> => {
   const safeLimit = Math.max(0, Math.floor(limit));
   const safeOffset = Math.max(0, Math.floor(offset));
   if (safeLimit === 0) {
-    return { rows: [], errorMessage: "" };
+    return { rows: [], errorMessage: "", scannedCount: 0 };
   }
 
-  const cutoffIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  const cutoffIso = new Date(asOf.getTime() - hours * 60 * 60 * 1000).toISOString();
   const { data: sentimentData, error: sentimentError } = await service
     .from("sentiment_results")
     .select("post_key,label,sentiment_score,confidence,analyzed_at")
     .gte("analyzed_at", cutoffIso)
+    .lte("analyzed_at", asOf.toISOString())
     .order("analyzed_at", { ascending: false })
     .order("post_key", { ascending: false })
     .range(safeOffset, safeOffset + safeLimit - 1);
@@ -141,7 +142,7 @@ export const fetchRecentFeedRows = async (
     console.error("feed sentiment query failed", {
       message: sentimentError.message
     });
-    return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다." };
+    return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다.", scannedCount: 0 };
   }
 
   const sentimentRows: SentimentRow[] = (sentimentData ?? []).map((item: any) => {
@@ -157,7 +158,7 @@ export const fetchRecentFeedRows = async (
 
   const postKeys = [...new Set(sentimentRows.map((row) => row.post_key))];
   if (postKeys.length === 0) {
-    return { rows: [], errorMessage: "" };
+    return { rows: [], errorMessage: "", scannedCount: sentimentRows.length };
   }
 
   const externalBatchResults = await Promise.all(
@@ -175,7 +176,7 @@ export const fetchRecentFeedRows = async (
       console.error("feed external post query failed", {
         message: externalError.message
       });
-      return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다." };
+      return { rows: [], errorMessage: "피드 데이터를 준비하지 못했습니다.", scannedCount: sentimentRows.length };
     }
 
     externalRows.push(
@@ -228,7 +229,7 @@ export const fetchRecentFeedRows = async (
     symbol_market: row.symbol ? symbolMetadata.get(row.symbol)?.market ?? null : null
   }));
 
-  return { rows, errorMessage: "" };
+  return { rows, errorMessage: "", scannedCount: sentimentRows.length };
 };
 
 export const filterRowsBySourceGroup = (rows: FeedRow[], groupId: SourceGroupId | ""): FeedRow[] => {

@@ -28,6 +28,20 @@ export const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
 export const ONE_WEEK_IN_SECONDS = 60 * 60 * 24 * 7;
 
 export const CLIENT_PERSISTENCE_DEFINITIONS = {
+  worldAvatarColor: {
+    kind: "localStorage",
+    key: "goksorry-world-avatar-color",
+    category: "essential",
+    label: "개미 월드 아바타 색상",
+    description: "로그인 없이 사용하는 내 개미의 색상을 저장합니다."
+  },
+  worldMuted: {
+    kind: "localStorage",
+    key: "goksorry-world-muted",
+    category: "essential",
+    label: "개미 월드 효과음 설정",
+    description: "개미 월드 효과음의 음소거 상태를 저장합니다. 기본은 무음입니다."
+  },
   cookieConsent: {
     kind: "cookie",
     key: "goksorry-cookie-consent",

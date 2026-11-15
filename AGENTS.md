@@ -20,7 +20,7 @@
 - `CHAT_WS_BASE_URL` (optional)
 
 ## Responsibilities
-- Public sentiment feed (`/`)
+- Ant world with public sentiment feed and index overlays (`/`)
 - Community MVP (Google OAuth only)
 - Account creation gate at `/profile`
 - Editable legal documents via admin (`/admin/policies`)

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
 import { DocsShell } from "@/components/theme-shells/docs-shell";
 import { ExcelShell } from "@/components/theme-shells/excel-shell";
@@ -25,7 +26,12 @@ export function ThemeChrome({
   desktopChatSidebar
 }: ThemeChromeProps) {
   const { themeId } = useTheme();
+  const pathname = usePathname();
   const option = getThemeOption(themeId);
+
+  if (pathname === "/") {
+    return <div id="page-top" className="world-page">{policyBanner}{children}</div>;
+  }
 
   if (option.shellType === "default") {
     return (

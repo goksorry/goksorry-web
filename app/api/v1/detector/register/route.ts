@@ -3,6 +3,8 @@ import { revalidateTag } from "next/cache";
 import { jsonError, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { COLLECTION_POLICY_CACHE_TAG } from "@/lib/collection-policy-status";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+import { loadWorldFrame, WORLD_CACHE_TAG } from "@/lib/world-data";
+import { storeWorldSnapshot } from "@/lib/world-store";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
 
@@ -273,6 +275,18 @@ export async function POST(request: Request) {
       revalidateTag(COLLECTION_POLICY_CACHE_TAG);
     }
     statusUpdated = true;
+  }
+
+  // Await before returning: serverless runtimes may stop work after a response.
+  // Snapshot failures must never turn successful collection into a failed run.
+  if (statusUpdated) {
+    try {
+      const snapshotService = getServiceSupabaseClient({ cache: "no-store", signal: AbortSignal.timeout(8_000) });
+      await storeWorldSnapshot(snapshotService, await loadWorldFrame(snapshotService));
+    } catch (error) {
+      logApiError("world snapshot failed", auth.requestId, error);
+    }
+    revalidateTag(WORLD_CACHE_TAG);
   }
 
   return NextResponse.json({

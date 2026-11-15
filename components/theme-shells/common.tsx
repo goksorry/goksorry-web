@@ -27,7 +27,7 @@ export type ThemeShellProps = {
 };
 
 export const SHELL_ROUTES: ShellRoute[] = [
-  { href: "/", label: "피드", fileName: "feed.goksorry", cell: "A1", formula: "GOKSORRY.FEED()" },
+  { href: "/?feed=1", label: "피드", fileName: "feed.goksorry", cell: "A1", formula: "GOKSORRY.FEED()" },
   { href: "/analysis", label: "분석", fileName: "analysis.goksorry", cell: "B2", formula: "GOKSORRY.ANALYSIS()" },
   { href: "/community", label: "게시판", fileName: "board.goksorry", cell: "C3", formula: "GOKSORRY.BOARD()" },
   { href: "/goksorry-room", label: "곡소리방", fileName: "room.goksorry", cell: "D4", formula: "GOKSORRY.ROOM()" },
@@ -66,11 +66,12 @@ export const normalizePath = (pathname: string): string => {
 
 export const isRouteActive = (pathname: string, href: string): boolean => {
   const path = normalizePath(pathname);
-  if (href === "/") {
+  const target = href.split("?")[0];
+  if (target === "/") {
     return path === "/";
   }
 
-  return path === href || path.startsWith(`${href}/`);
+  return path === target || path.startsWith(`${target}/`);
 };
 
 export const getCurrentRoute = (pathname: string): ShellRoute => {
@@ -279,7 +280,7 @@ export function ShellBrand({ family, productName }: { family: ThemeFamily; produ
 export function ShellNavLinks({ className = "theme-shell-nav" }: { className?: string }) {
   return (
     <nav className={className} aria-label="사이트 메뉴">
-      <Link href="/" replace>
+      <Link href="/?feed=1" replace>
         피드
       </Link>
       <Link href="/analysis" replace>

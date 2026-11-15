@@ -359,7 +359,7 @@ const isCollectionProblemSource = (source: FooterCollectionPolicySource): boolea
   return Boolean(collectionProblemReason(source));
 };
 
-const buildCollectionStatusFilters = (
+export const buildCollectionStatusFilters = (
   policy: FooterCollectionPolicy | null
 ): {
   excludedSourceNames: Set<string>;

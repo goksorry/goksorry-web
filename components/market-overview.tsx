@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useState, type CSSProperties } from "react";
+import { startTransition, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCleanFilter } from "@/components/clean-filter-provider";
@@ -133,6 +133,14 @@ export function MarketOverview({
   const [error, setError] = useState("");
   const [activeGroupId, setActiveGroupId] = useState<SourceGroupId | null>(null);
   const [optimisticGroupIds, setOptimisticGroupIds] = useState<SourceGroupId[] | null>(null);
+  const [pageVisible, setPageVisible] = useState(true);
+  const lastFetchAt = useRef(0);
+  useEffect(() => {
+    const update = () => setPageVisible(!document.hidden);
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
   useEffect(() => {
     setMarketPayload(marketOverview);
   }, [marketOverview]);
@@ -143,6 +151,7 @@ export function MarketOverview({
   }, [initialCommunityIndicators]);
 
   useEffect(() => {
+    if (!pageVisible) return;
     const controller = new AbortController();
     let refreshTimer: number | null = null;
 
@@ -156,6 +165,7 @@ export function MarketOverview({
           throw new Error(`overview ${response.status}`);
         }
         const data = (await response.json()) as OverviewPayload;
+        lastFetchAt.current = Date.now();
         setMarketPayload({
           generated_at: data.generated_at,
           market_indicators: data.market_indicators
@@ -183,7 +193,8 @@ export function MarketOverview({
 
     const marketNeedsRetry = marketPayload.market_indicators.some(hasMissingMarketIndicator);
     const generatedAtMs = payload?.generated_at ? new Date(payload.generated_at).getTime() : Number.NaN;
-    const ageMs = Number.isFinite(generatedAtMs) ? Date.now() - generatedAtMs : COMMUNITY_REFRESH_MS;
+    const ageMs = lastFetchAt.current ? Date.now() - lastFetchAt.current
+      : Number.isFinite(generatedAtMs) ? Date.now() - generatedAtMs : COMMUNITY_REFRESH_MS;
     const delayMs = error
       ? COMMUNITY_RETRY_MS
       : marketNeedsRetry
@@ -202,7 +213,7 @@ export function MarketOverview({
         window.clearTimeout(refreshTimer);
       }
     };
-  }, [error, marketPayload.market_indicators, payload?.generated_at]);
+  }, [error, marketPayload.market_indicators, payload?.generated_at, pageVisible]);
 
   useEffect(() => {
     setActiveGroupId(null);

@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { HomeFeedShell } from "@/components/home-feed-shell";
-import { MarketOverviewFallback } from "@/components/market-overview-fallback";
-import { MarketOverviewShell } from "@/components/market-overview-shell";
+import { WorldShell } from "@/components/world/world-shell";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
 import { getTimezone } from "@/lib/env";
 import { buildPageMetadata, SITE_NAME } from "@/lib/seo";
 
 type QueryValue = string | string[] | undefined;
-const FEED_WINDOW_HOURS = 6;
-const INITIAL_FEED_LIMIT = 80;
 
 const homeMetadata = buildPageMetadata({
   title: "홈",
-  description: "곡소리 지수, 시장 개요, 커뮤니티 체감 데이터를 한 화면에서 확인할 수 있는 곡소리닷컴 홈입니다.",
+  description: "커뮤니티의 희망과 공포가 살아 움직이는 곡소리 개미 월드. 개미굴, 심리 전장, 삐에로 재난방송과 하루 30초 개미극장을 탐색하세요.",
   path: "/"
 });
 
@@ -60,16 +58,9 @@ export default async function Home({
   const timezone = getTimezone();
 
   return (
-    <>
-      <Suspense fallback={<MarketOverviewFallback selectedGroupIds={selectedGroupIds} />}>
-        <MarketOverviewShell selectedGroupIds={selectedGroupIds} />
-      </Suspense>
-      <HomeFeedShell
-        timezone={timezone}
-        selectedGroupIds={selectedGroupIds}
-        windowHours={FEED_WINDOW_HOURS}
-        initialLimit={INITIAL_FEED_LIMIT}
-      />
-    </>
+    <Suspense fallback={<p className="world-loading">개미 광장을 여는 중…</p>}>
+      <WorldShell timezone={timezone} selectedGroupIds={selectedGroupIds}
+        menu={<><SiteHeader /><Suspense fallback={null}><SiteFooter /></Suspense></>} />
+    </Suspense>
   );
 }

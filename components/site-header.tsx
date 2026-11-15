@@ -15,7 +15,7 @@ export function SiteHeader() {
           <Image className="brand-logo" src="/goksorry_logo.png" alt="곡소리닷컴" width={113} height={50} priority />
         </Link>
         <nav className="nav">
-          <Link href="/" replace>
+          <Link href="/?feed=1" replace>
             피드
           </Link>
           <Link href="/analysis" replace>

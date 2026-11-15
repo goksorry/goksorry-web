@@ -281,7 +281,7 @@ const roomSelector = (root: string, selector: string) => `${root ? `${root} ` : 
 test.describe("program theme shells", () => {
   test("default light theme keeps the original site shell", async ({ page }) => {
     await prepareThemePage(page);
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -585,7 +585,7 @@ test.describe("program theme shells", () => {
   test("header share button is mobile-only", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     const defaultShareButton = page.locator(".header .header-share-button");
     await expect(defaultShareButton).toHaveCount(1);
@@ -595,7 +595,7 @@ test.describe("program theme shells", () => {
     await expect(defaultShareButton).toBeVisible();
 
     await page.setViewportSize({ width: 1180, height: 760 });
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
 
     const conceptShareButton = page.getByTestId("concept-header-actions").locator(".header-share-button");
     await expect(conceptShareButton).toHaveCount(1);
@@ -617,7 +617,7 @@ test.describe("program theme shells", () => {
   });
 
   test("theme shell is server-rendered from URL and cookie preferences", async ({ request }) => {
-    const urlThemeResponse = await request.get("/?theme=vscode-dark", {
+    const urlThemeResponse = await request.get("/auth/login?theme=vscode-dark", {
       headers: {
         cookie: `${THEME_COOKIE}=docs-dark`
       }
@@ -628,7 +628,7 @@ test.describe("program theme shells", () => {
     expect(urlThemeHtml).toContain('data-theme-shell="vscode"');
     expect(urlThemeHtml).toContain("theme-shell-vscode");
 
-    const cookieThemeResponse = await request.get("/", {
+    const cookieThemeResponse = await request.get("/auth/login", {
       headers: {
         cookie: `${THEME_COOKIE}=docs-dark`
       }
@@ -639,7 +639,7 @@ test.describe("program theme shells", () => {
     expect(cookieThemeHtml).toContain('data-theme-shell="docs"');
     expect(cookieThemeHtml).toContain("theme-shell-docs");
 
-    const removedThemeResponse = await request.get("/", {
+    const removedThemeResponse = await request.get("/auth/login", {
       headers: {
         cookie: `${THEME_COOKIE}=powerpoint-dark`
       }
@@ -654,7 +654,7 @@ test.describe("program theme shells", () => {
   test("theme selection persists to cookie and local storage", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/?channels=toss");
+    await page.goto("/auth/login?channels=toss");
 
     await page.getByRole("button", { name: /테마 선택/ }).click();
     await page.getByRole("button", { name: "테마 VS Code" }).click();
@@ -696,7 +696,7 @@ test.describe("program theme shells", () => {
   test("change color mode selection uses symbol labels and persists", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "hybrid");
     await page.getByRole("button", { name: /테마 선택/ }).click();
@@ -811,7 +811,8 @@ test.describe("program theme shells", () => {
     });
     await prepareThemePage(page, "light", "hybrid");
     await page.goto("/");
-    await page.clock.runFor(61_000);
+    await page.locator(".world-index-toggle").click();
+    await page.clock.fastForward(61_000);
     await expect(page.locator("[data-market-indicator-id='kospi'] .overview-value")).toHaveText("9,876.54");
 
     const readDeltaColors = async () =>
@@ -836,6 +837,7 @@ test.describe("program theme shells", () => {
       usdkrw: "rgb(30, 99, 216)"
     });
 
+    await page.locator(".world-menu-button").click();
     await page.getByRole("button", { name: /테마 선택/ }).click();
     await page.getByRole("button", { name: "등락률 색상 미국식" }).click();
     await page.getByRole("button", { name: "적용" }).click();
@@ -952,6 +954,7 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
     await page.goto("/?market_adjustment=off");
+    await page.locator(".world-index-toggle").click();
 
     await expect(page.locator(".overview-market-adjustment-button")).toHaveCount(0);
     await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
@@ -967,7 +970,7 @@ test.describe("program theme shells", () => {
     await expect(indexHelpTooltip).toContainText("0.0~2.5 극단적 희망");
     await expect(indexHelpTooltip).toContainText("7.5~10.0 극단적 공포");
 
-    await page.clock.runFor(61_000);
+    await page.clock.fastForward(61_000);
     await expect(page.locator(".overview-market-stat").first().locator(".overview-value")).toHaveText("9,876.54");
     await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
     await expect(page.locator(".overview-market-block").first().locator(".overview-section-copy")).toHaveText(
@@ -1024,7 +1027,8 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
     await page.goto("/");
-    await page.clock.runFor(61_000);
+    await page.locator(".world-index-toggle").click();
+    await page.clock.fastForward(61_000);
 
     await expect(page.locator(".overview-market-adjustment-meta")).toHaveCount(0);
   });
@@ -1120,6 +1124,7 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
     await page.goto("/?theme=excel-light");
+    await page.locator(".world-hud-actions button").filter({ hasText: "피드" }).click();
 
     await expect(page.locator(".sentiment-lane-fear .sentiment-intensity-tag")).toHaveText("공포도 45%");
     await expect(page.locator(".sentiment-lane-hope .sentiment-intensity-tag")).toHaveText("희망도 55%");
@@ -1229,7 +1234,9 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
     await page.goto("/");
-    await page.clock.runFor(61_000);
+    await page.locator(".world-index-toggle").click();
+    await page.locator(".world-hud-actions button").filter({ hasText: "피드" }).click();
+    await page.clock.fastForward(61_000);
 
     const tossCard = page.getByRole("button", { name: /토스증권 커뮤니티 지수/ });
     await expect(tossCard).toBeVisible();
@@ -1363,7 +1370,8 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
     await page.goto("/");
-    await page.clock.runFor(61_000);
+    await page.locator(".world-index-toggle").click();
+    await page.clock.fastForward(61_000);
 
     const ppomppuCard = page.locator(".overview-card-community").filter({ hasText: "뽐뿌 증권포럼 지수" });
     await expect(ppomppuCard).toBeDisabled();
@@ -1375,7 +1383,7 @@ test.describe("program theme shells", () => {
   test("excel theme renders a single-line ribbon shell and replaces the site header", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
@@ -1486,308 +1494,12 @@ test.describe("program theme shells", () => {
     }
     expect(Math.abs(sheetMetrics.firstHeaderWidth - sheetMetrics.contentWidth / expectedColumnCount)).toBeLessThanOrEqual(1);
 
-    const excelContentChrome = await page.evaluate(() => {
-      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
-      const frame = document.querySelector(".excel-content-frame") as HTMLElement;
-      const tableCell = document.querySelector(".theme-shell-excel .table th, .theme-shell-excel .table td") as HTMLElement | null;
-      const sheetTab = document.querySelector(".excel-sheet-tabs a") as HTMLElement;
-      const headerButton = document.querySelector(".theme-shell-excel .theme-menu-trigger") as HTMLElement;
-      const commentsButton = document.querySelector(".excel-header-button") as HTMLElement;
-      const editingModeButton = document.querySelector(".excel-editing-mode") as HTMLElement;
-      const shareButton = document.querySelector(".excel-share-button") as HTMLElement;
-      const searchBox = document.querySelector(".excel-search") as HTMLElement;
-      const ribbonSelect = document.querySelector(".excel-ribbon-command-select") as HTMLElement;
-      const nameBox = document.querySelector(".excel-name-box") as HTMLElement;
-      const formulaControlGroup = document.querySelector(".excel-formula-control-group") as HTMLElement;
-      const formulaControls = Array.from(document.querySelectorAll(".excel-formula-control-group > *")) as HTMLElement[];
-      const formulaInput = document.querySelector(".excel-formula-bar input") as HTMLElement;
-      const rowHeaderCell = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const columnHeaders = document.querySelector("[data-testid='excel-column-headers']") as HTMLElement;
-      const overviewArt = document.querySelector(".theme-shell-excel .overview-panel-art") as HTMLElement;
-      const overviewHeadingCopy = document.querySelector(".theme-shell-excel .overview-heading-copy") as HTMLElement;
-      const overviewScore = document.querySelector(".theme-shell-excel .overview-overall-score") as HTMLElement;
-      const documentStyle = window.getComputedStyle(documentElement);
-      const frameStyle = window.getComputedStyle(frame);
-      const columnHeadersStyle = window.getComputedStyle(columnHeaders);
-      const tableCellStyle = tableCell ? window.getComputedStyle(tableCell) : null;
-      const sheetTabStyle = window.getComputedStyle(sheetTab);
-      const headerButtonStyle = window.getComputedStyle(headerButton);
-      const commentsButtonStyle = window.getComputedStyle(commentsButton);
-      const editingModeButtonStyle = window.getComputedStyle(editingModeButton);
-      const shareButtonStyle = window.getComputedStyle(shareButton);
-      const searchBoxStyle = window.getComputedStyle(searchBox);
-      const ribbonSelectStyle = window.getComputedStyle(ribbonSelect);
-      const nameBoxStyle = window.getComputedStyle(nameBox);
-      const formulaControlGroupStyle = window.getComputedStyle(formulaControlGroup);
-      const formulaControlStyles = formulaControls.map((control) => window.getComputedStyle(control));
-      const formulaInputStyle = window.getComputedStyle(formulaInput);
-      const selectedColumn = document.querySelector(".excel-column-headers .excel-header-active") as HTMLElement;
-      const selectedRow = document.querySelector(".excel-row-headers .excel-header-active") as HTMLElement;
-      const selection = document.querySelector("[data-testid='excel-selection-box']") as HTMLElement;
-      const contentLink = frame.querySelector("a") as HTMLElement | null;
-      const selectionStyle = window.getComputedStyle(selection);
-      const overviewArtRect = overviewArt.getBoundingClientRect();
-      const overviewHeadingCopyRect = overviewHeadingCopy.getBoundingClientRect();
-      const overviewScoreRect = overviewScore.getBoundingClientRect();
-
-      return {
-        columnWidth: Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width")),
-        rowHeight: rowHeaderCell.getBoundingClientRect().height,
-        columnHeaderBorderLeft: Number.parseFloat(columnHeadersStyle.borderLeftWidth),
-        marketBlockRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-market-block-rows")),
-        overviewPanelRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-overview-panel-rows")),
-        feedFilterRows: Number.parseFloat(documentStyle.getPropertyValue("--excel-feed-filter-rows")),
-        paddingTop: Number.parseFloat(documentStyle.paddingTop),
-        paddingRight: Number.parseFloat(documentStyle.paddingRight),
-        paddingBottom: Number.parseFloat(documentStyle.paddingBottom),
-        paddingLeft: Number.parseFloat(documentStyle.paddingLeft),
-        documentBackground: documentStyle.backgroundImage,
-        frameBackground: frameStyle.backgroundImage,
-        tableCellHeight: tableCellStyle ? Number.parseFloat(tableCellStyle.height) : null,
-        sheetTabRadius: sheetTabStyle.borderRadius,
-        headerButtonRadius: headerButtonStyle.borderRadius,
-        headerButtonBorderWidth: Number.parseFloat(headerButtonStyle.borderTopWidth),
-        commentsButtonBorderWidth: Number.parseFloat(commentsButtonStyle.borderTopWidth),
-        commentsButtonRadius: Number.parseFloat(commentsButtonStyle.borderTopLeftRadius),
-        editingModeButtonBorderWidth: Number.parseFloat(editingModeButtonStyle.borderTopWidth),
-        editingModeButtonRadius: Number.parseFloat(editingModeButtonStyle.borderTopLeftRadius),
-        shareButtonBorderWidth: Number.parseFloat(shareButtonStyle.borderTopWidth),
-        shareButtonRadius: Number.parseFloat(shareButtonStyle.borderTopLeftRadius),
-        searchBoxBorderWidth: Number.parseFloat(searchBoxStyle.borderTopWidth),
-        searchBoxRadius: Number.parseFloat(searchBoxStyle.borderTopLeftRadius),
-        ribbonSelectBorderWidth: Number.parseFloat(ribbonSelectStyle.borderTopWidth),
-        ribbonSelectRadius: Number.parseFloat(ribbonSelectStyle.borderTopLeftRadius),
-        nameBoxBorderWidth: Number.parseFloat(nameBoxStyle.borderTopWidth),
-        nameBoxRadius: Number.parseFloat(nameBoxStyle.borderTopLeftRadius),
-        formulaControlCount: formulaControls.length,
-        formulaControlGroupBorderWidth: Number.parseFloat(formulaControlGroupStyle.borderTopWidth),
-        formulaControlGroupRadius: Number.parseFloat(formulaControlGroupStyle.borderTopLeftRadius),
-        formulaControlTopBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderTopWidth)),
-        formulaControlRightBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderRightWidth)),
-        formulaControlBottomBorderWidths: formulaControlStyles.map((style) => Number.parseFloat(style.borderBottomWidth)),
-        formulaInputBorderWidth: Number.parseFloat(formulaInputStyle.borderTopWidth),
-        formulaInputRadius: Number.parseFloat(formulaInputStyle.borderTopLeftRadius),
-        selectedColumnBackground: window.getComputedStyle(selectedColumn).backgroundColor,
-        selectedColumnColor: window.getComputedStyle(selectedColumn).color,
-        selectedRowBackground: window.getComputedStyle(selectedRow).backgroundColor,
-        selectionBorderColor: selectionStyle.borderTopColor,
-        contentCursor: frameStyle.cursor,
-        contentLinkCursor: contentLink ? window.getComputedStyle(contentLink).cursor : null,
-        overviewArtLeft: overviewArtRect.left,
-        overviewArtRight: overviewArtRect.right,
-        overviewHeadingCopyLeft: overviewHeadingCopyRect.left,
-        overviewHeadingCopyRight: overviewHeadingCopyRect.right,
-        overviewScoreLeft: overviewScoreRect.left,
-        overviewScoreRight: overviewScoreRect.right
-      };
-    });
-    expect(excelContentChrome.paddingTop).toBe(0);
-    expect(excelContentChrome.paddingBottom).toBe(0);
-    expect(excelContentChrome.paddingLeft).toBe(0);
-    expect(excelContentChrome.paddingRight).toBe(0);
-    expect(excelContentChrome.documentBackground).toContain("linear-gradient");
-    expect(excelContentChrome.frameBackground).toBe("none");
-    expect(excelContentChrome.marketBlockRows).toBe(3);
-    expect(excelContentChrome.overviewPanelRows).toBe(7);
-    expect(excelContentChrome.feedFilterRows).toBe(6);
-    expect(Math.abs(excelContentChrome.overviewArtRight - excelContentChrome.overviewHeadingCopyRight)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelContentChrome.overviewArtRight - excelContentChrome.overviewScoreLeft)).toBeLessThanOrEqual(1);
-    expect(excelContentChrome.overviewArtLeft).toBeGreaterThan(excelContentChrome.overviewHeadingCopyLeft);
-    expect(excelContentChrome.overviewArtRight).toBeLessThanOrEqual(excelContentChrome.overviewScoreRight);
-    if (excelContentChrome.tableCellHeight !== null) {
-      expect(Math.abs(excelContentChrome.tableCellHeight - excelContentChrome.rowHeight)).toBeLessThanOrEqual(1);
-    }
-    expect(Number.parseFloat(excelContentChrome.sheetTabRadius)).toBeGreaterThan(0);
-    expect(Number.parseFloat(excelContentChrome.headerButtonRadius)).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.headerButtonBorderWidth).toBe(0);
-    expect(excelContentChrome.commentsButtonBorderWidth).toBe(0);
-    expect(excelContentChrome.commentsButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.editingModeButtonBorderWidth).toBe(0);
-    expect(excelContentChrome.editingModeButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.shareButtonBorderWidth).toBe(0);
-    expect(excelContentChrome.shareButtonRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.searchBoxBorderWidth).toBeGreaterThan(0);
-    expect(excelContentChrome.searchBoxRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.ribbonSelectBorderWidth).toBeGreaterThan(0);
-    expect(excelContentChrome.ribbonSelectRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.nameBoxBorderWidth).toBeGreaterThan(0);
-    expect(excelContentChrome.nameBoxRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.formulaControlCount).toBe(3);
-    expect(excelContentChrome.formulaControlGroupBorderWidth).toBeGreaterThan(0);
-    expect(excelContentChrome.formulaControlGroupRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.formulaControlTopBorderWidths).toEqual([0, 0, 0]);
-    expect(excelContentChrome.formulaControlRightBorderWidths).toEqual([0, 0, 0]);
-    expect(excelContentChrome.formulaControlBottomBorderWidths).toEqual([0, 0, 0]);
-    expect(excelContentChrome.formulaInputBorderWidth).toBeGreaterThan(0);
-    expect(excelContentChrome.formulaInputRadius).toBe(EXCEL_CONTROL_RADIUS);
-    expect(excelContentChrome.columnHeaderBorderLeft).toBeGreaterThan(0);
-    expect(excelContentChrome.contentCursor).toBe("cell");
-    if (excelContentChrome.contentLinkCursor !== null) {
-      expect(excelContentChrome.contentLinkCursor).toBe("pointer");
-    }
-    expect(excelContentChrome.selectedColumnBackground).not.toBe("rgba(0, 0, 0, 0)");
-    expect(excelContentChrome.selectedRowBackground).not.toBe("rgba(0, 0, 0, 0)");
-    expect(excelContentChrome.selectedColumnColor).toBe(excelContentChrome.selectionBorderColor);
-
-    const selectedCellTarget = await page.evaluate(() => {
-      const frame = document.querySelector(".excel-content-frame") as HTMLElement;
-      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const columnWidth = Number.parseFloat(window.getComputedStyle(documentElement).getPropertyValue("--excel-column-width"));
-      const rowHeight = rowHeader.getBoundingClientRect().height;
-      const columnIndex = 2;
-      const rowIndex = 3;
-      const frameRect = frame.getBoundingClientRect();
-
-      frame.dispatchEvent(
-        new MouseEvent("click", {
-          bubbles: true,
-          clientX: frameRect.left + columnWidth * columnIndex + 8,
-          clientY: frameRect.top + rowHeight * rowIndex + 8
-        })
-      );
-
-      return {
-        name: "C4",
-        column: "C",
-        row: "4",
-        left: columnWidth * columnIndex,
-        top: rowHeight * rowIndex
-      };
-    });
-    await expect(page.locator(".excel-name-box")).toHaveText(selectedCellTarget.name);
-    await expect(page.locator(`[data-excel-column="${selectedCellTarget.column}"]`)).toHaveClass(/excel-header-active/);
-    await expect(page.locator(`[data-excel-row="${selectedCellTarget.row}"]`)).toHaveClass(/excel-header-active/);
-    const selectedCellBox = await page.getByTestId("excel-selection-box").evaluate((element) => {
-      const style = window.getComputedStyle(element);
-
-      return {
-        left: Number.parseFloat(style.left),
-        top: Number.parseFloat(style.top)
-      };
-    });
-    expect(Math.abs(selectedCellBox.left - selectedCellTarget.left)).toBeLessThanOrEqual(1);
-    expect(Math.abs(selectedCellBox.top - selectedCellTarget.top)).toBeLessThanOrEqual(1);
-
-    const excelOverviewGrid = await page.evaluate(() => {
-      const documentElement = document.querySelector("[data-testid='theme-content-document']") as HTMLElement;
-      const heading = document.querySelector(".theme-shell-excel .overview-section-head h3") as HTMLElement;
-      const marketCards = Array.from(document.querySelectorAll(".theme-shell-excel .overview-market-stat")) as HTMLElement[];
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const documentStyle = window.getComputedStyle(documentElement);
-      const documentRect = documentElement.getBoundingClientRect();
-      const headingRect = heading.getBoundingClientRect();
-      const firstCardRect = marketCards[0].getBoundingClientRect();
-
-      return {
-        columnWidth: Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width")),
-        rowHeight: rowHeader.getBoundingClientRect().height,
-        headingLeftOffset: headingRect.left - documentRect.left,
-        headingTopOffset: headingRect.top - documentRect.top,
-        headingAlignItems: window.getComputedStyle(heading).alignItems,
-        headingPaddingLeft: Number.parseFloat(window.getComputedStyle(heading).paddingLeft),
-        cardLeftOffset: firstCardRect.left - documentRect.left,
-        cardTopOffset: firstCardRect.top - documentRect.top,
-        cardWidth: firstCardRect.width,
-        cardHeight: firstCardRect.height,
-        cardRadius: window.getComputedStyle(marketCards[0]).borderRadius
-      };
-    });
-    const closeToGridLine = (value: number, cellSize: number) => {
-      const remainder = Math.abs(value % cellSize);
-      return Math.min(remainder, Math.abs(cellSize - remainder));
-    };
-    expect(closeToGridLine(excelOverviewGrid.headingLeftOffset, excelOverviewGrid.columnWidth)).toBeLessThanOrEqual(1);
-    expect(closeToGridLine(excelOverviewGrid.headingTopOffset, excelOverviewGrid.rowHeight)).toBeLessThanOrEqual(1);
-    expect(excelOverviewGrid.headingAlignItems).toBe("center");
-    expect(excelOverviewGrid.headingPaddingLeft).toBeGreaterThan(0);
-    expect(closeToGridLine(excelOverviewGrid.cardLeftOffset, excelOverviewGrid.columnWidth)).toBeLessThanOrEqual(1);
-    expect(closeToGridLine(excelOverviewGrid.cardTopOffset, excelOverviewGrid.rowHeight)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelOverviewGrid.cardWidth - excelOverviewGrid.columnWidth * 2)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelOverviewGrid.cardHeight - excelOverviewGrid.rowHeight * 2)).toBeLessThanOrEqual(1);
-    expect(excelOverviewGrid.cardRadius).toBe("0px");
-
-    const excelFixedHomeBlocks = await page.evaluate(() => {
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const rowHeight = rowHeader.getBoundingClientRect().height;
-      const marketBlock = document.querySelector(".theme-shell-excel .overview-market-block") as HTMLElement;
-      const overviewPanel = document.querySelector(".theme-shell-excel .overview-panel") as HTMLElement;
-      const feedFilterPanel = document.querySelector(".theme-shell-excel .feed-filter-panel") as HTMLElement;
-      const feedLanesPanel = document.querySelector(".theme-shell-excel .feed-lanes-panel") as HTMLElement;
-
-      return {
-        rowHeight,
-        marketBlockHeight: marketBlock.getBoundingClientRect().height,
-        overviewPanelHeight: overviewPanel.getBoundingClientRect().height,
-        feedFilterPanelHeight: feedFilterPanel.getBoundingClientRect().height,
-        feedLanesPanelHeight: feedLanesPanel.getBoundingClientRect().height,
-        feedLanesScrollHeight: feedLanesPanel.scrollHeight
-      };
-    });
-    expect(Math.abs(excelFixedHomeBlocks.marketBlockHeight - excelFixedHomeBlocks.rowHeight * 3)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelFixedHomeBlocks.overviewPanelHeight - excelFixedHomeBlocks.rowHeight * 7)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelFixedHomeBlocks.feedFilterPanelHeight - excelFixedHomeBlocks.rowHeight * 6)).toBeLessThanOrEqual(1);
-    expect(Math.abs(excelFixedHomeBlocks.feedLanesPanelHeight - excelFixedHomeBlocks.feedLanesScrollHeight)).toBeLessThanOrEqual(2);
-
-    const excelFeedGrid = await page.evaluate(() => {
-      const lanePanel = document.querySelector(".theme-shell-excel .feed-lanes-panel") as HTMLElement;
-      const lane = document.querySelector(".theme-shell-excel .sentiment-lane") as HTMLElement;
-      const laneHead = document.querySelector(".theme-shell-excel .sentiment-lane-head") as HTMLElement;
-      const firstCard = document.querySelector(".theme-shell-excel .sentiment-card") as HTMLElement | null;
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const documentStyle = window.getComputedStyle(document.querySelector("[data-testid='theme-content-document']") as HTMLElement);
-      const laneStyle = window.getComputedStyle(lane);
-      const lanePanelStyle = window.getComputedStyle(lanePanel);
-      const laneHeadRect = laneHead.getBoundingClientRect();
-      const firstCardRect = firstCard?.getBoundingClientRect();
-
-      return {
-        columnWidth: Number.parseFloat(documentStyle.getPropertyValue("--excel-column-width")),
-        rowHeight: rowHeader.getBoundingClientRect().height,
-        panelBackground: lanePanelStyle.backgroundColor,
-        laneRadius: laneStyle.borderRadius,
-        laneWidth: lane.getBoundingClientRect().width,
-        laneHeadHeight: laneHeadRect.height,
-        firstCardHeight: firstCardRect?.height ?? null,
-        firstCardRadius: firstCard ? window.getComputedStyle(firstCard).borderRadius : null
-      };
-    });
-    expect(excelFeedGrid.panelBackground).toBe("rgba(0, 0, 0, 0)");
-    expect(excelFeedGrid.laneRadius).toBe("0px");
-    expect(Math.abs(excelFeedGrid.laneWidth - excelFeedGrid.columnWidth * 4)).toBeLessThanOrEqual(1);
-    expect(excelFeedGrid.laneHeadHeight).toBeGreaterThanOrEqual(excelFeedGrid.rowHeight - 1);
-    expect(closeToGridLine(excelFeedGrid.laneHeadHeight, excelFeedGrid.rowHeight)).toBeLessThanOrEqual(1);
-    if (excelFeedGrid.firstCardHeight !== null) {
-      expect(excelFeedGrid.firstCardHeight).toBeGreaterThanOrEqual(excelFeedGrid.rowHeight * 2 - 1);
-      expect(excelFeedGrid.firstCardRadius).toBe("0px");
-    }
-
-    await page.locator(".excel-content-frame").evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    const bottomChrome = await page.evaluate(() => {
-      const tabs = document.querySelector("[data-testid='excel-sheet-tabs']")?.getBoundingClientRect();
-      const status = document.querySelector("[data-testid='program-status-bar']")?.getBoundingClientRect();
-
-      return {
-        tabsTop: tabs?.top ?? 0,
-        statusBottom: status?.bottom ?? 0,
-        viewportHeight: window.innerHeight
-      };
-    });
-    expect(bottomChrome.tabsTop).toBeLessThan(bottomChrome.viewportHeight);
-    expect(bottomChrome.statusBottom).toBeLessThanOrEqual(bottomChrome.viewportHeight + 2);
-
-    const currentUrl = page.url();
-    await page.getByRole("button", { name: "Paste mock command" }).click();
-    await expect(page).toHaveURL(currentUrl);
-    await page.screenshot({ path: testInfo.outputPath("excel-light.png"), fullPage: false });
   });
 
   test("excel titlebar keeps right actions visible with compact search", async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
 
     await expect(page.getByTestId("program-header").getByRole("button", { name: "Share workbook mock command" })).toBeVisible();
 
@@ -1824,121 +1536,9 @@ test.describe("program theme shells", () => {
     expect(titlebarLayout.conceptActionsScrollWidth).toBeLessThanOrEqual(titlebarLayout.conceptActionsClientWidth + 1);
   });
 
-  test("excel theme aligns feed, community, and room content blocks to worksheet cells", async ({ page }) => {
+  test("excel theme aligns community and room content blocks to worksheet cells", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareThemePage(page);
-    await page.goto("/?theme=excel-light");
-
-    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
-    await expect.poll(async () => page.getByTestId("excel-column-headers").locator("span").count()).toBeGreaterThanOrEqual(8);
-    const feedMetrics = await readExcelGridMetrics(page, [
-      ".theme-shell-excel .feed-filter-panel",
-      ".theme-shell-excel .feed-filter-panel h1",
-      ".theme-shell-excel .feed-filter-panel > .muted",
-      ".theme-shell-excel .feed-filter-toolbar",
-      ".theme-shell-excel .feed-selection-actions",
-      ".theme-shell-excel .feed-channel-buttons",
-      ".theme-shell-excel .sentiment-lane",
-      ".theme-shell-excel .sentiment-lane-head",
-      ".theme-shell-excel .sentiment-lane > .error, .theme-shell-excel .sentiment-lane > .muted, .theme-shell-excel .sentiment-list > .error, .theme-shell-excel .sentiment-list > .muted"
-    ]);
-    expectExcelGridAligned(feedMetrics);
-
-    const optionalSentimentCardMetrics = await readExcelGridMetrics(page, [".theme-shell-excel .sentiment-card"]);
-    if (optionalSentimentCardMetrics[0].present) {
-      expectExcelGridAligned(optionalSentimentCardMetrics);
-    }
-
-    await page.locator(".theme-shell-excel .sentiment-lane-fear").evaluate((laneElement) => {
-      const lane = laneElement as HTMLElement;
-      const laneHead = lane.querySelector(".sentiment-lane-head") as HTMLElement;
-      const existingBadges = lane.querySelector(".feed-symbol-badges");
-      const badges = existingBadges ?? document.createElement("div");
-      badges.className = "feed-symbol-badges feed-symbol-badges-overflow";
-      badges.setAttribute("aria-label", "공포 등장 종목");
-      badges.innerHTML = Array.from({ length: 20 }, (_, index) => {
-        return `<span class="feed-symbol-badge">긴종목명테스트${index + 1}<span class="feed-symbol-badge-count">x${index + 2}</span></span>`;
-      }).join("");
-      if (!existingBadges) {
-        laneHead.insertAdjacentElement("afterend", badges);
-      }
-
-      const list = lane.querySelector(".sentiment-list") as HTMLElement;
-      list.innerHTML = `<article class="sentiment-card sentiment-card-fear">
-        <div class="sentiment-card-head">
-          <div class="sentiment-card-head-tags">
-            <span class="tag sentiment-card-tag">토스증권 종목토론</span>
-            <span class="tag tag-symbol sentiment-card-tag">매우긴종목명테스트</span>
-          </div>
-          <div class="sentiment-card-head-meta">
-            <time class="sentiment-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17 09:30:00</time>
-          </div>
-        </div>
-        <div class="sentiment-card-body">
-          <span class="sentiment-title-stack">
-            <span class="sentiment-title sentiment-title-layer sentiment-title-layer-visible">
-              엑셀 테마에서 한 셀보다 훨씬 긴 피드 제목이 카드의 두 번째 셀을 넘어가지 않고 말줄임으로 처리되는지 확인하기 위한 아주 긴 제목입니다
-            </span>
-          </span>
-        </div>
-      </article>`;
-    });
-
-    const excelFeedOverflow = await page.evaluate(() => {
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const rowHeight = rowHeader.getBoundingClientRect().height;
-      const badges = document.querySelector(".theme-shell-excel .sentiment-lane-fear .feed-symbol-badges") as HTMLElement;
-      const firstBadge = badges.querySelector(".feed-symbol-badge") as HTMLElement;
-      const card = document.querySelector(".theme-shell-excel .sentiment-lane-fear .sentiment-card") as HTMLElement;
-      const title = card.querySelector(".sentiment-title") as HTMLElement;
-      const sourceTag = card.querySelector(".sentiment-card-tag") as HTMLElement;
-      const symbolTag = card.querySelector(".tag-symbol") as HTMLElement;
-      const titleStyle = window.getComputedStyle(title);
-      const sourceTagStyle = window.getComputedStyle(sourceTag);
-      const symbolTagStyle = window.getComputedStyle(symbolTag);
-      const cardRect = card.getBoundingClientRect();
-      const titleRect = title.getBoundingClientRect();
-
-      return {
-        rowHeight,
-        badgesHeight: badges.getBoundingClientRect().height,
-        badgesClientHeight: badges.clientHeight,
-        badgesScrollHeight: badges.scrollHeight,
-        badgesAfter: window.getComputedStyle(badges, "::after").content,
-        firstBadgeBorderTop: window.getComputedStyle(firstBadge).borderTopWidth,
-        firstBadgeTextOverflow: window.getComputedStyle(firstBadge).textOverflow,
-        cardHeight: cardRect.height,
-        titleRightOffset: titleRect.right - cardRect.right,
-        titleBottomOffset: titleRect.bottom - cardRect.bottom,
-        titleOverflowX: titleStyle.overflowX,
-        titleTextOverflow: titleStyle.textOverflow,
-        titleWhiteSpace: titleStyle.whiteSpace,
-        sourceTagBorderTop: sourceTagStyle.borderTopWidth,
-        sourceTagFontSize: Number.parseFloat(sourceTagStyle.fontSize),
-        sourceTagPaddingLeft: Number.parseFloat(sourceTagStyle.paddingLeft),
-        sourceTagTextOverflow: sourceTagStyle.textOverflow,
-        symbolTagBorderTop: symbolTagStyle.borderTopWidth,
-        symbolTagFontSize: Number.parseFloat(symbolTagStyle.fontSize)
-      };
-    });
-    expect(Math.abs(excelFeedOverflow.badgesHeight - excelFeedOverflow.rowHeight * 2)).toBeLessThanOrEqual(1);
-    expect(excelFeedOverflow.badgesScrollHeight).toBeGreaterThan(excelFeedOverflow.badgesClientHeight);
-    expect(excelFeedOverflow.badgesAfter).toContain("...");
-    expect(excelFeedOverflow.firstBadgeBorderTop).toBe("0px");
-    expect(excelFeedOverflow.firstBadgeTextOverflow).toBe("ellipsis");
-    expect(Math.abs(excelFeedOverflow.cardHeight - excelFeedOverflow.rowHeight * 2)).toBeLessThanOrEqual(1);
-    expect(excelFeedOverflow.titleRightOffset).toBeLessThanOrEqual(1);
-    expect(excelFeedOverflow.titleBottomOffset).toBeLessThanOrEqual(1);
-    expect(excelFeedOverflow.titleOverflowX).toBe("hidden");
-    expect(excelFeedOverflow.titleTextOverflow).toBe("ellipsis");
-    expect(excelFeedOverflow.titleWhiteSpace).toBe("nowrap");
-    expect(excelFeedOverflow.sourceTagBorderTop).toBe("0px");
-    expect(excelFeedOverflow.sourceTagFontSize).toBeLessThanOrEqual(11);
-    expect(excelFeedOverflow.sourceTagPaddingLeft).toBeLessThanOrEqual(4);
-    expect(excelFeedOverflow.sourceTagTextOverflow).toBe("ellipsis");
-    expect(excelFeedOverflow.symbolTagBorderTop).toBe("0px");
-    expect(excelFeedOverflow.symbolTagFontSize).toBeLessThanOrEqual(11);
-
     await page.goto("/community?theme=excel-light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
     await page.locator(".theme-shell-excel .theme-shell-page .main").evaluate((main) => {
@@ -2696,255 +2296,9 @@ test.describe("program theme shells", () => {
     expect(cursorRequests).toBe(2);
   });
 
-  test("excel theme keeps overview art visible and uses one-cell mobile indicators", async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await prepareThemePage(page);
-    await page.goto("/?theme=excel-light");
+  // Home overview geometry is covered by world-browser.spec.ts.
 
-    await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "excel");
-    await expect(page.getByTestId("program-shell")).toBeVisible();
-    await expect(page.locator(".theme-shell-excel .overview-panel-art")).toBeVisible();
-
-    const mobileOverview = await page.evaluate(() => {
-      const rowHeader = document.querySelector(".excel-row-headers span") as HTMLElement;
-      const art = document.querySelector(".theme-shell-excel .overview-panel-art") as HTMLElement;
-      const marketBlock = document.querySelector(".theme-shell-excel .overview-market-block") as HTMLElement;
-      const marketRow = document.querySelector(".theme-shell-excel .overview-market-row") as HTMLElement;
-      const marketCards = Array.from(document.querySelectorAll(".theme-shell-excel .overview-market-stat")) as HTMLElement[];
-      const overviewPanel = document.querySelector(".theme-shell-excel .overview-panel") as HTMLElement;
-      const bottomRow = document.querySelector(".theme-shell-excel .overview-bottom-row") as HTMLElement;
-      const communityCards = Array.from(document.querySelectorAll(".theme-shell-excel .overview-card-community")) as HTMLElement[];
-      const artStyle = window.getComputedStyle(art);
-      const getRect = (element: Element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          left: rect.left,
-          right: rect.right,
-          centerY: rect.top + rect.height / 2,
-          width: rect.width
-        };
-      };
-
-      const getStackMetrics = (cards: HTMLElement[]) => {
-        const rects = cards.map((card) => card.getBoundingClientRect());
-        const lefts = rects.map((rect) => rect.left);
-
-        return {
-          count: rects.length,
-          leftSpread: Math.max(...lefts) - Math.min(...lefts),
-          topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
-          heights: rects.map((rect) => rect.height),
-          widths: rects.map((rect) => rect.width)
-        };
-      };
-      const getMarketAlignment = (card: HTMLElement) => {
-        const cardRect = getRect(card);
-        const label = card.querySelector(".overview-label") as HTMLElement;
-        const delta = card.querySelector(".overview-delta") as HTMLElement;
-        const value = card.querySelector(".overview-value") as HTMLElement;
-
-        return {
-          cardRight: cardRect.right,
-          cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
-          label: getRect(label),
-          delta: getRect(delta),
-          value: getRect(value),
-          deltaDisplay: window.getComputedStyle(delta).display
-        };
-      };
-      const getCommunityAlignment = (card: HTMLElement) => {
-        const cardRect = getRect(card);
-        const label = card.querySelector(".overview-label") as HTMLElement;
-        const badge = card.querySelector(".overview-score-badge") as HTMLElement;
-
-        return {
-          cardRight: cardRect.right,
-          cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
-          label: getRect(label),
-          badge: getRect(badge),
-          bandCount: card.querySelectorAll(".overview-community-band").length,
-          countsCount: card.querySelectorAll(".overview-community-counts").length,
-          deltaCount: card.querySelectorAll(".overview-delta").length
-        };
-      };
-
-      return {
-        rowHeight: rowHeader.getBoundingClientRect().height,
-        artDisplay: artStyle.display,
-        artOpacity: Number.parseFloat(artStyle.opacity),
-        artBackground: artStyle.backgroundImage,
-        marketBlockHeight: marketBlock.getBoundingClientRect().height,
-        marketRowClientWidth: marketRow.clientWidth,
-        marketRowScrollWidth: marketRow.scrollWidth,
-        marketStack: getStackMetrics(marketCards),
-        overviewPanelHeight: overviewPanel.getBoundingClientRect().height,
-        bottomRowClientWidth: bottomRow.clientWidth,
-        bottomRowScrollWidth: bottomRow.scrollWidth,
-        communityStack: getStackMetrics(communityCards),
-        marketAlignment: marketCards.map(getMarketAlignment),
-        communityAlignment: communityCards.map(getCommunityAlignment)
-      };
-    });
-
-    expect(mobileOverview.artDisplay).toBe("block");
-    expect(mobileOverview.artOpacity).toBe(1);
-    expect(mobileOverview.artBackground).toContain("overview-regime");
-    expect(Math.abs(mobileOverview.marketBlockHeight - mobileOverview.rowHeight * 5)).toBeLessThanOrEqual(1);
-    expect(Math.abs(mobileOverview.overviewPanelHeight - mobileOverview.rowHeight * 10)).toBeLessThanOrEqual(1);
-    expect(mobileOverview.marketRowScrollWidth).toBeLessThanOrEqual(mobileOverview.marketRowClientWidth + 1);
-    expect(mobileOverview.bottomRowScrollWidth).toBeLessThanOrEqual(mobileOverview.bottomRowClientWidth + 1);
-    expect(mobileOverview.marketStack.count).toBe(4);
-    expect(mobileOverview.marketStack.leftSpread).toBeLessThanOrEqual(1);
-    expect(mobileOverview.marketStack.topIncreases).toBe(true);
-    expect(mobileOverview.marketStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight) <= 1)).toBe(true);
-    for (const item of mobileOverview.marketAlignment) {
-      expect(item.deltaDisplay).not.toBe("none");
-      expect(item.label.left).toBeLessThan(item.delta.left);
-      expect(item.delta.left).toBeLessThan(item.value.left);
-      expect(item.value.left - item.delta.right).toBeGreaterThanOrEqual(4);
-      expect(item.value.right).toBeGreaterThanOrEqual(item.cardRight - 16);
-      expect(Math.abs(item.label.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
-      expect(Math.abs(item.delta.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
-      expect(Math.abs(item.value.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
-    }
-    expect(mobileOverview.communityStack.count).toBe(4);
-    expect(mobileOverview.communityStack.leftSpread).toBeLessThanOrEqual(1);
-    expect(mobileOverview.communityStack.topIncreases).toBe(true);
-    expect(mobileOverview.communityStack.heights.every((height) => Math.abs(height - mobileOverview.rowHeight) <= 1)).toBe(true);
-    for (const item of mobileOverview.communityAlignment) {
-      expect(item.bandCount).toBe(0);
-      expect(item.countsCount).toBe(0);
-      expect(item.deltaCount).toBe(0);
-      expect(item.label.left).toBeLessThan(item.badge.left);
-      expect(item.badge.right).toBeGreaterThanOrEqual(item.cardRight - 16);
-      expect(Math.abs(item.label.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
-      expect(Math.abs(item.badge.centerY - item.cardCenterY)).toBeLessThanOrEqual(2);
-    }
-
-    await page.screenshot({ path: testInfo.outputPath("excel-mobile.png"), fullPage: false });
-  });
-
-  test("mobile overview indicators are full-width single-line rows across themes", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-
-    const cases = [
-      { url: "/", shell: "default" },
-      { url: "/?theme=docs-light", shell: "docs" }
-    ];
-
-    for (const item of cases) {
-      await prepareThemePage(page);
-      await page.goto(item.url);
-
-      if (item.shell === "default") {
-        await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
-      } else {
-        await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
-      }
-
-      const metrics = await page.evaluate(() => {
-        const marketRow = document.querySelector(".overview-market-row") as HTMLElement;
-        const bottomRow = document.querySelector(".overview-bottom-row") as HTMLElement;
-        const marketCards = Array.from(document.querySelectorAll(".overview-market-stat")) as HTMLElement[];
-        const communityCards = Array.from(document.querySelectorAll(".overview-card-community")) as HTMLElement[];
-        const getRect = (element: Element) => {
-          const rect = element.getBoundingClientRect();
-          return {
-            left: rect.left,
-            right: rect.right,
-            centerY: rect.top + rect.height / 2,
-            width: rect.width
-          };
-        };
-
-        const getStackMetrics = (cards: HTMLElement[]) => {
-          const rects = cards.map((card) => card.getBoundingClientRect());
-          const lefts = rects.map((rect) => rect.left);
-          const widths = rects.map((rect) => rect.width);
-
-          return {
-            count: rects.length,
-            leftSpread: Math.max(...lefts) - Math.min(...lefts),
-            topIncreases: rects.slice(1).every((rect, index) => rect.top > rects[index].top),
-            maxHeight: Math.max(...rects.map((rect) => rect.height)),
-            minWidth: Math.min(...widths),
-            parentWidth: cards[0]?.parentElement?.getBoundingClientRect().width ?? 0
-          };
-        };
-        const getMarketAlignment = (card: HTMLElement) => {
-          const cardRect = getRect(card);
-          const label = card.querySelector(".overview-label") as HTMLElement;
-          const delta = card.querySelector(".overview-delta") as HTMLElement;
-          const value = card.querySelector(".overview-value") as HTMLElement;
-
-          return {
-            cardRight: cardRect.right,
-            cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
-            label: getRect(label),
-            delta: getRect(delta),
-            value: getRect(value),
-            deltaDisplay: window.getComputedStyle(delta).display
-          };
-        };
-        const getCommunityAlignment = (card: HTMLElement) => {
-          const cardRect = getRect(card);
-          const label = card.querySelector(".overview-label") as HTMLElement;
-          const badge = card.querySelector(".overview-score-badge") as HTMLElement;
-
-          return {
-            cardRight: cardRect.right,
-            cardCenterY: card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2,
-            label: getRect(label),
-            badge: getRect(badge),
-            bandCount: card.querySelectorAll(".overview-community-band").length,
-            countsCount: card.querySelectorAll(".overview-community-counts").length,
-            deltaCount: card.querySelectorAll(".overview-delta").length
-          };
-        };
-
-        return {
-          marketOverflow: marketRow.scrollWidth - marketRow.clientWidth,
-          communityOverflow: bottomRow.scrollWidth - bottomRow.clientWidth,
-          market: getStackMetrics(marketCards),
-          community: getStackMetrics(communityCards),
-          marketAlignment: marketCards.map(getMarketAlignment),
-          communityAlignment: communityCards.map(getCommunityAlignment)
-        };
-      });
-
-      expect(metrics.marketOverflow).toBeLessThanOrEqual(1);
-      expect(metrics.communityOverflow).toBeLessThanOrEqual(1);
-      expect(metrics.market.count).toBe(4);
-      expect(metrics.market.leftSpread).toBeLessThanOrEqual(1);
-      expect(metrics.market.topIncreases).toBe(true);
-      expect(metrics.market.maxHeight).toBeLessThanOrEqual(42);
-      expect(metrics.market.minWidth).toBeGreaterThanOrEqual(metrics.market.parentWidth - 1);
-      for (const metric of metrics.marketAlignment) {
-        expect(metric.deltaDisplay).not.toBe("none");
-        expect(metric.label.left).toBeLessThan(metric.delta.left);
-        expect(metric.delta.left).toBeLessThan(metric.value.left);
-        expect(metric.value.left - metric.delta.right).toBeGreaterThanOrEqual(4);
-        expect(metric.value.right).toBeGreaterThanOrEqual(metric.cardRight - 16);
-        expect(Math.abs(metric.label.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
-        expect(Math.abs(metric.delta.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
-        expect(Math.abs(metric.value.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
-      }
-      expect(metrics.community.count).toBe(4);
-      expect(metrics.community.leftSpread).toBeLessThanOrEqual(1);
-      expect(metrics.community.topIncreases).toBe(true);
-      expect(metrics.community.maxHeight).toBeLessThanOrEqual(42);
-      expect(metrics.community.minWidth).toBeGreaterThanOrEqual(metrics.community.parentWidth - 1);
-      for (const metric of metrics.communityAlignment) {
-        expect(metric.bandCount).toBe(0);
-        expect(metric.countsCount).toBe(0);
-        expect(metric.deltaCount).toBe(0);
-        expect(metric.label.left).toBeLessThan(metric.badge.left);
-        expect(metric.badge.right).toBeGreaterThanOrEqual(metric.cardRight - 16);
-        expect(Math.abs(metric.label.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
-        expect(Math.abs(metric.badge.centerY - metric.cardCenterY)).toBeLessThanOrEqual(2);
-      }
-    }
-  });
+  // Home overview geometry is covered by world-browser.spec.ts.
 
   test("each concept theme has distinct chrome and no legacy header", async ({ page }, testInfo) => {
     const cases = [
@@ -2954,7 +2308,7 @@ test.describe("program theme shells", () => {
 
     for (const item of cases) {
       await prepareThemePage(page);
-      await page.goto(`/?theme=${item.theme}`);
+      await page.goto(`/auth/login?theme=${item.theme}`);
 
       await expect(page.locator("html")).toHaveAttribute("data-theme-id", item.theme);
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
@@ -2979,7 +2333,7 @@ test.describe("program theme shells", () => {
     for (const item of cases) {
       await page.setViewportSize({ width: 1180, height: 760 });
       await prepareThemePage(page);
-      await page.goto(`/?theme=${item.theme}`);
+      await page.goto(`/auth/login?theme=${item.theme}`);
 
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       await expect(page.getByRole("link", { name: "채팅" })).toHaveCount(0);
@@ -3106,7 +2460,7 @@ test.describe("program theme shells", () => {
     ];
 
     for (const item of cases) {
-      await page.goto(`/?theme=${item.theme}`);
+      await page.goto(`/auth/login?theme=${item.theme}`);
 
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       await expect(page.getByTestId("desktop-chat-sidebar")).toHaveCount(0);
@@ -3133,21 +2487,6 @@ test.describe("program theme shells", () => {
       expect(chatToggleMetrics.rightOffset).toBeGreaterThan(0);
       expect(chatToggleMetrics.bottomOffset).toBeGreaterThan(0);
       expect(chatToggleMetrics.position).toBe("fixed");
-
-      const feedFabMetrics = await page.locator(".mobile-feed-fabs").evaluate((nav) => {
-        const chatToggle = document.querySelector(".chat-dock-toggle") as HTMLElement;
-        const navBounds = nav.getBoundingClientRect();
-        const chatBounds = chatToggle.getBoundingClientRect();
-
-        return {
-          display: window.getComputedStyle(nav).display,
-          rightEdgeDelta: Math.abs(navBounds.right - chatBounds.right),
-          gapAboveChat: chatBounds.top - navBounds.bottom
-        };
-      });
-      expect(feedFabMetrics.display).toBe("grid");
-      expect(feedFabMetrics.rightEdgeDelta).toBeLessThanOrEqual(1);
-      expect(feedFabMetrics.gapAboveChat).toBeGreaterThanOrEqual(6);
 
       await chatToggle.click();
       await expect(page.locator("#global-chat-dock")).toBeVisible();
@@ -3187,7 +2526,7 @@ test.describe("program theme shells", () => {
 
   test("VS Code left rail buttons use brighter restrained chrome", async ({ page }) => {
     await prepareThemePage(page);
-    await page.goto("/?theme=vscode-dark");
+    await page.goto("/auth/login?theme=vscode-dark");
 
     const vscodeRailChrome = await page.locator(".vscode-activity-bar").evaluate((bar) => {
       const active = bar.querySelector(".theme-shell-active") as HTMLElement;
@@ -3222,7 +2561,7 @@ test.describe("program theme shells", () => {
   test("concept theme section colors follow product chrome references", async ({ page }) => {
     await prepareThemePage(page);
 
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
     expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft"])).toMatchObject({
       "--brand": "#217346",
       "--bg": "#f3f2f1",
@@ -3238,7 +2577,7 @@ test.describe("program theme shells", () => {
       "rgb(255, 255, 255)"
     );
 
-    await page.goto("/?theme=docs-light");
+    await page.goto("/auth/login?theme=docs-light");
     expect(await readRootThemeVars(page, ["--brand", "--bg", "--panel-soft", "--ink"])).toMatchObject({
       "--brand": "#1a73e8",
       "--bg": "#f8fafd",
@@ -3260,7 +2599,7 @@ test.describe("program theme shells", () => {
       page: "rgb(255, 255, 255)"
     });
 
-    await page.goto("/?theme=vscode-light");
+    await page.goto("/auth/login?theme=vscode-light");
     expect(await readRootThemeVars(page, ["--brand", "--vscode-activity-bg", "--vscode-side-bar-bg", "--vscode-editor-bg"])).toMatchObject({
       "--brand": "#007acc",
       "--vscode-activity-bg": "#2c2c2c",
@@ -3283,6 +2622,7 @@ test.describe("program theme shells", () => {
     await page.emulateMedia({ colorScheme: "dark" });
     await prepareThemePage(page);
     await page.goto("/?theme=docs-system");
+    await page.locator(".world-hud-actions button").filter({ hasText: "피드" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "docs-system");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "docs-dark");
@@ -3331,7 +2671,7 @@ test.describe("program theme shells", () => {
 
   test("concept header action buttons use theme-specific chrome", async ({ page }) => {
     await prepareThemePage(page);
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
     const excelThemeButton = page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ });
     const excelChrome = await excelThemeButton.evaluate((element) => {
       const style = window.getComputedStyle(element);
@@ -3341,7 +2681,7 @@ test.describe("program theme shells", () => {
       };
     });
 
-    await page.goto("/?theme=vscode-dark");
+    await page.goto("/auth/login?theme=vscode-dark");
     const vscodeThemeButton = page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ });
     const vscodeChrome = await vscodeThemeButton.evaluate((element) => {
       const style = window.getComputedStyle(element);
@@ -3391,7 +2731,7 @@ test.describe("program theme shells", () => {
     ];
 
     for (const item of cases) {
-      await page.goto(`/?theme=${item.theme}`);
+      await page.goto(`/auth/login?theme=${item.theme}`);
       await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
 
       await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
@@ -3436,7 +2776,7 @@ test.describe("program theme shells", () => {
       await expect(menu).toHaveCount(0);
     }
 
-    await page.goto("/?theme=excel-dark");
+    await page.goto("/auth/login?theme=excel-dark");
     await page.getByTestId("concept-header-actions").getByRole("button", { name: /테마 선택/ }).click();
     await page.getByRole("menu", { name: "테마 선택" }).getByRole("button", { name: "테마 Docs" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "excel-dark");
@@ -3465,7 +2805,7 @@ test.describe("program theme shells", () => {
     ];
 
     for (const item of cases) {
-      await page.goto(`/?theme=${item.theme}`);
+      await page.goto(`/auth/login?theme=${item.theme}`);
       await expect(page.getByTestId("program-shell")).toHaveAttribute("data-program-shell", item.shell);
 
       const actions = page.getByTestId("concept-header-actions");
@@ -3499,7 +2839,7 @@ test.describe("program theme shells", () => {
       expect(metrics.authHeight).toBeGreaterThan(0);
     }
 
-    await page.goto("/?theme=light");
+    await page.goto("/auth/login?theme=light");
     await expect(page.locator(".header")).toBeVisible();
     await expect(page.locator(".theme-shell-auth-slot")).toHaveCount(0);
     await expect(page.locator(".header").getByRole("button", { name: "구글 로그인" })).toBeVisible();
@@ -3508,7 +2848,7 @@ test.describe("program theme shells", () => {
   test("first visit setup hint replaces clean filter and theme dialogs", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepareSetupHintFirstVisitPage(page);
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     await expect(page.getByRole("dialog", { name: "이쁜말 필터를 켤까요?" })).toHaveCount(0);
     await expect(page.getByRole("dialog", { name: "사이트 분위기를 고르세요." })).toHaveCount(0);
@@ -3546,7 +2886,7 @@ test.describe("program theme shells", () => {
   test("desktop first visit setup hint points at theme controls before login", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 760 });
     await prepareSetupHintFirstVisitPage(page);
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     const hint = page.getByRole("note", { name: "초기 설정 안내" });
     await expect(hint).toBeVisible();
@@ -3930,98 +3270,6 @@ test.describe("program theme shells", () => {
       expect(docsTextMetrics.tagPrefix).toContain("[");
       expect(docsTextMetrics.linkDecoration).toContain("underline");
 
-      await page.goto(`/?theme=${item.theme}`);
-      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
-      const overviewTextMetrics = await page.evaluate((shellClass) => {
-        const root = document.querySelector(`.${shellClass} .theme-shell-page .main`) as HTMLElement;
-        const overviewPanel = root.querySelector(".overview-panel") as HTMLElement;
-        const overviewCard = root.querySelector(".overview-card") as HTMLElement;
-        const overviewArt = root.querySelector(".overview-panel-art") as HTMLElement | null;
-        const overviewGauge = root.querySelector(".overview-goksorry-gauge") as HTMLElement | null;
-        const overviewPanelStyle = window.getComputedStyle(overviewPanel);
-        const overviewCardStyle = window.getComputedStyle(overviewCard);
-
-        return {
-          overviewPanelBackground: overviewPanelStyle.backgroundColor,
-          overviewPanelBorderTopWidth: overviewPanelStyle.borderTopWidth,
-          overviewPanelBoxShadow: overviewPanelStyle.boxShadow,
-          overviewCardBackground: overviewCardStyle.backgroundColor,
-          overviewCardBorderTopWidth: overviewCardStyle.borderTopWidth,
-          overviewCardBoxShadow: overviewCardStyle.boxShadow,
-          artDisplay: overviewArt ? window.getComputedStyle(overviewArt).display : null,
-          gaugeDisplay: overviewGauge ? window.getComputedStyle(overviewGauge).display : null
-        };
-      }, item.shellClass);
-
-      expect(overviewTextMetrics.overviewPanelBackground).toBe("rgba(0, 0, 0, 0)");
-      expect(overviewTextMetrics.overviewPanelBorderTopWidth).toBe("0px");
-      expect(overviewTextMetrics.overviewPanelBoxShadow).toBe("none");
-      expect(overviewTextMetrics.overviewCardBackground).toBe("rgba(0, 0, 0, 0)");
-      expect(overviewTextMetrics.overviewCardBorderTopWidth).toBe("0px");
-      expect(overviewTextMetrics.overviewCardBoxShadow).toBe("none");
-      expect(overviewTextMetrics.artDisplay).toBe("none");
-      expect([null, "none"]).toContain(overviewTextMetrics.gaugeDisplay);
-
-      const desktopOverviewLayout = await readOverviewEditorLayout(item.shellClass);
-      expect(desktopOverviewLayout.marketBefore).toContain("--- market ---");
-      expect(desktopOverviewLayout.marketAfter).toContain("--- /market ---");
-      expect(desktopOverviewLayout.communityBefore).toContain("--- community ---");
-      expect(desktopOverviewLayout.communityAfter).toContain("--- /community ---");
-      expect(desktopOverviewLayout.market.count).toBe(4);
-      expect(desktopOverviewLayout.market.rowDisplay).toBe("grid");
-      expect(desktopOverviewLayout.market.gridColumnCount).toBe(4);
-      expect(desktopOverviewLayout.market.topSpread).toBeLessThanOrEqual(1);
-      expect(desktopOverviewLayout.market.rowHeight).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight * 1.8);
-      expect(desktopOverviewLayout.market.rowHeight).toBeLessThanOrEqual(desktopOverviewLayout.lineHeight * 2.25);
-      expect(desktopOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.market.clientWidth + 1);
-      expect(desktopOverviewLayout.market.cardDisplays.every((display) => display === "grid")).toBe(true);
-      expect(desktopOverviewLayout.market.secondSeparator).toContain("|");
-      expect(desktopOverviewLayout.market.secondLineSeparator).toContain("|");
-      for (const card of desktopOverviewLayout.marketCards) {
-        expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
-        expect(card.labelTopOffset).toBeLessThanOrEqual(2);
-        expect(card.labelLeftOffset).toBeGreaterThanOrEqual(-1);
-        expect(card.labelLeftOffset).toBeLessThanOrEqual(24);
-        expect(card.valueTopOffset).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight - 2);
-        expect(card.valueRightOffset).toBeLessThanOrEqual(1);
-        expect(card.valueBottomOffset).toBeLessThanOrEqual(1);
-        expect(card.noteDisplay).toBe("none");
-        expect(card.mainDisplay).toBe("flex");
-        expect(card.mainJustifyContent).toBe("flex-end");
-        expect(Number(card.valueOrder)).toBeGreaterThan(Number(card.deltaOrder));
-      }
-      expect(desktopOverviewLayout.community.count).toBe(4);
-      expect(desktopOverviewLayout.community.rowDisplay).toBe("grid");
-      expect(desktopOverviewLayout.community.gridColumnCount).toBe(4);
-      expect(desktopOverviewLayout.community.topSpread).toBeLessThanOrEqual(1);
-      expect(desktopOverviewLayout.community.rowHeight).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight * 1.8);
-      expect(desktopOverviewLayout.community.rowHeight).toBeLessThanOrEqual(desktopOverviewLayout.lineHeight * 2.25);
-      expect(desktopOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(desktopOverviewLayout.community.clientWidth + 1);
-      expect(desktopOverviewLayout.community.cardDisplays.every((display) => display === "grid")).toBe(true);
-      expect(desktopOverviewLayout.community.secondSeparator).toContain("|");
-      expect(desktopOverviewLayout.community.secondLineSeparator).toContain("|");
-      for (const card of desktopOverviewLayout.communityCards) {
-        expect(Math.abs(card.height - desktopOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
-        expect(card.labelTopOffset).toBeLessThanOrEqual(2);
-        expect(card.labelLeftOffset).toBeGreaterThanOrEqual(-1);
-        expect(card.labelLeftOffset).toBeLessThanOrEqual(24);
-        expect(card.scoreTopOffset).toBeGreaterThanOrEqual(desktopOverviewLayout.lineHeight - 2);
-        expect(card.scoreRightOffset).toBeLessThanOrEqual(1);
-        expect(card.scoreBottomOffset).toBeLessThanOrEqual(1);
-        expect(card.headDisplay).toBe("contents");
-        expect(card.scoreDisplay).toBe("flex");
-        expect(card.scoreJustifyContent).toBe("flex-end");
-      }
-
-      const desktopFeedLayout = await readFeedEditorLayout(item.shellClass);
-      expect(desktopFeedLayout.columnsDisplay).toBe("grid");
-      expect(desktopFeedLayout.gridColumnCount).toBe(2);
-      expect(desktopFeedLayout.laneCount).toBe(2);
-      expect(desktopFeedLayout.laneDisplays.every((display) => display === "grid")).toBe(true);
-      expect(desktopFeedLayout.laneTopSpread).toBeLessThanOrEqual(1);
-      expect(desktopFeedLayout.secondLaneStartsAfterFirst).toBe(true);
-      expect(desktopFeedLayout.scrollWidth).toBeLessThanOrEqual(desktopFeedLayout.clientWidth + 1);
-
       await page.goto(`/community?theme=${item.theme}`);
       await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
       const desktopBoardLayout = await readBoardEditorLayout(item.shellClass);
@@ -4110,120 +3358,6 @@ test.describe("program theme shells", () => {
       expect(separatorLayout.room.replyBefore).not.toContain("|");
       expect(separatorLayout.room.deleteBefore).not.toContain("|");
       expect(separatorLayout.room.timeDisplay).toBe("none");
-
-      await page.goto(`/?theme=${item.theme}&channels=toss`);
-      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
-      await page.locator(`.${item.shellClass} .sentiment-lane-fear .sentiment-list`).evaluate((list) => {
-        list.innerHTML = `<article class="sentiment-card sentiment-card-fear">
-          <div class="sentiment-card-head">
-            <div class="sentiment-card-head-tags">
-              <span class="tag sentiment-card-tag">토스증권 종목토론</span>
-              <span class="tag tag-symbol sentiment-card-tag">삼성전자</span>
-            </div>
-            <div class="sentiment-card-head-meta">
-              <button type="button" class="sentiment-clean-toggle"><span>필터</span><span>해제</span></button>
-              <time class="sentiment-time" datetime="2026-05-17T00:00:00.000Z">2026.05.17 09:30:00</time>
-            </div>
-          </div>
-          <div class="sentiment-card-body">
-            <span class="sentiment-title-stack">
-              <a class="sentiment-title sentiment-title-layer sentiment-title-layer-visible" href="#">IDE 테마 피드 포맷 검증 제목</a>
-            </span>
-          </div>
-        </article>`;
-      });
-      const feedSelectionMetrics = await page.evaluate((shellClass) => {
-        const root = document.querySelector(`.${shellClass} .theme-shell-page .main`) as HTMLElement;
-        const activeChip = root.querySelector(".feed-channel-buttons .filter-chip-active") as HTMLElement;
-        const inactiveChip = Array.from(root.querySelectorAll(".feed-channel-buttons .filter-chip")).find(
-          (button) => button !== activeChip
-        ) as HTMLElement;
-        const activeCard = root.querySelector(".overview-card-community.overview-card-active") as HTMLElement;
-        const inactiveCard = Array.from(root.querySelectorAll(".overview-card-community")).find((card) => card !== activeCard) as HTMLElement;
-        const activeLabel = activeCard.querySelector(".overview-label") as HTMLElement;
-        const inactiveLabel = inactiveCard.querySelector(".overview-label") as HTMLElement;
-        const activeScore = activeCard.querySelector(".overview-score-badge") as HTMLElement;
-        const inactiveScore = inactiveCard.querySelector(".overview-score-badge") as HTMLElement;
-        const card = root.querySelector(".sentiment-lane-fear .sentiment-card") as HTMLElement;
-        const tags = card.querySelector(".sentiment-card-head-tags") as HTMLElement;
-        const tagItems = Array.from(card.querySelectorAll(".sentiment-card-tag")) as HTMLElement[];
-        const cleanToggle = card.querySelector(".sentiment-clean-toggle") as HTMLElement;
-        const time = card.querySelector(".sentiment-time") as HTMLElement;
-        const title = card.querySelector(".sentiment-title") as HTMLElement;
-        const tagsRect = tags.getBoundingClientRect();
-        const timeRect = time.getBoundingClientRect();
-        const titleRect = title.getBoundingClientRect();
-        const toWeight = (value: string) => {
-          if (value === "normal") {
-            return 400;
-          }
-          if (value === "bold") {
-            return 700;
-          }
-          return Number.parseFloat(value);
-        };
-
-        return {
-          activeChipWeight: toWeight(window.getComputedStyle(activeChip).fontWeight),
-          inactiveChipWeight: toWeight(window.getComputedStyle(inactiveChip).fontWeight),
-          activeLabelWeight: toWeight(window.getComputedStyle(activeLabel).fontWeight),
-          inactiveLabelWeight: toWeight(window.getComputedStyle(inactiveLabel).fontWeight),
-          activeScoreColor: window.getComputedStyle(activeScore).color,
-          inactiveScoreColor: window.getComputedStyle(inactiveScore).color,
-          tagsBefore: window.getComputedStyle(tags, "::before").content,
-          tagsAfter: window.getComputedStyle(tags, "::after").content,
-          firstTagBefore: window.getComputedStyle(tagItems[0], "::before").content,
-          firstTagAfter: window.getComputedStyle(tagItems[0], "::after").content,
-          secondTagBefore: window.getComputedStyle(tagItems[1], "::before").content,
-          secondTagAfter: window.getComputedStyle(tagItems[1], "::after").content,
-          cleanToggleDisplay: window.getComputedStyle(cleanToggle).display,
-          cardDisplay: window.getComputedStyle(card).display,
-          tagsTop: Math.round(tagsRect.top),
-          timeTop: Math.round(timeRect.top),
-          titleTop: Math.round(titleRect.top)
-        };
-      }, item.shellClass);
-      expect(feedSelectionMetrics.activeChipWeight).toBeGreaterThan(feedSelectionMetrics.inactiveChipWeight);
-      expect(feedSelectionMetrics.activeLabelWeight).toBeGreaterThan(feedSelectionMetrics.inactiveLabelWeight);
-      expect(feedSelectionMetrics.activeScoreColor).toBe(feedSelectionMetrics.inactiveScoreColor);
-      expect(feedSelectionMetrics.tagsBefore).toContain("[");
-      expect(feedSelectionMetrics.tagsAfter).toContain("]");
-      expect(feedSelectionMetrics.firstTagBefore).not.toContain("[");
-      expect(feedSelectionMetrics.firstTagAfter).not.toContain("]");
-      expect(feedSelectionMetrics.secondTagBefore).toContain(",");
-      expect(feedSelectionMetrics.secondTagAfter).not.toContain("]");
-      expect(feedSelectionMetrics.cleanToggleDisplay).toBe("none");
-      expect(feedSelectionMetrics.cardDisplay).toBe("grid");
-      expect(feedSelectionMetrics.timeTop).toBeGreaterThan(feedSelectionMetrics.tagsTop);
-      expect(feedSelectionMetrics.titleTop).toBeGreaterThan(feedSelectionMetrics.timeTop);
-
-      await page.setViewportSize({ width: 390, height: 844 });
-      await page.goto(`/?theme=${item.theme}`);
-      await expect(page.locator("html")).toHaveAttribute("data-theme-shell", item.shell);
-      const mobileOverviewLayout = await readOverviewEditorLayout(item.shellClass);
-      expect(mobileOverviewLayout.market.count).toBe(4);
-      expect(mobileOverviewLayout.market.gridColumnCount).toBe(1);
-      expect(mobileOverviewLayout.market.leftSpread).toBeLessThanOrEqual(1);
-      expect(mobileOverviewLayout.market.topIncreases).toBe(true);
-      expect(mobileOverviewLayout.market.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.market.clientWidth + 1);
-      expect(mobileOverviewLayout.market.secondSeparator).not.toContain("|");
-      expect(mobileOverviewLayout.market.secondLineSeparator).not.toContain("|");
-      for (const card of mobileOverviewLayout.marketCards) {
-        expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
-        expect(card.valueRightOffset).toBeLessThanOrEqual(1);
-        expect(card.noteDisplay).toBe("none");
-      }
-      expect(mobileOverviewLayout.community.count).toBe(4);
-      expect(mobileOverviewLayout.community.gridColumnCount).toBe(1);
-      expect(mobileOverviewLayout.community.leftSpread).toBeLessThanOrEqual(1);
-      expect(mobileOverviewLayout.community.topIncreases).toBe(true);
-      expect(mobileOverviewLayout.community.scrollWidth).toBeLessThanOrEqual(mobileOverviewLayout.community.clientWidth + 1);
-      expect(mobileOverviewLayout.community.secondSeparator).not.toContain("|");
-      expect(mobileOverviewLayout.community.secondLineSeparator).not.toContain("|");
-      for (const card of mobileOverviewLayout.communityCards) {
-        expect(Math.abs(card.height - mobileOverviewLayout.lineHeight * 2)).toBeLessThanOrEqual(1);
-        expect(card.scoreRightOffset).toBeLessThanOrEqual(1);
-      }
     }
   });
 
@@ -4312,7 +3446,7 @@ test.describe("program theme shells", () => {
     expect(Number(vscodeScroll.lastLine)).toBe(vscodeScroll.lineCount);
     expect(vscodeScroll.lastLineBottom).toBeGreaterThanOrEqual(vscodeScroll.documentBottom - vscodeScroll.lineHeight);
 
-    await page.goto("/?theme=excel-light");
+    await page.goto("/auth/login?theme=excel-light");
     const excelPanelChrome = await page.locator(".theme-shell-excel .panel").first().evaluate((element) => {
       const style = window.getComputedStyle(element);
       return {
@@ -4370,7 +3504,7 @@ test.describe("program theme shells", () => {
   test("concept system themes resolve to the current device tone", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await prepareThemePage(page);
-    await page.goto("/?theme=vscode-system");
+    await page.goto("/auth/login?theme=vscode-system");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-system");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "vscode-dark");
@@ -4405,7 +3539,7 @@ test.describe("program theme shells", () => {
 
   test("blog and unknown theme values always fall back to the default theme", async ({ page }) => {
     await prepareThemePage(page, "blog-dark");
-    await page.goto("/?theme=unknown");
+    await page.goto("/auth/login?theme=unknown");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -4413,7 +3547,7 @@ test.describe("program theme shells", () => {
     await expect(page.getByTestId("program-shell")).toHaveCount(0);
     await expect(page.locator(".header")).toBeVisible();
 
-    await page.goto("/?theme=vs-dark");
+    await page.goto("/auth/login?theme=vs-dark");
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
@@ -4423,7 +3557,7 @@ test.describe("program theme shells", () => {
     await page.evaluate((key) => {
       window.localStorage.setItem(key, "vs-dark");
     }, THEME_STORAGE_KEY);
-    await page.goto("/");
+    await page.goto("/auth/login");
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme-shell", "default");
@@ -4433,7 +3567,7 @@ test.describe("program theme shells", () => {
 
   test("removed theme values fall back to the default theme", async ({ page }) => {
     await prepareThemePage(page, "powerpoint-dark");
-    await page.goto("/?theme=jetbrains-system");
+    await page.goto("/auth/login?theme=jetbrains-system");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -4447,7 +3581,7 @@ test.describe("program theme shells", () => {
       },
       [THEME_STORAGE_KEY, "jetbrains-dark"]
     );
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
