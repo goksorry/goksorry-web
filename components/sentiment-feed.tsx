@@ -1,5 +1,6 @@
 "use client";
 
+import type { FeedPage } from "@/lib/feed-scope";
 import { MobileSentimentSwipeHint } from "@/components/mobile-sentiment-swipe-hint";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useFeedSelection } from "@/components/feed-selection-provider";
@@ -27,10 +28,10 @@ const getFeedSourceLabel = (source: string): string => {
   if (source === "dc_tenbagger") {
     return "디시 해주갤";
   }
-  if (source.startsWith("toss_lounge_")) {
+  if (source === "toss_lounge" || source.startsWith("toss_lounge_")) {
     return "토스증권 라운지";
   }
-  if (source.startsWith("toss_stock_community_")) {
+  if (source === "toss_stock_community" || source.startsWith("toss_stock_community_")) {
     return "토스증권 종목토론";
   }
   if (source === "ppomppu_stock") {
@@ -188,22 +189,27 @@ export function SentimentFeed({
   rows,
   errorMessage,
   timezone,
-  loading = false
+  loading = false,
+  summary, sentiment, onSentimentChange
 }: {
   rows: FeedRow[];
   errorMessage: string;
   timezone: string;
   loading?: boolean;
+  summary?: FeedPage["summary"];
+  sentiment: "all" | "bearish" | "bullish" | "neutral";
+  onSentimentChange: (value: "all" | "bearish" | "bullish" | "neutral") => void;
 }) {
   const { cleanFilterEnabled } = useCleanFilter();
+  const [layout, setLayout] = useState<"split" | "unified">("split");
   const { activeGroupIds } = useFeedSelection();
   const filteredRows = filterRowsBySourceGroups(rows, activeGroupIds);
   const actionableRows = filteredRows.filter((row) => row.label !== "neutral");
   const fearRows = actionableRows.filter((row) => row.label === "bearish");
   const hopeRows = actionableRows.filter((row) => row.label === "bullish");
   const intensityPercentPair = sentimentIntensityPercentPairFromScores(actionableRows.map((row) => row.sentiment_score));
-  const fearIntensityLabel = buildSentimentIntensityLabel(intensityPercentPair?.fear ?? null, "fear", loading);
-  const hopeIntensityLabel = buildSentimentIntensityLabel(intensityPercentPair?.hope ?? null, "hope", loading);
+  const fearIntensityLabel = summary ? `공포 비율 ${summary.fear_ratio === null ? "—" : `${Math.round(summary.fear_ratio * 100)}%`}` : buildSentimentIntensityLabel(intensityPercentPair?.fear ?? null, "fear", loading);
+  const hopeIntensityLabel = summary ? `희망 비율 ${summary.hope_ratio === null ? "—" : `${Math.round(summary.hope_ratio * 100)}%`}` : buildSentimentIntensityLabel(intensityPercentPair?.hope ?? null, "hope", loading);
   const fearSymbolBadges = buildSymbolBadges(fearRows);
   const hopeSymbolBadges = buildSymbolBadges(hopeRows);
   const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
@@ -254,7 +260,7 @@ export function SentimentFeed({
     });
   };
 
-  const renderRow = (row: FeedRow, tone: "fear" | "hope") => {
+  const renderRow = (row: FeedRow, tone: "fear" | "hope" | "neutral") => {
     const isRowRevealActive = cleanFilterEnabled
       ? supportsHoverReveal
         ? hoverRevealRowKey === row.post_key
@@ -267,6 +273,7 @@ export function SentimentFeed({
         <div className="sentiment-card-head">
           <div className="sentiment-card-head-tags">
             <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
+            {layout === "unified" && <span className="tag">{SENTIMENT_DISPLAY[row.label].label}</span>}
             {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
           </div>
           <div className="sentiment-card-head-meta">
@@ -330,8 +337,20 @@ export function SentimentFeed({
 
   return (
     <>
-      <section className="panel feed-lanes-panel">
-        <div className="sentiment-columns">
+      <div className="feed-view-controls" role="group" aria-label="피드 보기 방식">
+        <button type="button" className="filter-chip" aria-pressed={layout === "split"} onClick={() => { setLayout("split"); onSentimentChange("all"); }}>좌우 보기</button>
+        <button type="button" className="filter-chip" aria-pressed={layout === "unified"} onClick={() => setLayout("unified")}>통합 보기</button>
+      </div>
+      <section className="panel feed-lanes-panel" data-feed-layout={layout}>
+        {layout === "unified" ? <>
+          <div className="feed-view-controls" role="group" aria-label="글 감성 필터">
+            {(["all", "bearish", "bullish", "neutral"] as const).map((side) => <button key={side} type="button" className="filter-chip" aria-pressed={sentiment === side} onClick={() => onSentimentChange(side)}>{side === "all" ? "전체" : SENTIMENT_DISPLAY[side].label}</button>)}
+          </div>
+          {loading && <p role="status">피드를 불러오는 중입니다.</p>}
+          {errorMessage && <p className="error">피드를 불러오지 못했습니다: {errorMessage}</p>}
+          {!loading && !errorMessage && !filteredRows.some((row) => sentiment === "all" || row.label === sentiment) && <p className="muted">조건에 맞는 글이 없습니다.</p>}
+          <div className="sentiment-list feed-unified-list">{!loading && filteredRows.filter((row) => sentiment === "all" || row.label === sentiment).map((row) => renderRow(row, row.label === "bearish" ? "fear" : row.label === "bullish" ? "hope" : "neutral"))}</div>
+        </> : <div className="sentiment-columns">
           <section
             id="fear-lane"
             className={`sentiment-lane sentiment-lane-fear scroll-anchor${
@@ -379,11 +398,11 @@ export function SentimentFeed({
             <div className="sentiment-list">{loading ? null : hopeRows.map((row) => renderRow(row, "hope"))}</div>
             {loading ? <FeedSkeletonRows tone="hope" /> : null}
           </section>
-        </div>
-        <MobileSentimentSwipeHint />
+        </div>}
+        {layout === "split" && <MobileSentimentSwipeHint />}
       </section>
 
-      <nav className="mobile-feed-fabs" aria-label="피드 빠른 이동">
+      {layout === "split" && <nav className="mobile-feed-fabs" aria-label="피드 빠른 이동">
         <a className="mobile-feed-fab mobile-feed-fab-top" href="#page-top">
           ↑
         </a>
@@ -393,7 +412,7 @@ export function SentimentFeed({
         <a className="mobile-feed-fab mobile-feed-fab-hope" href="#hope-lane">
           희망
         </a>
-      </nav>
+      </nav>}
     </>
   );
 }

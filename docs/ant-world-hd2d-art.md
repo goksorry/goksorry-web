@@ -9,7 +9,8 @@
 | `public/world/materials.png` | 원본 재질 atlas | 2×2: 바닥·벽돌 / 금속·회벽 |
 | `public/world/ants.png` | 원본 투명 캐릭터 atlas | 4방향 × 정지·걷기 A·걷기 B·공포·희망 |
 | `components/world/ant-atlas.json` | 프레임 경계·애니메이션 정의 | alpha > 89 영역에 2px 여백. 일정한 원본 픽셀 밀도와 바닥 기준으로 plane 보정 |
-| `public/world/anchor.png` | 투명 삐에로 앵커 | 지친 얼굴, 원고, 마이크, 낡은 책상 |
+| `public/images/overview-regimes/*.webp` | 기존 5단계 주식 삐에로 밈 | light/dark 원본 10개, HTML 무대와 PNG 공유에 그대로 사용 |
+| `public/world/anchor.png` | 이전 생성 앵커 (현재 미사용) | 원본 밈을 캐릭터 소스로 확정하며 렌더 연결 해제 |
 | `components/world/hd2d-renderer.ts` | 편집 가능한 3D 장면·재질·광원 원본 | 벽·바닥·계단·아치·관·케이블·셔터·상자·전단, 장면별 소품 |
 | `public/world/static-*.png` | WebGL 실패·동작 줄이기용 정적 장면 | 동일 렌더러에서 빈 표본으로 캡처. 데이터 군중은 HTML atlas로 별도 표시 |
 | `public/world/source/prompts.json` | 최종 프롬프트 세트 | 기본 제공 `image_gen` 도구 사용. CLI/API 우회 없음 |
@@ -18,7 +19,7 @@
 
 ## 렌더 규칙
 
-- Three.js는 클라이언트 동적 import. Next.js·React 18과 `WorldFrame v1` 유지. 방송 앵커 에셋은 방송 진입 때 로드하고 떠날 때 GPU texture 해제. 바닥·벽·캐릭터 atlas는 모든 장면에서 공유한다.
+- Three.js는 클라이언트 동적 import. Next.js·React 18과 `WorldFrame v1` 유지. 삐에로는 기존 밈 원본을 HTML 무대로 표시하며 지수 단계·테마에 맞춰 교체한다. 바닥·벽·캐릭터 atlas는 모든 장면에서 공유한다.
 - 고정 사선 orthographic 카메라. 모바일은 frustum과 target을 별도로 지정하고 전체 지도를 축소하지 않는다.
 - 재질 atlas를 각 128px texture로 샘플링. 확대는 nearest, 바닥 축소에는 nearest mipmap. 숫자·한글은 HTML.
 - 개미는 카메라 방향 plane의 instancing. 프레임별 alpha 경계를 atlas metadata로 보정하고 동일 픽셀 밀도를 사용한다. 공포 자세는 짐·처진 더듬이, 희망 자세는 작은 주먹·황색 스카프.

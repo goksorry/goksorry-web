@@ -4879,3 +4879,10 @@ div.goksorry-room-list-status {
     align-self: flex-end;
   }
 }
+
+.feed-view-controls { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.feed-view-controls button { min-height:44px; }
+.feed-view-controls [aria-pressed=true] { color:var(--ink); border-color:currentColor; font-weight:700; }
+.feed-unified-list { width:100%; }
+.feed-scope-summary { font-size:14px; line-height:1.7; }
+.sentiment-card-neutral { border-color:var(--line); }

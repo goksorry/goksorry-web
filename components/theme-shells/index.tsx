@@ -30,14 +30,9 @@ export function ThemeChrome({
   const option = getThemeOption(themeId);
 
   if (pathname === "/") {
-    return <div id="page-top" className="layout home-layout home-chrome">
-      {defaultHeader}
-      <div className="default-chat-workspace"><div className="default-chat-content">
-        {policyBanner}{children}{footer}
-      </div>{desktopChatSidebar}</div>
-      {mobileChatDock}
-    </div>;
+    return <div id="page-top" className="world-page">{policyBanner}{children}</div>;
   }
+
   if (option.shellType === "default") {
     return (
       <div id="page-top" className="layout">

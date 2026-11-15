@@ -47,8 +47,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const materials: THREE.Material[] = [];
   const geometry: THREE.BufferGeometry[] = [];
   const loader = new THREE.TextureLoader();
-  let source: THREE.Texture, atlas: THREE.Texture, anchor: THREE.Texture | undefined;
-  try { [source, atlas, anchor] = await Promise.all((initial.scene === "broadcast" ? ["materials", "ants", "anchor"] : ["materials", "ants"]).map((name) => loader.loadAsync(`/world/${name}.png`).then((t) => { textures.push(t); return t; }))); }
+  let source: THREE.Texture, atlas: THREE.Texture;
+  try { [source, atlas] = await Promise.all((["materials", "ants"]).map((name) => loader.loadAsync(`/world/${name}.png`).then((t) => { textures.push(t); return t; }))); }
   catch (error) { textures.forEach((t) => t.dispose()); renderer.dispose(); throw error; }
   for (const texture of textures) { texture.colorSpace = THREE.SRGBColorSpace; texture.magFilter = THREE.NearestFilter; texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false; }
   const tile = (column: number, row: number, repeat = 1) => {
@@ -162,27 +162,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const shadowGeometry = new THREE.CircleGeometry(.46, 12); geometry.push(shadowGeometry);
   const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x04090d, transparent: true, opacity: .36, depthWrite: false }); materials.push(shadowMaterial);
   const shadows = new THREE.InstancedMesh(shadowGeometry, shadowMaterial, 48); shadows.instanceMatrix.setUsage(THREE.DynamicDrawUsage); shadows.frustumCulled = false; scene.add(shadows);
-  const anchorMaterial = new THREE.MeshBasicMaterial({ map: anchor ?? null, transparent: true, alphaTest: .1 }); materials.push(anchorMaterial);
-  const anchorGeometry = new THREE.PlaneGeometry(3.8, 3.5); geometry.push(anchorGeometry);
-  const announcer = mesh(anchorGeometry, anchorMaterial, 0, 2.2, -.7, scene as unknown as THREE.Group); announcer.quaternion.copy(camera.quaternion); announcer.castShadow = false;
   const dummy = new THREE.Object3D(), color = new THREE.Color();
   const position: Point = { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
-  let width = 0, height = 0, direction = 0, anchorRequest = 0;
+  let width = 0, height = 0, direction = 0;
   const cameraUp = new THREE.Vector3();
-  function updateAnchor() {
-    const request = ++anchorRequest;
-    if (state.scene !== "broadcast") {
-      if (anchor) { anchor.dispose(); textures.splice(textures.indexOf(anchor), 1); anchor = undefined; anchorMaterial.map = null; anchorMaterial.needsUpdate = true; }
-      return;
-    }
-    if (anchor) return;
-    void loader.loadAsync("/world/anchor.png").then((texture) => {
-      if (disposed || request !== anchorRequest || state.scene !== "broadcast") { texture.dispose(); return; }
-      texture.colorSpace = THREE.SRGBColorSpace; texture.magFilter = texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false;
-      textures.push(texture); anchor = texture; anchorMaterial.map = texture; anchorMaterial.needsUpdate = true;
-    }).catch(() => { if (!disposed && request === anchorRequest) events.failure?.(); });
-  }
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0 };
   const gl = renderer.getContext() as WebGL2RenderingContext; const debug = gl.getExtension("WEBGL_debug_renderer_info");
   metrics.renderer = debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : "WebGL";
@@ -229,7 +213,6 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const sum = summary();
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
-    announcer.visible = state.scene === "broadcast" && !!anchor;
     boardGroup.visible = state.scene === "plaza";
     const obstacles = worldObstacles(state.scene);
     for (let i = 0; i < ants.count; i++) {
@@ -273,7 +256,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   }
   function update(next: RenderState) {
     const changed = state.scene !== next.scene; state = next;
-    if (changed) { path = []; if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; } buildRoom(); updateAnchor(); }
+    if (changed) { path = []; if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; } buildRoom(); }
     if (state.paused) { lastTime = lastRender = 0; }
     population(); width = 0;
   }

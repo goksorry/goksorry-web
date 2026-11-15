@@ -148,7 +148,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
         <div className="world-detail-selection"><h3>분위기에서 근거로</h3>{view.stocks.map((s) => <button key={s.symbol} onClick={() => selectStock(s.symbol)}>{s.name} · {s.total}건 ↗</button>)}{view.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: c.name, summary: c, community: c.id })}>{c.name} · {c.total}건 ↗</button>)}</div>
       </div>
       <div id="world-tabpanel-feed" role="tabpanel" aria-labelledby="world-tab-feed" hidden={tab !== "feed"}>
-        {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}`} selection={currentSelection} /> : <><CleanFilterToggle /><HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={80} /></>}
+        {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} /> : <><CleanFilterToggle /><HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={80} /></>}
       </div>
     </WorldPanel>}
     {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}><FirstVisitHeaderHint inWorldMenu />

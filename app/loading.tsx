@@ -1,1 +1,5 @@
-export default function Loading() { return <p role="status">현재 현황을 불러오는 중…</p>; }
+import "@/components/world/world.css";
+
+export default function Loading() {
+  return <div className="world-loading" role="status">개미 광장을 여는 중…</div>;
+}

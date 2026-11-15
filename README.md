@@ -4,7 +4,7 @@
 
 ## 주요 기능
 
-- 통합 홈 `/`: 곡소리 지수·삐에로 상태·종목별 언급·커뮤니티 선택·최근 원문. `/analysis`는 홈으로 이동.
+- 메타버스 홈 `/`: 기존 5단계 주식 삐에로·광장·종목별 개미굴·심리 전장·재난방송·개미극장. 피드는 기본 좌우 비교, 통합 보기 전환 지원. `/analysis`는 홈으로 이동.
 - 자체 게시판 `/community`
 - 곡소리방 `/goksorry-room`
 - 공개 곡소리 지수 API `/api/overview`
@@ -43,7 +43,7 @@
 
 ## 홈과 데이터 계약
 
-홈 읽기 경로와 검증은 [통합 홈 문서](./docs/sentiment-home.md)를 참고하세요. 기존 WorldFrame v1과 기록 API 계약은 [데이터 문서](./docs/ant-world.md)에 유지됩니다.
+홈 읽기 경로와 검증은 [메타버스 홈·피드 문서](./docs/sentiment-home.md)를 참고하세요. 기존 WorldFrame v1과 기록 API 계약은 [데이터 문서](./docs/ant-world.md)에 유지됩니다.
 
 ## 환경 변수
 

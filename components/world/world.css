@@ -109,7 +109,7 @@ body:has(.world-page) { overflow:visible; }
 .world-panel-heading h2 { margin:0; font-size:17px; color:var(--ink); }.world-panel-heading > button { width:44px; flex-shrink:0; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
 .world-panel-body { padding:20px; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
 .world-panel-body .panel { margin-bottom:12px; }.world-panel-body h1 { font-size:22px; }.world-panel-body .sentiment-grid { grid-template-columns:1fr; }
-.world-panel-body .sentiment-columns { grid-template-columns:1fr; }.world-panel-body .mobile-feed-fabs { display:none; }
+.world-panel-body .sentiment-columns { grid-template-columns:repeat(2,minmax(0,1fr)); }.world-panel-body .mobile-feed-fabs { display:none; }
 .world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .world-panel-body .muted,.world-panel-body .world-note,.world-panel-body .sentiment-card-body { font-size:14px; line-height:1.7; }
 .world-detail-tabs { display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:12px; }
@@ -148,3 +148,29 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
   .world-modal-backdrop { padding:0; align-items:flex-end; }.world-panel { width:100%; max-height:calc(100dvh - 68px); height:calc(100dvh - 68px); border-radius:16px 16px 0 0; }.world-panel-heading { padding:12px 16px; }.world-panel-heading h2 { font-size:16px; }.world-panel-body { padding:16px 14px max(24px,env(safe-area-inset-bottom)); }.world-detail-tabs { gap:6px; }.world-detail-tabs button { padding:8px 16px; }.world-evidence-tabs { gap:6px; }.world-evidence-tabs button { padding:8px 12px; }.world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:1fr; }
 }
 @media(prefers-reduced-motion:reduce) { .world-root *, .world-root *::before,.world-root *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+
+/* Original five-stage Pierrot remains the lead character in every scene. */
+.world-pierrot { position:absolute; z-index:1; left:50%; top:350px; transform:translateX(-50%); width:260px; margin:0; background:#14232b; border:2px solid #aa9169; box-shadow:0 8px 24px #0007; pointer-events:none; }
+.world-pierrot img { display:block; width:100%; height:auto; object-fit:contain; }
+.world-pierrot figcaption { padding:7px 10px; color:#e5d6b7; text-align:center; font-size:14px; }
+@media(min-width:761px) { .world-scene-stage { height:740px; } }
+/* Keep all scene controls in document flow on narrow screens. */
+@media(max-width:760px) {
+  .world-root[data-scene] .world-scene-stage { height:auto; min-height:540px; }
+  .hd2d-stage { min-height:540px; padding:12px 0 48px; }
+  .world-pierrot { position:relative; top:auto; left:auto; transform:none; width:180px; margin:0 auto 20px; }
+  .world-screens { padding-top:0; }
+  .world-feed-screen { margin-top:0; }
+  .world-area-links { position:relative; bottom:auto; left:auto; transform:none; margin:24px auto 0; }
+  .world-region-overlay,.world-broadcast-overlay,.world-battle-overlay,.world-replay-screen { position:relative; top:auto; left:auto; transform:none; margin:0 auto 16px; }
+  .world-anchor-caption { margin-top:20px; }
+  .world-theater-controls { margin:0 auto 24px; }
+  .world-replay-screen { width:calc(100% - 36px); box-sizing:border-box; }
+  .world-stock-list strong { overflow-wrap:anywhere; }
+}
+
+@media(min-width:761px) { .world-panel:has(.feed-lanes-panel) { width:min(1160px,calc(100vw - 60px)); } }
+
+/* Override the default desktop chat shell's viewport lock on the world route. */
+:root[data-theme-shell]:has(.world-page) { height:auto; min-height:100dvh; overflow-x:clip; overflow-y:auto; }
+:root[data-theme-shell]:has(.world-page) body { height:auto; min-height:100dvh; overflow:visible; }

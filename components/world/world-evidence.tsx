@@ -7,9 +7,9 @@ import { getSourceGroupShortLabel } from "@/lib/feed-source-groups";
 import type { WorldSide } from "@/lib/world";
 import type { EvidenceSelection } from "./scene-types";
 import { HomeFeedShell } from "@/components/home-feed-shell";
-import { SOURCE_GROUP_IDS } from "@/lib/feed-source-groups";
+import { SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
 
-export function WorldEvidence({ selection }: { selection: EvidenceSelection }) {
+export function WorldEvidence({ selection, selectedGroupIds = SOURCE_GROUP_IDS }: { selection: EvidenceSelection; selectedGroupIds?: SourceGroupId[] }) {
   const [side, setSide] = useState<WorldSide>(selection.side ?? (!selection.summary.bearish && !selection.summary.bullish ? "neutral" : selection.summary.bearish >= selection.summary.bullish ? "bearish" : "bullish"));
   const [expanded, setExpanded] = useState(false);
   const { cleanFilterEnabled } = useCleanFilter();
@@ -24,7 +24,7 @@ export function WorldEvidence({ selection }: { selection: EvidenceSelection }) {
     </li>)}</ul>
     {!selection.summary.evidence[side].length && <p className="world-note">이 분류의 글이 없습니다. 다른 진영을 확인해 보세요.</p>}
     {!selection.recordedAt && (selection.symbol || selection.community) && <button className="world-more-evidence" onClick={() => setExpanded((value) => !value)}>{expanded ? "최근 근거만 보기" : "선택 범위 피드 더 보기"}</button>}
-    {expanded && <HomeFeedShell timezone="Asia/Seoul" selectedGroupIds={selection.community ? [selection.community] : SOURCE_GROUP_IDS} windowHours={6} initialLimit={80} scope={selection.symbol ? { symbol: selection.symbol } : { community: selection.community }} />}
+    {expanded && <HomeFeedShell timezone="Asia/Seoul" selectedGroupIds={selection.community ? [selection.community] : selectedGroupIds} windowHours={6} initialLimit={80} scope={selection.symbol ? { symbol: selection.symbol } : { community: selection.community }} />}
     <p className="world-note">AI 분류에는 오류가 있을 수 있습니다. 원문 권리는 각 작성자·서비스에 있습니다.</p>
   </section>;
 }

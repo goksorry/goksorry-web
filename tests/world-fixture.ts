@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 import { buildWorldFrame, buildWorldReplay, worldDate, worldDayBounds } from "../lib/world";
 import { buildOverallFromSourceGroupSummaries, buildSourceGroupSummaries, type FeedRow } from "../lib/feed-data";
 
@@ -17,7 +17,7 @@ export function worldRows(): FeedRow[] {
   }));
 }
 export async function prepareWorld(page: Page) {
-  const rows = worldRows();
+  const rows = worldRows().sort((a, b) => b.analyzed_at.localeCompare(a.analyzed_at));
   const frame = buildWorldFrame(rows);
   const groups = buildSourceGroupSummaries(rows);
   const overall = buildOverallFromSourceGroupSummaries(groups);
@@ -46,4 +46,14 @@ export async function prepareWorld(page: Page) {
     return route.fulfill({ json: replay });
   });
   return frame;
+}
+
+export async function requireWebGL2(page: Page) {
+  const supported = await page.evaluate(() => {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const available = Boolean(gl);
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return available;
+  });
+  test.skip(!supported, "This browser environment cannot create WebGL2; static fallback is tested separately.");
 }

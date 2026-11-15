@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { WorldScene, WorldSide } from "@/lib/world";
+import { WorldPierrot } from "./world-pierrot";
 import { crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 
@@ -66,7 +67,7 @@ export default function HD2DWorld(props: Props) {
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
   const fallback = mode !== "webgl";
   return <div ref={host} className="hd2d-stage" data-renderer={mode} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral}>
-    {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene}.png)` }}>
+    {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
       {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${i % 4 / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}
     <canvas ref={canvas} className="hd2d-canvas" hidden={fallback} tabIndex={fallback ? -1 : 0} role="group" aria-label="개미 월드. 바닥 클릭 또는 방향키로 이동" onPointerDown={(event) => {
@@ -77,6 +78,7 @@ export default function HD2DWorld(props: Props) {
     }} />
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
+    <WorldPierrot summary={summary} recorded={props.scene === "theater"} />
     {props.children}
     {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
     <p className="world-render-note">{mode === "loading" ? "골목을 여는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동 · 개미 선택으로 근거 확인"}</p>

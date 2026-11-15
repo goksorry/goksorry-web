@@ -22,9 +22,9 @@ test("feed API discovers stock beyond 500 rows and paginates its scope", async (
   const empty = await (await request.get("/api/feed?symbol=MISSING")).json();
   expect(empty).toMatchObject({ rows: [], hasMore: false, nextOffset: null, errorMessage: "", summary: { total: 0 } });
 });
-test("home server renders initial scope, analysis redirects and public world contract survives", async ({ request }) => {
+test("home renders the metaverse, analysis redirects and public world contract survives", async ({ request }) => {
   const html = await (await request.get("/?stock=LATE&channels=toss")).text();
-  expect(html).toContain("다음 페이지 종목"); expect(html).toContain("fixture-500");
+  expect(html).toContain("world-root"); expect(html).toContain("오늘의 개미극장");
   const redirect = await request.get("/analysis?stock=LATE&channels=toss", { maxRedirects: 0 });
   expect(redirect.status()).toBe(307); expect(new URL(redirect.headers().location, "http://127.0.0.1:3100").search).toBe("?stock=LATE&channels=toss");
   const world = await (await request.get("/api/internal/world")).json();
