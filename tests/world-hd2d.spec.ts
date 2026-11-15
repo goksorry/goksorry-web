@@ -102,8 +102,14 @@ test("perspective camera turns toward the visitor and brings it nearer the middl
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
   await expect.poll(async () => (await wallMetrics(page)).yaw).toBe(0); // Visitor starts in the middle: frontal view.
   const rest = await wallMetrics(page), box = (await page.locator("canvas").boundingBox())!;
-  await page.mouse.click(box.x + 150, box.y + box.height - 150); // Walk to the left side of the floor.
+  // Walk to the left side of the floor with the keyboard: a floor click could land on a roaming ant.
+  const visitorX = () => page.locator("canvas").evaluate((node) => (node as WallCanvas).worldMetrics.visitor().x);
+  await page.locator("canvas").focus();
+  await expect.poll(async () => { await page.keyboard.press("ArrowLeft"); return visitorX(); }, { timeout: 20_000 }).toBeLessThanOrEqual(-6);
   await expect.poll(async () => (await wallMetrics(page)).yaw, { timeout: 15_000 }).toBeGreaterThan(.05);
+  // Let the turn settle: two equal reads in a row.
+  let last = NaN;
+  await expect.poll(async () => { const yaw = (await wallMetrics(page)).yaw, same = yaw === last; last = yaw; return same; }, { timeout: 15_000 }).toBe(true);
   const turned = await wallMetrics(page);
   // The camera pans left toward the ant: the wall slides right, so the ant sits nearer the middle.
   expect(turned.rects.market.x).toBeGreaterThan(rest.rects.market.x + 100);

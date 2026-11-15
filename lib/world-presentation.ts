@@ -1,7 +1,10 @@
 import type { FeedRow } from "./feed-data";
-import type { WorldFrame, WorldSide, WorldSlot, WorldSummary } from "./world";
+import type { WorldFrame, WorldScene, WorldSide, WorldSlot, WorldSummary } from "./world";
 
 export const WORLD_COLORS = ["#d9bc79", "#91b4ae", "#efa5ac", "#aaa0c4"];
+// NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd.
+export const crowdCapacity = (scene: WorldScene, mobile: boolean): number =>
+  scene === "plaza" ? (mobile ? 12 : 20) : (mobile ? 23 : 47);
 export const SIDE_LABEL: Record<WorldSide, string> = { bullish: "희망", bearish: "공포", neutral: "중립" };
 
 // Largest remainder allocation: representation comes from ALL classified counts,

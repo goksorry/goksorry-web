@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
+import { crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { buildWorldFrame, buildWorldReplay, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable } from "../lib/world-navigation";
 import { worldRows } from "./world-fixture";
@@ -12,6 +12,10 @@ test("population follows full counts, including neutral, independent of represen
   expect(crowdDistribution(worldSummary([]), 47)).toEqual({ bullish: 0, bearish: 0, neutral: 0 });
   const sparse = { ...summary, total: 1, bullish: 0, bearish: 1, neutral: 0 };
   expect(crowdDistribution(sparse, 47).bearish).toBe(1);
+});
+test("the plaza is a sparse crowd; other scenes keep the full population", () => {
+  expect([crowdCapacity("plaza", false), crowdCapacity("plaza", true)]).toEqual([20, 12]);
+  for (const scene of ["battle", "ecosystem", "broadcast", "theater"] as const) expect([crowdCapacity(scene, false), crowdCapacity(scene, true)]).toEqual([47, 23]);
 });
 test("latest evidence sorted across all three sides; no repeated or fabricated entries", () => {
   const frame = buildWorldFrame(worldRows());

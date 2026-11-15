@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { WorldScene, WorldSide } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
-import { crowdDistribution } from "@/lib/world-presentation";
+import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { WALL_PANEL_IDS, type WallModel, type WallView } from "@/lib/world-wall";
 
@@ -99,12 +99,12 @@ export default function HD2DWorld(props: Props) {
     if (host.current) observer.observe(host.current); return () => observer.disconnect();
   }, []);
   const summary = (props.scene === "battle" || props.scene === "ecosystem") ? props.frame.stocks.find((s) => s.symbol === props.stock) ?? props.frame.overall : props.frame.overall;
-  const counts = crowdDistribution(summary, props.mobile ? 23 : 47);
+  const counts = crowdDistribution(summary, crowdCapacity(props.scene, props.mobile));
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
   const fallback = mode !== "webgl";
   return <div ref={host} className="hd2d-stage" data-renderer={mode} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral}>
     {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
-      {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${i % 4 / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
+      {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${(props.scene === "plaza" && i % 5 ? 3 : i % 4) / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}
     <canvas ref={canvas} className="hd2d-canvas" hidden={fallback} tabIndex={fallback ? -1 : 0} role="group" aria-label="개미 월드. 바닥 클릭 또는 방향키로 이동" onClick={(event) => {
       const bounds = event.currentTarget.getBoundingClientRect(); event.currentTarget.focus(); renderer.current?.click(event.clientX - bounds.left, event.clientY - bounds.top);

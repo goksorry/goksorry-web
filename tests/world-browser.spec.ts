@@ -167,9 +167,9 @@ for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: buildWorldFrame(filtered) }));
   await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/");
   await expect(stage(page)).toHaveAttribute("data-renderer", "reduced");
-  if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "47"); await expect(page.locator(".world-ratios")).toContainText("공포 100%"); }
-  if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "47"); await expect(page.locator(".world-ratios")).toContainText("희망 100%"); }
-  if (kind === "neutral") { await expect(stage(page)).toHaveAttribute("data-neutral", "47"); await expect(page.locator(".world-ratios")).toContainText("—"); }
+  if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "20"); await expect(page.locator(".world-ratios")).toContainText("공포 100%"); }
+  if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "20"); await expect(page.locator(".world-ratios")).toContainText("희망 100%"); }
+  if (kind === "neutral") { await expect(stage(page)).toHaveAttribute("data-neutral", "20"); await expect(page.locator(".world-ratios")).toContainText("—"); }
   if (kind === "sparse") { await expect(stage(page)).toHaveAttribute("data-population", "2"); await expect(page.locator(".world-live-badge")).toContainText("소표본"); }
   if (kind === "empty") { await expect(stage(page)).toHaveAttribute("data-population", "1"); await expect(page.locator(".world-index-number strong")).toHaveText("—"); }
 });
@@ -193,10 +193,44 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
 });
 
 test("WebGL and asset failures use same static art with working screens", async ({ page }) => {
-  await prepareWorld(page); await page.route("**/world/ants.png", (route) => route.abort()); await page.goto("/");
+  await prepareWorld(page); await page.route("**/world/ant*.png", (route) => route.abort()); await page.goto("/");
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
   await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();
+});
+
+test("plaza shows about twenty roaming ants that mostly face the wall; a gazing ant opens its evidence", async ({ page }) => {
+  test.setTimeout(60_000);
+  const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd());
+  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await expect(stage(page)).toHaveAttribute("data-population", "21");
+  // No fixed sleep: the crowd is spread and mostly wall-facing from its first frame, and stays so.
+  await expect.poll(async () => (await crowd()).length).toBe(20);
+  const ants = await crowd();
+  // Spread over the visible floor, not a strip under the wall.
+  expect(Math.max(...ants.map((a) => a.z))).toBeGreaterThan(.8);
+  expect(Math.min(...ants.map((a) => a.z))).toBeLessThan(-1);
+  // Most stand with their backs to the camera (bl, b, br), looking at the wall.
+  expect(ants.filter((a) => a.state === "gaze" && a.dir >= 3 && a.dir <= 5).length).toBeGreaterThanOrEqual(10);
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    const box = (await page.locator("canvas").boundingBox())!;
+    // Only ants whose body is not under a HUD element or wall button; prefer the one nearest mid-screen.
+    const picked = await page.locator("canvas").evaluate((node) => {
+      const canvas = node as HTMLCanvasElement & { worldMetrics: RenderMetrics }, bounds = canvas.getBoundingClientRect();
+      return canvas.worldMetrics.crowd().filter((a) => a.state === "gaze" && document.elementFromPoint(bounds.left + a.sx, bounds.top + a.sy) === canvas)
+        .sort((a, b) => Math.abs(a.sy - bounds.height / 2) - Math.abs(b.sy - bounds.height / 2))[0] ?? null;
+    });
+    expect(picked).not.toBeNull();
+    await page.mouse.click(box.x + picked!.sx, box.y + picked!.sy);
+    await expect(dialog(page).locator(".world-evidence-tabs")).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await webgl(page);
+  await expect(stage(page)).toHaveAttribute("data-population", "13");
+  await expect.poll(async () => (await crowd()).length).toBe(12);
+  const phone = await crowd();
+  expect(phone.filter((a) => a.sx >= 0 && a.sx <= 390).length).toBeGreaterThanOrEqual(5);
 });
 
 test("first visit guidance lives inside menu; cookie banner does not cover information", async ({ page }) => {
