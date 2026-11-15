@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-11-15T03:34:04.858Z",
+  "source": "Local optimized build reading linked production Supabase; fixture server stopped and Next data cache cleared",
+  "index": " 곡소리 지수\n01 / INDEX\n6.6\n/ 10\n희망 37%\n공포 63%\n분석 표본 422건\n· 중립 70건\n최근 6시간 · 12:30 KST 기준\n관측 중\n상세 보기 ↗",
+  "feedRows": 3,
+  "plazaRequests": [
+    "/world/ants.png",
+    "/world/static-plaza.png",
+    "/world/materials.png"
+  ],
+  "errors": [],
+  "broadcastAnchorLoaded": true,
+  "mobileStickyBar": {
+    "top": 0,
+    "height": 73
+  },
+  "mobileDetail": true,
+  "final_build_checked_at": "2026-11-15T03:39:38.649Z",
+  "mobileChecks": [
+    {
+      "browser": "chromium",
+      "viewport": "390x844",
+      "stickyTop": 0,
+      "detailOpened": true,
+      "focusRestored": true,
+      "errors": []
+    },
+    {
+      "browser": "firefox",
+      "viewport": "390x844",
+      "stickyTop": 0,
+      "detailOpened": true,
+      "focusRestored": true,
+      "errors": []
+    }
+  ]
+}

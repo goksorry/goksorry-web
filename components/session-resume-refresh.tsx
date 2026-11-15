@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const MIN_RECOVERY_ATTEMPT_INTERVAL_MS = 15_000;
 
 export function SessionResumeRefresh() {
   const router = useRouter();
+  const pathname = usePathname();
   const { status, update } = useSession();
   const [, startTransition] = useTransition();
   const lastRecoveryAttemptAtRef = useRef(0);
@@ -32,7 +33,11 @@ export function SessionResumeRefresh() {
 
       void update()
         .catch(() => null)
-        .finally(() => {
+        .then((recovered) => {
+          // Anonymous home visitors have no changed server session to recover.
+          // Refreshing its Suspense boundary drops live world data and camera
+          // state, including the last successful frame after a failed poll.
+          if (pathname === "/" && !recovered?.user) return;
           startTransition(() => {
             router.refresh();
           });
@@ -60,7 +65,7 @@ export function SessionResumeRefresh() {
       window.removeEventListener("online", recoverSessionShell);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [router, startTransition, status, update]);
+  }, [router, pathname, startTransition, status, update]);
 
   return null;
 }

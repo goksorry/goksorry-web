@@ -75,3 +75,9 @@ test("snapshot writer upserts same bucket, prunes seven days and surfaces failur
   fail = true;
   await expect(storeWorldSnapshot(service, frame, now)).rejects.toThrow("write failed");
 });
+
+test("PostgREST timestamp offsets match generated replay slots", () => {
+  const frame = buildWorldFrame([post(1)], { now });
+  const replay = buildWorldReplay("2026-11-15", [{ bucket_at: "2026-11-15T01:00:00+00:00", frame }]);
+  expect(replay.slots[60].frame).toEqual(frame);
+});

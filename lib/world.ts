@@ -131,18 +131,20 @@ export function worldDayBounds(date: string): { start: string; end: string } | n
 export function buildWorldReplay(date: string, snapshots: WorldSlot[]): WorldReplay {
   const bounds = worldDayBounds(date);
   if (!bounds) throw new Error("Invalid replay date");
-  const byBucket = new Map(snapshots.map((slot) => [slot.bucket_at, slot.frame]));
+  // PostgREST returns +00:00 while generated slots use .000Z. Compare instants,
+  // not timestamp spellings; otherwise real DB records silently become gaps.
+  const byBucket = new Map(snapshots.map((slot) => [Date.parse(slot.bucket_at), slot.frame]));
   return {
     date, timezone: "Asia/Seoul",
     slots: Array.from({ length: 144 }, (_, i) => {
       const bucket_at = new Date(Date.parse(bounds.start) + i * WORLD_BUCKET_MS).toISOString();
-      return { bucket_at, frame: byBucket.get(bucket_at) ?? null };
+      return { bucket_at, frame: byBucket.get(Date.parse(bucket_at)) ?? null };
     })
   };
 }
 
 export const MOOD_COPY: Record<WorldMood, string> = {
-  hope: "희망 · 깃발 들고 축제 중", fear: "공포 · 짐 싸는 중", mixed: "팽팽 · 입구에서 실랑이",
-  neutral: "중립 · 잠시 쉬는 중", watching: "관찰 중 · 표본 3건 미만"
+  hope: "희망 · 어둠 속 작은 환호", fear: "공포 · 짐 싸는 중", mixed: "팽팽 · 입구에서 실랑이",
+  neutral: "중립 · 방향성 판단 보류", watching: "관찰 중 · 표본 3건 미만"
 };
 export const percent = (ratio: number | null): string => ratio === null ? "—" : `${Math.round(ratio * 100)}%`;

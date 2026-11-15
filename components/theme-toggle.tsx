@@ -110,9 +110,10 @@ export function ThemeToggle() {
     const mobileWidth = 19 * 16;
     const preferredWidth = window.matchMedia("(max-width: 760px)").matches ? mobileWidth : desktopWidth;
     const width = Math.max(0, Math.min(preferredWidth, viewportWidth - edgePadding * 2));
-    const top = Math.min(triggerRect.bottom + triggerGap, viewportHeight - edgePadding);
+    const menuHeight = Math.min(popoverRef.current?.scrollHeight || 480, viewportHeight - edgePadding * 2);
+    const top = Math.max(edgePadding, Math.min(triggerRect.bottom + triggerGap, viewportHeight - menuHeight - edgePadding));
     const left = Math.min(Math.max(triggerRect.right - width, edgePadding), Math.max(edgePadding, viewportWidth - width - edgePadding));
-    const maxHeight = Math.max(180, viewportHeight - top - edgePadding);
+    const maxHeight = Math.max(0, viewportHeight - top - edgePadding);
 
     setPopoverStyle({
       position: "fixed",

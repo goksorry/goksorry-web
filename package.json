@@ -15,13 +15,15 @@
     "next": "^14.2.33",
     "next-auth": "^4.24.13",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.16",
     "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.183.1",
     "supabase": "^2.84.4",
     "typescript": "^5.7.2"
   }

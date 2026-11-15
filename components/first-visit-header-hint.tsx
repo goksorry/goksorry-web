@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { persistCleanFilterPreference } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useTheme } from "@/components/theme-provider";
+import { usePathname } from "next/navigation";
 
 type HintStyle = CSSProperties & {
   "--first-visit-hint-pointer-x"?: string;
@@ -16,15 +17,16 @@ const findHeaderTarget = (): HTMLElement | null => {
   return document.querySelector(".world-menu-button") ?? document.querySelector(".header .header-controls") ?? document.querySelector("[data-testid='concept-header-actions']");
 };
 
-export function FirstVisitHeaderHint() {
+export function FirstVisitHeaderHint({ inWorldMenu = false }: { inWorldMenu?: boolean }) {
+  const pathname = usePathname();
   const { cleanFilterEnabled, showFirstVisitPrompt, dismissFirstVisitPrompt } = useCleanFilter();
   const { showThemePrompt, dismissThemePrompt } = useTheme();
   const hintRef = useRef<HTMLElement | null>(null);
   const [hintStyle, setHintStyle] = useState<HintStyle | undefined>(undefined);
-  const visible = showFirstVisitPrompt || showThemePrompt;
+  const visible = (showFirstVisitPrompt || showThemePrompt) && (pathname !== "/" || inWorldMenu);
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || inWorldMenu) {
       return;
     }
 
@@ -73,7 +75,7 @@ export function FirstVisitHeaderHint() {
       resizeObserver.disconnect();
       window.removeEventListener("resize", updatePosition);
     };
-  }, [visible]);
+  }, [visible, inWorldMenu]);
 
   if (!visible) {
     return null;

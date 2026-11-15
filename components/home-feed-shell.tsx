@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SourceGroupId } from "@/lib/feed-source-groups";
+import { getSourceGroupId } from "@/lib/feed-source-groups";
 import { FeedFilterControls } from "@/components/feed-filter-controls";
 import { FeedSelectionProvider } from "@/components/feed-selection-provider";
 import { SentimentFeed } from "@/components/sentiment-feed";
@@ -29,12 +30,14 @@ export function HomeFeedShell({
   timezone,
   selectedGroupIds,
   windowHours,
-  initialLimit
+  initialLimit,
+  scope
 }: {
   timezone: string;
   selectedGroupIds: SourceGroupId[];
   windowHours: number;
   initialLimit: number;
+  scope?: { symbol?: string; community?: SourceGroupId };
 }) {
   const [rows, setRows] = useState<FeedRow[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
@@ -163,10 +166,11 @@ export function HomeFeedShell({
           외부 커뮤니티에서 최근 6시간 동안 감지한 글 중 공포와 희망 흐름만 분리해서 보여줍니다. 중립 글은 기본적으로 숨깁니다. 글
           분류는 AI가 제목과 공개된 범위의 정보만 바탕으로 추정해 진행하므로, 일부 글은 잘못 분류될 수 있습니다.
         </p>
-        <FeedFilterControls selectedGroupIds={selectedGroupIds} />
+        {!scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
+        {scope && <p className="muted">선택 범위에 해당하는 글만 표시합니다. 더 보기로 이전 분석 글을 이어서 조회합니다.</p>}
       </section>
 
-      <SentimentFeed rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
+      <SentimentFeed rows={scope ? rows.filter((row) => (!scope.symbol || row.symbol === scope.symbol) && (!scope.community || getSourceGroupId(row.source) === scope.community)) : rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
 
       <div className="feed-pagination" aria-live="polite">
         {loadMoreError ? <p className="error">추가 피드를 불러오지 못했습니다: {loadMoreError}</p> : null}
