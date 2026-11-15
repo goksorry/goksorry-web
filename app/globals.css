@@ -4886,6 +4886,21 @@ div.goksorry-room-list-status {
 .feed-unified-list { width:100%; }
 .feed-scope-summary { font-size:14px; line-height:1.7; }
 .sentiment-card-neutral { border-color:var(--line); }
+/* Unified list: sentiment is a left bar + row tint + coloured chip (the chip text stays the non-colour cue). Split lanes are untouched. */
+.feed-unified-list .sentiment-card { border-left:4px solid var(--line); padding-left:0.6rem; padding-right:0.4rem; }
+.feed-unified-list .sentiment-card[data-sentiment=fear] { border-left-color:var(--danger); background:var(--fear-bg); }
+.feed-unified-list .sentiment-card[data-sentiment=hope] { border-left-color:var(--hope); background:var(--hope-bg); }
+.feed-unified-list .sentiment-card[data-sentiment=fear]:hover { background:color-mix(in srgb, var(--fear-bg) 86%, var(--danger)); }
+.feed-unified-list .sentiment-card[data-sentiment=hope]:hover { background:color-mix(in srgb, var(--hope-bg) 86%, var(--hope)); }
+/* VS Code themes define no --fear-bg / --hope-bg (the dark one would inherit the light tints) and their editor shell clears row backgrounds: tint from the theme's own colours, like diff lines. */
+:root[data-theme-shell=vscode] .feed-unified-list .sentiment-card[data-sentiment=fear] { background:color-mix(in srgb, var(--danger) 16%, transparent) !important; }
+:root[data-theme-shell=vscode] .feed-unified-list .sentiment-card[data-sentiment=hope] { background:color-mix(in srgb, var(--hope) 16%, transparent) !important; }
+/* On the editor page the titles are link-blue on the row itself, so the tint stays lighter there. */
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=fear] { background:color-mix(in srgb, var(--danger) 9%, transparent) !important; }
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=hope] { background:color-mix(in srgb, var(--hope) 9%, transparent) !important; }
+.feed-sentiment-chip { font-weight:700; color:color-mix(in srgb, var(--muted) 70%, var(--ink)); }
+.feed-sentiment-chip[data-sentiment=fear] { color:color-mix(in srgb, var(--danger) 72%, var(--ink)); border-color:var(--danger); }
+.feed-sentiment-chip[data-sentiment=hope] { color:color-mix(in srgb, var(--hope) 72%, var(--ink)); border-color:var(--hope); }
 
 /* 일반모드 / 메타버스모드 header toggle. */
 .mode-switch {

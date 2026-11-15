@@ -102,7 +102,7 @@ test("perspective camera turns toward the visitor and brings it nearer the middl
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
   await expect.poll(async () => (await wallMetrics(page)).yaw).toBe(0); // Visitor starts in the middle: frontal view.
   const rest = await wallMetrics(page), box = (await page.locator("canvas").boundingBox())!;
-  // Walk to the left side of the floor with the keyboard: a floor click could land on a roaming ant.
+  // Walk to the left side of the floor with the keyboard.
   const visitorX = () => page.locator("canvas").evaluate((node) => (node as WallCanvas).worldMetrics.visitor().x);
   await page.locator("canvas").focus();
   await expect.poll(async () => { await page.keyboard.press("ArrowLeft"); return visitorX(); }, { timeout: 20_000 }).toBeLessThanOrEqual(-6);
@@ -119,4 +119,24 @@ test("perspective camera turns toward the visitor and brings it nearer the middl
   // Panel buttons follow the turned wall.
   const r = turned.rects.room; await page.mouse.click(box.x + r.x + r.width / 2, box.y + r.y + r.height / 2);
   await expect(page.getByRole("tab", { name: "곡소리방", exact: true })).toHaveAttribute("aria-selected", "true");
+});
+
+test("the visitor's walk alternates both strides through a feet-together frame, in the plaza and elsewhere", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page);
+  for (const url of ["/", "/?scene=battle"]) {
+    await page.goto(url); await requireWebGL2(page);
+    await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 });
+    await page.locator("canvas").focus();
+    // Sample the drawn frame on every animation frame while the visitor walks right for four key presses.
+    const sampling = page.locator("canvas").evaluate((node) => new Promise<string[]>((resolve) => {
+      const metrics = (node as WallCanvas).worldMetrics, seen: string[] = [], start = performance.now();
+      const tick = (now: number) => { const frame = metrics.visitor().frame; if (seen[seen.length - 1] !== frame) seen.push(frame); if (now - start < 1500) requestAnimationFrame(tick); else resolve(seen); };
+      requestAnimationFrame(tick);
+    }));
+    for (let i = 0; i < 4; i++) { await page.keyboard.press("ArrowRight"); await page.waitForTimeout(300); }
+    const seen = await sampling;
+    expect(seen, url).toEqual(expect.arrayContaining(["neutral.walk-a.r", "neutral.walk-p.r", "neutral.walk-b.r"]));
+    // Side-view strides look alike, so they must never follow each other directly.
+    seen.forEach((frame, i) => { if (i && /walk-[ab]/.test(frame)) expect(seen[i - 1], `${url}: ${seen.join(" ")}`).not.toMatch(/walk-[ab]/); });
+  }
 });

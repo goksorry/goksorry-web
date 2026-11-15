@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
-import { ANT_DIRS, CROWD, LEAN_DEAD, antFrameCandidates, antWalkFrame, createCrowd, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
+import { ANT_DIRS, CROWD, LEAN_DEAD, WALK_PHASE, antFrameCandidates, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
 import { walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
@@ -205,7 +205,7 @@ test("facing4 matches the renderer's visitor rule and facing8 the eight sprite d
 const ATLAS = antAtlas.frames as Record<string, unknown>, hasArt = (key: string) => key in ATLAS;
 const DRAWN_LEFT = ["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f"];
 const shown = (variant: AntVariant, pose: AntPose, hx: number, hz: number, lean: number, walking = true) => {
-  const dir4 = facing4(hx, hz), step = walking ? antWalkFrame(hasArt, variant, pose, facing8(hx, hz), dir4, 0) : { pose, dir8: facing8(hx, hz) };
+  const dir4 = facing4(hx, hz), step = walking ? antWalkFrame(hasArt, variant, pose, facing8(hx, hz), dir4) : { pose, dir8: facing8(hx, hz) };
   const found = antFrameCandidates(variant, step.pose, step.dir8, dir4, lean).find((c) => hasArt(c.key))!;
   const dir = found.key.split(".")[2], drawn = dir === "f" ? (DRAWN_LEFT.includes(found.key) ? -1 : 1) : dir.endsWith("l") ? -1 : dir.endsWith("r") ? 1 : 0;
   return { ...found, dir, side: found.mirror ? -drawn : drawn };
@@ -280,7 +280,8 @@ test("the side holds inside the dead zone instead of flipping from frame to fram
       if (Math.abs(a.lean) !== 1) wrong++;
       // Only a walking step changes the side (the step that arrives already shows the next standing state).
       if (a.lean !== before[i].lean) { changes++; if (!before[i].walking && a.state !== "walk") standingFlips++; }
-      if (a.state === "walk" && a.moved && Math.abs(a.hx) > LEAN_DEAD && a.lean !== Math.sign(a.hx)) wrong++;
+      // The side follows the drawn facing (fx), which trails the heading by a few frames through a turn.
+      if (a.state === "walk" && a.moved && Math.abs(a.fx) > LEAN_DEAD && a.lean !== Math.sign(a.fx)) wrong++;
       if (facing4(a.hx, a.hz) === 0) { const tally = a.state === "walk" ? facing : standing; if (a.lean < 0) tally.left++; else tally.right++; }
     });
     before = crowd.ants.map((a) => ({ lean: a.lean, walking: a.state === "walk" }));
@@ -292,5 +293,156 @@ test("the side holds inside the dead zone instead of flipping from frame to fram
   for (const tally of [facing, standing]) {
     expect(tally.left / (tally.left + tally.right)).toBeGreaterThan(.25);
     expect(tally.left / (tally.left + tally.right)).toBeLessThan(.75);
+  }
+});
+
+// Regression: "the legs do not move". Seen from the side the two stride frames are the same scissor of legs, so a walk
+// that only alternates them (as hope ants, diagonal neutral ants and the visitor did) looks like sliding.
+test("every costume and heading walks stride, feet together, other stride, feet together", () => {
+  const feet = (key: string) => key.split(".")[1];
+  for (const variant of ["neutral", "fear", "hope"] as const) for (let dir8 = 0; dir8 < 8; dir8++) {
+    const { hx, hz } = at(dir8 * -45), dir4 = facing4(hx, hz), lean = hx < 0 ? -1 : 1;
+    for (const [speed, dt, phase] of [[.85, 1 / 60, WALK_PHASE], [1.35, 1 / 30, WALK_PHASE], [1.35, 1 / 18, WALK_PHASE], [1.1, 1 / 30, WALK_PHASE * .6], [3, 1 / 30, .36]] as const) {
+      const keys: string[] = [];
+      for (let stride = 0, step = 0; step < Math.round(4 / dt); step++, stride += speed * dt) {
+        const walk = antWalkFrame(hasArt, variant, walkPose(stride, phase), dir8, dir4);
+        keys.push(antFrameCandidates(variant, walk.pose, walk.dir8, dir4, lean).find((c) => hasArt(c.key))!.key);
+      }
+      const runs = keys.reduce<{ key: string; n: number }[]>((all, key) => { const last = all[all.length - 1]; if (last?.key === key) last.n++; else all.push({ key, n: 1 }); return all; }, []);
+      const label = `${variant} ${ANT_DIRS[dir8]} at ${speed}/s, ${Math.round(1 / dt)} fps`;
+      // Its own costume in one direction throughout: three different pictures, never a neutral or turned stand-in.
+      expect(new Set(keys).size, label).toBe(3);
+      expect(keys.every((key) => key.startsWith(`${variant}.`)), label).toBe(true);
+      expect(new Set(keys.map((key) => key.split(".")[2])).size, label).toBe(1);
+      // Strides alternate and there is a feet-together frame between every two of them.
+      runs.forEach((run, i) => {
+        if (i + 2 >= runs.length) return;
+        const [now, next, after] = [feet(run.key), feet(runs[i + 1].key), feet(runs[i + 2].key)];
+        if (now === "walk-a" || now === "walk-b") { expect(["walk-p", "idle"], `${label}: ${now} then ${next}`).toContain(next); expect(after, label).toBe(now === "walk-a" ? "walk-b" : "walk-a"); }
+        else expect(["walk-a", "walk-b"], `${label}: ${now} then ${next}`).toContain(next);
+      });
+      // No frame is held for longer than a phase (plus one rendered frame), so the legs never freeze.
+      expect(Math.max(...runs.map((run) => run.n)) * dt, label).toBeLessThanOrEqual(phase / speed + dt + EPS);
+    }
+  }
+  // The body is lowest in the middle of a stride frame and highest as the feet pass.
+  expect(walkLift(WALK_PHASE * .5)).toBeCloseTo(0); expect(walkLift(WALK_PHASE * 1.5)).toBeCloseTo(1); expect(walkLift(WALK_PHASE * 2.5)).toBeCloseTo(0);
+});
+
+test("walkers in the simulation keep stepping and do not flicker between directions", () => {
+  for (const [seed, count, view, front] of [[5, 20, WIDE, 7], [9, 12, { cx: 0, halfW: 3.25, camZ: 27.115, dist: 32, zoomed: true }, 4.6]] as const) {
+    const e = env({ view, front }), crowd = createCrowd(seed);
+    crowd.sync(count, e);
+    const held = crowd.ants.map(() => 0), last = crowd.ants.map((a) => a.pose), turned = crowd.ants.map(() => [] as { step: number; from: string }[]), dirs = crowd.ants.map((a) => `${a.dir8}/${a.dir4}/${a.lean}`);
+    let longest = 0, flicker = 0, walked = 0, astray = 0, rawFlicker = 0;
+    const raw = crowd.ants.map((a) => ({ dir: facing8(a.hx, a.hz), step: -99, before: -1 }));
+    run(crowd, 240, e, (step) => crowd.ants.forEach((a, i) => {
+      const walking = a.state === "walk" && a.moved;
+      if (walking) walked++;
+      held[i] = walking && a.pose === last[i] ? held[i] + 1 : 0; last[i] = a.pose;
+      longest = Math.max(longest, held[i]);
+      const dir = `${a.dir8}/${a.dir4}/${a.lean}`;
+      if (dir !== dirs[i]) {
+        // Going back to a direction it left less than a fifth of a second ago is a flicker; a turn only moves on.
+        if (a.state === "walk" && turned[i].some((t) => t.from === dir && step - t.step < 6)) flicker++;
+        turned[i].push({ step, from: dirs[i] }); if (turned[i].length > 6) turned[i].shift();
+        dirs[i] = dir;
+      }
+      // For comparison: the same count on the unsteadied heading, which is what used to be drawn.
+      const heading = facing8(a.hx, a.hz), r = raw[i];
+      if (heading !== r.dir) { if (a.state === "walk" && heading === r.before && step - r.step < 6) rawFlicker++; r.before = r.dir; r.step = step; r.dir = heading; }
+      // Standing ants face exactly where they look.
+      if (a.state !== "walk" && (a.dir8 !== facing8(a.hx, a.hz) || a.dir4 !== facing4(a.hx, a.hz))) astray++;
+    }));
+    expect(astray).toBe(0);
+    note(`seed ${seed}: walking ant-steps ${walked}, longest held pose ${(longest * DT).toFixed(2)} s, direction flickers ${flicker} (the raw heading would give ${rawFlicker})`);
+    expect(walked).toBeGreaterThan(1000);
+    expect(longest * DT).toBeLessThanOrEqual(WALK_PHASE / .85 + DT + EPS);
+    expect(flicker).toBe(0);
+  }
+});
+
+// "When resting, ants often look UP at the wall": a wall gazer alternates between a level gaze and looking up.
+test("wall gazers look up about half the time, a few seconds at a go, each on its own clock", () => {
+  for (const [count, e] of [[20, env()], [12, env({ restless: true })], [20, env({ hopeful: true })]] as const) {
+    const crowd = createCrowd(5); crowd.sync(count, e);
+    let gazing = 0, up = 0, together = 0, longest = 0, flips = 0, stray = 0;
+    const held = crowd.ants.map(() => 0); let before = crowd.ants.map((a) => `${a.state}.${a.pose}`);
+    run(crowd, 240, e, () => {
+      let moved = 0;
+      crowd.ants.forEach((a, i) => {
+        // Only a standing wall gazer looks up, and only with its back to the camera, where the art exists.
+        if (a.pose === "look") { up++; if (a.state !== "gaze" || a.dir8 < 3 || a.dir8 > 5) stray++; }
+        if (a.state === "gaze") gazing++;
+        // A head move: the same stand, the other pose.
+        if (a.state === "gaze" && before[i].startsWith("gaze.") && before[i] !== `gaze.${a.pose}`) moved++;
+        held[i] = a.pose === "look" ? held[i] + DT : 0; longest = Math.max(longest, held[i]);
+      });
+      if (moved) flips++; if (moved >= Math.max(4, count / 4)) together++;
+      before = crowd.ants.map((a) => `${a.state}.${a.pose}`);
+    });
+    note(`${count} ants${e.restless ? " restless" : e.hopeful ? " hopeful" : ""}: looking up ${(up / gazing * 100).toFixed(1)}% of gaze time, longest ${longest.toFixed(1)} s, ${flips} head moves`);
+    expect(stray).toBe(0);
+    expect(up / gazing).toBeGreaterThan(.38); expect(up / gazing).toBeLessThan(.62);
+    expect(longest).toBeGreaterThan(3); expect(longest).toBeLessThanOrEqual(6 + DT + EPS);
+    expect(flips).toBeGreaterThan(count * 5);
+    expect(together).toBe(0); // never a wave of heads: four or more (a quarter of the crowd) moving in the same thirtieth of a second
+  }
+  // Deterministic, and the head timing has its own random stream: where and when ants walk does not depend on it.
+  const poses = (seed: number) => { const crowd = createCrowd(seed), log: string[] = []; crowd.sync(20, env()); run(crowd, 60, env(), () => log.push(crowd.ants.map((a) => a.pose[0]).join(""))); return log; };
+  expect(poses(3)).toEqual(poses(3)); expect(poses(3)).not.toEqual(poses(4));
+});
+
+test("a hopeful index takes fewer phones out and changes nothing else about the walk", () => {
+  const busy = (hopeful: boolean) => { const crowd = createCrowd(9), e = env({ hopeful }); crowd.sync(20, e); let n = 0, steps = 0; run(crowd, 600, e, () => { steps++; n += crowd.ants.filter((a) => a.state === "phone" || a.state === "sigh").length; }); return n / steps / 20; };
+  const plain = busy(false), light = busy(true);
+  note(`share of ants on the phone or sighing: ${(plain * 100).toFixed(1)}% -> hopeful ${(light * 100).toFixed(1)}%`);
+  expect(light).toBeLessThan(plain * .75); expect(light).toBeGreaterThan(0);
+});
+
+test("looking up and the bright faces resolve to their own art and fall back without changing costume or direction", () => {
+  const pick = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number, bright = false, keys?: string[]) => antFrameCandidates(variant, pose, dir8, dir4, 0, bright).find((c) => keys ? keys.includes(c.key) : hasArt(c.key))!;
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const dir of [3, 4, 5]) {
+    expect(pick(variant, "look", dir, 4)).toEqual({ key: `${variant}.look.${ANT_DIRS[dir]}`, mirror: false, posed: true });
+    // Without the art: the same ant's level gaze in the same direction.
+    expect(pick(variant, "look", dir, 4, false, Object.keys(ATLAS).filter((key) => !key.includes(".look.")))).toEqual({ key: `${variant}.idle.${ANT_DIRS[dir]}`, mirror: false, posed: false });
+    expect(pick(variant, "look", dir, 4, true, BASE)?.key).toBe(`${variant}.idle.b`);
+  }
+  for (const variant of ["neutral", "hope"] as const) {
+    for (const pose of ["idle", "walk-a", "walk-b", "walk-p"] as const) for (const dir of [0, 2, 4, 6]) expect(pick(variant, pose, dir, dir, true).key).toBe(`${variant}-bright.${pose}.${ANT_DIRS[dir]}`);
+    for (const dir of [3, 4, 5]) expect(pick(variant, "look", dir, 4, true).key).toBe(`${variant}-bright.look.${ANT_DIRS[dir]}`);
+    // No bright art: the plain frame of the same pose and direction, not a bright frame of another one.
+    for (const dir of [1, 3, 5, 7]) expect(pick(variant, "idle", dir, dir - 1, true).key).toBe(`${variant}.idle.${ANT_DIRS[dir]}`);
+    for (const dir of [0, 2, 4, 6]) expect(pick(variant, "phone", dir, dir, true).key).toBe(`${variant}.phone.${ANT_DIRS[dir]}`);
+    // Not bright: never a bright frame.
+    for (const pose of ["idle", "walk-a", "walk-b", "walk-p", "phone", "sigh", "look"] as const) for (let dir = 0; dir < 8; dir++) expect(antFrameCandidates(variant, pose, dir, dir % 2 ? dir - 1 : dir).some((c) => c.key.includes("-bright"))).toBe(false);
+  }
+  // The fear ant has no bright form.
+  for (const pose of ["idle", "walk-a", "walk-b", "walk-p", "phone", "sigh", "look"] as const) for (let dir = 0; dir < 8; dir++) expect(antFrameCandidates("fear", pose, dir, dir % 2 ? dir - 1 : dir, 1, true)).toEqual(antFrameCandidates("fear", pose, dir, dir % 2 ? dir - 1 : dir, 1));
+});
+
+// The art facts for the bright sheets: both passing steps are drawn turned to the viewer's left, the rest right.
+const BRIGHT_LEFT = ["neutral-bright.walk-p.f", "hope-bright.walk-p.f"];
+test("a bright ant keeps one face, one costume and one direction through a walk cycle, and turns the way it heads", () => {
+  for (const variant of ["neutral", "hope"] as const) for (let dir8 = 0; dir8 < 8; dir8++) {
+    const { hx, hz } = at(dir8 * -45), dir4 = facing4(hx, hz), lean = hx < 0 ? -1 : 1, keys: string[] = [];
+    for (let stride = 0; stride < 4; stride += WALK_PHASE / 3) {
+      const walk = antWalkFrame(hasArt, variant, walkPose(stride), dir8, dir4, true);
+      const found = antFrameCandidates(variant, walk.pose, walk.dir8, dir4, lean, walk.bright).find((c) => hasArt(c.key))!;
+      keys.push(found.key);
+      if (found.key.endsWith(".f")) expect((BRIGHT_LEFT.includes(found.key) ? -1 : 1) * (found.mirror ? -1 : 1), `${found.key} lean ${lean}`).toBe(lean);
+    }
+    const label = `${variant} ${ANT_DIRS[dir8]}: ${[...new Set(keys)].join(" ")}`;
+    expect(new Set(keys).size, label).toBe(3);
+    expect(new Set(keys.map((key) => key.split(".")[0])).size, label).toBe(1);
+    expect(new Set(keys.map((key) => key.split(".")[2])).size, label).toBe(1);
+    // Toward the camera and sideways the bright face shows; a neutral ant heading away on a diagonal keeps its plain diagonal walk.
+    expect(keys[0].split(".")[0], label).toBe(variant === "neutral" && (dir8 === 3 || dir8 === 5) ? "neutral" : `${variant}-bright`);
+  }
+  for (const variant of ["neutral", "hope"] as const) for (const lean of [-1, 1]) expect(antFrameCandidates(variant, "idle", 0, 0, lean, true)[0]).toEqual({ key: `${variant}-bright.idle.f`, mirror: lean < 0, posed: true });
+  // Fear walks exactly as before under a hopeful index.
+  for (let dir8 = 0; dir8 < 8; dir8++) for (const pose of ["walk-a", "walk-b", "walk-p"] as const) {
+    const dir4 = dir8 % 2 ? dir8 - 1 : dir8;
+    expect(antWalkFrame(hasArt, "fear", pose, dir8, dir4, true)).toEqual({ ...antWalkFrame(hasArt, "fear", pose, dir8, dir4), bright: false });
   }
 });

@@ -19,7 +19,10 @@ const BASE = { cols: ["f", "l", "r", "b"], rows: [["neutral", "idle"], ["neutral
 // Extra sheets. A missing file is skipped. A null in cols or rows drops that column or row (the runtime mirrors or falls back).
 // norm: k = ref / median cell height of that row, snapped to 1 within 3%. The refs are the heights these sheets came out
 // at, because their heads measure the same as the base sheet's: the bowed or mid-step poses are simply shorter.
-// tone: [sheet row, base row] showing the same character. The generated sheets came out paler than ants.png, so each is
+// Frame keys are "variant.pose.dir". Variants: neutral | fear | hope, plus neutral-bright | hope-bright: the same two ants
+// with the open-eyed face they wear while the index is in the hope state (fear has no bright form). Poses: idle | walk-a |
+// walk-b | walk-p | phone | sigh | look (standing, head tipped back to look up at the wall; drawn from behind only).
+// tone: [sheet row, base row, sheet col?, base col?] showing the same character (the whole rows, or one cell of each). The generated sheets came out paler than ants.png, so each is
 // multiplied per channel until that row's mean colour equals the base row's; otherwise an ant changes shade between frames.
 const SHEETS = [
   { file: "art/world/source/ants-diagonal.png", cols: ["fl", "bl", "br", "fr"],
@@ -32,7 +35,26 @@ const SHEETS = [
   // Row 5 is a neutral idle ant used only as the tone reference.
   { file: "art/world/source/ants-fear.png", cols: ["f", "l", "r", "b"],
     rows: [["fear", "walk-a"], ["fear", "walk-b"], ["fear", "walk-p"], ["fear", "sigh"], null], norm: { row: 4, ref: 228 }, tone: [4, 0] },
+  // Looking up at the wall, from behind. Column 4 (side profile) is dropped: wall gazers only face bl, b or br. There is no
+  // comparison row, so the tone comes from the plain back view of the neutral ant against the base sheet's back view.
+  { file: "art/world/source/ants-lookup.png", cols: ["b", "bl", "br", null],
+    rows: [["neutral", "look"], ["fear", "look"], ["hope", "look"], ["neutral-bright", "look"], ["hope-bright", "look"]], norm: { row: 0, ref: 232 }, tone: [0, 0, 0, 3] },
+  // Bright faces for the hope state. Row 5 of each is the unchanged dull ant, used only as the tone reference.
+  { file: "art/world/source/ants-bright.png", cols: ["f", "l", "r", "b"],
+    rows: [["neutral-bright", "idle"], ["neutral-bright", "walk-a"], ["neutral-bright", "walk-b"], ["neutral-bright", "walk-p"], null], norm: { row: 0, ref: 232 }, tone: [4, 0] },
+  { file: "art/world/source/ants-bright-hope.png", cols: ["f", "l", "r", "b"],
+    rows: [["hope-bright", "idle"], ["hope-bright", "walk-a"], ["hope-bright", "walk-b"], ["hope-bright", "walk-p"], null], norm: { row: 0, ref: 236 }, tone: [4, 4] },
 ];
+// Cells mirrored left-right while composing (the source sheet is untouched). The scarf ant's straight back look-up cells
+// were drawn with the scarf tail on the other side from its standing back view, so the tail would jump across its back
+// every time it raised or lowered its head.
+const FLIP = new Set(["hope.look.b", "hope-bright.look.b"]);
+export function flipCell(png, [x, y, w, h]) {
+  for (let py = y; py < y + h; py++) for (let a = x, b = x + w - 1; a < b; a++, b--) for (let c = 0; c < 4; c++) {
+    const i = (py * png.width + a) * 4 + c, j = (py * png.width + b) * 4 + c, value = png.data[i];
+    png.data[i] = png.data[j]; png.data[j] = value;
+  }
+}
 // Hand-fixed anchors by frame key (px from the cell's left edge), e.g. { "fear.phone.l": 84 }.
 const AX = {};
 
@@ -188,7 +210,8 @@ function build(sourceDir, outDir) {
     result.notes.forEach((note) => console.log(`  note: ${note}`));
     if (result.errors.length) fail(`FAIL ${sheet.file}\n${report(result.cells)}`, result.errors);
     if (sheet.tone) {
-      const want = meanColour(base, atlas.cells[sheet.tone[1]]), have = meanColour(png, result.cells[sheet.tone[0]]);
+      const [row, baseRow, col, baseCol] = sheet.tone, pick = (cells, c) => c === undefined ? cells : [cells[c]];
+      const want = meanColour(base, pick(atlas.cells[baseRow], baseCol)), have = meanColour(png, pick(result.cells[row], col));
       const gain = want.map((value, c) => Math.max(.6, Math.min(1.4, have[c] ? value / have[c] : 1)));
       applyGain(png, gain);
       console.log(`  tone gain ${gain.map((value) => value.toFixed(3)).join(" ")}`);
@@ -197,7 +220,7 @@ function build(sourceDir, outDir) {
     const raw = sheet.rows[sheet.norm.row] ? sheet.norm.ref / median(result.cells[sheet.norm.row].map((cell) => cell[3])) : 1;
     const k = raw >= .97 && raw <= 1.03 ? 1 : Math.round(raw * 1000) / 1000;
     let count = 0;
-    sheet.rows.forEach((row, r) => row && sheet.cols.forEach((dir, c) => { if (dir) { add(`${row[0]}.${row[1]}.${dir}`, png, result.cells[r][c], k, row[2]); count++; } }));
+    sheet.rows.forEach((row, r) => row && sheet.cols.forEach((dir, c) => { if (dir) { if (FLIP.has(`${row[0]}.${row[1]}.${dir}`)) flipCell(png, result.cells[r][c]); add(`${row[0]}.${row[1]}.${dir}`, png, result.cells[r][c], k, row[2]); count++; } }));
     extras.push(sheet.file);
     console.log(`  ${count} frames, k ${k}`);
   }
@@ -206,13 +229,19 @@ function build(sourceDir, outDir) {
   const placed = Object.entries(frames).map(([key, frame]) => ({ key, ...frame, at: frame.sheet === base ? [frame.rect[0], frame.rect[1]] : null }));
   if (extras.length) {
     const loose = placed.filter((frame) => !frame.at).sort((a, b) => b.rect[3] - a.rect[3]);
-    width = Math.max(width, ...loose.map((frame) => frame.rect[2] + PAD * 2));
-    let x = PAD, y = base.height + PAD, shelf = 0;
-    for (const frame of loose) {
-      if (x + frame.rect[2] + PAD > width) { x = PAD; y += shelf + PAD; shelf = 0; }
-      frame.at = [x, y]; x += frame.rect[2] + PAD; shelf = Math.max(shelf, frame.rect[3]);
+    // The base sheet's width is kept while everything fits under it; past MAX_SIZE the atlas doubles in width and the
+    // shelves start beside the base sheet instead of below it.
+    for (const wide of [base.width, base.width * 2]) {
+      width = Math.max(wide, ...loose.map((frame) => frame.rect[2] + PAD * 2));
+      const start = (top) => width > base.width + PAD && top < base.height + PAD ? base.width + PAD : PAD;
+      let y = width > base.width + PAD ? PAD : base.height + PAD, x = start(y), shelf = 0;
+      for (const frame of loose) {
+        if (x + frame.rect[2] + PAD > width) { y += shelf + PAD; x = start(y); shelf = 0; }
+        frame.at = [x, y]; x += frame.rect[2] + PAD; shelf = Math.max(shelf, frame.rect[3]);
+      }
+      height = Math.max(base.height, y + shelf + PAD);
+      if (height <= MAX_SIZE) break;
     }
-    height = y + shelf + PAD;
     if (width > MAX_SIZE || height > MAX_SIZE) fail("FAIL compose", [`atlas ${width}x${height} exceeds ${MAX_SIZE}`]);
     out = new PNG({ width, height });
     PNG.bitblt(base, out, 0, 0, base.width, base.height, 0, 0);
@@ -223,7 +252,7 @@ function build(sourceDir, outDir) {
     for (let i = 0; i < out.data.length; i += 4) {
       if (out.data[i + 3] <= ALPHA) { out.data.fill(0, i, i + 4); continue; }
       out.data[i + 3] = 255;
-      if (i >= base.height * width * 4) for (let c = 0; c < 3; c++) out.data[i + c] = (out.data[i + c] & 0xF8) | (out.data[i + c] >> 5);
+      if (i >= base.height * width * 4 || (i / 4) % width >= base.width) for (let c = 0; c < 3; c++) out.data[i + c] = (out.data[i + c] & 0xF8) | (out.data[i + c] >> 5);
     }
     image = `/${ATLAS_IMAGE.replace(/^public\//, "")}`;
   }

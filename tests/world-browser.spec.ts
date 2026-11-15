@@ -55,6 +55,9 @@ test("stock and community scope stays in same layer; evidence filter and origina
   await page.getByRole("button", { name: "클린필터 끄기", exact: true }).click();
   await expect(page.getByRole("link", { name: /삼성전자 시발/ }).first()).toBeVisible();
   await page.getByRole("tab", { name: "지수", exact: true }).click();
+  // The index tab offers communities only; stocks are chosen in the ecosystem/battle scenes and the feed tab.
+  await expect(dialog(page).getByRole("heading", { name: "커뮤니티 선택", exact: true })).toBeVisible();
+  await expect(dialog(page).locator(".world-detail-selection button")).toHaveText([/^토스증권 ·/, /^뽐뿌 ·/, /^블라인드 ·/, /^디시 4종 ·/]);
   await page.getByRole("button", { name: /^토스증권 ·/ }).click();
   await expect(page.getByRole("dialog")).toHaveCount(1); await expect(dialog(page)).toHaveAccessibleName(/토스증권/);
   await page.keyboard.press("Tab");
@@ -228,9 +231,10 @@ test("a dialog opens on the side of the wall panel that opened it", async ({ pag
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
 });
 
-test("plaza shows about twenty roaming ants that mostly face the wall; a gazing ant opens its evidence", async ({ page }) => {
+test("plaza shows about twenty roaming ants that mostly face the wall; clicking an ant only walks the visitor there", async ({ page }) => {
   test.setTimeout(60_000);
   const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd());
+  const visitor = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.visitor());
   await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
   await expect(stage(page)).toHaveAttribute("data-population", "21");
   // No fixed sleep: the crowd is spread and mostly wall-facing from its first frame, and stays so.
@@ -241,27 +245,80 @@ test("plaza shows about twenty roaming ants that mostly face the wall; a gazing 
   expect(Math.min(...ants.map((a) => a.z))).toBeLessThan(-1);
   // Most stand with their backs to the camera (bl, b, br), looking at the wall.
   expect(ants.filter((a) => a.state === "gaze" && a.dir >= 3 && a.dir <= 5).length).toBeGreaterThanOrEqual(10);
+  // Ants are not click targets: a click that lands on one opens nothing and the visitor walks there like any floor click.
   await expect(async () => {
-    await page.keyboard.press("Escape");
     const box = (await page.locator("canvas").boundingBox())!;
-    // Only ants whose body is not under a HUD element or wall button; prefer the one nearest mid-screen.
+    // A standing ant whose legs are not under a HUD element or wall button, away from the visitor, nearest mid-screen.
     const picked = await page.locator("canvas").evaluate((node) => {
-      const canvas = node as HTMLCanvasElement & { worldMetrics: RenderMetrics }, bounds = canvas.getBoundingClientRect();
-      return canvas.worldMetrics.crowd().filter((a) => a.state === "gaze" && document.elementFromPoint(bounds.left + a.sx, bounds.top + a.sy) === canvas)
+      const canvas = node as HTMLCanvasElement & { worldMetrics: RenderMetrics }, bounds = canvas.getBoundingClientRect(), me = canvas.worldMetrics.visitor();
+      const ant = canvas.worldMetrics.crowd().filter((a) => a.state === "gaze" && a.z > -1.5 && Math.hypot(a.x - me.x, a.z - me.z) > 2 && document.elementFromPoint(bounds.left + a.sx, bounds.top + a.sy + a.sh * .35) === canvas)
         .sort((a, b) => Math.abs(a.sy - bounds.height / 2) - Math.abs(b.sy - bounds.height / 2))[0] ?? null;
+      return ant && { ant, far: Math.hypot(ant.x - me.x, ant.z - me.z) };
     });
     expect(picked).not.toBeNull();
-    await page.mouse.click(box.x + picked!.sx, box.y + picked!.sy);
-    await expect(dialog(page).locator(".world-evidence-tabs")).toBeVisible({ timeout: 2000 });
-    // The evidence dialog opens on the side of the stage where the clicked ant stands.
-    await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", picked!.sx < box.width / 3 ? "left" : picked!.sx > box.width * 2 / 3 ? "right" : "center");
+    // On the sprite, low on its legs: the floor under that pixel is right behind the ant's feet.
+    await page.mouse.click(box.x + picked!.ant.sx, box.y + picked!.ant.sy + picked!.ant.sh * .35);
+    // The click went through the ant to the floor, so the visitor closes most of the distance.
+    await expect.poll(async () => { const me = await visitor(); return Math.hypot(picked!.ant.x - me.x, picked!.ant.z - me.z); }, { timeout: 4000 }).toBeLessThan(Math.max(1.6, picked!.far / 2));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   }).toPass({ timeout: 20_000 });
-  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await webgl(page);
   await expect(stage(page)).toHaveAttribute("data-population", "13");
   await expect.poll(async () => (await crowd()).length).toBe(12);
   const phone = await crowd();
   expect(phone.filter((a) => a.sx >= 0 && a.sx <= 390).length).toBeGreaterThanOrEqual(5);
+  // The zoomed phone view draws the ants smaller: none is taller than about a tenth of the screen.
+  const size = await page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.antSize);
+  expect(size).toBeGreaterThanOrEqual(.6); expect(size).toBeLessThan(.7);
+  expect(Math.max(...phone.map((a) => a.sh), (await visitor()).sh)).toBeLessThan(844 * .1);
+  // Whoever walks is drawn in a walk frame of the direction it faces (or its standing frame as the feet pass).
+  for (const a of phone.filter((a) => a.state === "walk")) expect(a.frame).toMatch(/^(neutral|fear|hope)\.(walk-[abp]|idle)\.(f|fl|l|bl|b|br|r|fr)~?$/);
+});
+
+test("resting ants look up at the wall; when the index turns to hope the faces brighten in place", async ({ page }) => {
+  test.setTimeout(60_000);
+  const read = () => page.locator("canvas").evaluate((node) => { const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics; return { band: m.band, bright: m.bright, crowd: m.crowd(), visitor: m.visitor() }; });
+  await page.setViewportSize({ width: 1440, height: 900 }); const frame = await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await expect.poll(async () => (await read()).crowd.length).toBe(20);
+  // Default fixture: the index panel reads 중립, so nobody wears a bright face.
+  const calm = await read();
+  expect(calm.band).toBe("neutral"); expect(calm.bright).toBe(false);
+  expect([...calm.crowd, calm.visitor].filter((a) => a.frame.includes("-bright"))).toEqual([]);
+  // Looking up happens only while gazing at the wall, back to the camera, and some gazer is doing it at any time.
+  const looking = (crowd: typeof calm.crowd) => crowd.filter((a) => /\.look\.(bl|b|br)~?$/.test(a.frame));
+  await expect.poll(async () => looking((await read()).crowd).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
+  for (const a of (await read()).crowd) if (a.frame.includes(".look.")) { expect(a.state).toBe("gaze"); expect([3, 4, 5]).toContain(a.dir); }
+  // A data refresh moves the index to 희망: same ants, same places, brighter faces.
+  const hopeful = buildWorldFrame(worldRows().map((row, i) => row.label === "bearish" && i % 4 ? { ...row, label: "bullish" as const, sentiment_score: 8 } : row));
+  expect(hopeful.overall.fear_ratio).toBeGreaterThan(0); expect(frame.overall.mood).toBe("mixed");
+  const standing = (await read()).crowd.map((a, i) => ({ ...a, i })).filter((a) => a.state === "gaze");
+  await page.route("**/api/internal/world", (route) => route.fulfill({ json: hopeful }));
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  await expect(page.locator(".world-root")).toHaveAttribute("data-paused", "true");
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: false }); document.dispatchEvent(new Event("visibilitychange")); });
+  await expect.poll(async () => (await read()).bright, { timeout: 10_000 }).toBe(true);
+  const bright = await read();
+  expect(["bullish", "extreme_bullish"]).toContain(bright.band);
+  expect(bright.crowd).toHaveLength(20);
+  // Nobody was moved by the refresh: whoever stood still stands in the same spot.
+  const kept = standing.filter((a) => bright.crowd[a.i].state === "gaze");
+  expect(kept.length).toBeGreaterThanOrEqual(5);
+  for (const a of kept) expect(Math.hypot(bright.crowd[a.i].x - a.x, bright.crowd[a.i].z - a.z)).toBeLessThan(.01);
+  // Neutral and hope ants (and the visitor) show bright frames; fear ants never do; looking up carries on.
+  expect(bright.visitor.frame).toMatch(/^neutral-bright\./);
+  await expect.poll(async () => (await read()).crowd.filter((a) => /^(neutral|hope)-bright\./.test(a.frame)).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(8);
+  await expect.poll(async () => looking((await read()).crowd).filter((a) => a.frame.includes("-bright.look.")).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
+  expect((await read()).crowd.filter((a) => a.frame.startsWith("fear-")).length).toBe(0);
+  // Walkers keep one face through the cycle: every frame of a bright walk is bright, in one direction.
+  const walk = await page.locator("canvas").evaluate(async (node) => {
+    const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics, seen: Record<number, string[]> = {};
+    for (let n = 0; n < 90; n++) { metrics.crowd().forEach((a, i) => { if (a.state === "walk") (seen[i] ??= []).push(a.frame); else delete seen[i]; }); await new Promise((done) => requestAnimationFrame(done)); }
+    return Object.values(seen);
+  });
+  for (const frames of walk) {
+    const skins = new Set(frames.map((key) => key.split(".")[0]));
+    expect(skins.size, frames.join(" ")).toBe(1);
+  }
 });
 
 test("first visit guidance lives inside menu; cookie banner does not cover information", async ({ page }) => {

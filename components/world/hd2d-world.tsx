@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { WorldScene, WorldSide } from "@/lib/world";
+import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
@@ -8,7 +8,7 @@ import { WALL_PANEL_IDS, type WallModel, type WallView } from "@/lib/world-wall"
 
 type Props = RenderState & {
   reduced: boolean; emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
-  onEvidence: (side: WorldSide) => void; onScene: (scene: WorldScene) => void; onStep: () => void;
+  onScene: (scene: WorldScene) => void; onStep: () => void;
 };
 // Plaza entrances sit on the floor strip that every framed view keeps visible.
 const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
@@ -36,7 +36,7 @@ export default function HD2DWorld(props: Props) {
         const next = latest.current.scene === "plaza" ? ENTRANCES.find((e) => Math.hypot(e.x - position.x, e.z - position.z) < 1.4)?.scene ?? null : null;
         if (nearbyRef.current !== next) { nearbyRef.current = next; setNearby(next); }
       },
-      evidence(side) { latest.current.onEvidence(side); }, step() { latest.current.onStep(); },
+      step() { latest.current.onStep(); },
       failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
     })).then((instance) => {
       if (!instance) return;
@@ -117,6 +117,6 @@ export default function HD2DWorld(props: Props) {
     {props.scene !== "plaza" && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
     {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
-    <p className="world-render-note">{mode === "loading" ? "화면 불러오는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동 · 개미 선택으로 근거 확인"}</p>
+    <p className="world-render-note">{mode === "loading" ? "화면 불러오는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동"}</p>
   </div>;
 }

@@ -2,18 +2,26 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
-import { antFrameCandidates, antWalkFrame, createCrowd, facing4, facing8, leanOf, type AntPose, type AntVariant } from "@/lib/world-crowd";
+import { WALK_PHASE, antFrameCandidates, antWalkFrame, createCrowd, facing8, leanOf, walkLift, walkPose, type AntPose, type AntVariant } from "@/lib/world-crowd";
 import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
 import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallTextPanelId, type WallView } from "@/lib/world-wall";
+import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
 import antAtlas from "./ant-atlas.json";
 
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean };
 export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null;
+  /** Sprite scale of this frame (see ANT_VIEW): 1 on wide views, down to ANT_SMALL on a zoomed phone view. */
+  antSize: number;
+  /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
+  band: string; bright: boolean;
   /** Plaza NPC ants (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body. */
-  crowd: () => { x: number; z: number; state: string; dir: number; sx: number; sy: number }[];
-  visitor: () => Point };
+  crowd: () => AntMetric[];
+  /** The visitor's ant, in every scene. */
+  visitor: () => AntMetric };
+/** `frame` is the atlas frame drawn last ("key", or "key~" when mirrored; empty outside the plaza); `sh` is the sprite's height on screen in CSS px. */
+export type AntMetric = Point & { state: string; dir: number; sx: number; sy: number; sh: number; frame: string };
 export type WorldRenderer = {
   update: (state: RenderState) => void;
   setView: (view: WallView) => void;
@@ -32,7 +40,6 @@ const TEXT_PANELS: WallTextPanelId[] = ["market", "room", "index", "feed"];
 export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: RenderState, events: {
   panels?: (rects: Record<WallPanelId, WallRect> | null) => void;
   avatar?: (x: number, y: number, position: Point) => void;
-  evidence?: (side: WorldSide) => void;
   step?: () => void;
   failure?: () => void;
 } = {}): Promise<WorldRenderer> {
@@ -213,18 +220,18 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   cueMaterial.onBeforeCompile = antMaterial.onBeforeCompile;
   cueMaterial.customProgramCacheKey = () => "world-ant-cue-v1"; materials.push(cueMaterial); geometry.push(cueGeometry);
   const cues = new THREE.InstancedMesh(cueGeometry, cueMaterial, 48); cues.instanceMatrix.setUsage(THREE.DynamicDrawUsage); cues.frustumCulled = false;
-  cues.count = 0; cues.visible = false; cues.raycast = () => {}; scene.add(cues);
+  cues.count = 0; cues.visible = false; scene.add(cues);
   // Atlas v2 frames: [x, y, w, h, k, ax]. `frameOf` resolves a pose through the fallback chain once and remembers it.
   const FRAMES = antAtlas.frames as Record<string, number[] | undefined>;
-  type AntFrame = { rect: number[]; mirror: boolean; posed: boolean };
+  type AntFrame = { rect: number[]; mirror: boolean; posed: boolean; key: string };
   const frameMemo = new Map<string, AntFrame>();
   const hasFrame = (key: string) => !!FRAMES[key];
-  const frameOf = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number, lean: number): AntFrame => {
-    const id = `${variant}.${pose}.${dir8}.${dir4}.${lean}`;
+  const frameOf = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number, lean: number, bright: boolean): AntFrame => {
+    const id = `${variant}.${pose}.${dir8}.${dir4}.${lean}.${bright ? 1 : 0}`;
     let frame = frameMemo.get(id);
     if (!frame) {
-      const found = antFrameCandidates(variant, pose, dir8, dir4, lean).find((candidate) => FRAMES[candidate.key]);
-      frame = found ? { rect: FRAMES[found.key]!, mirror: found.mirror, posed: found.posed } : { rect: [...antAtlas.cells[0][0], 1, antAtlas.cells[0][0][2] / 2], mirror: false, posed: false };
+      const found = antFrameCandidates(variant, pose, dir8, dir4, lean, bright).find((candidate) => FRAMES[candidate.key]);
+      frame = found ? { rect: FRAMES[found.key]!, mirror: found.mirror, posed: found.posed, key: found.key } : { rect: [...antAtlas.cells[0][0], 1, antAtlas.cells[0][0][2] / 2], mirror: false, posed: false, key: "neutral.idle.f" };
       frameMemo.set(id, frame);
     }
     return frame;
@@ -233,7 +240,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
-  let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1;
+  let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1, visitorStride = 0;
+  // The visitor runs (3 units a second), so its stride is longer than the crowd's walk.
+  const VISITOR_PHASE = .36;
+  // Sprites are sized for a frame that shows the whole wall. A phone's portrait frame shows a third of that width at the
+  // same pixels per unit, so the same ants would fill the screen: below ANT_VIEW world units of visible width they
+  // shrink in proportion, down to ANT_SMALL. It follows the eased lens, so zooming in and out resizes smoothly.
+  const ANT_VIEW = 11.7, ANT_SMALL = .6;
+  const antSize = () => Math.max(ANT_SMALL, Math.min(1, 2 * lens.halfW / ANT_VIEW));
   const CAMERA_DISTANCE = 32, CAMERA_HEIGHT = 8.4, WALL_Y0 = wallScreenY(0, WALL_PANEL_Z);
   // While turning, the camera also slides this far (world units per radian) toward the visitor.
   const CAMERA_SLIDE = 8;
@@ -244,12 +258,15 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // Eased camera frame; `fit` is the target.
   const lens = { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
   let viewDirty = true, snap = true, rectKey = "";
-  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null,
-    crowd: () => state.scene === "plaza" ? crowd.ants.slice(0, sideList.length).map((a) => {
-      const p = project(corner.set(a.x, .8, a.z));
-      return { x: a.x, z: a.z, state: a.state, dir: facing8(a.hx, a.hz), sx: p.x, sy: p.y };
-    }) : [],
-    visitor: () => ({ ...position }) };
+  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, antSize: 1, band: "neutral", bright: false,
+    crowd: () => state.scene === "plaza" ? crowd.ants.slice(0, sideList.length).map((a, i) => antMetric(i, a.x, a.z, a.state, a.dir8)) : [],
+    visitor: () => antMetric(sideList.length, position.x, position.z, path.length ? "walk" : "idle", heading8) };
+  // What was drawn last for each instance: atlas frame and sprite height in world units.
+  const shown: string[] = [], talls: number[] = [];
+  const antMetric = (i: number, x: number, z: number, state: string, dir: number): AntMetric => {
+    const tall = talls[i] ?? 0, p = project(corner.set(x, tall / 2, z)), top = project(corner.set(x, tall, z)).y, foot = project(corner.set(x, 0, z)).y;
+    return { x, z, state, dir, sx: p.x, sy: p.y, sh: foot - top, frame: shown[i] ?? "" };
+  };
   const gl = renderer.getContext() as WebGL2RenderingContext; const debug = gl.getExtension("WEBGL_debug_renderer_info");
   metrics.renderer = debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : "WebGL";
   const timer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
@@ -385,7 +402,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (distance > 1e-6) visitorLean = leanOf(dx / distance, visitorLean);
       if (distance < dt * 3) { position.x = target.x; position.z = target.z; path.shift(); }
       else { position.x += dx / distance * dt * 3; position.z += dz / distance * dt * 3; }
-    }
+      visitorStride += Math.min(distance, dt * 3);
+    } else visitorStride = 0;
     const turn = yawTarget(), mode = zoomed() ? 1 : 0;
     if (yaw !== turn || orbit !== mode) {
       yaw += (turn - yaw) * (state.paused ? 1 : 1 - Math.exp(-dt * 3));
@@ -398,15 +416,20 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
     const obstacles = worldObstacles(state.scene), plaza = state.scene === "plaza";
+    // When the 곡소리 지수 reads 희망 the plaza faces brighten. The band is the one the wall's index panel and portrait
+    // show (the same scope), read every draw: a data refresh that moves the index changes the faces in place.
+    const band = metrics.band = wallModel?.pierrot.band ?? stockPierrotArt(sum).band;
+    const hopeful = metrics.bright = plaza && (band === "bullish" || band === "extreme_bullish");
     if (plaza) {
       // The crowd follows the settled frame (`fit`), not the easing lens: a moving centre would read as a section change.
       // In the zoomed section view the section arrows sit on the front of the floor: keep the crowd clear of them.
-      const env = { obstacles, front: zoomed() ? Math.max(.8, front - 1.2) : front, visitor: position, restless: sum.mood === "mixed",
+      const env = { obstacles, front: zoomed() ? Math.max(.8, front - 1.2) : front, visitor: position, restless: sum.mood === "mixed", hopeful,
         view: { cx: fit.cx, halfW: fit.halfW, camZ: WALL_PANEL_Z + CAMERA_DISTANCE, dist: CAMERA_DISTANCE, zoomed: zoomed() } };
       crowd.sync(sideList.length, env);
       if (!state.paused) crowd.step(dt, env);
     }
     let cueCount = 0;
+    const size = metrics.antSize = antSize();
     right.set(1, 0, 0).applyQuaternion(camera.quaternion);
     const cue = (puff: boolean, x: number, y: number, z: number, w: number, h: number) => {
       const n = cueCount++;
@@ -415,17 +438,15 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     };
     for (let i = 0; i < ants.count; i++) {
       const visitor = i === sideList.length, side = sideList[i];
-      if (!plaza) {
-        let x = visitor ? position.x : -6.6 + (i * 73 % 130) / 10;
-        let z = visitor ? position.z : -1.7 + (i * 37 % 75) / 10;
-        if (!visitor && state.scene === "battle") { x = side === "bullish" ? -6.4 + (i * 29 % 45) / 10 : side === "bearish" ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (side === "neutral") z = 5.8; }
-        if (!visitor && !walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
-        const shift = state.paused || visitor ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
-        let row = visitor ? moving ? 1 + Math.floor(time / 180) % 2 : 0 : side === "bearish" ? 3 : side === "bullish" ? 4 : 0;
-        let column = visitor ? direction : i % 4;
+      if (!plaza && !visitor) {
+        let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
+        if (state.scene === "battle") { x = side === "bullish" ? -6.4 + (i * 29 % 45) / 10 : side === "bearish" ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (side === "neutral") z = 5.8; }
+        if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
+        const shift = state.paused ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
+        let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;
         // Mixed sentiment: short steps, pauses, and turns in opposite directions.
         // Phase offsets keep the crowd from moving in unison. Counts and evidence stay unchanged.
-        if (!visitor && !state.paused && sum.mood === "mixed" && side !== "neutral") {
+        if (!state.paused && sum.mood === "mixed" && side !== "neutral") {
           const phase = (time / 900 + i * .73) % 4;
           const goingRight = phase < 2;
           const stepping = phase < 1 || (phase >= 2 && phase < 3);
@@ -433,53 +454,58 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
           const offset = goingRight ? -.28 + .56 * progress : .28 - .56 * progress;
           if (walkable({ x: x + offset, z }, obstacles)) x += offset;
           column = goingRight ? 2 : 1;
-          row = stepping ? 1 + Math.floor(time / 180 + i) % 2 : 0;
+          // Stride, feet together, other stride, feet together: the two side-view strides alone look like frozen legs.
+          row = stepping ? [1, 0, 2, 0][Math.floor(time / 200 + i) % 4] : 0;
         }
         const rect = antAtlas.cells[row][column];
         offsets[i * 4] = rect[0] / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
         offsets[i * 4 + 2] = rect[2] / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
-        const scale = (visitor ? 1.12 : .9 + i % 3 * .06) * 1.45 / 235;
+        const scale = (.9 + i % 3 * .06) * 1.45 / 235 * size;
         // The frame squeezes heights by WALL_COS; sprites are stretched back so they keep their proportions.
         const tall = rect[3] * scale / WALL_COS;
-        dummy.position.set(x, shift + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
-        ants.setColorAt(i, color.set(visitor ? state.color : "#ffffff"));
-        dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(1, .55, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+        shown[i] = ""; talls[i] = tall;
+        dummy.position.set(x, shift * size + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
+        ants.setColorAt(i, color.set("#ffffff"));
+        dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size, .55 * size, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
         continue;
       }
-      // Plaza: the visitor keeps its own walk; NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
+      // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
       const a = visitor ? null : crowd.ants[i];
       const x = a ? a.x : position.x, z = a ? a.z : position.z;
-      const dir4 = a ? facing4(a.hx, a.hz) : [0, 2, 6, 4][direction];
-      const variant: AntVariant = side === "bearish" ? "fear" : side === "bullish" ? "hope" : "neutral";
-      let dir8 = a ? facing8(a.hx, a.hz) : heading8, pose: AntPose = a ? a.pose : moving ? Math.floor(time / 180) % 2 ? "walk-b" : "walk-a" : "idle";
-      if (a && a.state === "walk") ({ pose, dir8 } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, a.stride));
+      const dir4 = a ? a.dir4 : [0, 2, 6, 4][direction];
+      const variant: AntVariant = !a ? "neutral" : side === "bearish" ? "fear" : side === "bullish" ? "hope" : "neutral";
+      // The walk cycle advances with the floor covered, in steps that match the drawn size of the legs.
+      const walking = a ? a.state === "walk" && a.moved : moving, stride = a ? a.stride : visitorStride, phase = a ? WALK_PHASE * size : VISITOR_PHASE;
+      let dir8 = a ? a.dir8 : heading8, pose: AntPose = walking ? walkPose(stride, phase) : a ? a.pose : "idle";
+      let bright = hopeful;
+      if (walking || (a && a.state === "walk")) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, hopeful));
       // Camera-facing art is a three-quarter view: `lean` turns it to the side the ant is heading (mirrored where needed).
       const lean = a ? a.lean : visitorLean;
-      const frame = frameOf(a ? variant : "neutral", pose, dir8, dir4, lean);
+      const frame = frameOf(variant, pose, dir8, dir4, lean, bright);
       const rect = frame.rect, k = rect[4] ?? 1;
       offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
-      const scale = (visitor ? 1.12 : .9 + i % 3 * .06) * 1.45 / 235 * k;
+      const scale = (visitor ? 1.12 : .9 + i % 3 * .06) * 1.45 / 235 * k * size;
       // Standing ants breathe; a sigh sinks and recovers over its span (t counts down from span).
-      // Walkers bounce once per step.
-      const bob = a && a.state === "gaze" && !state.paused ? Math.sin(time / 2400 + i * 1.7) * .025
-        : a && a.state === "walk" && a.moved ? Math.abs(Math.sin(a.stride / .48 * Math.PI)) * .05 : 0;
+      // Walkers rise as the feet pass and sink into each stride.
+      const bob = (a && a.state === "gaze" && !state.paused ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
       const sighing = a && a.state === "sigh" && a.span > 0 ? 1 - a.t / a.span : -1;
       const tall = rect[3] * scale / WALL_COS * (sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);
+      shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall;
       // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
-      const slide = a ? (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1) : 0;
+      const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
       dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
       ants.setColorAt(i, color.set(visitor ? state.color : "#ffffff"));
-      dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(1, .55, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size, .55 * size, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
       if (a && cueCount < 48) {
         const high = rect[3] * scale / WALL_COS;
         if (a.state === "phone" && !frame.posed && dir4 !== 4) {
-          const off = dir4 === 0 ? .12 * lean : dir4 === 2 ? -.2 : .2;
-          cue(false, x + right.x * off, high * .62, z + right.z * off, .16, .22);
+          const off = (dir4 === 0 ? .12 * lean : dir4 === 2 ? -.2 : .2) * size;
+          cue(false, x + right.x * off, high * .62, z + right.z * off, .16 * size, .22 * size);
         } else if (sighing >= .15 && sighing <= .85) {
           // The breath leaves the mouth (beside the hidden face in the back view), drifts outward and rises.
-          const off = (dir4 === 0 ? .3 * lean : dir4 === 2 ? -.36 : dir4 === 6 ? .36 : .3) * (1 + sighing * .25), size = .3 * (.6 + sighing);
-          cue(true, x + right.x * off, high * (dir4 === 4 ? .66 : dir4 === 0 ? .5 : .56) + sighing * .4, z + right.z * off, size, size);
+          const off = (dir4 === 0 ? .3 * lean : dir4 === 2 ? -.36 : dir4 === 6 ? .36 : .3) * (1 + sighing * .25) * size, puff = .3 * (.6 + sighing) * size;
+          cue(true, x + right.x * off, high * (dir4 === 4 ? .66 : dir4 === 0 ? .5 : .56) + sighing * .4 * size, z + right.z * off, puff, puff);
         }
       }
     }
@@ -487,7 +513,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (cueCount) { cues.instanceMatrix.needsUpdate = true; (cueGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true; }
     ants.instanceMatrix.needsUpdate = shadows.instanceMatrix.needsUpdate = true; if (ants.instanceColor) ants.instanceColor.needsUpdate = true;
     (antGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true;
-    const p = project(new THREE.Vector3(position.x, 1.8, position.z)); events.avatar?.(p.x, p.y, position);
+    // The name label sits just above the visitor's head.
+    const p = project(corner.set(position.x, (talls[sideList.length] ?? 1.73) * 1.04, position.z)); events.avatar?.(p.x, p.y, position);
     const query = timer && queries.length < 6 ? gl.createQuery() : null;
     if (query) gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
     const start = performance.now(); renderer.render(scene, camera); const duration = performance.now() - start;
@@ -501,10 +528,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   }
   const raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   function click(x: number, y: number) {
+    // Every click is a floor click: ants are not targets, so one that lands on an ant walks to the floor behind it.
     raycaster.setFromCamera(new THREE.Vector2(x / width * 2 - 1, 1 - y / height * 2), camera);
-    ants.boundingSphere = null; // Instances move every frame: never pick against a stale sphere.
-    const hit = raycaster.intersectObject(ants)[0];
-    if (hit && hit.instanceId !== undefined && hit.instanceId < sideList.length) { events.evidence?.(sideList[hit.instanceId]); return; }
     const target = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
     if (target) walkTo({ x: target.x, z: limitZ(target.z) });
   }

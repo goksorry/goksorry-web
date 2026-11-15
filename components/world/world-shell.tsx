@@ -179,7 +179,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className={plaza ? "sr-only" : undefined}>{info.title}</h1></div>
-      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onEvidence={(side) => evidence({ title: scene === "theater" ? "극장 기록" : item?.name ?? "전체 커뮤니티", summary: activeSummary, symbol: scene === "theater" ? undefined : item?.symbol, recordedAt: scene === "theater" ? shown.generated_at : undefined, side })}>
+      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>
@@ -202,7 +202,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       <div id="world-tabpanel-index" role="tabpanel" aria-labelledby="world-tab-index" hidden={tab !== "index"}>
         <p className="world-note">희망·공포 비율은 중립을 제외한 글 건수 비율입니다. 곡소리 지수는 기존 감성 점수·커뮤니티 보정 산식으로 계산하며 비율과 다릅니다. 표본 부족·빈 결과는 안정이나 시장 전체를 뜻하지 않습니다.</p>
         {!currentSelection && <WorldIndex selectedGroupIds={selectedGroupIds} />}
-        <div className="world-detail-selection"><h3>종목·커뮤니티 선택</h3>{shown.stocks.map((s) => <button key={s.symbol} onClick={() => selectStock(s.symbol)}>{s.name} · {s.total}건 ↗</button>)}{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: c.name, summary: c, community: c.id })}>{c.name} · {c.total}건 ↗</button>)}</div>
+        <div className="world-detail-selection"><h3>커뮤니티 선택</h3>{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: c.name, summary: c, community: c.id })}>{c.name} · {c.total}건 ↗</button>)}</div>
       </div>
       <div id="world-tabpanel-feed" role="tabpanel" aria-labelledby="world-tab-feed" hidden={tab !== "feed"}>
         {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} /> : <><CleanFilterToggle /><HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={20} embedded scope={stock ? { symbol: stock } : undefined}

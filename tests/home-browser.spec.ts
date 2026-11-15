@@ -33,12 +33,53 @@ test("split is default; unified retains scope, shows neutral and original URLs",
   const selected = await detail.locator(".feed-channel-buttons .filter-chip-active").allTextContents();
   await detail.getByRole("button", { name: "통합 보기", exact: true }).click();
   await expect(detail.locator(".feed-unified-list .sentiment-card-neutral").first()).toBeVisible();
+  // Unified rows show sentiment by left bar, row tint and a labelled chip; hope, fear and neutral differ.
+  const look = (tone: string) => detail.locator(`.feed-unified-list .sentiment-card[data-sentiment="${tone}"]`).first().evaluate((card) => {
+    const style = getComputedStyle(card), chip = card.querySelector(".feed-sentiment-chip")!;
+    return { bar: style.borderLeftColor, barWidth: parseFloat(style.borderLeftWidth), tint: style.backgroundColor, chip: getComputedStyle(chip).color, label: chip.textContent };
+  });
+  const [fearLook, hopeLook, neutralLook] = [await look("fear"), await look("hope"), await look("neutral")];
+  expect([fearLook.label, hopeLook.label, neutralLook.label]).toEqual(["공포", "희망", "중립"]);
+  for (const key of ["bar", "tint", "chip"] as const) expect(new Set([fearLook[key], hopeLook[key], neutralLook[key]]).size).toBe(3);
+  expect(Math.min(fearLook.barWidth, hopeLook.barWidth, neutralLook.barWidth)).toBeGreaterThanOrEqual(3);
+  expect(neutralLook.tint).toBe("rgba(0, 0, 0, 0)");
   expect(await detail.locator(".feed-channel-buttons .filter-chip-active").allTextContents()).toEqual(selected);
   await expect(detail.locator(".sentiment-title").first()).toHaveAttribute("href", /^https:\/\/example.com\//);
   const times = await detail.locator(".feed-unified-list time").evaluateAll(nodes => nodes.map(n => n.getAttribute("datetime")!));
   expect(times).toEqual([...times].sort().reverse());
   await detail.getByRole("button", { name: "좌우 보기", exact: true }).click();
   await expect(detail.locator("#fear-lane")).toBeVisible();
+  // Split lanes keep their plain rows: no bar, no chip.
+  expect(await detail.locator("#fear-lane .sentiment-card").first().evaluate((card) => [getComputedStyle(card).borderLeftWidth, getComputedStyle(card).backgroundColor])).toEqual(["0px", "rgba(0, 0, 0, 0)"]);
+  await expect(detail.locator(".feed-sentiment-chip")).toHaveCount(0);
+});
+
+test("unified rows keep their tint readable in every theme", async ({ page }) => {
+  test.setTimeout(90_000);
+  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const theme of ["light", "dark", "excel-light", "excel-dark", "docs-light", "docs-dark", "vscode-light", "vscode-dark"]) {
+    await page.goto(`/?feed=1&theme=${theme}`);
+    const detail = panel(page);
+    await detail.getByRole("button", { name: "통합 보기", exact: true }).click();
+    await expect(detail.locator(".feed-unified-list .sentiment-card").first()).toBeVisible(); await page.mouse.move(2, 2);
+    // Contrast of the title against the row as painted (the tint composited over whatever lies behind it).
+    const rows = await detail.locator(".feed-unified-list").evaluate((list) => {
+      const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+      const rgba = (value: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1); const d = context.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+      const painted = (node: Element) => {
+        const layers: number[][] = [];
+        for (let e: Element | null = node; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c[3] > 0) { layers.push(c); if (c[3] > .999) break; } }
+        return layers.reverse().reduce((under, c) => under.map((v, i) => v * (1 - c[3]) + c[i] * c[3]), [255, 255, 255]);
+      };
+      const luminance = (c: number[]) => { const f = (v: number) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+      return ["fear", "hope", "neutral"].map((tone) => {
+        const card = list.querySelector(`.sentiment-card[data-sentiment="${tone}"]`)!, row = painted(card), ink = luminance(rgba(getComputedStyle(card.querySelector(".sentiment-title")!).color)), back = luminance(row);
+        return { row: row.map(Math.round).join(","), contrast: (Math.max(ink, back) + .05) / (Math.min(ink, back) + .05) };
+      });
+    });
+    expect(new Set(rows.map((row) => row.row)).size, theme).toBe(3);
+    for (const row of rows) expect(row.contrast, `${theme} ${row.row}`).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pierrot remain visible at ${width}px`, async ({ page }, info) => {

@@ -270,11 +270,11 @@ export function SentimentFeed({
     const showPrettyTitle = cleanFilterEnabled && !isRowRevealActive;
 
     return (
-      <article key={row.post_key} className={`sentiment-card sentiment-card-${tone}`}>
+      <article key={row.post_key} className={`sentiment-card sentiment-card-${tone}`} data-sentiment={tone}>
         <div className="sentiment-card-head">
           <div className="sentiment-card-head-tags">
             <span className="tag sentiment-card-tag">{getFeedSourceLabel(row.source)}</span>
-            {layout === "unified" && <span className="tag">{SENTIMENT_DISPLAY[row.label].label}</span>}
+            {layout === "unified" && <span className="tag feed-sentiment-chip" data-sentiment={tone}>{SENTIMENT_DISPLAY[row.label].label}</span>}
             {row.symbol_name ? <span className="tag tag-symbol sentiment-card-tag">{row.symbol_name}</span> : null}
           </div>
           <div className="sentiment-card-head-meta">
