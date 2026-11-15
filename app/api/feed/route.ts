@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCachedRecentFeedRows } from "@/lib/feed-read";
+import { getScopedFeed } from "@/lib/feed-snapshot";
+import { emptyFeedPage, readFeedSelection } from "@/lib/feed-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -19,32 +20,17 @@ export async function GET(request: Request) {
   const hours = clamp(parseIntegerParam(url.searchParams.get("hours"), DEFAULT_HOURS), 1, 24);
   const limit = clamp(parseIntegerParam(url.searchParams.get("limit"), DEFAULT_LIMIT), 1, MAX_LIMIT);
   const offset = Math.max(0, parseIntegerParam(url.searchParams.get("offset"), 0));
+  const anchor = Date.parse(url.searchParams.get("asOf") ?? "");
+  const asOf = Number.isFinite(anchor) && anchor <= Date.now() && anchor >= Date.now() - 24 * 60 * 60_000 ? new Date(anchor).toISOString() : "";
 
   try {
-    const { rows, errorMessage } = await getCachedRecentFeedRows({
-      hours,
-      limit: limit + 1,
-      offset
-    });
-    const visibleRows = rows.slice(0, limit);
-    const hasMore = rows.length > limit;
-
-    const response = NextResponse.json({
-      rows: visibleRows,
-      nextOffset: hasMore && !errorMessage ? offset + limit : null,
-      hasMore: hasMore && !errorMessage,
-      errorMessage
-    });
-    response.headers.set("Cache-Control", errorMessage ? "no-store" : "s-maxage=60, stale-while-revalidate=120");
+    const payload = await getScopedFeed(readFeedSelection(url.searchParams), { hours, limit, offset, asOf });
+    const response = NextResponse.json(payload);
+    response.headers.set("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
     return response;
   } catch (error) {
     console.error("feed api failed", error);
-    const response = NextResponse.json({
-      rows: [],
-      nextOffset: null,
-      hasMore: false,
-      errorMessage: "피드 데이터를 준비하지 못했습니다."
-    });
+    const response = NextResponse.json(emptyFeedPage("피드 데이터를 준비하지 못했습니다."));
     response.headers.set("Cache-Control", "no-store");
     return response;
   }

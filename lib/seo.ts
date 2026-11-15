@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const SITE_NAME = "곡소리닷컴";
 export const SITE_URL = "https://goksorry.com";
-export const SITE_DESCRIPTION = "커뮤니티 체감 지수, 시장 개요, 종목 커뮤니티를 함께 보는 곡소리닷컴";
+export const SITE_DESCRIPTION = "최근 6시간 곡소리 지수, 종목별 언급과 커뮤니티별 희망·공포를 확인하고 실제 원문을 읽어보세요.";
 const DEFAULT_SOCIAL_IMAGE_URL = "/goksorry_logo.png";
 
 const normalizeText = (value: string): string => value.replace(/\s+/g, " ").trim();

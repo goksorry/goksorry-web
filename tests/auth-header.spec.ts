@@ -54,7 +54,6 @@ test.describe("header auth state", () => {
     });
 
     await page.goto("/");
-    await page.locator(".world-menu-button").click();
 
     await expect(page.getByRole("link", { name: "내 프로필" })).toBeVisible();
     await expect(page.locator(".header-profile-name")).toHaveText("테스터");

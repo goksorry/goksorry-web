@@ -27,8 +27,7 @@ export type ThemeShellProps = {
 };
 
 export const SHELL_ROUTES: ShellRoute[] = [
-  { href: "/?feed=1", label: "피드", fileName: "feed.goksorry", cell: "A1", formula: "GOKSORRY.FEED()" },
-  { href: "/analysis", label: "분석", fileName: "analysis.goksorry", cell: "B2", formula: "GOKSORRY.ANALYSIS()" },
+  { href: "/", label: "홈", fileName: "home.goksorry", cell: "A1", formula: "GOKSORRY.HOME()" },
   { href: "/community", label: "게시판", fileName: "board.goksorry", cell: "C3", formula: "GOKSORRY.BOARD()" },
   { href: "/goksorry-room", label: "곡소리방", fileName: "room.goksorry", cell: "D4", formula: "GOKSORRY.ROOM()" },
   { href: "/docs", label: "문서", fileName: "api.docs", cell: "E5", formula: "GOKSORRY.DOCS()" },
@@ -280,12 +279,7 @@ export function ShellBrand({ family, productName }: { family: ThemeFamily; produ
 export function ShellNavLinks({ className = "theme-shell-nav" }: { className?: string }) {
   return (
     <nav className={className} aria-label="사이트 메뉴">
-      <Link href="/?feed=1" replace>
-        피드
-      </Link>
-      <Link href="/analysis" replace>
-        분석
-      </Link>
+      <Link href="/">홈</Link>
       <Link href="/community" replace>
         게시판
       </Link>

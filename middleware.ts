@@ -57,6 +57,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(canonicalUrl, 308);
   }
 
+  if (request.nextUrl.pathname === "/analysis") {
+    const home = request.nextUrl.clone();
+    home.pathname = "/";
+    return NextResponse.redirect(home, 307);
+  }
+
   const nonce = crypto.randomUUID().replace(/-/g, "");
   const csp = buildCsp(nonce);
   const themeFromParam = request.nextUrl.searchParams.has(THEME_PARAM_NAME)

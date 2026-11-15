@@ -1,7 +1,7 @@
 // Disposable PostgREST contract fixture. Never connects to the linked project.
 import { createServer } from "node:http";
 let snapshots = new Map();
-let failWrite = false, failRead = false;
+let failWrite = false, failRead = false, failFeed = false;
 let calls = [];
 const makeRows = () => Array.from({ length: 620 }, (_, i) => ({
   post_key: `fixture-${i}`, label: i % 3 === 0 ? "neutral" : i % 3 === 1 ? "bullish" : "bearish",
@@ -17,6 +17,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST") {
       const control = JSON.parse(body || "{}");
       failWrite = Boolean(control.failWrite); failRead = Boolean(control.failRead);
+      failFeed = Boolean(control.failFeed);
       if (control.reset) { snapshots.clear(); calls = []; }
     }
     return send(200, { snapshots: [...snapshots.values()], calls });
@@ -39,6 +40,7 @@ const server = createServer(async (req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") return send(200, null);
   if (table === "sentiment_results") {
     const start = Number(url.searchParams.get("offset") ?? 0), limit = Number(url.searchParams.get("limit") ?? 1000);
+    if (failFeed && start >= 500) return send(500, { message: "fixture feed second-page failure" });
     return send(200, makeRows().slice(start, start + limit));
   }
   if (table === "external_posts") {
