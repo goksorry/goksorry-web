@@ -45,6 +45,10 @@ export async function prepareWorld(page: Page) {
     generated_at: new Date().toISOString(), market_indicators: ["kospi", "kosdaq", "nasdaq", "usdkrw"].map((id) => ({ id, label: id.toUpperCase(), value_text: "1,234.56", delta_text: "+10 (1%)", tone: "up", note: "테스트 기준", change_value: 10, change_percent: 1 })),
     ...overall, market_adjustment_enabled: false, market_adjustment_status: "inactive", community_indicators: groups
   } }));
+  await page.route("**/api/goksorry-room*", (route) => route.fulfill({ json: { viewer: { kind: "guest" }, next_cursor: null, entries: [
+    { id: "r1", content: "존버는 승리한다", author_kind: "member", author_label: "장기투자자", created_at: new Date().toISOString(), reply_count: 0, can_delete: false, is_mine: false, replies: [] },
+    { id: "r2", content: "오늘도 물렸다 언제 오르냐", author_kind: "guest", author_label: "개미1", created_at: new Date().toISOString(), reply_count: 2, can_delete: false, is_mine: false, replies: [] }
+  ] } }));
   await page.route("**/api/internal/world/replay?*", (route) => {
     const date = new URL(route.request().url()).searchParams.get("date") ?? worldDate();
     const start = Date.parse(worldDayBounds(date)!.start);

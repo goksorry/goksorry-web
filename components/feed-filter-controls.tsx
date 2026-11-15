@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useFeedSelection } from "@/components/feed-selection-provider";
 import {
   SOURCE_GROUPS,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/feed-source-groups";
 import { serializeSourceGroupSelection } from "@/lib/feed-source-groups";
 
-const buildFeedHref = ({ groupIds, baseSearch }: { groupIds: SourceGroupId[]; baseSearch: string }): string => {
+const buildFeedHref = ({ groupIds, baseSearch, pathname }: { groupIds: SourceGroupId[]; baseSearch: string; pathname: string }): string => {
   const params = new URLSearchParams(baseSearch);
   const serializedGroups = serializeSourceGroupSelection(groupIds);
   if (serializedGroups) {
@@ -21,7 +21,9 @@ const buildFeedHref = ({ groupIds, baseSearch }: { groupIds: SourceGroupId[]; ba
   params.delete("channel");
   params.delete("source");
   const query = params.toString();
-  return query ? `/?${query}` : "/";
+  // Stay on the current home (metaverse "/" or 일반모드 "/classic").
+  const base = pathname === "/classic" ? "/classic" : "/";
+  return query ? `${base}?${query}` : base;
 };
 
 const arraysEqual = (left: SourceGroupId[], right: SourceGroupId[]): boolean => {
@@ -29,11 +31,13 @@ const arraysEqual = (left: SourceGroupId[], right: SourceGroupId[]): boolean => 
 };
 
 export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: SourceGroupId[] }) {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeGroupIds, setOptimisticGroupIds } = useFeedSelection();
   const [pendingGroupIds, setPendingGroupIds] = useState<SourceGroupId[]>(selectedGroupIds);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingApply = useRef<(() => void) | null>(null);
 
   const selectedKey = useMemo(() => activeGroupIds.join(","), [activeGroupIds]);
 
@@ -46,6 +50,9 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
+      // Closing the surrounding dialog right after a change must still apply it.
+      pendingApply.current?.();
+      pendingApply.current = null;
     };
   }, []);
 
@@ -55,11 +62,14 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
     }
 
     setOptimisticGroupIds(nextGroupIds);
-    debounceRef.current = setTimeout(() => {
+    const apply = () => {
+      pendingApply.current = null;
       startTransition(() => {
-        router.push(buildFeedHref({ groupIds: nextGroupIds, baseSearch: searchParams.toString() }), { scroll: false });
+        router.push(buildFeedHref({ groupIds: nextGroupIds, baseSearch: searchParams.toString(), pathname }), { scroll: false });
       });
-    }, 500);
+    };
+    pendingApply.current = apply;
+    debounceRef.current = setTimeout(apply, 500);
   };
 
   const onToggleGroup = (groupId: SourceGroupId) => {

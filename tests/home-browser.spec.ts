@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { prepareWorld } from "./world-fixture";
 
-const panel = (page: import("@playwright/test").Page) => page.locator("#world-feed-wall");
+// The full feed (links, filters, paging) lives in the detail dialog; the wall shows the index and latest titles.
+const panel = (page: import("@playwright/test").Page) => page.locator('[data-world-panel="detail"]');
 const index = (page: import("@playwright/test").Page) => page.locator("#world-index-wall");
 
 test("original five-stage meme follows index and theme without replacement art", async ({ page }, info) => {
@@ -52,13 +53,12 @@ for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pier
   await expect(page.getByLabel("기록 날짜")).toBeVisible();
   await expect(portrait).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  if (width === 360) await page.evaluate(() => window.scrollTo(0, 0));
   if (width === 360) await page.screenshot({ path: info.outputPath("original-pierrot-theater-mobile.png"), fullPage: true });
 });
 
 test("late stock is server scoped before pagination and sentiment never changes summary", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.unroute("**/api/internal/world");
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/");
+  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/?feed=1");
   await expect(page.getByLabel("피드 종목").locator('option[value="LATE"]')).toHaveCount(1);
   await page.getByLabel("피드 종목").selectOption("LATE");
   await expect(page).toHaveURL(/stock=LATE/);
@@ -76,7 +76,6 @@ test("late stock is server scoped before pagination and sentiment never changes 
   await expect(index(page).locator(".world-numbers")).toHaveText(summary!);
   await panel(page).getByRole("button", { name: "좌우 보기", exact: true }).click();
   await expect(panel(page).locator("#hope-lane .sentiment-card")).toHaveCount(6);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByLabel("피드 종목").selectOption("");
   await expect(index(page)).toContainText("분석 표본 620건");
   await page.goBack(); await expect(page.getByLabel("피드 종목")).toHaveValue("LATE");
@@ -84,12 +83,13 @@ test("late stock is server scoped before pagination and sentiment never changes 
 });
 
 
-test("desktop page scroll, 200 percent text, and keyboard menu remain usable", async ({ page }) => {
+test("no page scroll on desktop; 200 percent text and keyboard menu remain usable", async ({ page }) => {
   await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1280, height: 720 }); await page.goto("/");
   await expect(page.locator(".world-pierrot img")).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(100);
+  // Header fixed, scene fills the rest: nothing to scroll and the scene nav is always on screen.
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 500)); expect(await page.evaluate(() => scrollY)).toBe(0);
   await expect(page.getByRole("navigation", { name: "월드 장면 선택" })).toBeInViewport();
   await page.setViewportSize({ width: 360, height: 640 });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
@@ -135,24 +135,25 @@ test("theater Pierrot uses the replay index rather than current live index", asy
 });
 
 
-test("360 by 640 exposes index, original Pierrot and first original link without opening a panel", async ({ page }) => {
+test("360 by 640 shows index and original Pierrot without a panel; the arrow reaches the feed section", async ({ page }) => {
   const frame = await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 360, height: 640 }); await page.goto("/");
   await expect(index(page)).toBeInViewport();
   await expect(page.locator(".world-pierrot img")).toBeInViewport();
-  await expect(panel(page).locator(".sentiment-title").first()).toBeInViewport();
-  expect((await index(page).boundingBox())!.height).toBeLessThanOrEqual(220);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.locator('.world-wall-arrow[data-dir="right"]').click();
+  await expect(page.locator("#world-feed-wall li p").first()).toBeInViewport();
+  await expect(index(page)).toBeHidden();
+  await page.locator('.world-wall-arrow[data-dir="left"]').click();
   await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, data_at: new Date(Date.now() - 3_600_000).toISOString() } }));
   await page.reload();
   await expect(index(page).locator(".world-screen-status")).toContainText("갱신 지연");
-  expect((await index(page).boundingBox())!.height).toBeLessThanOrEqual(220);
-  await expect(panel(page).locator(".sentiment-title").first()).toBeInViewport();
+  await expect(index(page)).toBeInViewport();
 });
 
 test("multiple sources filter wall summary and list together; empty selection stays empty", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*");
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/");
+  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/?feed=1");
   await panel(page).locator(".feed-source-picker summary").click();
   await panel(page).getByRole("button", { name: "전체해제", exact: true }).click();
   await expect(index(page)).toContainText("분석 표본 0건");
@@ -163,5 +164,4 @@ test("multiple sources filter wall summary and list together; empty selection st
   await panel(page).getByRole("button", { name: "뽐뿌", exact: true }).click();
   await expect(page).toHaveURL(/channels=toss%2Cppomppu/);
   await expect(index(page)).toContainText("분석 표본 620건");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

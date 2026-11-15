@@ -20,7 +20,8 @@
 - `CHAT_WS_BASE_URL` (optional)
 
 ## Responsibilities
-- Ant world with public sentiment feed and index overlays (`/`)
+- Ant world (`/`): full-viewport WebGL room whose back wall shows market indices, 곡소리방, Pierrot, 곡소리 지수 and feed; panels open detail dialogs
+- Classic document-style home (`/classic`, 일반모드)
 - Community MVP (Google OAuth only)
 - Account creation gate at `/profile`
 - Editable legal documents via admin (`/admin/policies`)

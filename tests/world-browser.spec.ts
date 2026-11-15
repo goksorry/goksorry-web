@@ -9,26 +9,40 @@ const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "월드 장면 선택" }).getByRole("button", { name, exact: true });
 async function webgl(page: Page) { await requireWebGL2(page); await expect(stage(page)).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 }); }
 
-test("wall data and original links need no modal; optional details support keyboard and focus restore", async ({ page }) => {
+test("wall carries live data without a modal; panels open details with keyboard and focus restore", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
   const frame = await prepareWorld(page); await page.goto("/");
   const index = page.locator("#world-index-wall"), feed = page.locator("#world-feed-wall");
   await expect(index).toContainText(`분석 표본 ${frame.overall.total}건`);
-  await expect(feed.locator(".sentiment-title").first()).toBeVisible();
-  await expect(feed.locator(".sentiment-title").first()).toHaveAttribute("href", /^https:\/\/example.com/);
+  await expect(feed.locator("li p").first()).toContainText("오늘의 생각");
   await expect(feed).not.toContainText("시발");
+  await expect(page.locator('[data-wall-panel="market"]')).toContainText("1,234.56");
+  await expect(page.locator('[data-wall-panel="room"]')).toContainText("존버는 승리한다");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText("같은 골목, 엇갈리는 마음");
+  // Game shell: fixed header, the scene fills the rest, the document never scrolls.
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const header = (await page.locator(".world-topbar").boundingBox())!, scene = (await page.locator(".world-scene-stage").boundingBox())!;
+  expect(header.y).toBe(0); expect(Math.abs(scene.y - header.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(scene.y + scene.height - page.viewportSize()!.height)).toBeLessThanOrEqual(1);
   const details = index.getByRole("button", { name: "산식·시장 지표" });
   await details.click(); await expect(dialog(page)).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.getByRole("tab", { name: "지수", exact: true }).focus(); await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
-  await page.keyboard.press("End"); await expect(page.getByRole("tab", { name: "피드", exact: true })).toBeFocused();
+  await page.keyboard.press("End"); await expect(page.getByRole("tab", { name: "곡소리방", exact: true })).toBeFocused();
   await page.keyboard.press("Home"); await expect(page.getByRole("tab", { name: "지수", exact: true })).toBeFocused();
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0); await expect(details).toBeFocused();
   await details.click(); await page.locator(".world-modal-backdrop").click({ position: { x: 4, y: 4 } });
   await expect(dialog(page)).toHaveCount(0); await expect(details).toBeFocused();
+  // Each wall region opens its own detail: feed → full feed with original links, room → posting UI.
+  await feed.getByRole("button", { name: "곡소리 피드 전체 보기" }).click();
+  await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog(page).locator(".sentiment-title").first()).toHaveAttribute("href", /^https:\/\/example.com/);
+  await page.keyboard.press("Escape");
+  await page.locator('[data-wall-panel="room"]').getByRole("button", { name: "곡소리방 열기·글쓰기" }).click();
+  await expect(page.getByRole("tab", { name: "곡소리방", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog(page).locator(".goksorry-room-list-region")).toContainText("존버는 승리한다");
+  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -54,8 +68,9 @@ test("stock and community scope stays in same layer; evidence filter and origina
 
 test("existing feed deep links, filters, more, theme and auth stay accessible", async ({ page }) => {
   await prepareWorld(page); await page.goto("/?channels=toss&feed=1");
-  const wall = page.locator("#world-feed-wall");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // ?feed=1 opens the full feed dialog; filters and paging live there, not on the wall.
+  const wall = dialog(page);
+  await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
   await wall.locator(".feed-source-picker summary").click();
   await expect(wall.locator(".feed-channel-buttons .filter-chip-active")).toHaveText("토스증권");
   while (await wall.getByRole("button", { name: "더 보기", exact: true }).count()) {
@@ -63,7 +78,7 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
     await expect(wall.getByRole("button", { name: "불러오는 중...", exact: true })).toHaveCount(0);
   }
   await expect(wall.locator(".feed-pagination")).toContainText("최근 6시간 피드를 모두 불러왔습니다.");
-  await page.getByRole("button", { name: "산식·시장 지표" }).click();
+  await page.getByRole("tab", { name: "지수", exact: true }).click();
   await expect(dialog(page).locator(".overview-value").first()).toHaveText("1,234.56");
   await page.keyboard.press("Escape"); await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   const menu = page.locator('[data-world-panel="menu"]');
@@ -77,22 +92,40 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-dark"); await expect(page.getByTestId("program-shell")).toHaveCount(0);
 });
 
-test("mobile shortcuts reach inline walls; readable stock list and 44px targets", async ({ page }) => {
+test("portrait frames one wall section; arrows, overview, header shortcuts and 44px targets", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await prepareWorld(page); await page.goto("/");
-  await page.evaluate(() => window.scrollTo(0, 700));
-  await expect.poll(() => page.locator(".world-topbar").evaluate((node) => node.getBoundingClientRect().top)).toBe(0);
-  const shortcut = page.locator(".world-index-toggle"); await shortcut.click();
-  await expect(page.locator("#world-index-wall")).toBeInViewport();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.locator('.world-hud-actions a[href$="#world-feed-wall"]').click();
-  await expect(page.locator("#world-feed-wall .sentiment-title").first()).toBeInViewport();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const root = page.locator(".world-root");
+  await expect(root).toHaveAttribute("data-layout", "sectioned");
+  await expect(stage(page)).not.toHaveAttribute("data-renderer", "loading");
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+  expect(await page.locator(".world-topbar").evaluate((node) => node.getBoundingClientRect().top)).toBe(0);
+  await expect(root).toHaveAttribute("data-wall-section", "1");
+  const left = page.locator('.world-wall-arrow[data-dir="left"]'), right = page.locator('.world-wall-arrow[data-dir="right"]');
+  await right.click(); await expect(root).toHaveAttribute("data-wall-section", "2");
+  await expect(right).toHaveAttribute("aria-disabled", "true"); await right.click({ force: true }); await expect(root).toHaveAttribute("data-wall-section", "2");
+  await left.click(); await left.click(); await expect(root).toHaveAttribute("data-wall-section", "0");
+  if (await stage(page).getAttribute("data-renderer") === "webgl") {
+    await page.getByRole("button", { name: "전체보기", exact: true }).click(); await expect(root).toHaveAttribute("data-wall-overview", "true");
+    await expect(left).toBeHidden();
+    await page.getByRole("button", { name: "확대", exact: true }).click(); await expect(root).toHaveAttribute("data-wall-overview", "false");
+  }
+  await page.locator(".world-index-toggle").click();
+  await expect(page.getByRole("tab", { name: "지수", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
+  await page.locator(".world-feed-toggle").click();
+  await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
   await nav(page, "개미 생태계").click();
   const labels = await page.locator(".world-stock-list strong").evaluateAll((elements) => elements.map((e) => parseFloat(getComputedStyle(e).fontSize)));
   expect(labels.every((value) => value >= 14)).toBe(true);
-  const targets = await page.locator(".world-stock-list button,.world-hud-actions button,.world-hud-actions a").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
+  const targets = await page.locator(".world-stock-list button,.world-hud-actions button,.world-hud-actions a,.world-bottom button").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
   expect(targets.every((value) => value >= 44)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("phone landscape keeps the full wall like desktop", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 }); await prepareWorld(page); await page.goto("/");
+  await expect(page.locator(".world-root")).toHaveAttribute("data-layout", "wide");
+  await expect(page.locator(".world-wall-arrow")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
 
 test("battle uses total counts, avatar moves and survives details, preferences in menu", async ({ page }) => {
@@ -170,12 +203,14 @@ test("first visit guidance lives inside menu; cookie banner does not cover infor
   await prepareWorld(page); await page.context().clearCookies(); await page.addInitScript(() => localStorage.clear());
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/");
   await expect(page.getByRole("note", { name: "초기 설정 안내" })).toHaveCount(0);
-  await expect(page.locator(".cookie-consent-banner")).toHaveCSS("position", "relative");
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.getByRole("button", { name: "산식·시장 지표" }).click();
+  // The banner floats over the floor at the bottom; it never covers the fixed header or the wall centre.
+  await expect(page.locator(".cookie-consent-banner")).toHaveCSS("position", "fixed");
+  const banner = (await page.locator(".cookie-consent-banner").boundingBox())!, header = (await page.locator(".world-topbar").boundingBox())!;
+  expect(banner.y).toBeGreaterThan(header.y + header.height);
+  await page.locator(".world-index-toggle").click();
   await expect(page.locator(".cookie-consent-banner")).toBeHidden();
   await page.keyboard.press("Escape"); await expect(page.locator(".cookie-consent-banner")).toBeVisible();
-  await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible(); await page.keyboard.press("Escape");
+  await page.locator(".world-index-toggle").click(); await expect(dialog(page)).toBeVisible(); await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   await expect(page.getByRole("note", { name: "초기 설정 안내" })).toBeVisible();
 });
@@ -217,24 +252,18 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
   const path = testInfo.outputPath("world-render-performance.json"); await writeFile(path, JSON.stringify(results, null, 2)); await testInfo.attach("render-performance", { path, contentType: "application/json" });
 });
 
-
-test("graphic ants animate out of phase and stop offscreen, hidden and reduced motion", async ({ page }) => {
-  const frame = await prepareWorld(page);
-  await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, overall: { ...frame.overall, mood: "mixed" } } }));
-  await page.setViewportSize({ width: 360, height: 640 }); await page.goto("/");
-  const ants = page.locator(".world-wall-ants");
-  await expect(ants).toHaveAttribute("data-mood", "mixed");
-  await expect(ants).toHaveAttribute("data-visible", "true");
-  const first = ants.locator("i").first(), second = ants.locator("i").last();
-  const style = () => first.evaluate(node => getComputedStyle(node).transform);
-  const start = await style(); await expect.poll(style).not.toBe(start);
-  expect(await first.evaluate(node => getComputedStyle(node).animationDelay)).not.toBe(await second.evaluate(node => getComputedStyle(node).animationDelay));
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await expect(ants).toHaveAttribute("data-visible", "false");
-  await expect(first).toHaveCSS("animation-play-state", "paused");
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
-  await expect(first).toHaveCSS("animation-play-state", "paused");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(first).toHaveCSS("animation-name", "none");
+test("mode switch moves between the metaverse room and the classic page, keeping the feed scope", async ({ page }) => {
+  await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.goto("/?channels=toss");
+  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
+  await expect(page).toHaveURL(/\/classic\?channels=toss$/);
+  await expect(page.locator(".world-root")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "최근 글", level: 1 })).toBeVisible();
+  await expect(page.locator(".header .mode-switch a[aria-current=page]")).toContainText("일반");
+  // Filters on the classic page stay on the classic page.
+  await page.locator(".feed-channel-buttons").getByRole("button", { name: "뽐뿌", exact: true }).click();
+  await expect(page).toHaveURL(/\/classic\?channels=toss%2Cppomppu/);
+  await page.locator(".header .mode-switch").getByRole("link", { name: /메타버스/ }).click();
+  await expect(page).toHaveURL(/:3100\/\?channels=toss%2Cppomppu/);
+  await expect(page.locator(".world-root")).toBeVisible();
+  await expect(page.locator(".world-topbar .mode-switch a[aria-current=page]")).toContainText("메타버스");
 });

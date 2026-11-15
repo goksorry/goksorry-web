@@ -8,12 +8,15 @@ import type { WorldSummary } from "@/lib/world";
 
 // The existing five-stage Korean stock Pierrot meme is the character source.
 // Reuse the original files, including their full composition and theme variants.
-export function WorldPierrot({ summary, recorded = false }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean }) {
+export function usePierrotDark(): boolean {
   const { themeId } = useTheme();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const tone = getThemeOption(themeId).tone;
-  const dark = tone === "dark" || (tone === "system" && prefersDark);
-  const { band, label, src } = stockPierrotArt(summary, Boolean(dark));
+  return tone === "dark" || (tone === "system" && prefersDark === true);
+}
+export function WorldPierrot({ summary, recorded = false }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean }) {
+  const dark = usePierrotDark();
+  const { band, label, src } = stockPierrotArt(summary, dark);
   return <figure className="world-pierrot" data-band={band}>
     {/* Original 300×200 artwork: no crop, redraw, or substitute character. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}

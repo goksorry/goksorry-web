@@ -113,9 +113,10 @@ const hasMissingMarketIndicator = (indicator: Pick<OverviewPayload["market_indic
   return indicator.value_text === "--" || indicator.delta_text === "데이터 없음";
 };
 
-const buildHomeUrl = (searchParams: URLSearchParams): string => {
+const isHomePath = (pathname: string): boolean => pathname === "/" || pathname === "/classic";
+const buildHomeUrl = (pathname: string, searchParams: URLSearchParams): string => {
   const query = searchParams.toString();
-  return query ? `/?${query}` : "/";
+  return query ? `${pathname}?${query}` : pathname;
 };
 
 export function MarketOverview({
@@ -259,7 +260,7 @@ export function MarketOverview({
     return initialSelectedGroupIds;
   })();
   const effectiveSelectedGroupIds = optimisticGroupIds ?? selectedGroupIdsFromUrl;
-  const selectedFeedGroupId = pathname === "/" && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
+  const selectedFeedGroupId = isHomePath(pathname) && effectiveSelectedGroupIds.length === 1 ? effectiveSelectedGroupIds[0] : null;
 
   const onCommunityIndicatorClick = (groupId: SourceGroupId) => {
     const group = communityGroups.find((item) => item.id === groupId);
@@ -267,7 +268,7 @@ export function MarketOverview({
       return;
     }
 
-    if (pathname === "/") {
+    if (isHomePath(pathname)) {
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.delete("channel");
       nextParams.delete("source");
@@ -281,7 +282,7 @@ export function MarketOverview({
       }
 
       startTransition(() => {
-        router.replace(buildHomeUrl(nextParams), { scroll: false });
+        router.replace(buildHomeUrl(pathname, nextParams), { scroll: false });
       });
       return;
     }

@@ -1,23 +1,6 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { HomeFeedShell } from "@/components/home-feed-shell";
-import { CleanFilterToggle } from "@/components/clean-filter-toggle";
-import { SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
-import type { ScopeSummary, FeedPage } from "@/lib/feed-scope";
-import { frameStatus } from "@/lib/world-presentation";
-import { percent, worldSummary, type WorldFrame, type WorldSummary } from "@/lib/world";
-import { WorldPierrot } from "./world-pierrot";
-
-function WallAnts({ mood }: { mood: WorldSummary["mood"] }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(entries => setVisible(entries[0].isIntersecting));
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-  return <div ref={ref} className="world-wall-ants" data-mood={mood} data-visible={visible} aria-hidden="true"><i /><i /></div>;
-}
+import { percent, type WorldSummary } from "@/lib/world";
+import { WALL_PANELS, type WallModel, type WallPanelId } from "@/lib/world-wall";
 
 export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evidence"> }) {
   return <div className="world-numbers">
@@ -27,44 +10,41 @@ export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evide
     <span className="world-sample">분석 표본 {summary.total.toLocaleString()}건 <span>· 중립 {summary.neutral.toLocaleString()}건</span></span>
   </div>;
 }
-export function WorldScreens({ frame, loaded, failed, status, timezone, selectedGroupIds, stock, onStock, onSummary, onOpen }: {
-  frame: WorldFrame; loaded: boolean; failed: boolean; status: string; timezone: string;
-  selectedGroupIds: SourceGroupId[]; stock: string; onStock: (symbol: string) => void;
-  onSummary: (summary: ScopeSummary | undefined) => void;
-  onOpen: (tab: "index" | "feed") => void;
-}) {
-  const [scope, setScope] = useState<ScopeSummary>();
-  const [feedError, setFeedError] = useState("");
-  const [pending, setPending] = useState(true);
-  const [stocks, setStocks] = useState<FeedPage["stocks"]>();
-  const receiveSummary = useCallback((value: ScopeSummary | undefined, error: string, loading: boolean, options: FeedPage["stocks"] | undefined) => {
-    setScope(value); setFeedError(error); setPending(loading); setStocks(options); onSummary(value);
-  }, [onSummary]);
-  const filtered = !!stock || selectedGroupIds.length !== SOURCE_GROUP_IDS.length;
-  const summary = scope ?? (filtered ? worldSummary([]) : frame.overall);
-  const dataAt = scope ? scope.data_at : filtered ? null : frame.data_at;
-  const scopeStatus = pending && filtered ? "선택 범위 조회 중" : feedError ? (scope ? "조회 실패 · 마지막 정상 데이터" : "데이터 조회 실패")
-    : scope ? frameStatus({ ...frame, overall: { ...frame.overall, ...scope }, data_at: scope.data_at }, true, "", Date.now()) : status;
-  const options = stocks ?? frame.stocks;
-  const time = dataAt ? new Date(dataAt).toLocaleTimeString("ko-KR", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }) : null;
-  return <div className="world-screens">
-    <section id="world-index-wall" tabIndex={-1} className="world-wall-screen world-index-screen" data-screen="index" aria-label="곡소리 지수">
-      <header className="world-index-heading"><h2 className="world-screen-title">곡소리 지수</h2><button className="world-index-details" onClick={() => onOpen("index")}>산식·시장 지표</button></header>
-      <div className="world-index-layout"><SummaryNumbers summary={summary} /><WorldPierrot summary={summary} /></div>
-      <p className="world-screen-meta">최근 6시간 · <time dateTime={dataAt ?? undefined}>{time ? `${time} 기준` : failed ? "데이터 조회 실패" : loaded ? "기준 시각 없음" : "데이터 조회 중"}</time></p>
-      <p className="world-screen-status" role="status" hidden={scopeStatus === "관측 중"}>{scopeStatus}</p>
-      <WallAnts mood={summary.total < 3 ? "watching" : summary.mood} />
-    </section>
-    <section id="world-feed-wall" tabIndex={-1} className="world-wall-screen world-feed-screen" data-screen="feed" aria-label="최근 글">
-      <header className="world-feed-heading"><h2 className="world-screen-title">최근 글</h2><CleanFilterToggle /></header>
-      <div className="world-wall-feed-content">
-        <HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={20}
-          scope={stock ? { symbol: stock } : undefined} embedded scopeControl={<label className="world-wall-stock">종목 <select aria-label="피드 종목" value={stock} onChange={event => onStock(event.target.value)}>
-          <option value="">전체 종목</option>
-          {stock && !options.some(s => s.symbol === stock) && <option value={stock}>{stock}</option>}
-          {options.map(s => <option key={s.symbol} value={s.symbol}>{s.name} · {s.total}건</option>)}
-        </select></label>} onSummary={receiveSummary} />
-      </div>
-    </section>
+
+const waiting = (state: "loading" | "ready" | "failed", empty: string) => state === "failed" ? "조회 실패" : state === "loading" ? "불러오는 중…" : empty;
+
+/**
+ * DOM twin of the WebGL wall. With WebGL the text lives in the scene textures:
+ * each section is pinned to its panel's projected rectangle, its copy is only
+ * for assistive tech, and its button is the transparent hit target. Without
+ * WebGL (reduced motion, failure, loading) the same sections are visible cards.
+ */
+export function WorldWallDom({ model, onOpen, onFocusPanel }: { model: WallModel; onOpen: (panel: WallPanelId, origin: DOMRect) => void; onFocusPanel?: (panel: WallPanelId) => void }) {
+  const section = (id: WallPanelId, label: string, action: string, body: React.ReactNode, extra: { id?: string; className?: string } = {}) =>
+    <section key={id} id={extra.id} tabIndex={-1} className={`world-wall-panel ${extra.className ?? ""}`} data-wall-panel={id} data-section={WALL_PANELS[id].section} aria-label={label}>
+      <div className="world-wall-copy"><h2 className="world-screen-title">{label}</h2>{body}</div>
+      <button type="button" className="world-wall-open" onFocus={() => onFocusPanel?.(id)} onClick={(event) => onOpen(id, event.currentTarget.closest("section")!.getBoundingClientRect())}><span>{action}</span></button>
+    </section>;
+  return <div className="world-wall-dom">
+    {section("market", "시장 지수", "시장 지수 자세히", model.market.items.length
+      ? <ul className="world-wall-market">{model.market.items.map((item) => <li key={item.id} data-tone={item.tone}><span>{item.label}</span><strong>{item.value}</strong><em>{item.delta}</em></li>)}</ul>
+      : <p className="world-screen-meta">{waiting(model.market.state, "시장 지수 없음")}</p>)}
+    {section("room", "곡소리방", "곡소리방 열기·글쓰기", model.room.items.length
+      ? <ul className="world-wall-list">{model.room.items.map((item) => <li key={item.id}><p>{item.text}</p><span>{item.author}{item.guest ? "*" : ""} · {item.time}{item.replies ? ` · 덧글 ${item.replies}` : ""}</span></li>)}</ul>
+      : <p className="world-screen-meta">{waiting(model.room.state, "아직 글이 없습니다")}</p>)}
+    {section("pierrot", "주식 삐에로", "삐에로·지수 자세히", <figure className="world-pierrot" data-band={model.pierrot.band}>
+      {/* Original 300×200 artwork: no crop, redraw, or substitute character. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={model.pierrot.src} width={300} height={200} alt={`주식 삐에로 · ${model.pierrot.label}`} />
+      <figcaption>현재 분위기 · {model.pierrot.label}</figcaption>
+    </figure>)}
+    {section("index", "곡소리 지수", "산식·시장 지표", <>
+      <SummaryNumbers summary={model.index.summary} />
+      <p className="world-screen-meta">최근 6시간 · <time dateTime={model.index.dataAt ?? undefined}>{model.index.time}</time></p>
+      <p className="world-screen-status" role="status" hidden={model.index.status === "관측 중"}>{model.index.status}</p>
+    </>, { id: "world-index-wall", className: "world-index-screen" })}
+    {section("feed", "곡소리 피드", "곡소리 피드 전체 보기", model.feed.items.length
+      ? <ul className="world-wall-list">{model.feed.items.map((item) => <li key={item.key} data-label={item.label}><p>{item.title}</p><span>{[item.source, item.symbol, item.time].filter(Boolean).join(" · ")}</span></li>)}</ul>
+      : <p className="world-screen-meta">{waiting(model.feed.state, "최근 6시간 글 없음")}</p>, { id: "world-feed-wall" })}
   </div>;
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
+import { ModeSwitch } from "@/components/mode-switch";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -24,6 +25,7 @@ export function SiteHeader() {
           </Link>
           <HeaderNavExtras />
         </nav>
+        <ModeSwitch />
       </div>
       <div className="header-controls">
         <ThemeToggle />

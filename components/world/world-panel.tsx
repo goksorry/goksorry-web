@@ -1,14 +1,28 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
-export function WorldPanel({ title, name, children, onClose, modal = false }: {
-  title: string; name: string; children: ReactNode; onClose: () => void; modal?: boolean;
+export type PanelOrigin = { x: number; y: number; width: number; height: number };
+export function WorldPanel({ title, name, children, onClose, modal = false, origin = null }: {
+  title: string; name: string; children: ReactNode; onClose: () => void; modal?: boolean; origin?: PanelOrigin | null;
 }) {
   const panel = useRef<HTMLElement>(null);
   // Capture before the background becomes inert during the commit.
   const previous = useRef<HTMLElement | null>(typeof document === "undefined" ? null : document.activeElement as HTMLElement | null);
   const close = useRef(onClose);
   close.current = onClose;
+  // Grow out of the wall panel (or button) that opened this dialog.
+  const from = useRef(origin);
+  useLayoutEffect(() => {
+    const node = panel.current, start = from.current;
+    if (!node || !start || typeof node.animate !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const end = node.getBoundingClientRect();
+    if (!end.width || !end.height) return;
+    const dx = start.x + start.width / 2 - (end.x + end.width / 2), dy = start.y + start.height / 2 - (end.y + end.height / 2);
+    node.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(${Math.max(.05, start.width / end.width)}, ${Math.max(.05, start.height / end.height)})`, opacity: .3 },
+      { transform: "none", opacity: 1 }
+    ], { duration: 280, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }, []);
   useEffect(() => {
     panel.current?.focus();
     const key = (event: KeyboardEvent) => {

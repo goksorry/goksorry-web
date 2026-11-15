@@ -4,8 +4,14 @@ import type { WorldScene, WorldSide } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
+import { WALL_PANEL_IDS, type WallModel, type WallView } from "@/lib/world-wall";
 
-type Props = RenderState & { reduced: boolean; emote: string; children: ReactNode; onEvidence: (side: WorldSide) => void; onScene: (scene: WorldScene) => void; onStep: () => void };
+type Props = RenderState & {
+  reduced: boolean; emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
+  onEvidence: (side: WorldSide) => void; onScene: (scene: WorldScene) => void; onStep: () => void;
+};
+// Plaza entrances sit on the floor strip that every framed view keeps visible.
+const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
@@ -18,14 +24,16 @@ export default function HD2DWorld(props: Props) {
     if (props.reduced) { setMode("reduced"); return; }
     let cancelled = false; setMode("loading");
     void import("./hd2d-renderer").then(({ createWorldRenderer }) => cancelled ? null : createWorldRenderer(canvas.current!, latest.current, {
-      anchor(name, x, y, width) {
-        const element = host.current?.querySelector<HTMLElement>(`[data-screen=${name}]`);
-        if (element) { element.style.setProperty("--anchor-x", `${x}px`); element.style.setProperty("--anchor-y", `${y}px`); element.style.setProperty("--screen-width", `${width}px`); }
+      panels(rects) {
+        // Pin each DOM twin (hit target + screen-reader copy) onto its wall panel.
+        if (rects) for (const id of WALL_PANEL_IDS) {
+          const element = host.current?.querySelector<HTMLElement>(`[data-wall-panel=${id}]`), r = rects[id];
+          if (element) Object.assign(element.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` });
+        }
       },
       avatar(x, y, position) {
         if (avatar.current) { avatar.current.style.left = `${x}px`; avatar.current.style.top = `${y}px`; avatar.current.dataset.position = `${position.x.toFixed(2)},${position.z.toFixed(2)}`; }
-        const entrances: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6, z: 1.4 }, { scene: "battle", x: 6, z: 1.4 }, { scene: "broadcast", x: -6, z: 5 }, { scene: "theater", x: 6, z: 5 }];
-        const next = latest.current.scene === "plaza" ? entrances.find((e) => Math.hypot(e.x - position.x, e.z - position.z) < 2)?.scene ?? null : null;
+        const next = latest.current.scene === "plaza" ? ENTRANCES.find((e) => Math.hypot(e.x - position.x, e.z - position.z) < 1.4)?.scene ?? null : null;
         if (nearbyRef.current !== next) { nearbyRef.current = next; setNearby(next); }
       },
       evidence(side) { latest.current.onEvidence(side); }, step() { latest.current.onStep(); },
@@ -33,11 +41,18 @@ export default function HD2DWorld(props: Props) {
     })).then((instance) => {
       if (!instance) return;
       if (cancelled) { instance.dispose(); return; }
-      renderer.current = instance; instance.update(latest.current); setMode("webgl");
+      renderer.current = instance; instance.setView(latest.current.view); instance.update(latest.current); setMode("webgl");
       // Read-only measurement surface; measures actual renderer.render calls.
       Object.defineProperty(canvas.current!, "worldMetrics", { configurable: true, get: () => instance.metrics });
-      Object.defineProperty(canvas.current!, "worldCapture", { configurable: true, value: () => { instance.draw(); return canvas.current!.toDataURL("image/png"); } });
-      instance.draw();
+      // `bare` renders the room without wall data, for the static fallback art.
+      Object.defineProperty(canvas.current!, "worldCapture", { configurable: true, value: (bare = false) => {
+        if (bare) instance.setWall(null);
+        instance.draw(); const image = canvas.current!.toDataURL("image/png");
+        if (bare) { instance.setWall(latest.current.wall); instance.draw(); }
+        return image;
+      } });
+      Object.defineProperty(canvas.current!, "worldWallTexture", { configurable: true, value: (id: "market" | "room" | "index" | "feed") => instance.wallTexture(id).toDataURL("image/png") });
+      // The canvas is still display:none here; the mode effect draws once it has a layout box.
     }).catch((error) => { if (!cancelled) { console.warn("HD2D renderer unavailable", error); setMode("failed"); } });
     return () => { cancelled = true; cancelAnimationFrame(animation.current); renderer.current?.dispose(); renderer.current = null; };
   }, [props.reduced]);
@@ -45,6 +60,20 @@ export default function HD2DWorld(props: Props) {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...props, paused: props.paused || !onScreen });
   }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, mode, onScreen]);
+  useEffect(() => {
+    const instance = renderer.current; if (!instance || mode !== "webgl") return;
+    instance.setView(props.view);
+    if (props.paused || !onScreen) instance.draw();
+  }, [props.view, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const instance = renderer.current; if (!instance || mode !== "webgl" || !host.current) return;
+    const computed = getComputedStyle(host.current);
+    instance.setWall(props.wall, {
+      family: computed.fontFamily || "sans-serif",
+      up: computed.getPropertyValue("--change-up").trim() || "#e0705f", down: computed.getPropertyValue("--change-down").trim() || "#6fa3e0"
+    });
+    if (props.paused || !onScreen) instance.draw();
+  }, [props.wall, props.styleKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     cancelAnimationFrame(animation.current);
@@ -77,7 +106,7 @@ export default function HD2DWorld(props: Props) {
     {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
       {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${i % 4 / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}
-    <canvas ref={canvas} className="hd2d-canvas" hidden={fallback} tabIndex={fallback ? -1 : 0} role="group" aria-label="개미 월드. 바닥 클릭 또는 방향키로 이동" onPointerDown={(event) => {
+    <canvas ref={canvas} className="hd2d-canvas" hidden={fallback} tabIndex={fallback ? -1 : 0} role="group" aria-label="개미 월드. 바닥 클릭 또는 방향키로 이동" onClick={(event) => {
       const bounds = event.currentTarget.getBoundingClientRect(); event.currentTarget.focus(); renderer.current?.click(event.clientX - bounds.left, event.clientY - bounds.top);
     }} onKeyDown={(event) => {
       const delta: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };

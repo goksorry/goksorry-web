@@ -4886,3 +4886,42 @@ div.goksorry-room-list-status {
 .feed-unified-list { width:100%; }
 .feed-scope-summary { font-size:14px; line-height:1.7; }
 .sentiment-card-neutral { border-color:var(--line); }
+
+/* 일반모드 / 메타버스모드 header toggle. */
+.mode-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mode-switch a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mode-switch a[aria-current="page"] {
+  background: var(--button-bg);
+  color: var(--button-ink);
+}
+
+.world-panel-menu .mode-switch {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .header-main {
+    flex-wrap: wrap;
+  }
+
+  .mode-switch span {
+    display: none;
+  }
+}
