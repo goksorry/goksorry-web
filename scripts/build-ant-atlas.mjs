@@ -1,5 +1,5 @@
 // Builds components/world/ant-atlas.json (v2) and, when extra sprite sheets exist, public/world/ant-atlas.png.
-//   node scripts/build-ant-atlas.mjs                       base frames + every sheet found in public/world/source
+//   node scripts/build-ant-atlas.mjs                       base frames + every sheet found in art/world/source
 //   node scripts/build-ant-atlas.mjs --check <png> [--cols 4 --rows 5]   segment and validate one sheet, write nothing
 //   --source <dir>  look for the manifest sheets (by file name) in another directory; an empty one gives the base-only result
 //   --out <dir>     write ant-atlas.json / ant-atlas.png there instead of into the repo (dry run)
@@ -22,15 +22,15 @@ const BASE = { cols: ["f", "l", "r", "b"], rows: [["neutral", "idle"], ["neutral
 // tone: [sheet row, base row] showing the same character. The generated sheets came out paler than ants.png, so each is
 // multiplied per channel until that row's mean colour equals the base row's; otherwise an ant changes shade between frames.
 const SHEETS = [
-  { file: "public/world/source/ants-diagonal.png", cols: ["fl", "bl", "br", "fr"],
+  { file: "art/world/source/ants-diagonal.png", cols: ["fl", "bl", "br", "fr"],
     rows: [["neutral", "idle"], ["neutral", "walk-a"], ["neutral", "walk-b"], ["fear", "idle"], ["hope", "idle"]], norm: { row: 0, ref: 228 }, tone: [0, 0] },
-  { file: "public/world/source/ants-phone.png", cols: ["f", "l", "r", "b"],
+  { file: "art/world/source/ants-phone.png", cols: ["f", "l", "r", "b"],
     rows: [["neutral", "phone"], ["neutral", "sigh"], ["fear", "phone"], ["hope", "phone"], ["hope", "sigh"]], norm: { row: 0, ref: 234 }, tone: [1, 0] },
-  { file: "public/world/source/ants-walk.png", cols: ["f", "l", "r", "b"],
+  { file: "art/world/source/ants-walk.png", cols: ["f", "l", "r", "b"],
     rows: [null, null, ["hope", "walk-a"], ["hope", "walk-b"], ["neutral", "walk-p"]], norm: { row: 4, ref: 217 }, tone: [4, 0] },
   // Fear walk cycle and sigh. It replaces rows 1-2 of ants-walk.png, whose two strides were nearly identical (the ant slid).
   // Row 5 is a neutral idle ant used only as the tone reference.
-  { file: "public/world/source/ants-fear.png", cols: ["f", "l", "r", "b"],
+  { file: "art/world/source/ants-fear.png", cols: ["f", "l", "r", "b"],
     rows: [["fear", "walk-a"], ["fear", "walk-b"], ["fear", "walk-p"], ["fear", "sigh"], null], norm: { row: 4, ref: 228 }, tone: [4, 0] },
 ];
 // Hand-fixed anchors by frame key (px from the cell's left edge), e.g. { "fear.phone.l": 84 }.

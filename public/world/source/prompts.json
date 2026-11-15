@@ -15,10 +15,10 @@
     "tool": "codex-cli 0.167.0, built-in image_gen, one fresh run per sheet (no resume); attempt 1 kept for all four",
     "reference": "public/world/ants.png",
     "outputs": {
-      "sprites-diagonal": "public/world/source/ants-diagonal.png",
-      "sprites-phone": "public/world/source/ants-phone.png",
-      "sprites-walk": "public/world/source/ants-walk.png",
-      "sprites-fear": "public/world/source/ants-fear.png"
+      "sprites-diagonal": "art/world/source/ants-diagonal.png",
+      "sprites-phone": "art/world/source/ants-phone.png",
+      "sprites-walk": "art/world/source/ants-walk.png",
+      "sprites-fear": "art/world/source/ants-fear.png"
     },
     "wrapper": "Use your built-in image_gen tool exactly once (do not draw with code, do not call any API or script). The attached image public/world/ants.png is the style and character reference: same ant, same palette, same pixel density, same apparent character height. Save the generated PNG unmodified as <TARGET> (create the directory if needed). Do not modify any other file. Reply with the saved path and its pixel size. Image prompt: <PROMPT>",
     "invocation": "codex exec -s workspace-write -C . -c 'model_reasoning_effort=\"medium\"' -i public/world/ants.png -o <scratch>/codex-<name>-1.txt -- \"<WRAPPER>\" </dev/null",

@@ -8,10 +8,10 @@
 | --- | --- | --- |
 | `public/world/materials.png` | 원본 재질 atlas | 2×2: 바닥·벽돌 / 금속·회벽 |
 | `public/world/ants.png` | 원본 투명 캐릭터 atlas | 4방향 × 정지·걷기 A·걷기 B·공포·희망 |
-| `public/world/source/ants-diagonal.png` | 대각선 4방향 원본 시트 | 열 앞왼·뒤왼·뒤오른·앞오른 × 행 정지·걷기 A·걷기 B·공포·희망 |
-| `public/world/source/ants-phone.png` | 폰 보기·한숨 원본 시트 | 열 앞·왼·오른·뒤 × 행 중립 폰·중립 한숨·공포 폰·희망 폰·희망 한숨 |
-| `public/world/source/ants-walk.png` | 감정별 걷기 원본 시트 | 열 앞·왼·오른·뒤 × 행 (공포 걷기 A/B: 미사용)·희망 걷기 A/B·중립 지나가는 발 |
-| `public/world/source/ants-fear.png` | 공포 걷기·한숨 원본 시트 | 열 앞·왼·오른·뒤 × 행 공포 걷기 A·걷기 B·지나가는 발·한숨·(중립 정지: 색 보정 기준, 미사용) |
+| `art/world/source/ants-diagonal.png` | 대각선 4방향 원본 시트 | 열 앞왼·뒤왼·뒤오른·앞오른 × 행 정지·걷기 A·걷기 B·공포·희망 |
+| `art/world/source/ants-phone.png` | 폰 보기·한숨 원본 시트 | 열 앞·왼·오른·뒤 × 행 중립 폰·중립 한숨·공포 폰·희망 폰·희망 한숨 |
+| `art/world/source/ants-walk.png` | 감정별 걷기 원본 시트 | 열 앞·왼·오른·뒤 × 행 (공포 걷기 A/B: 미사용)·희망 걷기 A/B·중립 지나가는 발 |
+| `art/world/source/ants-fear.png` | 공포 걷기·한숨 원본 시트 | 열 앞·왼·오른·뒤 × 행 공포 걷기 A·걷기 B·지나가는 발·한숨·(중립 정지: 색 보정 기준, 미사용) |
 | `scripts/build-ant-atlas.mjs` | atlas 합성 스크립트 (`npm run build:ant-atlas`) | 원본 시트를 잘라 `ant-atlas.png`와 `ant-atlas.json`을 함께 기록. `--check <png>`는 한 장만 검사 |
 | `public/world/ant-atlas.png` | 렌더러가 읽는 합성 atlas (생성물) | `ants.png`를 (0,0)에 그대로 두고 새 프레임을 아래에 배치. 직접 수정하지 않는다 |
 | `components/world/ant-atlas.json` | 프레임 경계·애니메이션 정의 (생성물, v2) | alpha > 89 영역에 2px 여백. `cells`는 기존 20칸, `frames`는 전체 88프레임 |
@@ -30,7 +30,7 @@
 - `image`는 렌더러가 읽는 파일, `width`/`height`는 그 파일의 크기다. `ants.png`는 수정하지 않으며 CSS 정적 장면과 로고가 계속 그대로 쓴다. 기존 `cells` 좌표는 합성 atlas에서도 유효하고, 광장 외 장면은 `cells`만 쓴다.
 - 없는 프레임은 `lib/world-crowd.ts`의 `antFrameCandidates`가 같은 감정의 다른 자세, 중립, 좌우 반전(UV 폭을 음수로) 순으로 대체한다.
 - 합성할 때 스크립트가 새 시트에만 세 가지 보정을 한다(원본 파일은 건드리지 않는다). ① 색 맞춤: 생성 시트가 `ants.png`보다 15~20% 밝게 나와서, 매니페스트 `tone` 행의 평균색이 기준 행과 같아지도록 채널별 배율을 곱한다. 이게 없으면 걷는 동안 프레임마다 개미 색이 바뀐다. ② 폰 프레임의 흰 빛 번짐을 어두운 청록으로 낮춘다(게임 크기에서 마스크처럼 보였다). ③ 용량: 렌더러는 alpha .35에서 자르기만 하므로 alpha를 0/255로 만들고 가려지는 픽셀을 비우며, 새 프레임은 채널당 5비트로 줄인다(최대 4/255 차이). `ants.png` 영역의 색은 그대로다. 결과 `ant-atlas.png`는 약 2.2MB다(보정 전 4.3MB, `ants.png` 1.1MB).
-- 세 원본 시트는 기존 `public/world/source/` 관례대로 `public/` 아래에 있어 배포에 포함된다(합 3.5MB, 페이지는 쓰지 않음).
+- 추가 원본 시트 네 장은 `art/world/source/`에 둔다(합 4.5MB). `public/` 밖이라 배포·서빙되지 않고, 합성 스크립트만 읽는다. 프롬프트 기록은 `public/world/source/prompts.json`에 그대로 있다.
 - 원본 시트를 바꾸면 `npm run build:ant-atlas`를 다시 실행하고 PNG와 JSON을 함께 커밋한다.
 
 ## 광장 군중
@@ -65,6 +65,6 @@
 
 ```bash
 codex exec -s workspace-write -C . -c 'model_reasoning_effort="medium"' -i public/world/ants.png -o <scratch>/codex-<name>-1.txt -- "<WRAPPER>" </dev/null
-node scripts/build-ant-atlas.mjs --check public/world/source/ants-<name>.png   # 20칸 확인
+node scripts/build-ant-atlas.mjs --check art/world/source/ants-<name>.png   # 20칸 확인
 npm run build:ant-atlas
 ```
