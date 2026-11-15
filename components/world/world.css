@@ -228,7 +228,7 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 .world-feed-screen .sentiment-card-body { order:-1; }
 .world-feed-screen .sentiment-card-head { display:flex; flex-direction:column; align-items:flex-start; gap:5px; }
 .world-feed-screen .sentiment-time { white-space:normal; }
-@media(max-width:959px) { .world-index-heading { margin-bottom:6px; }.world-index-screen { padding:8px 12px; }.world-index-screen .world-screen-meta { margin:6px 0 0; }.world-feed-screen .sentiment-card { padding:8px 0; } }
+@media(max-width:959px) { .world-index-heading { margin-bottom:0; }.world-index-screen { padding:8px 12px; }.world-index-screen .world-screen-meta { margin:2px 0 0; }.world-index-screen .world-screen-status { margin:0; }.world-feed-screen .sentiment-card { padding:8px 0; } }
 
 /* The same ant atlas acts on the index wall ledge, above the scene rather than behind the data. */
 .world-wall-ants { position:absolute; right:18px; bottom:-19px; width:108px; height:50px; pointer-events:none; z-index:3; }

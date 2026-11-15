@@ -136,13 +136,18 @@ test("theater Pierrot uses the replay index rather than current live index", asy
 
 
 test("360 by 640 exposes index, original Pierrot and first original link without opening a panel", async ({ page }) => {
-  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  const frame = await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 360, height: 640 }); await page.goto("/");
   await expect(index(page)).toBeInViewport();
   await expect(page.locator(".world-pierrot img")).toBeInViewport();
   await expect(panel(page).locator(".sentiment-title").first()).toBeInViewport();
   expect((await index(page).boundingBox())!.height).toBeLessThanOrEqual(220);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, data_at: new Date(Date.now() - 3_600_000).toISOString() } }));
+  await page.reload();
+  await expect(index(page).locator(".world-screen-status")).toContainText("갱신 지연");
+  expect((await index(page).boundingBox())!.height).toBeLessThanOrEqual(220);
+  await expect(panel(page).locator(".sentiment-title").first()).toBeInViewport();
 });
 
 test("multiple sources filter wall summary and list together; empty selection stays empty", async ({ page }) => {
