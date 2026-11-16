@@ -182,8 +182,13 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   const frame = await prepareWorld(page); let release: () => void = () => {}; const pending = new Promise<void>((resolve) => { release = resolve; });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.route("**/api/internal/world", async (route) => { await pending; await route.fulfill({ json: frame }); });
-  await page.goto("/"); await expect(page.locator(".world-live-badge")).toContainText("최초"); release();
+  await page.goto("/"); await expect(page.locator(".world-live-badge")).toContainText("최초");
+  // Static fallback: the index and portrait wait behind skeletons, never a guessed value.
+  await expect(page.locator(".world-index-screen .world-skeleton")).toBeVisible();
+  await expect(page.locator('[data-wall-panel="pierrot"] img')).toHaveCount(0);
+  release();
   await expect(page.locator(".world-index-screen")).toContainText(`분석 표본 ${frame.overall.total}건`);
+  await expect(page.locator(".world-skeleton")).toHaveCount(0);
   const time = await page.locator(".world-live-badge time").getAttribute("datetime");
   await page.route("**/api/internal/world", (route) => route.fulfill({ status: 503, json: { error: "테스트 데이터 장애" } }));
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
@@ -194,6 +199,18 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   await expect(page.locator(".world-index-screen")).toContainText(`분석 표본 ${frame.overall.total}건`);
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: { ...frame, data_at: new Date(Date.now() - 3_600_000).toISOString() } }));
   await page.getByRole("button", { name: "다시 시도", exact: true }).click(); await expect(page.locator(".world-live-badge")).toContainText("갱신 지연");
+});
+
+test("WebGL wall sweeps a shimmer over panels until their first payload arrives", async ({ page }) => {
+  await prepareWorld(page); let release: () => void = () => {}; const pending = new Promise<void>((resolve) => { release = resolve; });
+  // Hold the feed poll and the world frame: either one supplies the index and its portrait.
+  for (const url of ["**/api/feed?*", "**/api/internal/world"]) await page.route(url, async (route) => { await pending; await route.fallback(); });
+  await page.goto("/"); await webgl(page);
+  const shimmer = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.wall?.shimmer ?? null);
+  // Market and room are fixture-fast; feed, index and portrait wait.
+  await expect.poll(shimmer).toEqual(["pierrot", "index", "feed"]);
+  release();
+  await expect.poll(shimmer).toEqual([]);
 });
 
 test("WebGL and asset failures use same static art with working screens", async ({ page }) => {

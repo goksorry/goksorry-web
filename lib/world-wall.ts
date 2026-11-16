@@ -80,9 +80,9 @@ export function projectPanel(id: WallPanelId, fit: WallFit): WallRect {
 /** Body text size in CSS px for wall textures painted at `ppu` px per world unit. */
 export const wallBodyPx = (ppu: number): number => Math.max(11, Math.min(20, Math.round(ppu * .26)));
 
-type Loadable = "loading" | "ready" | "failed";
+export type Loadable = "loading" | "ready" | "failed";
 export type WallModel = {
-  index: { summary: Omit<WorldSummary, "evidence">; dataAt: string | null; time: string | null; status: string; label: string };
+  index: { state: Loadable; summary: Omit<WorldSummary, "evidence">; dataAt: string | null; time: string | null; status: string; label: string };
   pierrot: { src: string; band: string; label: string };
   market: { state: Loadable; items: { id: string; label: string; value: string; delta: string; tone: string }[] };
   room: { state: Loadable; items: { id: string; text: string; author: string; guest: boolean; time: string; replies: number }[] };
@@ -91,6 +91,15 @@ export type WallModel = {
 
 export type WallSource<T> = { data: T | null; failed: boolean; loaded: boolean };
 const loadable = (source: WallSource<unknown>): Loadable => source.data ? "ready" : source.failed ? "failed" : "loading";
+
+/**
+ * Whether a wall panel still waits for its first payload and should show a loading skeleton.
+ * The portrait follows the index: its art is chosen from the index summary.
+ */
+export function wallPanelLoading(model: WallModel, id: WallPanelId): boolean {
+  if (id === "index" || id === "pierrot") return model.index.state === "loading";
+  return model[id].state === "loading" && !model[id].items.length;
+}
 
 export function buildWallModel(input: {
   frame: WorldFrame; loaded: boolean; failed: boolean; status: string; scopeStatus?: string;
@@ -111,6 +120,8 @@ export function buildWallModel(input: {
     summary, dataAt,
     model: {
       index: {
+        // A scoped selection waits for its own summary; the unscoped wall waits for the world frame.
+        state: scope ? "ready" : input.filtered ? loadable(input.feed) : input.loaded ? "ready" : input.failed ? "failed" : "loading",
         summary: { total: summary.total, bullish: summary.bullish, bearish: summary.bearish, neutral: summary.neutral, hope_ratio: summary.hope_ratio, fear_ratio: summary.fear_ratio, mood: summary.mood, index: summary.index },
         time: time ? `${time} 기준` : input.failed ? "데이터 조회 실패" : input.loaded ? "기준 시각 없음" : "데이터 조회 중",
         dataAt, status: input.scopeStatus ?? input.status, label: art.label

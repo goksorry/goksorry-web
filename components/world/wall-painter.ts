@@ -1,5 +1,6 @@
 import { percent } from "@/lib/world";
-import type { WallModel, WallTextPanelId } from "@/lib/world-wall";
+import { wallPanelLoading, type WallModel, type WallTextPanelId } from "@/lib/world-wall";
+import { paintWallSkeleton } from "./wall-skeleton";
 
 export type WallPaintStyle = { family: string; up: string; down: string };
 /** Logical (CSS px) size of the panel, device scale of the backing canvas and body text size. */
@@ -53,15 +54,18 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
   font(Math.round(body * 1.05), 700); ctx.fillStyle = GOLD; ctx.fillText(TITLES[id], pad, head * .7);
   const titleWidth = ctx.measureText(TITLES[id]).width;
   font(small); ctx.fillStyle = DIM;
-  const hint = id === "index" ? model.index.time ?? "" : id === "feed" && model.feed.scope ? model.feed.scope : "눌러서 열기";
+  const loading = wallPanelLoading(model, id);
+  const hint = loading ? "불러오는 중…" : id === "index" ? model.index.time ?? "" : id === "feed" && model.feed.scope ? model.feed.scope : "눌러서 열기";
   right(clip(`${hint} ↗`, w - pad * 3 - titleWidth), w - pad, head * .7);
   ctx.fillStyle = LINE; ctx.fillRect(pad, head, w - pad * 2, 1);
   const top = head + Math.round(body * .5), bottom = h - Math.round(body * .5);
   const notice = (text: string) => { font(body); ctx.fillStyle = DIM; ctx.fillText(text, pad, top + body * 1.4); };
+  // First payload pending: skeleton rows until real content replaces them (the renderer adds the shimmer).
+  if (loading) { paintWallSkeleton(ctx, { x: pad, y: top, width: w - pad * 2, height: bottom - top }, body); return; }
 
   if (id === "market") {
     const { state, items } = model.market;
-    if (!items.length) { notice(state === "failed" ? "시장 지수 조회 실패" : "시장 지수 확인 중…"); return; }
+    if (!items.length) { notice(state === "failed" ? "시장 지수 조회 실패" : "시장 지수 없음"); return; }
     const cellW = (w - pad * 3) / 2, cellH = (bottom - top) / 2;
     items.forEach((item, i) => {
       const x = pad + (i % 2) * (cellW + pad), y = top + Math.floor(i / 2) * cellH;
@@ -126,7 +130,7 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
     text: item.text, meta: [`${item.author}${item.guest ? "*" : ""}`, item.time, item.replies ? `덧글 ${item.replies}` : ""].filter(Boolean).join(" · "), mark: ""
   }));
   const state = id === "feed" ? model.feed.state : model.room.state;
-  if (!rows.length) { notice(state === "failed" ? "조회 실패 · 눌러서 다시 열기" : state === "loading" ? "불러오는 중…" : id === "feed" ? "최근 6시간 글 없음" : "아직 글이 없습니다"); return; }
+  if (!rows.length) { notice(state === "failed" ? "조회 실패 · 눌러서 다시 열기" : id === "feed" ? "최근 6시간 글 없음" : "아직 글이 없습니다"); return; }
   const indent = id === "feed" ? Math.round(body * .7) : 0, lineH = Math.round(body * 1.42), gap = Math.round(body * .62);
   let y = top;
   for (const row of rows) {

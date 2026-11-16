@@ -1,6 +1,8 @@
 "use client";
 import { percent, type WorldSummary } from "@/lib/world";
-import { WALL_PANELS, type WallModel, type WallPanelId } from "@/lib/world-wall";
+import type { CSSProperties } from "react";
+import { WALL_PANELS, wallPanelLoading, type WallModel, type WallPanelId } from "@/lib/world-wall";
+import { WALL_SKELETON_COLOR, WALL_SKELETON_WIDTHS } from "./wall-skeleton";
 
 export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evidence"> }) {
   return <div className="world-numbers">
@@ -11,7 +13,15 @@ export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evide
   </div>;
 }
 
-const waiting = (state: "loading" | "ready" | "failed", empty: string) => state === "failed" ? "조회 실패" : state === "loading" ? "불러오는 중…" : empty;
+/** DOM twin of the wall texture skeleton: same row rhythm and colour, announced once as loading. */
+export function WallSkeleton({ rows = 4 }: { rows?: number }) {
+  return <div className="world-skeleton" role="status" style={{ "--world-skeleton": WALL_SKELETON_COLOR } as CSSProperties}>
+    <span className="sr-only">불러오는 중…</span>
+    {Array.from({ length: rows }, (_, i) => <i key={i} aria-hidden="true" style={{ width: `${WALL_SKELETON_WIDTHS[i % WALL_SKELETON_WIDTHS.length] * 100}%` }} />)}
+  </div>;
+}
+
+const waiting = (state: "loading" | "ready" | "failed", empty: string) => state === "loading" ? <WallSkeleton /> : <p className="world-screen-meta">{state === "failed" ? "조회 실패" : empty}</p>;
 
 /**
  * DOM twin of the WebGL wall. With WebGL the text lives in the scene textures:
@@ -28,23 +38,23 @@ export function WorldWallDom({ model, onOpen, onFocusPanel }: { model: WallModel
   return <div className="world-wall-dom">
     {section("market", "시장 지수", "시장 지수 자세히", model.market.items.length
       ? <ul className="world-wall-market">{model.market.items.map((item) => <li key={item.id} data-tone={item.tone}><span>{item.label}</span><strong>{item.value}</strong><em>{item.delta}</em></li>)}</ul>
-      : <p className="world-screen-meta">{waiting(model.market.state, "시장 지수 없음")}</p>)}
+      : waiting(model.market.state, "시장 지수 없음"))}
     {section("room", "곡소리방", "곡소리방 열기·글쓰기", model.room.items.length
       ? <ul className="world-wall-list">{model.room.items.map((item) => <li key={item.id}><p>{item.text}</p><span>{item.author}{item.guest ? "*" : ""} · {item.time}{item.replies ? ` · 덧글 ${item.replies}` : ""}</span></li>)}</ul>
-      : <p className="world-screen-meta">{waiting(model.room.state, "아직 글이 없습니다")}</p>)}
-    {section("pierrot", "주식 삐에로", "삐에로·지수 자세히", <figure className="world-pierrot" data-band={model.pierrot.band}>
+      : waiting(model.room.state, "아직 글이 없습니다"))}
+    {section("pierrot", "주식 삐에로", "삐에로·지수 자세히", wallPanelLoading(model, "pierrot") ? <WallSkeleton rows={3} /> : <figure className="world-pierrot" data-band={model.pierrot.band}>
       {/* Original 300×200 artwork: no crop, redraw, or substitute character. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={model.pierrot.src} width={300} height={200} alt={`주식 삐에로 · ${model.pierrot.label}`} />
       <figcaption>현재 분위기 · {model.pierrot.label}</figcaption>
     </figure>)}
-    {section("index", "곡소리 지수", "산식·시장 지표", <>
+    {section("index", "곡소리 지수", "산식·시장 지표", wallPanelLoading(model, "index") ? <WallSkeleton rows={3} /> : <>
       <SummaryNumbers summary={model.index.summary} />
       <p className="world-screen-meta">최근 6시간 · <time dateTime={model.index.dataAt ?? undefined}>{model.index.time}</time></p>
       <p className="world-screen-status" role="status" hidden={model.index.status === "관측 중"}>{model.index.status}</p>
     </>, { id: "world-index-wall", className: "world-index-screen" })}
     {section("feed", "곡소리 피드", "곡소리 피드 전체 보기", model.feed.items.length
       ? <ul className="world-wall-list">{model.feed.items.map((item) => <li key={item.key} data-label={item.label}><p>{item.title}</p><span>{[item.source, item.symbol, item.time].filter(Boolean).join(" · ")}</span></li>)}</ul>
-      : <p className="world-screen-meta">{waiting(model.feed.state, "최근 6시간 글 없음")}</p>, { id: "world-feed-wall" })}
+      : waiting(model.feed.state, "최근 6시간 글 없음"), { id: "world-feed-wall" })}
   </div>;
 }

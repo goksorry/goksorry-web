@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { buildWorldFrame } from "../lib/world";
-import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, buildWallModel, projectPanel, wallBodyPx, wallFit } from "../lib/world-wall";
+import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, buildWallModel, projectPanel, wallBodyPx, wallFit, wallPanelLoading } from "../lib/world-wall";
 import { worldRows } from "./world-fixture";
 
 const wide = { plaza: true, layout: "wide", section: 1, overview: false, hudBottom: 60 } as const;
@@ -59,4 +59,11 @@ test("wall model keeps scope fallback, clean filter and row caps", () => {
   // A filtered scope without a summary is empty, never the whole market.
   const filtered = buildWallModel({ ...base, filtered: true, cleanFilterEnabled: true, feed: { data: null, failed: false, loaded: false } });
   expect(filtered.summary.total).toBe(0); expect(filtered.dataAt).toBeNull(); expect(filtered.model.feed.state).toBe("loading");
+  // The index panel shows a skeleton until its own source arrives.
+  expect(clean.model.index.state).toBe("ready"); expect(filtered.model.index.state).toBe("loading");
+  const pending = buildWallModel({ ...base, loaded: false, cleanFilterEnabled: true, feed: { data: null, failed: false, loaded: false } }).model;
+  expect(pending.index.state).toBe("loading");
+  // Skeletons: waiting panels and the portrait that follows the index; failures and ready panels never.
+  expect(WALL_PANEL_IDS.filter((id) => wallPanelLoading(pending, id))).toEqual(["market", "pierrot", "index", "feed"]);
+  expect(WALL_PANEL_IDS.filter((id) => wallPanelLoading(clean.model, id))).toEqual(["market"]);
 });
