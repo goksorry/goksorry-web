@@ -7,6 +7,10 @@ export const PLAZA_ENTRANCES: { scene: Exclude<WorldScene, "plaza">; name: strin
   { scene: "ecosystem", name: "개미 생태계", x: -6.5, z: .2 }, { scene: "broadcast", name: "재난방송", x: -2.6, z: .2 },
   { scene: "theater", name: "개미극장", x: 2.6, z: .2 }, { scene: "battle", name: "심리 전장", x: 6.5, z: .2 }
 ];
+/** A finished touch gesture as a wall-section step: a quick, mostly horizontal swipe to the left shows the section
+ * to the right (+1), to the right the one to the left (-1); anything else (a tap, a slow drag, a vertical swipe) is 0. */
+export const swipeStep = (dx: number, dy: number, ms: number): -1 | 0 | 1 =>
+  Math.abs(dx) >= 48 && Math.abs(dx) > 1.5 * Math.abs(dy) && ms <= 700 ? (dx < 0 ? 1 : -1) : 0;
 /** The plaza entrance the visitor stands at (within 1.4 units), if any. */
 export const entranceAt = (scene: WorldScene, at: Point) =>
   scene === "plaza" ? PLAZA_ENTRANCES.find((e) => Math.hypot(e.x - at.x, e.z - at.z) < 1.4) ?? null : null;

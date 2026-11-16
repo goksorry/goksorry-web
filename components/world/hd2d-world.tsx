@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { PLAZA_ENTRANCES, entranceAt } from "@/lib/world-navigation";
+import { PLAZA_ENTRANCES, entranceAt, swipeStep } from "@/lib/world-navigation";
 import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { WorldSpeechBubble } from "./world-speech-bubble";
@@ -35,6 +35,9 @@ export default function HD2DWorld(props: Props) {
   const nearbyRef = useRef<WorldScene | null>(null), nearButton = useRef<HTMLButtonElement>(null);
   // Last screen rectangles of the painted tags; the entrance button is pinned over its sign.
   const tagRects = useRef<Record<string, { x: number; y: number; width: number; height: number }>>({});
+  // Touch swipes on the zoomed phone view step through the wall sections like the arrow buttons.
+  const swipe = useRef<{ x: number; y: number; t: number } | null>(null), swiped = useRef(false);
+  const swipeable = props.scene === "plaza" && props.view.layout === "sectioned" && !props.view.overview;
   const pinEntrance = () => {
     const button = nearButton.current, r = button && tagRects.current[`entrance-${nearbyRef.current}`];
     if (button && r) Object.assign(button.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` });
@@ -129,7 +132,18 @@ export default function HD2DWorld(props: Props) {
   const counts = crowdDistribution(summary, crowdCapacity(props.scene, props.mobile));
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
   const fallback = mode !== "webgl", designedStatic = mode === "unsupported" || mode === "failed";
-  return <div ref={host} className="hd2d-stage" data-renderer={mode} data-static={designedStatic || undefined} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral}>
+  return <div ref={host} className="hd2d-stage" data-renderer={mode} data-static={designedStatic || undefined} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral} onPointerDownCapture={(event) => {
+      swipe.current = event.pointerType !== "mouse" && swipeable ? { x: event.clientX, y: event.clientY, t: event.timeStamp } : null;
+    }} onPointerUpCapture={(event) => {
+      const start = swipe.current; swipe.current = null;
+      const step = start ? swipeStep(event.clientX - start.x, event.clientY - start.y, event.timeStamp - start.t) : 0;
+      if (!step) return;
+      // The click that may follow the gesture opens nothing and is not a floor click.
+      swiped.current = true; setTimeout(() => { swiped.current = false; }, 400);
+      props.onSection?.(Math.max(0, Math.min(2, props.view.section + step)) as WallSection);
+    }} onPointerCancel={() => { swipe.current = null; }} onClickCapture={(event) => {
+      if (swiped.current) { swiped.current = false; event.preventDefault(); event.stopPropagation(); }
+    }}>
     {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
       {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${(props.scene === "plaza" && i % 5 ? 3 : i % 4) / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}

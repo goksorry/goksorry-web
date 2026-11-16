@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
 import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
-import { walkable, worldObstacles } from "../lib/world-navigation";
+import { swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
 const WIDE: CrowdView = { cx: 0, halfW: 11.6, camZ: 27.115, dist: 32, zoomed: false };
@@ -487,4 +487,12 @@ test("a bright ant keeps one face, one costume and one direction through a walk 
     const dir4 = dir8 % 2 ? dir8 - 1 : dir8;
     expect(antWalkFrame(hasArt, "fear", pose, dir8, dir4, true)).toEqual({ ...antWalkFrame(hasArt, "fear", pose, dir8, dir4), bright: false });
   }
+});
+
+test("a quick horizontal swipe steps one wall section; taps, slow drags and vertical swipes do not", () => {
+  expect(swipeStep(-120, 10, 200)).toBe(1); // swipe left: the section to the right
+  expect(swipeStep(120, -10, 200)).toBe(-1);
+  expect(swipeStep(-20, 0, 100)).toBe(0); // a tap that wobbled
+  expect(swipeStep(-120, 0, 1200)).toBe(0); // a slow drag
+  expect(swipeStep(-80, 90, 200)).toBe(0); // mostly vertical
 });

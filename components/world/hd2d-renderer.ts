@@ -13,7 +13,7 @@ import antAtlas from "./ant-atlas.json";
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean };
 export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
-  /** Zoomed section view only: whether the frame is following the visitor (see FOLLOW_KEEP), and how far it is panned off the section's centre for it (world units). */
+  /** Zoomed section view only: whether the frame is following the visitor (false while it walks to a section chosen by hand), and how far it is panned off the section's centre for it (world units). */
   follow: boolean; pan: number };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null;
   /** Atlas image this renderer loaded: the full one or the reduced copy for small screens. */
@@ -280,25 +280,26 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const lens = { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
   let viewDirty = true, snap = true, rectKey = "";
   // Zoomed section view (portrait phones): the frame follows the visitor, because one section shows only about 5 of the
-  // floor's 19 units. While `follow` is on, (1) the framed section becomes the one the visitor stands in: it changes once
-  // the visitor is FOLLOW_KEEP past the border between two sections, so standing on a border does not flap; and (2) the
-  // frame pans off the section's centre just far enough to keep the visitor inside the visible floor (FOLLOW_EDGE more
-  // than the crowd's own margin from the frame edge, which covers the lag of the eased lens and the name label). Near a
-  // section's centre the pan is zero and the section is framed exactly as before.
-  // Choosing a section by hand (arrow buttons, focusing a panel) turns `follow` off, so the view may leave the visitor;
-  // the next movement input (arrow key or floor click) turns it back on and the frame returns to the visitor.
-  const FOLLOW_KEEP = .4, FOLLOW_EDGE = .25, SECTION_HALF = (WALL_SECTION_X[1] - WALL_SECTION_X[0]) / 2;
-  let follow = true, asked: WallSection | null = null;
+  // floor's 19 units. (1) The framed section becomes the one the visitor stands in: it changes once the visitor is
+  // FOLLOW_KEEP past the border between two sections, so standing on a border does not flap; and (2) the frame pans off
+  // the section's centre to keep the visitor within FOLLOW_BAND of the visible half floor from the middle, so the
+  // neighbouring section shows well before the visitor reaches the frame edge. Near a section's centre the pan is zero.
+  // Choosing a section by hand (arrow buttons, a swipe, focusing a panel) sends the visitor to that section's centre
+  // (`visiting`): the frame moves at once and the visitor walks in, with neither (1) nor (2) on the way.
+  const FOLLOW_KEEP = .4, FOLLOW_BAND = .3, SECTION_HALF = (WALL_SECTION_X[1] - WALL_SECTION_X[0]) / 2;
+  // Zoomed view turn: ZOOM_YAW at ZOOM_REACH units off the aimed centre.
+  const ZOOM_YAW = 8 * Math.PI / 180, ZOOM_REACH = 4;
+  let asked: WallSection | null = null, visiting: WallSection | null = null;
   const crowdView = (): CrowdView => ({ cx: fit.cx, halfW: fit.halfW, camZ: WALL_PANEL_Z + CAMERA_DISTANCE, dist: CAMERA_DISTANCE, zoomed: zoomed() });
   /** Centre the lens eases toward: the section's (`fit.cx`), moved as little as needed to keep a followed visitor in the frame. */
   const aimCx = () => {
-    if (!follow || !zoomed()) return fit.cx;
-    // The orbiting camera (see yawTarget: one degree per unit off the centre) pushes the floor in front of the wall outward.
-    const reach = Math.max(0, viewHalf(crowdView(), position.z) - FOLLOW_EDGE) / (1 + (position.z - WALL_PANEL_Z) * Math.tan(Math.PI / 180));
+    if (!zoomed() || visiting !== null) return fit.cx;
+    // The orbiting camera (see yawTarget: ZOOM_YAW / ZOOM_REACH per unit off the centre) pushes the floor in front of the wall outward.
+    const reach = Math.max(0, viewHalf(crowdView(), position.z) * FOLLOW_BAND) / (1 + (position.z - WALL_PANEL_Z) * Math.tan(ZOOM_YAW / ZOOM_REACH));
     return Math.max(position.x - reach, Math.min(position.x + reach, fit.cx));
   };
   function followSection() {
-    if (!follow || !zoomed()) return;
+    if (!zoomed() || visiting !== null) return;
     const current = asked ?? view.section;
     if (Math.abs(position.x - WALL_SECTION_X[current]) <= SECTION_HALF + FOLLOW_KEEP) return;
     const next = (position.x < -SECTION_HALF ? 0 : position.x > SECTION_HALF ? 2 : 1) as WallSection;
@@ -329,8 +330,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // the middle of the screen; the far end of the wall may leave the frame. The zoomed single-section view
   // has no spare margin, so there the camera orbits the section instead and the panel stays framed.
   const yawTarget = () => {
-    const close = zoomed(), reach = close ? 4 : 10;
-    let max = (close ? 4 : 10) * Math.PI / 180;
+    // The phone overview exists to show the whole wall: it stays frontal wherever the visitor stands.
+    if (state.scene === "plaza" && view.overview) return 0;
+    const close = zoomed(), reach = close ? ZOOM_REACH : 10;
+    let max = close ? ZOOM_YAW : 10 * Math.PI / 180;
     // Very wide frames turn less so the frame edge stays on the built wall (x within ±33).
     while (!close && max > .01 && CAMERA_SLIDE * max + CAMERA_DISTANCE * Math.tan(max + Math.atan(fit.halfW / CAMERA_DISTANCE)) > 33) max -= .005;
     return Math.max(-1, Math.min(1, (aimCx() - position.x) / reach)) * max || 0;
@@ -365,7 +368,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       return [id, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
     })) as Record<string, WallRect>;
     const aim = aimCx(), settled = lens.cx === aim && lens.halfW === fit.halfW && lens.top === fit.top;
-    metrics.wall = plaza ? { rects, drawn: boards.drawn, get shimmer() { return boards.loading(); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: follow && zoomed(), pan: aim - fit.cx } : null;
+    metrics.wall = plaza ? { rects, drawn: boards.drawn, get shimmer() { return boards.loading(); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: zoomed() && visiting === null, pan: aim - fit.cx } : null;
     const key = ids.map((id) => `${id}:${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|");
     if (key !== rectKey) { rectKey = key; events.panels?.(ids.length ? rects : null); }
   }
@@ -421,6 +424,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       else { position.x += dx / distance * reach; position.z += dz / distance * reach; }
       visitorStride += Math.min(distance, reach) / (VISITOR_STEP / 2 * walkSize);
     } else visitorStride = 0;
+    if (!path.length) visiting = null;
     followSection();
     // The lens eases after the visitor has moved, so a followed visitor is framed where it is now.
     const aim = { cx: aimCx(), top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
@@ -433,7 +437,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       }
       applyCamera();
     }
-    if (metrics.wall) metrics.wall.follow = follow && zoomed();
+    if (metrics.wall) metrics.wall.follow = zoomed() && visiting === null;
     paintWall();
     if (ambient()) boards.tick(time / 1000);
     const turn = yawTarget(), mode = zoomed() ? 1 : 0;
@@ -572,7 +576,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     // Every click is a floor click: ants are not targets, so one that lands on an ant walks to the floor behind it.
     raycaster.setFromCamera(new THREE.Vector2(x / width * 2 - 1, 1 - y / height * 2), camera);
     const target = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
-    follow = true;
+    visiting = null;
     if (target) walkTo({ x: target.x, z: limitZ(target.z) });
   }
   function walkTo(target: Point) {
@@ -581,10 +585,19 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   }
   // The floor is only walkable where the framed view shows it.
   const limitZ = (z: number) => Math.min(z, front - .35);
+  /** Walk the visitor to the centre of a wall section, clear of the plaza entrances so no prompt pops up on the way in. */
+  function visit(section: WallSection) {
+    visiting = section;
+    const target = { x: WALL_SECTION_X[section], z: limitZ(position.z) }, door = entranceAt(state.scene, target);
+    if (door) target.z = limitZ(door.z + 1.5);
+    if (!walkable(target, worldObstacles(state.scene))) { visiting = null; return; }
+    walkTo(target);
+    if (!path.length) visiting = null;
+  }
   function update(next: RenderState) {
     const changed = state.scene !== next.scene, density = state.mobile !== next.mobile; state = next;
     if (changed) {
-      path = []; snap = true;
+      path = []; snap = true; visiting = null;
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
       else if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; }
       buildRoom();
@@ -601,17 +614,18 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     update, draw, click, metrics, position,
     setView(next) {
       if (next.layout !== view.layout) snap = true;
-      // A section this renderer did not ask for was chosen by hand: stop following the visitor until it is moved again.
-      if (next.section !== view.section && next.section !== asked) follow = false;
-      if (next.section === asked || !follow) asked = null;
+      // A section this renderer did not ask for was chosen by hand: the visitor walks to its centre.
+      const picked = next.section !== view.section && next.section !== asked;
+      if (picked || next.section === asked) asked = null;
       view = next; viewDirty = true;
+      if (picked && zoomed()) visit(next.section);
     },
     setBoards(specs) { boards.set(specs); },
     setBand(next) { band = next; },
     setVisitorTag(text) { visitorTag = text || "나"; },
     setFont(family) { labels.setFont(family); },
     wallTexture: (id) => boards.canvas(id),
-    move(x, z) { follow = true; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
+    move(x, z) { visiting = null; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
     async capture(frame) {
       const target = document.createElement("canvas"); target.width = 1200; target.height = 620; target.style.width = "1200px"; target.style.height = "620px";
       // Export uses the exact scene builder, atlas, lighting and population mapping.

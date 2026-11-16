@@ -127,6 +127,8 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 .world-scene-stage { position:relative; min-height:0; overflow:clip; }
 .hd2d-stage { position:absolute; inset:0; width:100%; height:100%; overflow:clip; }
 .hd2d-canvas { display:block; width:100%; height:100%; touch-action:manipulation; }
+/* Horizontal swipes step through the zoomed wall sections. */
+.world-root[data-layout=sectioned] .hd2d-stage { touch-action:pan-y pinch-zoom; }
 .world-atmosphere { position:absolute; inset:0; pointer-events:none; background:linear-gradient(#0e171d00 70%,#0e171d),radial-gradient(ellipse at 50% 35%,transparent 30%,#09131955 100%); }
 .world-atmosphere[data-mood=fear] { background:radial-gradient(ellipse at 88% 35%,#bb4f3816,transparent 42%),linear-gradient(#0e171d00 70%,#0e171d); }
 .world-atmosphere[data-mood=hope] { background:radial-gradient(ellipse at 15% 40%,#d0a65b13,transparent 42%),linear-gradient(#0e171d00 70%,#0e171d); }

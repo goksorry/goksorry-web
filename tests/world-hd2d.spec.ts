@@ -245,13 +245,22 @@ test("the zoomed phone view follows the visitor across wall sections and never l
   expect(toMarket, note).toBeLessThanOrEqual(-3.9); expect(home, note).toBeGreaterThanOrEqual(-3.1);
   for (const x of [toFeed, back, toMarket, home]) expect(Math.abs(Math.abs(x) - 3.5), note).toBeLessThan(.9); // and not much later than that
   await expect.poll(async () => (await visitor()).state).toBe("idle");
-  // The section buttons still choose a section by hand; the view then leaves the visitor...
+  // A section button moves the frame at once and sends the visitor to that section's centre, framed in the middle.
   await page.locator('.world-wall-arrow[data-dir="right"]').click();
   await expect(root).toHaveAttribute("data-wall-section", "2");
-  await expect.poll(async () => { const wall = await wallMetrics(page); return wall.settled && !wall.follow && wall.pan === 0 && wall.rects.feed.x >= 0 && wall.rects.feed.x + wall.rects.feed.width <= 390; }).toBe(true);
-  expect((await visitor()).sx).toBeLessThan(0);
-  // ...until the visitor is moved again: the view comes back to the section it stands in.
-  await canvas.focus(); await page.keyboard.press("ArrowRight");
-  await expect(root).toHaveAttribute("data-wall-section", "1");
-  await expect.poll(async () => { const wall = await wallMetrics(page), me = await visitor(); return wall.follow && wall.settled && me.sx > 0 && me.sx < 390; }).toBe(true);
+  await expect.poll(async () => { const wall = await wallMetrics(page); return !wall.follow && wall.pan === 0 && wall.rects.feed.x >= 0 && wall.rects.feed.x + wall.rects.feed.width <= 390; }).toBe(true);
+  await expect.poll(async () => { const me = await visitor(), wall = await wallMetrics(page); return me.state === "idle" && Math.abs(me.x - 7) < .05 && wall.follow && wall.settled && Math.abs(me.sx - 195) < 60; }, { timeout: 20_000 }).toBe(true);
+  await expect(page.locator(".world-nearby")).toHaveCount(0); // it stops clear of the entrance next to the section centre
+  // A left swipe on a touch screen does the same as the right arrow; its click neither opens a panel nor walks the floor.
+  await page.locator('.world-wall-arrow[data-dir="left"]').click();
+  await expect.poll(async () => { const me = await visitor(); return me.state === "idle" && Math.abs(me.x) < .05; }, { timeout: 20_000 }).toBe(true);
+  await page.locator(".hd2d-stage").evaluate((stage) => {
+    const at = (type: string, x: number) => new PointerEvent(type, { bubbles: true, pointerType: "touch", clientX: x, clientY: 600, isPrimary: true });
+    const canvasNode = stage.querySelector("canvas")!;
+    canvasNode.dispatchEvent(at("pointerdown", 300)); canvasNode.dispatchEvent(at("pointerup", 120));
+    canvasNode.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 120, clientY: 600 }));
+  });
+  await expect(root).toHaveAttribute("data-wall-section", "2");
+  await expect.poll(async () => { const me = await visitor(); return me.state === "idle" && Math.abs(me.x - 7) < .05; }, { timeout: 20_000 }).toBe(true);
+  await expect(page.locator('[data-world-panel="detail"]')).toHaveCount(0);
 });
