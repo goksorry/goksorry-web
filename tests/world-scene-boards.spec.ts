@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { worldRows } from "./world-fixture";
 import { buildWorldFrame } from "../lib/world";
 import { SCENE_BOARDS, buildSceneBoard, type BoardScene } from "../lib/world-scene-boards";
+import { theaterTimeline } from "../lib/world-theater";
 
 const art = { src: "/images/overview-regimes/overview-regime-neutral-light.webp", label: "중립" };
 
@@ -30,4 +31,16 @@ test("scene board models carry status, portrait and each scene's content", () =>
   expect(theater.scene === "theater" && theater.headline).toBe("이 구간은 기록이 없습니다");
   expect(board("ecosystem", { loaded: false }).state).toBe("loading");
   expect(board("ecosystem", { loaded: false, failed: true }).state).toBe("failed");
+});
+
+test("theater timeline keeps gaps open and reports the slot under the cursor", () => {
+  const frame = buildWorldFrame(worldRows());
+  const slots = Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(Date.UTC(2026, 10, 15, 15, i * 10)).toISOString(), frame: i < 40 || (i >= 50 && i < 51) || i >= 100 ? frame : null }));
+  const t = theaterTimeline({ date: "2026-11-16", timezone: "Asia/Seoul", slots }, 15, false);
+  expect(t.runs.map((run) => run.length)).toEqual([40, 1, 44]);
+  expect(t.runs[0][0]).toEqual({ x: 0, index: frame.overall.index }); expect(t.runs[2].at(-1)!.x).toBe(1);
+  expect(t.cursor).toBe(.5); expect(t.recorded).toBe("85/144 구간 기록 · KST");
+  // 15 s of 30 is slot 72, which has no record.
+  expect(t.state).toBe("기록 없음"); expect(t.clock).toBe("15.0 / 30초 · 12:00");
+  expect(theaterTimeline({ date: "2026-11-16", timezone: "Asia/Seoul", slots }, 0, true).state).toBe("기록 확인 중…");
 });

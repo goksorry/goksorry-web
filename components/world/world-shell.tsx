@@ -28,6 +28,7 @@ import { WorldWallDom, SummaryNumbers } from "./world-screens";
 import { SceneBoardDom } from "./scene-board-dom";
 import type { BoardSource } from "./board-specs";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
+import type { TheaterTimeline } from "@/lib/world-theater";
 import { buildSceneBoard, CAMP_LABEL, sampleVerdict, type BoardScene } from "@/lib/world-scene-boards";
 import { useWorldSound } from "./world-sound";
 import type { EvidenceSelection } from "./scene-types";
@@ -75,6 +76,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)") !== false;
   const { bannerVisible } = useCookieConsent();
   const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null);
+  const [timeline, setTimeline] = useState<TheaterTimeline | null>(null);
   const [origin, setOrigin] = useState<PanelOrigin | null>(null), [roomRefresh, setRoomRefresh] = useState(0);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState("");
   const [visible, setVisible] = useState(true), [menuOpen, setMenuOpen] = useState(false);
@@ -173,9 +175,9 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   const liveTime = liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : "";
   const statusLine = liveTime ? `${status} · ${liveTime}` : status;
   const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
-    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame,
+    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame, timeline,
     status: statusLine, art: stockPierrotArt(activeSummary, dark)
-  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, statusLine, dark]);
+  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, timeline, statusLine, dark]);
   const board = useMemo<BoardSource>(() => plaza ? { kind: "plaza", model: wall } : sceneBoard && { kind: "scene", model: sceneBoard }, [plaza, wall, sceneBoard]);
   const openScene = (from: PanelOrigin) => {
     if (scene === "theater") { if (replayFrame) evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at }); return; }
@@ -206,7 +208,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
         {sceneBoard && <SceneBoardDom model={sceneBoard} onOpen={openScene} />}
       </HD2DWorld>
       {(error || frame.collection.errors > 0 || frame.collection.degraded || frame.collection.unavailable) && <p className="world-data-notice" role="status">{error || "일부 수집·분석 상태 확인 필요"}{error && <button onClick={() => setRetry((n) => n + 1)}>다시 시도</button>}</p>}
-      {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
+      {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} onTimeline={setTimeline} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>
     </div>

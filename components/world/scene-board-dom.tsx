@@ -25,7 +25,8 @@ function Copy({ model }: { model: SceneBoardModel }) {
         {model.fresh && <p role="status" className="world-screen-status">{model.fresh}</p>}
       </>;
     case "theater":
-      return <><p className="world-screen-meta">{model.date}</p><p className="world-screen-headline">{model.headline}</p>{model.line && <p className="world-screen-meta">{model.line}</p>}</>;
+      return <><p className="world-screen-meta">{model.date}</p><p className="world-screen-headline">{model.headline}</p>{model.line && <p className="world-screen-meta">{model.line}</p>}
+        {model.timeline && <p className="world-screen-meta">{model.timeline.recorded} · {model.timeline.clock} · {model.timeline.state}</p>}</>;
   }
 }
 

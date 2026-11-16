@@ -1,6 +1,7 @@
 import { percent, type WorldFrame, type WorldScene, type WorldStock, type WorldSummary } from "./world";
 import { worldHeadline } from "./world-presentation";
 import type { BoardRect, Loadable } from "./world-wall";
+import type { TheaterTimeline } from "./world-theater";
 
 /**
  * Back-wall boards of the non-plaza scenes: one board each, between the centre sign (top 4.7) and the lamp brackets
@@ -10,7 +11,7 @@ export const SCENE_BOARDS = {
   ecosystem: { stocks: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
   battle: { camps: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
   broadcast: { communities: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
-  theater: { replay: { x: 0, y: 6.85, w: 9, h: 3 } }
+  theater: { replay: { x: 0, y: 6.6, w: 11.4, h: 3.5 } }
 } satisfies Record<Exclude<WorldScene, "plaza">, Record<string, BoardRect>>;
 export type BoardScene = keyof typeof SCENE_BOARDS;
 export type SceneBoardId = { [S in BoardScene]: keyof (typeof SCENE_BOARDS)[S] }[BoardScene];
@@ -25,7 +26,7 @@ export type SceneBoardModel = BoardCommon & (
   | { scene: "ecosystem"; id: "stocks"; items: { symbol: string; rank: string; name: string; count: string; hope: string; verdict: string; mood: WorldSummary["mood"]; thin: boolean }[] }
   | { scene: "battle"; id: "camps"; scope: string; camps: { side: "bullish" | "bearish" | "neutral"; label: string; value: string; sub: string }[]; note: string; fresh: string }
   | { scene: "broadcast"; id: "communities"; items: { id: string; name: string; index: string; ratios: string; status: string }[] }
-  | { scene: "theater"; id: "replay"; date: string; headline: string; line: string });
+  | { scene: "theater"; id: "replay"; date: string; headline: string; line: string; timeline: TheaterTimeline | null });
 
 export const CAMP_LABEL = { bullish: "희망군", bearish: "절망군", neutral: "중립 관찰석" } as const;
 
@@ -35,7 +36,7 @@ export function buildSceneBoard(input: {
   /** Battle: the selected stock, if any, and its summary (or the overall one). */
   stock?: WorldStock; summary: WorldSummary; fresh: number;
   /** Theater: the replayed date and frame (null = no record in this slot). */
-  date: string; replay: WorldFrame | null;
+  date: string; replay: WorldFrame | null; timeline?: TheaterTimeline | null;
   /** Live status line (e.g. "관측 중 · 13:09 KST") and the portrait art for the summary the scene shows. */
   status: string; art: { src: string; label: string };
 }): SceneBoardModel {
@@ -76,6 +77,7 @@ export function buildSceneBoard(input: {
   return {
     ...common, scene: "theater", id: "replay", title: "오늘의 개미극장", date: `기록 · ${input.date}`,
     headline: r ? worldHeadline(r.overall) : "이 구간은 기록이 없습니다",
+    timeline: input.timeline ?? null,
     line: r ? `분석 표본 ${r.overall.total}건 · 희망 ${percent(r.overall.hope_ratio)} / 공포 ${percent(r.overall.fear_ratio)}` : ""
   };
 }

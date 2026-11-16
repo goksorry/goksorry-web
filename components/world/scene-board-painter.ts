@@ -3,6 +3,8 @@ import type { BoardBox, BoardImages } from "./board-layer";
 import { BOARD, openBoard, wrapLines, type BoardPaintStyle, type BoardPen } from "./board-canvas";
 
 const MOOD_MARK = { hope: BOARD.hope, fear: BOARD.fear } as Record<string, string>;
+/** Trace colour of the theater timeline (as the HTML chart). */
+const TRACE = "#ae747f";
 const CAMP_COLOR = { bullish: BOARD.hope, bearish: BOARD.fear, neutral: BOARD.ink } as const;
 
 /** Grid over the pen's content area: as many cells of at least `minW` × `cellH` as fit, up to `max` columns. */
@@ -74,10 +76,35 @@ export function paintSceneBoard(model: SceneBoardModel, canvas: HTMLCanvasElemen
     return;
   }
 
-  // Theater: the replayed slot's headline and sample.
-  const big = Math.round(Math.min(body * 1.8, (bottom - top) / 3.4));
-  pen.font(big, 700); ctx.fillStyle = BOARD.ink;
-  const headline = wrapLines(ctx, model.headline, width, 2);
-  headline.forEach((line, i) => pen.centre(line, mid, top + big * (1.15 + i * 1.25)));
-  if (model.line) { pen.font(small); ctx.fillStyle = BOARD.dim; pen.centre(pen.clip(`${model.line} · 근거 보기`, width), mid, Math.min(bottom, top + big * (1.15 + headline.length * 1.25) + small * .8)); }
+  // Theater: the replayed slot's headline and sample, the day's trace with the playback cursor, and the record line.
+  const big = Math.round(Math.min(body * 1.5, (bottom - top) / 5));
+  pen.font(big, 700); ctx.fillStyle = BOARD.ink; pen.centre(pen.clip(model.headline, width), mid, top + big);
+  let y = top + big * 1.3;
+  if (model.line) { pen.font(small); ctx.fillStyle = BOARD.dim; pen.centre(pen.clip(`${model.line} · 근거 보기`, width), mid, y + small); y += small * 1.5; }
+  const t = model.timeline;
+  if (!t) return;
+  const foot = small * 1.6;
+  trace(pen, t, { x: left, y: y + small * .4, w: width, h: bottom - foot - y - small * .4 });
+  pen.font(small); ctx.fillStyle = BOARD.dim; pen.centre(pen.clip(`${t.recorded} · ${t.clock} · ${t.state}`, width), mid, bottom - small * .3);
+}
+
+/** The day's 곡소리 지수 trace (0..10, gaps left open) with grid lines and the playback cursor. */
+function trace(pen: BoardPen, t: NonNullable<Extract<SceneBoardModel, { scene: "theater" }>["timeline"]>, area: { x: number; y: number; w: number; h: number }) {
+  const { ctx, small } = pen;
+  if (area.h < small * 2) return;
+  const label = small * 1.6, x0 = area.x + label, w = area.w - label;
+  const at = (x: number, index: number) => [x0 + x * w, area.y + (1 - Math.max(0, Math.min(10, index)) / 10) * area.h] as const;
+  pen.font(Math.max(9, Math.round(small * .85)));
+  for (const v of [10, 5, 0]) {
+    const [, gy] = at(0, v);
+    ctx.fillStyle = BOARD.line; ctx.fillRect(x0, Math.round(gy), w, 1);
+    ctx.fillStyle = BOARD.dim; ctx.fillText(String(v), area.x, gy + small * .35);
+  }
+  ctx.strokeStyle = ctx.fillStyle = TRACE; ctx.lineWidth = Math.max(2, pen.body * .18); ctx.lineCap = ctx.lineJoin = "round";
+  for (const run of t.runs) {
+    if (run.length === 1) { const [px, py] = at(run[0].x, run[0].index); ctx.beginPath(); ctx.arc(px, py, ctx.lineWidth, 0, Math.PI * 2); ctx.fill(); continue; }
+    ctx.beginPath(); run.forEach((p, i) => { const [px, py] = at(p.x, p.index); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.stroke();
+  }
+  const [cx] = at(Math.max(0, Math.min(1, t.cursor)), 0);
+  ctx.fillStyle = BOARD.ink; ctx.fillRect(Math.round(cx) - 1, area.y, 2, area.h);
 }

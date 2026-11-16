@@ -2,10 +2,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildWorldReplay, worldDate, type WorldFrame, type WorldReplay } from "@/lib/world";
 import { timelineSegments } from "@/lib/world-presentation";
+import { theaterSlotIndex, theaterTimeline, type TheaterTimeline } from "@/lib/world-theater";
 import { saveWorldPostcard } from "./world-postcard";
 
-export function TheaterControls({ date, onDate, onFrame, paused, reduced, color }: {
-  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null) => void; paused: boolean; reduced: boolean; color: string;
+/**
+ * Replay controls of the theater. Owns loading and playback; reports the shown frame (`onFrame`) and what the wall
+ * board paints about the replay (`onTimeline`). The chart and record lines here are the HTML copy of that board.
+ */
+export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, reduced, color }: {
+  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
+  paused: boolean; reduced: boolean; color: string;
 }) {
   const [replay, setReplay] = useState<WorldReplay>(() => buildWorldReplay(date, []));
   const [loading, setLoading] = useState(true);
@@ -47,8 +53,11 @@ export function TheaterControls({ date, onDate, onFrame, paused, reduced, color 
     return () => clearInterval(timer);
   }, [playing, paused, reduced]);
   useEffect(() => { if (position >= 30) setPlaying(false); }, [position]);
-  const slot = replay.slots[Math.min(143, Math.floor(position / 30 * 144))];
+  const slot = replay.slots[theaterSlotIndex(replay, position)];
   useEffect(() => { onFrame(slot?.frame ?? null); }, [slot, onFrame]);
+  const timeline = useMemo(() => theaterTimeline(replay, position, loading), [replay, position, loading]);
+  useEffect(() => { onTimeline(timeline); }, [timeline, onTimeline]);
+  useEffect(() => () => onTimeline(null), [onTimeline]);
   const recorded = replay.slots.filter((item) => item.frame);
   const lastFrame = recorded[recorded.length - 1]?.frame;
   const segments = useMemo(() => timelineSegments(replay.slots), [replay]);
@@ -62,17 +71,17 @@ export function TheaterControls({ date, onDate, onFrame, paused, reduced, color 
     } catch (e) { if (!(e instanceof Error && e.name === "AbortError")) setMessage("아래 링크를 복사해 공유하세요."); }
   };
   return <section className="world-theater-controls" aria-label="개미극장 재생 제어">
-    <div className="world-theater-top"><label>기록 날짜 <input type="date" min={earliest} max={today} value={date} onChange={(e) => { if (e.target.value >= earliest && e.target.value <= today) onDate(e.target.value); }} /></label><span>{recorded.length}/144 구간 기록 · KST</span></div>
-    <svg viewBox="0 0 600 66" className="world-timeline" role="img" aria-label="커뮤니티 심리 추이. 빈 구간은 기록 누락. 높을수록 공포.">
+    <div className="world-theater-top"><label>기록 날짜 <input type="date" min={earliest} max={today} value={date} onChange={(e) => { if (e.target.value >= earliest && e.target.value <= today) onDate(e.target.value); }} /></label><span className="world-theater-info">{timeline.recorded}</span></div>
+    <svg viewBox="0 0 600 66" className="world-timeline world-theater-info" role="img" aria-label="커뮤니티 심리 추이. 빈 구간은 기록 누락. 높을수록 공포.">
       <path d="M0 8H600M0 34H600M0 60H600" stroke="currentColor" opacity=".16" /><text x="1" y="9">10</text><text x="1" y="35">5</text><text x="1" y="61">0</text>
       {segments.map((line, i) => line.includes(" ") ? <polyline key={i} points={line} fill="none" stroke="#ae747f" strokeWidth="3" strokeLinecap="round" /> : <circle key={i} cx={Number(line.split(",")[0])} cy={Number(line.split(",")[1])} r="2.5" fill="#ae747f" />)}
       <path d={`M${position / 30 * 600} 0v66`} stroke="currentColor" strokeWidth="2" />
     </svg>
     <label className="world-sr-only" htmlFor="world-seek">극장 시간 탐색</label><input id="world-seek" type="range" min="0" max="30" step="0.1" value={position} onChange={(e) => { setPosition(Number(e.target.value)); setPlaying(false); }} aria-valuetext={`${position.toFixed(1)}초 / 30초`} />
     <div className="world-theater-actions"><button disabled={loading || !recorded.length || reduced} onClick={() => { if (position >= 30) setPosition(0); setPlaying((v) => !v); }}>{playing ? "일시정지" : "재생"}</button>
-      <span>{position.toFixed(1)} / 30초 · {slot ? new Date(slot.bucket_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }) : "00:00"}</span>
-      <span className="world-record-state">{loading ? "기록 확인 중…" : slot?.frame ? `${slot.frame.overall.total}건 · 저장된 심리` : "기록 없음"}</span></div>
-    <p className="world-note">{reduced ? "동작 줄이기: 시간 막대로 정적 장면을 탐색하세요. " : ""}심리 추이입니다. 정상 수집 뒤 10분 버킷으로 기록합니다. 기록이 없으면 수집·기록 저장 상태를 확인해야 합니다. 빈 구간은 보간하지 않습니다.</p>
+      <span className="world-theater-info">{timeline.clock}</span>
+      <span className="world-record-state world-theater-info">{timeline.state}</span></div>
+    <p className="world-note world-theater-info">{reduced ? "동작 줄이기: 시간 막대로 정적 장면을 탐색하세요. " : ""}심리 추이입니다. 정상 수집 뒤 10분 버킷으로 기록합니다. 기록이 없으면 수집·기록 저장 상태를 확인해야 합니다. 빈 구간은 보간하지 않습니다.</p>
     {error && <p role="alert">{error} <button onClick={() => setRetry((v) => v + 1)}>다시 시도</button></p>}
     {position >= 30 && lastFrame && <div className="world-postcard-actions"><strong>오늘의 곡소리 한 컷 · 마지막 기록 기준</strong><button onClick={() => void saveWorldPostcard(lastFrame, date, color).then(() => setMessage("PNG 저장 완료")).catch((e) => setMessage(String(e.message)))}>PNG 저장</button><button onClick={() => void share()}>링크 공유</button></div>}
     {shareLink && <input aria-label="극장 공유 링크" readOnly value={shareLink} onFocus={(e) => e.target.select()} />}
