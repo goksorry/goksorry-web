@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
+import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { buildWorldFrame, buildWorldReplay, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
 import { WALL_PANELS } from "../lib/world-wall";
@@ -13,6 +13,14 @@ test("population follows full counts, including neutral, independent of represen
   expect(crowdDistribution(worldSummary([]), 47)).toEqual({ bullish: 0, bearish: 0, neutral: 0 });
   const sparse = { ...summary, total: 1, bullish: 0, bearish: 1, neutral: 0 };
   expect(crowdDistribution(sparse, 47).bearish).toBe(1);
+});
+test("hope/fear splits read left to right with the index: fear left, neutral between, hope right", () => {
+  expect([...SIDE_ORDER]).toEqual(["bearish", "neutral", "bullish"]);
+  expect(SIDE_ORDER.map((side) => CAMP_X[side])).toEqual([-1, 0, 1]);
+  // Fear fills from the left edge, hope from the right; missing or out-of-range ratios never overflow the bar.
+  expect(ratioGauge({ fear_ratio: .46, hope_ratio: .54 })).toEqual({ fear: .46, hope: .54 });
+  expect(ratioGauge({ fear_ratio: null, hope_ratio: null })).toEqual({ fear: 0, hope: 0 });
+  expect(ratioGauge({ fear_ratio: 1.2, hope_ratio: -.1 })).toEqual({ fear: 1, hope: 0 });
 });
 test("the plaza is a sparse crowd; other scenes keep the full population", () => {
   expect([crowdCapacity("plaza", false), crowdCapacity("plaza", true)]).toEqual([20, 12]);

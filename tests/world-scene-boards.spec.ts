@@ -22,7 +22,7 @@ test("scene board models carry status, portrait and each scene's content", () =>
   expect(eco.scene === "ecosystem" && eco.items.length).toBe(frame.stocks.length);
   expect(eco.status).toBe("관측 중 · 13:09 KST"); expect(eco.portrait.caption).toBe("현재 분위기 · 중립");
   const battle = board("battle", { fresh: 3 });
-  expect(battle.scene === "battle" && battle.camps.map((c) => c.label)).toEqual(["희망군", "절망군", "중립 관찰석"]);
+  expect(battle.scene === "battle" && battle.camps.map((c) => c.label)).toEqual(["절망군", "중립 관찰석", "희망군"]);
   expect(battle.scene === "battle" && battle.fresh).toContain("3건");
   expect(board("broadcast").scene).toBe("broadcast");
   // Theater never waits on the live frame; without a record it says so.

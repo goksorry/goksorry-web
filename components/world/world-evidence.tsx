@@ -5,6 +5,7 @@ import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { getSourceGroupShortLabel } from "@/lib/feed-source-groups";
 import type { WorldSide } from "@/lib/world";
+import { SIDE_ORDER } from "@/lib/world-presentation";
 import type { EvidenceSelection } from "./scene-types";
 import { HomeFeedShell } from "@/components/home-feed-shell";
 import { SOURCE_GROUP_IDS, type SourceGroupId } from "@/lib/feed-source-groups";
@@ -14,7 +15,7 @@ export function WorldEvidence({ selection, selectedGroupIds = SOURCE_GROUP_IDS }
   const [expanded, setExpanded] = useState(false);
   const { cleanFilterEnabled } = useCleanFilter();
   return <section aria-label={`${selection.title} 근거 글`}>
-    <div className="world-evidence-tabs"><div role="group" aria-label="근거 감성 선택">{(["bullish", "bearish", "neutral"] as const).map((key) => <button key={key} aria-pressed={side === key} onClick={() => setSide(key)}><b>{key === "bullish" ? "희망" : key === "bearish" ? "공포" : "중립"}</b> <span>{selection.summary[key]}건</span></button>)}</div><CleanFilterToggle /></div>
+    <div className="world-evidence-tabs"><div role="group" aria-label="근거 감성 선택">{SIDE_ORDER.map((key) => <button key={key} aria-pressed={side === key} onClick={() => setSide(key)}><b>{key === "bullish" ? "희망" : key === "bearish" ? "공포" : "중립"}</b> <span>{selection.summary[key]}건</span></button>)}</div><CleanFilterToggle /></div>
     <ul className="world-evidence-list">{selection.summary.evidence[side].map((row) => <li key={row.post_key}>
       <span>{getSourceGroupShortLabel(row.source)} · {row.symbol_name ?? "전체 이야기"}</span>
       <a href={/^https?:\/\//i.test(row.url) ? row.url : undefined} target="_blank" rel="noreferrer">{resolveDisplayTitle({ title: row.title, cleanTitle: row.clean_title, cleanFilterEnabled }).text} ↗</a>

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
-import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
+import { CAMP_X, crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdDoor, type CrowdMember, type CrowdView } from "@/lib/world-crowd";
 import { fakeCapacity } from "@/lib/world-presence";
 import type { PlazaPeer } from "@/lib/chat-types";
@@ -260,7 +260,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       for (let i = 0; i < 6; i++) { const x = -6.8 + i * 2.7; box(x, 1.1, -3.6, 2.35, 2.2, 1.1, brickMat); arch(x, -2.99, 1.25, 1.8); }
     } else if (state.scene === "battle") {
       for (let i = 0; i < 4; i++) { const p = box(0, .7, -.9 + i * .7, .65, 1.25, .5, woodMat); p.rotation.z = (i % 2 ? 1 : -1) * .15; }
-      for (const sign of [-1, 1]) { box(sign * 5.5, 1.8, -.5, .08, 3.6, .08, metalMat); box(sign * 5.1, 3.2, -.5, .8, .6, .04, sign < 0 ? glowMat : redMat); }
+      // Camp flags: red over the fear camp, amber over the hope camp, each on its CAMP_X side.
+      for (const side of ["bearish", "bullish"] as const) { const sign = CAMP_X[side]; box(sign * 5.5, 1.8, -.5, .08, 3.6, .08, metalMat); box(sign * 5.1, 3.2, -.5, .8, .6, .04, side === "bullish" ? glowMat : redMat); }
     } else if (state.scene === "broadcast") {
       box(0, .3, -1, 6.5, .6, 3.5, woodMat);
       for (const sign of [-1, 1]) { box(sign * 3.5, 1.7, -2, 1, 2.8, .9, metalMat); for (let i = 0; i < 5; i++) box(sign * 3.5, .8 + i * .45, -1.5, .7, .12, .04, darkMat); }
@@ -577,7 +578,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const visitor = i === you, side = sideList[i];
       if (!plaza && !visitor) {
         let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
-        if (state.scene === "battle") { x = side === "bullish" ? -6.4 + (i * 29 % 45) / 10 : side === "bearish" ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (side === "neutral") z = 5.8; }
+        // Battle camps read like the gauge: fear on the left half, hope on the right, neutral in the front row.
+        if (state.scene === "battle") { const camp = CAMP_X[side]; x = camp < 0 ? -6.4 + (i * 29 % 45) / 10 : camp > 0 ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (!camp) z = 5.8; }
         if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
         const shift = !ambient() ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
         let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;

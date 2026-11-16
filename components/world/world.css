@@ -41,8 +41,8 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-ratios { display:flex; justify-content:space-between; gap:10px; font-size:14px; }
 .world-ratios b { font:500 20px var(--mono-font); }
 .world-hope { color:#c3bf88; }.world-fear { color:#de9d87; }
-.world-ratio-track { height:5px; display:flex; margin:10px 0 9px; background:#52616b; }
-.world-ratio-track i:first-child { background:#b4aa73; }.world-ratio-track i:last-child { background:#bd7864; }
+.world-ratio-track { height:5px; display:flex; justify-content:space-between; margin:10px 0 9px; background:#52616b; }
+.world-ratio-track .world-ratio-fear { background:#bd7864; }.world-ratio-track .world-ratio-hope { background:#b4aa73; }
 .world-sample { display:flex; flex-wrap:wrap; gap:4px 8px; justify-content:space-between; font-size:14px; color:#bec8c0; }
 .world-screen-meta,.world-screen-status { font-size:12px; margin:6px 0; color:#b4c4c6; }
 .world-bottom nav { display:flex; justify-content:center; border-top:1px solid #6f7d7438; border-bottom:1px solid #6f7d7438; }
@@ -118,7 +118,7 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 @media(min-width:960px) { .world-panel:has(#world-tabpanel-feed:not([hidden]) .feed-lanes-panel) { width:min(1160px,calc(100vw - 60px)); } }
 @media(max-width:959px) {
   .world-stock-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.world-stock-list button { padding:12px 9px; grid-template-columns:1fr; gap:7px; }.world-stock-list .world-rank { display:none; }.world-stock-list button > span:not(.world-rank),.world-stock-list button small { grid-column:1; font-size:14px; }.world-stock-list button strong { font-size:15px; }
-  .world-camps { gap:9px; grid-template-columns:1fr 1fr; }.world-camps button:last-child { grid-column:span 2; grid-template-columns:1fr 1fr; align-items:center; text-align:left; }.world-camps button:last-child > span:last-child { grid-column:span 2; }.world-camps strong { font-size:28px; }
+  .world-camps { gap:9px; grid-template-columns:1fr 1fr; }.world-camps button[data-side=neutral] { order:1; grid-column:span 2; grid-template-columns:1fr 1fr; align-items:center; text-align:left; }.world-camps button[data-side=neutral] > span:last-child { grid-column:span 2; }.world-camps strong { font-size:28px; }
   .world-community-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.world-community-list button { padding:14px 10px; font-size:14px; }.world-community-list strong { font-size:16px; }
   .world-theater-top > span { font-size:14px; }.world-theater-top label { display:flex; align-items:center; gap:8px; }.world-theater-controls input[type=date] { min-width:0; max-width:190px; }
   .world-modal-backdrop { padding:0; align-items:flex-end; }.world-panel { width:100%; max-height:calc(100dvh - 68px); height:calc(100dvh - 68px); border-radius:16px 16px 0 0; }.world-panel-heading { padding:12px 16px; }.world-panel-heading h2 { font-size:16px; }.world-panel-body { padding:16px 14px max(24px,env(safe-area-inset-bottom)); }.world-panel-heading[data-bar] { padding:8px 10px 8px 12px; }.world-detail-tabs button { padding:8px 14px; }.world-evidence-tabs,.world-evidence-tabs [role=group] { gap:6px; flex-wrap:nowrap; }.world-evidence-tabs [role=group] { flex:1; min-width:0; }.world-evidence-tabs [role=group] button { flex:1 1 0; min-width:0; padding:4px; display:flex; flex-direction:column; align-items:center; line-height:1.25; white-space:nowrap; }.world-evidence-tabs [role=group] button span { font-size:12px; opacity:.85; }.world-evidence-tabs .clean-filter-toggle-group { flex-shrink:0; }.world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:1fr; }

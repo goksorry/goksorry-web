@@ -7,6 +7,20 @@ export const crowdCapacity = (scene: WorldScene, mobile: boolean): number =>
   scene === "plaza" ? (mobile ? 12 : 20) : (mobile ? 23 : 47);
 export const SIDE_LABEL: Record<WorldSide, string> = { bullish: "희망", bearish: "공포", neutral: "중립" };
 
+/**
+ * Left-to-right reading of every hope/fear split (gauges, battle camps, camp buttons). The 곡소리 지수 rises with
+ * fear and a gauge fills from the left, so fear is the left side and hope the right; neutral stands between.
+ */
+export const SIDE_ORDER = ["bearish", "neutral", "bullish"] as const satisfies readonly WorldSide[];
+/** The half of the battle field each camp holds: −1 left, 0 the centre front row, 1 right (follows SIDE_ORDER). */
+export const CAMP_X: Record<WorldSide, -1 | 0 | 1> = { bearish: -1, neutral: 0, bullish: 1 };
+
+/** Ratio gauge of a summary as 0..1 widths: fear fills from the left edge, hope from the right; neutral is excluded. */
+export function ratioGauge(summary: Pick<WorldSummary, "hope_ratio" | "fear_ratio">): { fear: number; hope: number } {
+  const clamp = (v: number | null) => Math.max(0, Math.min(1, v ?? 0));
+  return { fear: clamp(summary.fear_ratio), hope: clamp(summary.hope_ratio) };
+}
+
 // Largest remainder allocation: representation comes from ALL classified counts,
 // never the capped evidence lists. One place is reserved for the visitor.
 export function crowdDistribution(summary: WorldSummary, capacity: number): Record<WorldSide, number> {

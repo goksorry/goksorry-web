@@ -1,4 +1,5 @@
 import { percent } from "@/lib/world";
+import { ratioGauge } from "@/lib/world-presentation";
 import { wallPanelLoading, type WallModel, type WallTextPanelId } from "@/lib/world-wall";
 import { BOARD, openBoard, wrapLines, type BoardPaintStyle } from "./board-canvas";
 import type { BoardBox } from "./board-layer";
@@ -54,17 +55,17 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
     const valueWidth = ctx.measureText(value).width;
     font(body); ctx.fillStyle = DIM; ctx.fillText("/ 10", pad + valueWidth + body * .4, base);
     font(small, 700); ctx.fillStyle = GOLD; ctx.fillText(clip(model.index.label, w * .42), pad, Math.min(bottom, base + small * 1.5));
-    // Right block: hope/fear ratio, bar and sample counts.
-    const x = Math.round(w * .46), blockW = w - pad - x;
-    const hope = `희망 ${percent(s.hope_ratio)}`, fear = `공포 ${percent(s.fear_ratio)}`;
+    // Right block: fear/hope gauge, read left to right like the index (fear fills from the left), and sample counts.
+    const x = Math.round(w * .46), blockW = w - pad - x, gauge = ratioGauge(s);
+    const fear = `공포 ${percent(s.fear_ratio)}`, hope = `희망 ${percent(s.hope_ratio)}`;
     font(body, 700);
-    if (ctx.measureText(hope).width + ctx.measureText(fear).width + body * .6 > blockW) font(small, 700);
-    ctx.fillStyle = HOPE; ctx.fillText(hope, x, top + body * 1.2);
-    ctx.fillStyle = FEAR; right(fear, w - pad, top + body * 1.2);
+    if (ctx.measureText(fear).width + ctx.measureText(hope).width + body * .6 > blockW) font(small, 700);
+    ctx.fillStyle = FEAR; ctx.fillText(fear, x, top + body * 1.2);
+    ctx.fillStyle = HOPE; right(hope, w - pad, top + body * 1.2);
     const barY = top + body * 1.75, barH = Math.max(4, Math.round(body * .35));
     ctx.fillStyle = "#52616b"; ctx.fillRect(x, barY, blockW, barH);
-    ctx.fillStyle = "#b4aa73"; ctx.fillRect(x, barY, blockW * (s.hope_ratio ?? 0), barH);
-    ctx.fillStyle = "#bd7864"; ctx.fillRect(x + blockW * (1 - (s.fear_ratio ?? 0)), barY, blockW * (s.fear_ratio ?? 0), barH);
+    ctx.fillStyle = "#bd7864"; ctx.fillRect(x, barY, blockW * gauge.fear, barH);
+    ctx.fillStyle = "#b4aa73"; ctx.fillRect(x + blockW * (1 - gauge.hope), barY, blockW * gauge.hope, barH);
     font(small);
     const problem = model.index.status && model.index.status !== "관측 중";
     const sampleY = barY + barH + small * 1.5, statusY = barY + barH + small * 2.9;

@@ -1,5 +1,5 @@
 import { percent, type WorldFrame, type WorldScene, type WorldStock, type WorldSummary } from "./world";
-import { worldHeadline } from "./world-presentation";
+import { SIDE_ORDER, worldHeadline } from "./world-presentation";
 import type { BoardRect, Loadable } from "./world-wall";
 import type { TheaterTimeline } from "./world-theater";
 
@@ -56,7 +56,7 @@ export function buildSceneBoard(input: {
     const s = input.summary;
     return {
       ...common, scene: "battle", id: "camps", title: "희망·공포 비교", scope: input.stock?.name ?? "전체 커뮤니티",
-      camps: (["bullish", "bearish", "neutral"] as const).map((side) => ({
+      camps: SIDE_ORDER.map((side) => ({
         side, label: CAMP_LABEL[side],
         value: side === "neutral" ? `${s.neutral}건` : percent(side === "bullish" ? s.hope_ratio : s.fear_ratio),
         sub: side === "neutral" ? "비율에서 별도" : `${s[side]}건`

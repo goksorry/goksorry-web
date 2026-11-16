@@ -190,8 +190,12 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   await page.locator(".hd2d-canvas").focus(); await page.keyboard.press("ArrowRight");
   await expect(avatar).not.toHaveAttribute("data-position", before!);
   await page.waitForTimeout(600); const moved = await avatar.getAttribute("data-position");
-  await page.getByRole("button", { name: "진영·근거 보기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click();
+  await page.getByRole("button", { name: "진영·근거 보기" }).click();
+  // Camps read like the 곡소리 지수 gauge: fear left, neutral between, hope right.
+  expect(await page.locator(".world-camps button").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.side))).toEqual(["bearish", "neutral", "bullish"]);
+  await page.locator('.world-camps button[data-side="bearish"]').click();
   await expect(page.getByRole("button", { name: /^공포 \d+건$/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".world-ratios > span").first()).toHaveClass("world-fear");
   await page.keyboard.press("Escape"); await expect(avatar).toHaveAttribute("data-position", moved!);
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   await page.getByRole("button", { name: "내 개미 색상 3" }).click();

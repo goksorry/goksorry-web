@@ -1,14 +1,17 @@
 "use client";
 import { percent, type WorldSummary } from "@/lib/world";
+import { ratioGauge } from "@/lib/world-presentation";
 import type { CSSProperties } from "react";
 import { WALL_PANELS, wallPanelLoading, type WallModel, type WallPanelId } from "@/lib/world-wall";
 import { WALL_SKELETON_COLOR, WALL_SKELETON_WIDTHS } from "./wall-skeleton";
 
 export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evidence"> }) {
+  const gauge = ratioGauge(summary);
   return <div className="world-numbers">
     <div className="world-index-number"><strong>{summary.total ? summary.index.toFixed(1) : "—"}</strong><span>/ 10</span></div>
-    <div className="world-ratios"><span className="world-hope">희망 <b>{percent(summary.hope_ratio)}</b></span><span className="world-fear">공포 <b>{percent(summary.fear_ratio)}</b></span></div>
-    <div className="world-ratio-track" aria-hidden="true"><i style={{ width: `${(summary.hope_ratio ?? 0) * 100}%` }} /><i style={{ width: `${(summary.fear_ratio ?? 0) * 100}%` }} /></div>
+    {/* Same left-to-right gauge as the wall: fear fills from the left, hope from the right. */}
+    <div className="world-ratios"><span className="world-fear">공포 <b>{percent(summary.fear_ratio)}</b></span><span className="world-hope">희망 <b>{percent(summary.hope_ratio)}</b></span></div>
+    <div className="world-ratio-track" aria-hidden="true"><i className="world-ratio-fear" style={{ width: `${gauge.fear * 100}%` }} /><i className="world-ratio-hope" style={{ width: `${gauge.hope * 100}%` }} /></div>
     <span className="world-sample">분석 표본 {summary.total.toLocaleString()}건 <span>· 중립 {summary.neutral.toLocaleString()}건</span></span>
   </div>;
 }
