@@ -4913,7 +4913,7 @@ div.goksorry-room-list-status {
 .feed-sentiment-chip[data-sentiment=fear] { color:color-mix(in srgb, var(--danger) 72%, var(--ink)); border-color:var(--danger); }
 .feed-sentiment-chip[data-sentiment=hope] { color:color-mix(in srgb, var(--hope) 72%, var(--ink)); border-color:var(--hope); }
 
-/* 일반모드 / 메타버스모드 header toggle. */
+/* 웹 / 개미인생 header toggle. */
 .mode-switch {
   display: inline-flex;
   border: 1px solid var(--line);
@@ -4945,9 +4945,5 @@ div.goksorry-room-list-status {
 @media (max-width: 760px) {
   .header-main {
     flex-wrap: wrap;
-  }
-
-  .mode-switch span {
-    display: none;
   }
 }

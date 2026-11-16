@@ -11,10 +11,10 @@ type QueryValue = string | string[] | undefined;
 const FEED_WINDOW_HOURS = 6;
 const INITIAL_FEED_LIMIT = 80;
 
-// 일반모드: the document-style home. Same data as the metaverse room at "/", which stays canonical.
+// 웹 mode: the document-style home. Same data as the metaverse room at "/", which stays canonical.
 export const metadata: Metadata = buildPageMetadata({
-  title: "일반모드",
-  description: "곡소리 지수, 시장 지수, 커뮤니티 원문 피드를 일반 페이지로 확인하는 곡소리닷컴 일반모드입니다.",
+  title: "웹",
+  description: "곡소리 지수, 시장 지수, 커뮤니티 원문 피드를 일반 페이지로 확인하는 곡소리닷컴 웹 화면입니다.",
   path: "/"
 });
 

@@ -114,7 +114,7 @@ test("the room has no theme: ?theme is dropped, the world keeps its palette, cla
   // Every frame across the soft navigations must root the look of the page it shows (no frame of the other one's colours).
   await page.evaluate(() => { const w = window as unknown as { mixed: string[] }; w.mixed = []; const tick = () => { const root = document.documentElement, room = !!document.querySelector(".world-page");
     if (room !== (root.dataset.themeShell === "default" && root.dataset.theme === "dark")) w.mixed.push(`${location.pathname} ${root.dataset.themeId}`); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
-  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
+  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: "웹", exact: true }).click();
   await expect(page).toHaveURL(/\/classic\?.*theme=excel-dark/);
   await expect(html).toHaveAttribute("data-theme-id", "excel-dark"); await expect(html).toHaveAttribute("data-theme-shell", "excel");
   await expect(page.getByTestId("program-shell")).toBeVisible();
@@ -594,21 +594,21 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
   const path = testInfo.outputPath("world-render-performance.json"); await writeFile(path, JSON.stringify(results, null, 2)); await testInfo.attach("render-performance", { path, contentType: "application/json" });
 });
 
-test("mode switch moves between the metaverse room and the classic page, keeping the feed scope", async ({ page }) => {
+test("mode switch moves between 개미인생 (the room) and 웹 (the classic page), keeping the feed scope", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.goto("/?channels=toss");
-  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
+  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: "웹", exact: true }).click();
   // The stored theme (the room shows none) comes back with the classic page.
   await expect(page).toHaveURL(/\/classic\?channels=toss&theme=light$/);
   await expect(page.locator(".world-root")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "최근 글", level: 1 })).toBeVisible();
-  await expect(page.locator(".header .mode-switch a[aria-current=page]")).toContainText("일반");
+  await expect(page.locator(".header .mode-switch a[aria-current=page]")).toHaveText("웹");
   // Filters on the classic page stay on the classic page.
   await page.locator(".feed-channel-buttons").getByRole("button", { name: "뽐뿌", exact: true }).click();
   await expect(page).toHaveURL(/\/classic\?channels=toss%2Cppomppu/);
-  await page.locator(".header .mode-switch").getByRole("link", { name: /메타버스/ }).click();
+  await page.locator(".header .mode-switch").getByRole("link", { name: "개미인생", exact: true }).click();
   await expect(page).toHaveURL(/:3100\/\?channels=toss%2Cppomppu/);
   await expect(page.locator(".world-root")).toBeVisible();
-  await expect(page.locator(".world-topbar .mode-switch a[aria-current=page]")).toContainText("메타버스");
+  await expect(page.locator(".world-topbar .mode-switch a[aria-current=page]")).toHaveText("개미인생");
 });
 
 test("own chat line pops over the visitor ant, follows it and fades after a length-based time", async ({ page }) => {

@@ -21,7 +21,7 @@
 
 ## Responsibilities
 - Ant world (`/`): full-viewport WebGL room whose back wall shows market indices, 곡소리방, Pierrot, 곡소리 지수 and feed; panels open detail dialogs
-- Classic document-style home (`/classic`, 일반모드)
+- Classic document-style home (`/classic`, 웹 mode; the ant room at `/` is 개미인생 mode)
 - Community MVP (Google OAuth only)
 - Account creation gate at `/profile`
 - Editable legal documents via admin (`/admin/policies`)

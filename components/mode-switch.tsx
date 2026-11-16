@@ -14,13 +14,13 @@ function Links({ search }: { search: URLSearchParams | null }) {
   const query = scope.size ? `?${scope}` : "";
   const classic = new URLSearchParams(scope); if (themeInUrl) classic.set(THEME_PARAM_NAME, themeId);
   return <nav className="mode-switch" aria-label="화면 모드">
-    <Link href={`/classic${classic.size ? `?${classic}` : ""}`} aria-current={metaverse ? undefined : "page"}>일반<span>모드</span></Link>
-    <Link href={`/${query}`} aria-current={metaverse ? "page" : undefined}>메타버스<span>모드</span></Link>
+    <Link href={`/classic${classic.size ? `?${classic}` : ""}`} aria-current={metaverse ? undefined : "page"}>웹</Link>
+    <Link href={`/${query}`} aria-current={metaverse ? "page" : undefined}>개미인생</Link>
   </nav>;
 }
 function ScopedLinks() { return <Links search={useSearchParams()} />; }
 
-/** Header toggle between the classic page layout ("/classic") and the metaverse room ("/"). */
+/** Header toggle between 웹 (the classic page layout, "/classic") and 개미인생 (the ant room, "/"). */
 export function ModeSwitch() {
   return <Suspense fallback={<Links search={null} />}><ScopedLinks /></Suspense>;
 }

@@ -21,7 +21,7 @@ const buildFeedHref = ({ groupIds, baseSearch, pathname }: { groupIds: SourceGro
   params.delete("channel");
   params.delete("source");
   const query = params.toString();
-  // Stay on the current home (metaverse "/" or 일반모드 "/classic").
+  // Stay on the current home (개미인생 "/" or 웹 "/classic").
   const base = pathname === "/classic" ? "/classic" : "/";
   return query ? `${base}?${query}` : base;
 };
