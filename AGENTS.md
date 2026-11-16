@@ -44,7 +44,8 @@
 
 ## Database Workflow
 - Use Supabase CLI from the repo root with `npx supabase ... --workdir .`.
-- Linked project ref: `oldbntwoxhtaehpirepn`.
+- Linked project ref: `kfgqobuusbleqqhstllv` (Supabase region `ap-northeast-2`, Seoul).
+- Vercel function region must stay `icn1` (Seoul), next to the database. Every server render makes sequential DB round trips, so a cross-region function adds hundreds of ms per page.
 - Use `supabase/migrations` as the primary CLI migration path.
 - Mirror durable repo-facing SQL history in `db/migrations`.
 - Keep `db/schema.sql` aligned when migrations change long-lived schema or seeded bootstrap content.

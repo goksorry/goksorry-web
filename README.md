@@ -93,7 +93,7 @@ npm run test:e2e
 
 - Supabase CLI를 사용합니다.
 - 기본 작업 디렉터리는 repo root 기준 `npx supabase ... --workdir .` 입니다.
-- 링크된 프로젝트 ref는 `oldbntwoxhtaehpirepn` 입니다.
+- 링크된 프로젝트 ref는 `kfgqobuusbleqqhstllv` 입니다.
 - CLI 적용 경로는 `supabase/migrations` 입니다.
 - 리포의 숫자 기반 SQL 히스토리는 `db/migrations` 에 함께 유지합니다.
 - 장기 스키마 기준 파일은 `db/schema.sql` 입니다.

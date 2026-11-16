@@ -15,7 +15,7 @@ This skill is only for `goksorry-web`. Do not apply these rules to unrelated rep
 ## Core Rules
 
 - Prefer `npx supabase ... --workdir .` from the `goksorry-web` directory.
-- Use the linked remote project at `oldbntwoxhtaehpirepn` unless the user explicitly changes it.
+- Use the linked remote project at `kfgqobuusbleqqhstllv` unless the user explicitly changes it.
 - Treat `supabase/migrations` as the CLI source of truth for new migrations.
 - Keep a matching repo-facing SQL file in `db/migrations` when a migration should remain visible in the project’s numbered migration history.
 - Update `db/schema.sql` when a migration changes the durable schema or seed content represented there.
@@ -38,7 +38,7 @@ npx supabase init --workdir . --yes
 When linking the project:
 
 ```bash
-npx supabase link --project-ref oldbntwoxhtaehpirepn --workdir .
+npx supabase link --project-ref kfgqobuusbleqqhstllv --workdir .
 ```
 
 Prefer existing CLI login state. Use a raw `SUPABASE_ACCESS_TOKEN` only when login is unavailable.
