@@ -288,6 +288,12 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
 
 /* Chat beside the world (same sidebar/dock as classic mode). The dock floats above the scene nav and hides under dialogs. */
 .world-page .chat-dock-shell { bottom:calc(var(--hud-nav-h) + 8px + env(safe-area-inset-bottom)); }
+/* The mobile chat FAB is fixed to the viewport (globals.css); in the room it rises above the bottom scene tabs. */
+.world-page .chat-dock-toggle { bottom:calc(var(--hud-nav-h) + 12px + env(safe-area-inset-bottom)) !important; }
+/* Portrait plaza: the wall arrows sit above the tabs at the right edge, so the FAB clears them too (wall-nav bottom + arrow height). */
+.world-page:has(.world-wall-nav) .chat-dock-toggle { bottom:calc(var(--hud-nav-h) + 14px + 64px + 10px + env(safe-area-inset-bottom)) !important; }
+/* The first-visit cookie notice covers the floor; the FAB waits until it is answered. */
+body:has(.cookie-consent-banner) .world-page .chat-dock-toggle { visibility:hidden; }
 body:has(.world-page .world-modal-backdrop) .chat-dock-shell { visibility:hidden; }
 /* The visitor's sent chat line above their name tag (world-speech-bubble.tsx): springs out from its tail, then fades. */
 .world-speech-bubble { position:absolute; z-index:3; transform:translate(-50%, calc(-100% - 30px)); pointer-events:none; }
