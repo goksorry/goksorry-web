@@ -299,6 +299,58 @@ test("clicking a plaza door walks the visitor to it, and a second click goes in"
   await expect(page).toHaveURL(/scene=theater/);
 });
 
+test("a floor click marks the walk target with a ring on the ground until the visitor arrives; arrow keys leave none", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prepareWorld(page); await page.goto("/"); await webgl(page);
+  type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
+  const visitor = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.visitor());
+  const marker = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.marker());
+  const box = (await page.locator(".hd2d-canvas").boundingBox())!;
+  expect(await marker()).toBeNull();
+  /** A floor point `dx` px beside the visitor's feet that only the canvas covers. */
+  const floor = async (dx: number) => {
+    const me = await visitor(), at = { x: box.x + me.sx + dx, y: box.y + me.sy + me.sh / 2 + 24 };
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.classList.contains("hd2d-canvas"), at)).toBe(true);
+    return at;
+  };
+  const start = await visitor(), first = await floor(260); await page.mouse.click(first.x, first.y);
+  // The ring lies on the floor where the click landed (right of the visitor, nearer the camera) and fades in.
+  await expect.poll(async () => (await marker())?.opacity ?? 0).toBeGreaterThan(.5);
+  const placed = (await marker())!;
+  expect(placed.x).toBeGreaterThan(start.x + 1); expect(placed.z).toBeGreaterThan(start.z);
+  // A new click replaces it (now left of the visitor) before the visitor gets there.
+  const second = await floor(-260); await page.mouse.click(second.x, second.y);
+  await expect.poll(async () => (await marker())?.x ?? Infinity).toBeLessThan(start.x);
+  const goal = (await marker())!;
+  // The visitor arrives on the ring, and then the ring is gone.
+  await expect.poll(async () => { const me = await visitor(); return me.state === "idle" && Math.hypot(me.x - goal.x, me.z - goal.z) < .05; }, { timeout: 15_000 }).toBe(true);
+  await expect.poll(marker).toBeNull();
+  // Arrow-key walks leave no ring, and one cancels a clicked walk's ring.
+  await page.locator(".hd2d-canvas").focus();
+  const before = await visitor(); await page.keyboard.press("ArrowLeft");
+  await expect.poll(async () => { const me = await visitor(); return me.state === "idle" && before.x - me.x > .9; }, { timeout: 5000 }).toBe(true);
+  expect(await marker()).toBeNull();
+  const third = await floor(220); await page.mouse.click(third.x, third.y);
+  await expect.poll(marker).not.toBeNull();
+  await page.keyboard.press("ArrowLeft"); await expect.poll(marker).toBeNull();
+});
+
+test("under reduced motion the walk-target ring is static", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);
+  type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
+  const marker = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.marker());
+  const box = (await page.locator(".hd2d-canvas").boundingBox())!, me = await page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.visitor());
+  await page.mouse.click(box.x + me.sx + 300, box.y + me.sy + me.sh / 2 + 24);
+  await expect.poll(marker).not.toBeNull();
+  const looks = [];
+  for (let i = 0; i < 4; i++) { const m = await marker(); if (m) looks.push({ opacity: m.opacity, scale: m.scale }); await page.waitForTimeout(120); }
+  expect(looks.length).toBeGreaterThan(1);
+  for (const look of looks) expect(look).toEqual(looks[0]);
+  expect(looks[0].scale).toBe(1);
+});
+
 test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming and its comings and goings", async ({ page }) => {
   test.setTimeout(60_000);
   await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);

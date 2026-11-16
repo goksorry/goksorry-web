@@ -10,6 +10,7 @@ import { WALL_COS, WALL_FACE_Z, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, 
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
+import { createMoveMarker, type MoveMarkerState } from "./move-marker";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
@@ -32,7 +33,9 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
    * the turnover phase it is in (`trip`), how many trips its slot has made (`lap`) and how much of it is drawn (`fade`, 0 hidden). */
   crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean; trip: "out" | "away" | "in" | null; lap: number; fade: number })[];
   /** The visitor's ant, in every scene. */
-  visitor: () => AntMetric };
+  visitor: () => AntMetric;
+  /** The ring a floor click left at the visitor's walk target, drawn last frame (null when none): floor point, look, and screen point of its centre. */
+  marker: () => (MoveMarkerState & { sx: number; sy: number }) | null };
 /** `frame` is the atlas frame drawn last ("key", or "key~" when mirrored; empty outside the plaza); `sh` is the sprite's height on screen in CSS px;
  * `unit` is the size it was drawn at, in world units per atlas pixel (so a length measured in the art times `unit` is a length on the floor). */
 export type AntMetric = Point & { state: string; dir: number; sx: number; sy: number; sh: number; frame: string; unit: number };
@@ -285,6 +288,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // Text tags over the scene: the visitor's name/emote and the plaza's entrance signs.
   const labels = createLabelLayer(); scene.add(labels.group);
   let visitorTag: string | null = "나", labelKey = "";
+  // Where a floor click sent the visitor: a ring on the ground until it gets there.
+  const marker = createMoveMarker(); scene.add(marker.mesh);
   const antGeometry = new THREE.PlaneGeometry(1, 1);
   const offsets = new Float32Array(MAX_ANTS * 4);
   antGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(offsets, 4));
@@ -394,7 +399,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   }
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, band: "neutral", bright: false,
     crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
-    visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8) };
+    visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8),
+    marker: () => { const m = marker.state; if (!m) return null; const p = project(corner.set(m.x, 0, m.z)); return { ...m, sx: p.x, sy: p.y }; } };
   // Plaza instances are the crowd (including ants walking off) then the visitor; other scenes draw sideList then the visitor.
   const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : sideList.length;
   // What was drawn last for each instance: atlas frame, sprite height in world units, and world units per atlas pixel.
@@ -524,6 +530,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       visitorStride += Math.min(distance, reach) / (VISITOR_STEP / 2 * walkSize);
     } else visitorStride = 0;
     if (!path.length) visiting = null;
+    marker.tick(time, { walking: path.length > 0, reduced: !ambient(), size: walkSize });
     followSection();
     // The lens eases after the visitor has moved, so a followed visitor is framed where it is now.
     const aim = { cx: aimCx(), top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
@@ -699,16 +706,19 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const hit = !target || target.z < WALL_FACE_Z ? raycaster.ray.intersectPlane(wallPlane, new THREE.Vector3()) : target;
       const door = hit && hit.z < WORLD_BOUNDS.back + .3 && hit.y <= PLAZA_DOOR.height + PLAZA_DOOR.lintel ? PLAZA_ENTRANCES.find((e) => Math.abs(hit.x - e.x) < PLAZA_DOOR.half + .4) : undefined;
       if (door) {
-        if (entranceAt(state.scene, position)?.scene === door.scene) events.enter?.(door.scene); else walkTo({ x: door.x, z: door.z });
+        if (entranceAt(state.scene, position)?.scene === door.scene) events.enter?.(door.scene); else walkTo({ x: door.x, z: door.z }, true);
         return;
       }
     }
-    if (target) walkTo({ x: target.x, z: limitZ(target.z) });
+    if (target) walkTo({ x: target.x, z: limitZ(target.z) }, true);
   }
-  function walkTo(target: Point) {
+  /** `clicked`: a floor or door click asked for this walk, so its end gets the ground marker; any other walk clears it. */
+  function walkTo(target: Point, clicked = false) {
     if (Math.hypot(target.x - position.x, target.z - position.z) < 1e-3) return; // Already there after clamping.
     path = findWorldPath(position, target, worldObstacles(state.scene));
-    if (path.length) { events.step?.(); events.walk?.(path[path.length - 1]); }
+    const end = path[path.length - 1];
+    if (clicked && end) marker.show(end); else marker.hide();
+    if (end) { events.step?.(); events.walk?.(end); }
   }
   // The floor is only walkable where the framed view shows it.
   const limitZ = (z: number) => Math.min(z, front - .35);
@@ -724,7 +734,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   function update(next: RenderState) {
     const changed = state.scene !== next.scene, density = state.mobile !== next.mobile; state = next;
     if (changed) {
-      path = []; snap = true; visiting = null;
+      path = []; snap = true; visiting = null; marker.hide();
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
       else if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; }
       buildRoom();
@@ -763,7 +773,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       finally { exported.dispose(); }
     },
     dispose() {
-      disposed = true; canvas.removeEventListener("webglcontextlost", lost); boards.dispose(); labels.dispose();
+      disposed = true; canvas.removeEventListener("webglcontextlost", lost); boards.dispose(); labels.dispose(); marker.dispose();
       scene.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); geometry.forEach((g) => g.dispose()); materials.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); queries.forEach((q) => gl.deleteQuery(q)); queries = [];
       renderer.dispose();
     }

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { MOVE_MARKER, markerLook } from "../lib/world-move-marker";
 import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { buildWorldFrame, buildWorldReplay, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
@@ -88,4 +89,23 @@ test("plaza doors stand under the panels, inside their zoomed sections, with a w
   }
   const sorted = PLAZA_ENTRANCES.map((e) => e.x).sort((a, b) => a - b);
   sorted.slice(1).forEach((x, i) => expect(x - sorted[i]).toBeGreaterThan(2 * frame + 2));
+});
+
+test("the move marker drops in, breathes while the visitor walks, and fades out on arrival; reduced motion keeps it still", () => {
+  const { appear, vanish, period, opacity } = MOVE_MARKER;
+  // Drops in faint and wide, settles to full size and opacity.
+  const first = markerLook(0, null, false)!, settled = markerLook(appear, null, false)!;
+  expect(first.opacity).toBe(0); expect(first.scale).toBeCloseTo(1.4);
+  expect(settled.scale).toBeCloseTo(1); expect(settled.opacity).toBeCloseTo(opacity * .85);
+  // Breathes gently, never growing past the drop-in size or vanishing while the visitor walks.
+  const breaths = Array.from({ length: 40 }, (_, i) => markerLook(appear + i * period / 20, null, false)!);
+  expect(Math.max(...breaths.map((b) => b.scale)) - Math.min(...breaths.map((b) => b.scale))).toBeGreaterThan(.05);
+  for (const b of breaths) { expect(b.scale).toBeLessThan(1.1); expect(b.opacity).toBeGreaterThan(.6); expect(b.opacity).toBeLessThanOrEqual(opacity); }
+  // On arrival it widens as it fades, then is gone.
+  const fading = markerLook(5, vanish / 2, false)!, still = markerLook(5, 0, false)!;
+  expect(fading.opacity).toBeLessThan(still.opacity); expect(fading.scale).toBeGreaterThan(still.scale);
+  expect(markerLook(5, vanish, false)).toBeNull();
+  // Reduced motion: one fixed look from the first frame, gone on arrival with no fade.
+  for (const age of [0, .1, appear, 1, 3.3]) expect(markerLook(age, null, true)).toEqual({ opacity, scale: 1 });
+  expect(markerLook(2, 0, true)).toBeNull();
 });
