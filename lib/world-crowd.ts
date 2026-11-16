@@ -90,11 +90,12 @@ const FACE_TAU = .18, FACE_KEEP8 = Math.PI / 8 + .16, FACE_KEEP4 = Math.PI / 4 +
 const FACE_TURN = -.5;
 const DIR_ANGLE = (dir: number) => dir * Math.PI / 4; // angle of an ANT_DIRS index, as atan2(-x, z)
 const off = (angle: number, dir: number) => Math.abs(Math.atan2(Math.sin(angle - DIR_ANGLE(dir)), Math.cos(angle - DIR_ANGLE(dir))));
-export function face(a: CrowdAnt, dt: number, snap = false): void {
+/** `toward` is the heading to face when it is not the one moved along: a sidestepping walker keeps facing its route. */
+export function face(a: CrowdAnt, dt: number, snap = false, toward: { x: number; z: number } = { x: a.hx, z: a.hz }): void {
   const k = snap ? 1 : 1 - Math.exp(-dt / FACE_TAU);
-  let fx = a.fx + (a.hx - a.fx) * k, fz = a.fz + (a.hz - a.fz) * k;
+  let fx = a.fx + (toward.x - a.fx) * k, fz = a.fz + (toward.z - a.fz) * k;
   const length = Math.hypot(fx, fz);
-  if (length < .2) { fx = a.hx; fz = a.hz; } else { fx /= length; fz /= length; } // an about-turn passes through zero
+  if (length < .2) { fx = toward.x; fz = toward.z; } else { fx /= length; fz /= length; } // an about-turn passes through zero
   a.fx = fx; a.fz = fz;
   const angle = Math.atan2(-fx, fz);
   if (snap || off(angle, a.dir8) > FACE_KEEP8) a.dir8 = facing8(fx, fz);
@@ -369,6 +370,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
     if (!target) { gaze(a, gazeSpan(a, env)); return; }
     const dx = target.x - a.x, dz = target.z - a.z, distance = Math.hypot(dx, dz), reach = a.speed * dt, arrive = distance <= reach;
     if (distance > EPS) { a.hx = dx / distance; a.hz = dz / distance; }
+    const route = { x: a.hx, z: a.hz };
     let next = arrive ? target : { x: a.x + a.hx * reach, z: a.z + a.hz * reach }, slid = false;
     if (blocked(a, index, next, env)) {
       // Sidestep around whoever is in the way; the detour counts toward `wait` so it cannot circle for long.
@@ -384,7 +386,9 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
       if (a.wait > .5) { roam(a, env); return; }
       if (!slid) return;
     } else a.wait = 0;
-    face(a, dt, a.fresh); a.fresh = false;
+    // A sidestep shuffles around whoever is in the way without turning to it: jostled walkers would otherwise flick
+    // between two directions as the sidesteps alternate with the route.
+    face(a, dt, a.fresh, slid ? route : undefined); a.fresh = false;
     a.x = next.x; a.z = next.z; a.moved = true; a.stride += slid ? reach : Math.min(distance, reach);
     a.pose = walkPose(a.stride);
     if (arrive && !slid) { a.path.shift(); if (!a.path.length) gaze(a, gazeSpan(a, env)); }
