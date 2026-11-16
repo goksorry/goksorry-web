@@ -1,67 +1,20 @@
 import { percent } from "@/lib/world";
 import { wallPanelLoading, type WallModel, type WallTextPanelId } from "@/lib/world-wall";
-import { paintWallSkeleton } from "./wall-skeleton";
+import { BOARD, openBoard, wrapLines, type BoardPaintStyle } from "./board-canvas";
+import type { BoardBox } from "./board-layer";
 
-export type WallPaintStyle = { family: string; up: string; down: string };
-/** Logical (CSS px) size of the panel, device scale of the backing canvas and body text size. */
-export type WallPaintBox = { width: number; height: number; scale: number; body: number };
-
-const INK = "#ece6d8", DIM = "#a9b7bd", GOLD = "#dfd2ad", LINE = "#34464d", HOPE = "#c3bf88", FEAR = "#de9d87", BG = "#101c22";
+const { ink: INK, dim: DIM, gold: GOLD, line: LINE, hope: HOPE, fear: FEAR } = BOARD;
 const TITLES: Record<WallTextPanelId, string> = { market: "시장 지수", room: "곡소리방", index: "곡소리 지수", feed: "곡소리 피드" };
-const segmenter = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter("ko", { granularity: "grapheme" }) : null;
-const graphemes = (text: string): string[] => segmenter ? Array.from(segmenter.segment(text), (part) => part.segment) : Array.from(text);
 
-/** Greedy grapheme wrap with a soft break at the last space; the final line ends with an ellipsis. */
-export function wrapLines(ctx: Pick<CanvasRenderingContext2D, "measureText">, text: string, maxWidth: number, maxLines: number): string[] {
-  const parts = graphemes(text.replace(/\s+/g, " ").trim());
-  const lines: string[] = [];
-  let start = 0;
-  while (start < parts.length && lines.length < maxLines) {
-    let end = start, line = "";
-    while (end < parts.length && ctx.measureText(line + parts[end]).width <= maxWidth) line += parts[end++];
-    if (end === start) line = parts[end++]; // A single glyph wider than the column still advances.
-    const last = lines.length === maxLines - 1;
-    if (end < parts.length && !last) {
-      const space = line.lastIndexOf(" ");
-      if (space > 0 && line.length - space <= 7) { end = start + graphemes(line.slice(0, space + 1)).length; line = line.slice(0, space); }
-    }
-    if (end < parts.length && last) {
-      const fitted = graphemes(line.trimEnd());
-      while (fitted.length && ctx.measureText(`${fitted.join("")}…`).width > maxWidth) fitted.pop();
-      line = `${fitted.join("").trimEnd()}…`;
-    }
-    lines.push(line.trim());
-    start = end;
-  }
-  return lines;
-}
-
-export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, model: WallModel, box: WallPaintBox, style: WallPaintStyle): void {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const { width: w, height: h } = box;
-  // Short panels (phone landscape) shrink their text instead of clipping it.
-  const body = id === "index" ? Math.min(box.body, h / 5.6) : box.body;
-  ctx.setTransform(box.scale, 0, 0, box.scale, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
-  ctx.textBaseline = "alphabetic";
-  const font = (size: number, weight = 400) => { ctx.font = `${weight} ${size}px ${style.family}`; };
-  const pad = Math.round(body * .8), small = Math.max(9, Math.round(body * .78)), head = Math.round(body * 1.9);
-  const right = (text: string, x: number, y: number) => { ctx.textAlign = "right"; ctx.fillText(text, x, y); ctx.textAlign = "left"; };
-  const clip = (text: string, max: number) => wrapLines(ctx, text, max, 1)[0] ?? "";
-  // Header strip: panel name and the tap hint.
-  font(Math.round(body * 1.05), 700); ctx.fillStyle = GOLD; ctx.fillText(TITLES[id], pad, head * .7);
-  const titleWidth = ctx.measureText(TITLES[id]).width;
-  font(small); ctx.fillStyle = DIM;
+export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, model: WallModel, box: BoardBox, style: BoardPaintStyle): void {
   const loading = wallPanelLoading(model, id);
   const hint = loading ? "불러오는 중…" : id === "index" ? model.index.time ?? "" : id === "feed" && model.feed.scope ? model.feed.scope : "눌러서 열기";
-  right(clip(`${hint} ↗`, w - pad * 3 - titleWidth), w - pad, head * .7);
-  ctx.fillStyle = LINE; ctx.fillRect(pad, head, w - pad * 2, 1);
-  const top = head + Math.round(body * .5), bottom = h - Math.round(body * .5);
-  const notice = (text: string) => { font(body); ctx.fillStyle = DIM; ctx.fillText(text, pad, top + body * 1.4); };
+  // Short panels (phone landscape) shrink their text instead of clipping it.
+  const pen = openBoard(canvas, box, style, { title: TITLES[id], hint, body: id === "index" ? Math.min(box.body, box.height / 5.6) : box.body });
+  if (!pen) return;
+  const { ctx, w, h, body, small, pad, top, bottom, font, right, clip, notice } = pen;
   // First payload pending: skeleton rows until real content replaces them (the renderer adds the shimmer).
-  if (loading) { paintWallSkeleton(ctx, { x: pad, y: top, width: w - pad * 2, height: bottom - top }, body); return; }
+  if (loading) { pen.skeleton(); return; }
 
   if (id === "market") {
     const { state, items } = model.market;

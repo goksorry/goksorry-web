@@ -5,12 +5,12 @@ import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
-import { plazaBoardSpecs } from "./board-specs";
+import { boardSpecs, type BoardSource } from "./board-specs";
 import type { BoardSpec } from "./board-layer";
 import { type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
 
 type Props = RenderState & {
-  emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
+  emote: string; children: ReactNode; board: BoardSource; view: WallView; styleKey: string;
   onScene: (scene: WorldScene) => void; onStep: () => void;
   /** The zoomed section view follows the visitor into another wall section. */
   onSection?: (section: WallSection) => void;
@@ -85,10 +85,10 @@ export default function HD2DWorld(props: Props) {
       family: computed.fontFamily || "sans-serif",
       up: computed.getPropertyValue("--change-up").trim() || "#e0705f", down: computed.getPropertyValue("--change-down").trim() || "#6fa3e0"
     };
-    specs.current = props.wall ? plazaBoardSpecs(props.wall, style) : [];
-    instance.setBoards(specs.current); instance.setBand(props.wall?.pierrot.band ?? null);
+    specs.current = boardSpecs(props.board, style);
+    instance.setBoards(specs.current); instance.setBand(props.board?.kind === "plaza" ? props.board.model.pierrot.band : null);
     if (props.paused || !onScreen) instance.draw();
-  }, [props.wall, props.styleKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [props.board, props.styleKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     cancelAnimationFrame(animation.current);

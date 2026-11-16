@@ -25,6 +25,9 @@ import { usePierrotDark } from "./world-pierrot";
 import { usePolled } from "./use-wall-data";
 import { WorldEvidence } from "./world-evidence";
 import { WorldWallDom, SummaryNumbers } from "./world-screens";
+import { SceneBoardDom } from "./scene-board-dom";
+import type { BoardSource } from "./board-specs";
+import { buildSceneBoard, CAMP_LABEL, sampleVerdict, type BoardScene } from "@/lib/world-scene-boards";
 import { useWorldSound } from "./world-sound";
 import type { EvidenceSelection } from "./scene-types";
 import "./world.css";
@@ -75,6 +78,8 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   const [loaded, setLoaded] = useState(false), [error, setError] = useState("");
   const [visible, setVisible] = useState(true), [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<DetailTab | null>(null), [side, setSide] = useState<PanelSide>("right");
+  // Detail of a non-plaza scene's wall board (its list, camps and selection controls).
+  const [sceneOrigin, setSceneOrigin] = useState<PanelOrigin | null>(null), [sceneOpen, setSceneOpen] = useState(false);
   // Horizontal position (0..1 of the stage) of the last click in the scene: an ant, a camp, a list button.
   const clickAt = useRef<number | null>(null);
   const [selection, setSelection] = useState<EvidenceSelection | null>(null);
@@ -88,11 +93,11 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
     const next = new URL(window.location.href); value ? next.searchParams.set(key, value) : next.searchParams.delete(key);
     window.history.pushState(null, "", `${next.pathname}${next.search}${next.hash}`);
   }, []);
-  const onScene = useCallback((next: WorldScene) => { setUrl("scene", next === "plaza" ? "" : next); setTab(null); setSelection(null); playSound(next === "broadcast" ? "signal" : "step"); }, [setUrl, playSound]);
+  const onScene = useCallback((next: WorldScene) => { setUrl("scene", next === "plaza" ? "" : next); setTab(null); setSceneOpen(false); setSelection(null); playSound(next === "broadcast" ? "signal" : "step"); }, [setUrl, playSound]);
   const onDate = useCallback((value: string) => { setReplayFrame(null); setUrl("date", value); }, [setUrl]);
   const onFrame = useCallback((value: WorldFrame | null) => setReplayFrame(value), []);
   const open = (next: DetailTab, from: PanelOrigin | null = null, at?: PanelSide) => { setSide(at ?? (from ? thirdOf((from.x + from.width / 2) / window.innerWidth) : "right")); setOrigin(from); setSelection(null); setTab(next); setMenuOpen(false); };
-  const evidence = (value: EvidenceSelection) => { if (!tab) setSide(clickAt.current === null ? "right" : thirdOf(clickAt.current)); setOrigin(null); setSelection(scene === "theater" ? { ...value, recordedAt: shown.generated_at } : value); setTab("feed"); setMenuOpen(false); };
+  const evidence = (value: EvidenceSelection) => { setSceneOpen(false); if (!tab) setSide(clickAt.current === null ? "right" : thirdOf(clickAt.current)); setOrigin(null); setSelection(scene === "theater" ? { ...value, recordedAt: shown.generated_at } : value); setTab("feed"); setMenuOpen(false); };
   const close = () => { if (tab === "room") setRoomRefresh((n) => n + 1); setTab(null); if (params.get("feed") === "1") setUrl("feed", ""); };
   // Deep link: ?feed=1 opens the full feed dialog.
   useEffect(() => { if (new URLSearchParams(window.location.search).get("feed") === "1") setTab("feed"); }, []);
@@ -164,11 +169,19 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
     scopeLabel: stock ? stockOptions.find((s) => s.symbol === stock)?.name ?? stock : filtered ? "선택 출처" : "",
     feed: feedWall, market: marketWall, room: roomWall
   }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark, stock, stockOptions, feedWall, marketWall, roomWall]);
+  const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
+    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame
+  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame]);
+  const board = useMemo<BoardSource>(() => plaza ? { kind: "plaza", model: wall } : sceneBoard && { kind: "scene", model: sceneBoard }, [plaza, wall, sceneBoard]);
+  const openScene = (from: PanelOrigin) => {
+    if (scene === "theater") { if (replayFrame) evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at }); return; }
+    setSceneOrigin(from); setTab(null); setMenuOpen(false); setSceneOpen(true);
+  };
   const fromButton = (event: { currentTarget: Element }) => event.currentTarget.getBoundingClientRect();
   const tabs: DetailTab[] = currentSelection ? ["index", "feed"] : ["index", "feed", "room"];
   const liveBadge = <div className="world-live-badge" data-state={error ? "error" : status.startsWith("갱신") ? "delayed" : "ready"}><i /><span>{status}</span><time dateTime={liveFrame.data_at ?? undefined}>{liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : ""}</time></div>;
   return <div className="world-root" data-paused={!visible || reduced} data-scene={scene} data-cookie-banner={bannerVisible} data-layout={landscape === null ? "pending" : layout} data-wall-section={section} data-wall-overview={overview}>
-    <div className="world-content" aria-hidden={!!tab || menuOpen ? true : undefined} ref={node => { if (node) node.inert = !!tab || menuOpen; }}>
+    <div className="world-content" aria-hidden={!!tab || menuOpen || sceneOpen ? true : undefined} ref={node => { if (node) node.inert = !!tab || menuOpen || sceneOpen; }}>
     <header className="world-topbar"><a href="/" className="world-brand" aria-label="곡소리 개미 월드 홈"><span className="world-brand-mark" aria-hidden="true" /><span>곡소리</span></a>
       {liveBadge}
       <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>피드</button><ModeSwitch /><button className="world-menu-button" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}>메뉴 <span aria-hidden="true">☰</span></button></div>
@@ -178,18 +191,15 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       // Keyboard activation carries no pointer position; use the control itself.
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
-      <div className="world-scene-heading"><h1 className={plaza ? "sr-only" : undefined}>{info.title}</h1></div>
-      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onSection={setSection}>
+      <div className="world-scene-heading"><h1 className="sr-only">{info.title}</h1></div>
+      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>
           <button className="world-wall-zoom" aria-pressed={overview} onClick={() => setOverview((value) => !value)}>{overview ? "확대" : "전체보기"}</button>
           <button className="world-wall-arrow" data-dir="right" hidden={overview} aria-disabled={section === 2} aria-label={`오른쪽 벽 보기 · ${SECTION_LABEL[Math.min(2, section + 1)]}`} onClick={() => setSection((value) => Math.min(2, value + 1) as WallSection)}>›</button>
         </div>}
-        {scene === "ecosystem" && <div className="world-region-overlay"><h2>최근 6시간 종목별 언급량</h2><div className="world-stock-list">{shown.stocks.map((s, i) => <button key={s.symbol} onClick={() => selectStock(s.symbol)} aria-label={`${s.name} 개미굴 · ${s.total}건`} aria-pressed={stock === s.symbol}><span className="world-rank">{String(i + 1).padStart(2, "0")}</span><strong>{s.name}</strong><span>{s.total}건 · 희망 {percent(s.hope_ratio)}</span><small>{s.total < 3 ? "소표본 · 관찰 중" : s.mood === "fear" ? "공포 우세" : s.mood === "hope" ? "희망 우세" : "혼조"}</small></button>)}</div>{!shown.stocks.length && <p>분석된 종목이 없습니다. 새 표본을 기다리고 있습니다.</p>}</div>}
-        {scene === "battle" && <div className="world-battle-overlay"><label>전장 종목 <select aria-label="전장 종목" value={item?.symbol ?? ""} onChange={(e) => selectStock(e.target.value, false)}><option value="">전체 커뮤니티</option>{shown.stocks.map((s) => <option key={s.symbol} value={s.symbol}>{s.name} · {s.total}건</option>)}</select></label><div className="world-camps">{(["bullish", "bearish", "neutral"] as const).map((side) => <button key={side} data-side={side} onClick={() => evidence({ title: `${item?.name ?? "전체"} ${side === "bullish" ? "희망군" : side === "bearish" ? "절망군" : "중립 관찰석"}`, summary: activeSummary, symbol: item?.symbol, side })}><span>{side === "bullish" ? "희망군" : side === "bearish" ? "절망군" : "중립 관찰석"}</span><strong>{side === "neutral" ? `${activeSummary.neutral}건` : percent(side === "bullish" ? activeSummary.hope_ratio : activeSummary.fear_ratio)}</strong><span>{side === "neutral" ? "비율에서 별도" : `${activeSummary[side]}건`} · 근거 보기 ↗</span></button>)}</div><p>{activeSummary.total < 3 ? "표본 부족 · 진영 우세 판단 보류" : "희망·공포 비율은 중립 제외. 가격·수익률 예측이 아닙니다."}</p>{reinforcement > 0 && <p role="status">새로운 근거 글 {reinforcement}건이 도착했습니다.</p>}</div>}
-        {scene === "broadcast" && <div className="world-broadcast-overlay"><h2>커뮤니티별 현황</h2><div className="world-community-list">{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: `${c.name} 현장`, summary: c, community: c.id })}><strong>{c.name}</strong><span>{c.total ? `${c.index.toFixed(1)} / 10` : "— / 10"} · 표본 {c.total}건</span><span>희망 {percent(c.hope_ratio)} · 공포 {percent(c.fear_ratio)}</span><span>{c.collection_disabled ? "수집 보류" : c.collection_problem ? "수집 확인 필요" : c.total < 3 ? "소표본 · 관찰 중" : `관심: ${c.top_stock ?? "종목 미지정"}`}</span></button>)}</div></div>}
-        {scene === "theater" && <div className="world-replay-screen"><span>기록 · {date}</span><h2>{replayFrame ? worldHeadline(replayFrame.overall) : "이 구간은 기록이 없습니다"}</h2>{replayFrame && <button onClick={() => evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at })}>분석 표본 {replayFrame.overall.total}건 · 희망 {percent(replayFrame.overall.hope_ratio)} / 공포 {percent(replayFrame.overall.fear_ratio)} · 근거 보기 ↗</button>}</div>}
+        {sceneBoard && <SceneBoardDom model={sceneBoard} onOpen={openScene} />}
       </HD2DWorld>
       {(error || frame.collection.errors > 0 || frame.collection.degraded || frame.collection.unavailable) && <p className="world-data-notice" role="status">{error || "일부 수집·분석 상태 확인 필요"}{error && <button onClick={() => setRetry((n) => n + 1)}>다시 시도</button>}</p>}
       {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
@@ -213,6 +223,11 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
           </select></label>} /></>}
       </div>
       {!currentSelection && <div id="world-tabpanel-room" role="tabpanel" aria-labelledby="world-tab-room" hidden={tab !== "room"}>{tab === "room" && <GoksorryRoom />}</div>}
+    </WorldPanel>}
+    {sceneOpen && !plaza && scene !== "theater" && <WorldPanel title={info.title} name="scene" modal origin={sceneOrigin} side="center" onClose={() => setSceneOpen(false)}>
+      {scene === "ecosystem" && <><p className="world-note">최근 6시간 종목별 언급량입니다. 종목을 누르면 분위기와 근거 글이 열립니다.</p><div className="world-stock-list">{shown.stocks.map((s, i) => <button key={s.symbol} onClick={() => selectStock(s.symbol)} aria-label={`${s.name} 개미굴 · ${s.total}건`} aria-pressed={stock === s.symbol}><span className="world-rank">{String(i + 1).padStart(2, "0")}</span><strong>{s.name}</strong><span>{s.total}건 · 희망 {percent(s.hope_ratio)}</span><small>{sampleVerdict(s)}</small></button>)}</div>{!shown.stocks.length && <p>분석된 종목이 없습니다. 새 표본을 기다리고 있습니다.</p>}</>}
+      {scene === "battle" && <div className="world-battle-detail"><label>전장 종목 <select aria-label="전장 종목" value={item?.symbol ?? ""} onChange={(e) => selectStock(e.target.value, false)}><option value="">전체 커뮤니티</option>{shown.stocks.map((s) => <option key={s.symbol} value={s.symbol}>{s.name} · {s.total}건</option>)}</select></label><div className="world-camps">{(["bullish", "bearish", "neutral"] as const).map((side) => <button key={side} data-side={side} onClick={() => evidence({ title: `${item?.name ?? "전체"} ${CAMP_LABEL[side]}`, summary: activeSummary, symbol: item?.symbol, side })}><span>{CAMP_LABEL[side]}</span><strong>{side === "neutral" ? `${activeSummary.neutral}건` : percent(side === "bullish" ? activeSummary.hope_ratio : activeSummary.fear_ratio)}</strong><span>{side === "neutral" ? "비율에서 별도" : `${activeSummary[side]}건`} · 근거 보기 ↗</span></button>)}</div><p>{sceneBoard?.scene === "battle" ? sceneBoard.note : ""}</p></div>}
+      {scene === "broadcast" && <div className="world-community-list">{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: `${c.name} 현장`, summary: c, community: c.id })}><strong>{c.name}</strong><span>{c.total ? `${c.index.toFixed(1)} / 10` : "— / 10"} · 표본 {c.total}건</span><span>희망 {percent(c.hope_ratio)} · 공포 {percent(c.fear_ratio)}</span><span>{c.collection_disabled ? "수집 보류" : c.collection_problem ? "수집 확인 필요" : c.total < 3 ? "소표본 · 관찰 중" : `관심: ${c.top_stock ?? "종목 미지정"}`}</span></button>)}</div>}
     </WorldPanel>}
     {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}><FirstVisitHeaderHint inWorldMenu />
       <section className="world-settings world-scene-menu"><h3>장면 이동</h3><div className="world-emotes">{SCENES.map((s) => <button key={s.id} aria-pressed={scene === s.id} onClick={() => { setMenuOpen(false); onScene(s.id); }}>{s.name} · {s.title}</button>)}</div><p className="world-note">바닥 클릭 또는 방향키로 이동, 개미를 누르면 근거 글, 벽의 판을 누르면 자세한 내용이 열립니다.</p></section>

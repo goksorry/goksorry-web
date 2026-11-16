@@ -149,13 +149,12 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const pipe = mesh(new THREE.CylinderGeometry(.07, .07, 5.2, 6), metalMat, sign * 10.8, 2.6, -4.7);
       pipe.castShadow = false;
     }
-    if (state.scene === "plaza") {
-      // Frames are lit scenery; the panel faces themselves are separate unlit meshes.
-      for (const [id, p] of Object.entries(sceneBoardLayout(state.scene))) {
-        const portrait = id === "pierrot";
-        box(p.x, p.y, -4.94, p.w + (portrait ? .5 : .24), p.h + (portrait ? .5 : .24), .1, portrait ? goldMat : metalMat);
-      }
-    } else {
+    // Board frames are lit scenery; the board faces themselves are separate unlit meshes (board-layer.ts).
+    for (const [id, p] of Object.entries(sceneBoardLayout(state.scene))) {
+      const portrait = id === "pierrot";
+      box(p.x, p.y, -4.94, p.w + (portrait ? .5 : .24), p.h + (portrait ? .5 : .24), .1, portrait ? goldMat : metalMat);
+    }
+    if (state.scene !== "plaza") {
       arch(0, -4.9, 2.3, 3.4);
       box(0, 4.3, -4.65, 2.9, .8, .18, metalMat);
       for (let i = 0; i < 5; i++) box(-.9 + i * .45, 4.3, -4.5, .14, .1, .02, glowMat);

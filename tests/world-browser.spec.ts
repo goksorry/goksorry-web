@@ -58,6 +58,8 @@ test("wall carries live data without a modal; panels open details with keyboard 
 
 test("stock and community scope stays in same layer; evidence filter and original URL", async ({ page }) => {
   await prepareWorld(page); await page.goto("/?scene=ecosystem");
+  // The wall board opens the scene's list; picking a stock moves on to its evidence.
+  await page.getByRole("button", { name: "종목 목록 열기" }).click();
   await expect(page.getByRole("button", { name: /개미굴 ·/ })).toHaveCount(12);
   await page.getByRole("button", { name: /삼성전자 개미굴/ }).click();
   await expect(dialog(page)).toHaveAccessibleName("삼성전자 · 분위기와 근거");
@@ -75,7 +77,8 @@ test("stock and community scope stays in same layer; evidence filter and origina
   await page.getByRole("button", { name: "전체 보기", exact: true }).click();
   await expect(dialog(page)).toHaveAccessibleName("전체 커뮤니티 · 지수와 피드");
   await page.keyboard.press("Escape"); await expect(page).toHaveURL(/stock=S0/);
-  await nav(page, "곡소리 재난방송").click(); await expect(page.getByRole("heading", { name: "커뮤니티별 현황", level: 1 })).toBeVisible();
+  await nav(page, "곡소리 재난방송").click(); await page.getByRole("button", { name: "커뮤니티 목록 열기" }).click();
+  await expect(page.locator('[data-world-panel="scene"]')).toHaveAccessibleName("커뮤니티별 현황");
   await page.locator(".world-community-list").getByRole("button").first().click(); await expect(dialog(page)).toHaveAccessibleName(/현장/);
 });
 
@@ -126,7 +129,7 @@ test("portrait frames one wall section; arrows, overview, header shortcuts and 4
   await expect(page.getByRole("tab", { name: "지수", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
   await page.locator(".world-feed-toggle").click();
   await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
-  await nav(page, "개미 생태계").click();
+  await nav(page, "개미 생태계").click(); await page.getByRole("button", { name: "종목 목록 열기" }).click();
   const labels = await page.locator(".world-stock-list strong").evaluateAll((elements) => elements.map((e) => parseFloat(getComputedStyle(e).fontSize)));
   expect(labels.every((value) => value >= 14)).toBe(true);
   const targets = await page.locator(".world-stock-list button,.world-hud-actions button,.world-hud-actions a,.world-bottom button").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
@@ -148,7 +151,7 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   await page.locator(".hd2d-canvas").focus(); await page.keyboard.press("ArrowRight");
   await expect(avatar).not.toHaveAttribute("data-position", before!);
   await page.waitForTimeout(600); const moved = await avatar.getAttribute("data-position");
-  await page.locator('.world-camps button[data-side="bearish"]').click();
+  await page.getByRole("button", { name: "진영·근거 보기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click();
   await expect(page.getByRole("button", { name: /^공포 \d+건$/ })).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape"); await expect(avatar).toHaveAttribute("data-position", moved!);
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
@@ -165,7 +168,7 @@ test("replay gaps, date changes, 0-10 axis, share and rendered PNG", async ({ pa
   await page.getByLabel("극장 시간 탐색", { exact: true }).fill("0.3"); await expect(page.getByText("이 구간은 기록이 없습니다", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "재생", exact: true }).click(); await expect(page.getByRole("button", { name: "일시정지", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "일시정지", exact: true }).click(); await page.getByLabel("극장 시간 탐색", { exact: true }).fill("30");
-  await page.locator(".world-replay-screen button").click();
+  await page.getByRole("button", { name: "극장 기록 근거 보기" }).click();
   await expect(dialog(page)).toContainText("저장 시점"); await page.keyboard.press("Escape");
   const downloadPromise = page.waitForEvent("download"); await page.getByRole("button", { name: "PNG 저장", exact: true }).click();
   const download = await downloadPromise; expect(download.suggestedFilename()).toBe(`goksorry-${yesterday}.png`);
@@ -473,7 +476,7 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
     await expect(stage(page)).toHaveAttribute("data-population", viewport.width > 760 ? "48" : "24");
     for (const scenario of ["movement", "detail", "replay"]) {
       if (scenario === "movement") { await page.locator("canvas").focus(); await page.keyboard.press("ArrowRight"); }
-      if (scenario === "detail") await page.locator('.world-camps button[data-side="bearish"]').click();
+      if (scenario === "detail") { await page.getByRole("button", { name: "진영·근거 보기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click(); }
       if (scenario === "replay") { await page.keyboard.press("Escape"); await nav(page, "오늘의 개미극장").click(); await page.getByRole("button", { name: "재생", exact: true }).click(); }
       const measure = await page.evaluate(async () => {
         const canvas = document.querySelector("canvas") as HTMLCanvasElement & { worldMetrics: RenderMetrics };
