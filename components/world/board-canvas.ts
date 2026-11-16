@@ -41,6 +41,8 @@ export type BoardPen = {
   w: number; h: number; body: number; small: number; pad: number; head: number;
   /** Content area below the header strip; `left`/`right` narrow when a portrait takes the left column. */
   top: number; bottom: number; left: number; right: number;
+  /** Wide enough for side columns (the portrait, the battle ranking); false on narrow boards such as portrait phones. */
+  wide: boolean;
   font(size: number, weight?: number): void;
   alignRight(text: string, x: number, y: number): void;
   centre(text: string, x: number, y: number): void;
@@ -79,16 +81,16 @@ export function openBoard(canvas: HTMLCanvasElement, box: BoardBox, style: Board
   font(small); ctx.fillStyle = BOARD.dim;
   aligned("right")(clip(`${header.hint} ↗`, w - pad * 3 - titleWidth), w - pad, head * .7);
   ctx.fillStyle = BOARD.line; ctx.fillRect(pad, head, w - pad * 2, 1);
-  const top = head + Math.round(body * .5), bottom = h - Math.round(body * .5);
+  const top = head + Math.round(body * .5), bottom = h - Math.round(body * .5), wide = w - pad * 2 >= body * 36;
   const pen: BoardPen = {
-    ctx, w, h, body, small, pad, head, top, bottom, left: pad, right: w - pad, font, clip,
+    ctx, w, h, body, small, pad, head, top, bottom, left: pad, right: w - pad, wide, font, clip,
     alignRight: aligned("right"), centre: aligned("center"),
     notice(text) { font(body); ctx.fillStyle = BOARD.dim; ctx.fillText(clip(text, pen.right - pen.left), pen.left, top + body * 1.4); },
     skeleton() { paintWallSkeleton(ctx, { x: pen.left, y: top, width: pen.right - pen.left, height: bottom - top }, body); },
     portrait(image, caption, missing) {
       const captionH = small * 1.6, artH = Math.min(bottom - top - captionH, (w - pad * 2) * .3 / 1.5), artW = artH * 1.5;
       // Narrow boards (portrait phones) or tiny art: leave the whole width to the content.
-      if (artH < body * 2 || w - pad * 2 < body * 36) return;
+      if (artH < body * 2 || !wide) return;
       if (missing) {
         ctx.strokeStyle = BOARD.line; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.strokeRect(pen.left + .5, top + .5, artW - 1, artH - 1); ctx.setLineDash([]);
         font(Math.round(Math.min(body * 1.2, artH / 4)), 700); ctx.fillStyle = BOARD.dim; pen.centre(clip(missing, artW - pad), pen.left + artW / 2, top + artH / 2 + body * .4);

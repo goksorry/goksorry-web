@@ -21,22 +21,31 @@ export function paintSceneBoard(model: SceneBoardModel, canvas: HTMLCanvasElemen
   const { ctx, body, small, top, bottom, left, right } = pen, width = right - left, mid = left + width / 2;
 
   if (model.scene === "battle") {
-    // A wide board also lists the mention ranking the battle's stock is picked from, in a right column.
-    const rankW = width >= body * 26 && model.ranking.length ? Math.round(body * 10.5) : 0;
+    // A wide board also lists the mention ranking the battle's stock is picked from, in a right column. Narrow boards
+    // (portrait phones, which drop the portrait too) leave the whole width to the camps; the popup has the ranking.
+    const rankW = pen.wide && width >= body * 26 && model.ranking.length ? Math.round(body * 10.5) : 0;
     if (rankW) { ranking(pen, model.ranking, right - rankW, rankW); pen.right = right - rankW - pen.pad; }
     const campsW = pen.right - left, campsMid = left + campsW / 2;
     pen.font(small); ctx.fillStyle = BOARD.dim; ctx.fillText(pen.clip(`전장 종목 · ${model.scope}`, campsW), left, top + small);
+    // Footnote lines under the camps. A board too short for both keeps the passing arrival notice over the standing note
+    // (the popup's footnote repeats it), so the camps never run into them.
     const lines = [model.note, model.fresh].filter(Boolean);
+    const campsNeed = small * 1.6 + body + small * 2.45 + small * .8;
+    if (lines.length > 1 && top + campsNeed + lines.length * small * 1.45 > bottom) lines.shift();
     const foot = lines.length * small * 1.45;
-    const campTop = top + small * 1.6, campH = bottom - foot - campTop, campW = (campsW - pen.pad * 2) / 3;
-    const big = Math.max(body * 1.3, Math.min(body * 2.6, campH * .45, campW / 3.2));
+    // Most of a line between the camps' sub-lines and the footnote, so they never touch.
+    const campTop = top + small * 1.6, campH = bottom - foot - small * .8 - campTop, campW = (campsW - pen.pad * 2) / 3;
+    // Each camp is a stacked label / value / sub-line block (about big + 2.45 small tall) at the top of the camp area, any
+    // spare height going to the gap above the footnote; the value shrinks before the lines can overlap on a short board.
+    const big = Math.max(body, Math.min(body * 2.6, campW / 3.2, campH - small * 2.6));
+    const labelY = campTop + small, valueY = labelY + small * .3 + big * .85, subY = valueY + big * .15 + small * 1.15;
     model.camps.forEach((camp, i) => {
       const cx = left + i * (campW + pen.pad) + campW / 2;
-      pen.font(small, 700); ctx.fillStyle = CAMP_COLOR[camp.side]; pen.centre(pen.clip(camp.label, campW), cx, campTop + campH * .22);
-      pen.font(Math.round(big), 700); ctx.fillStyle = CAMP_COLOR[camp.side]; pen.centre(camp.value, cx, campTop + campH * .22 + big * 1.05);
-      pen.font(small); ctx.fillStyle = BOARD.dim; pen.centre(pen.clip(camp.sub, campW), cx, Math.min(campTop + campH, campTop + campH * .22 + big * 1.05 + small * 1.5));
+      pen.font(small, 700); ctx.fillStyle = CAMP_COLOR[camp.side]; pen.centre(pen.clip(camp.label, campW), cx, labelY);
+      pen.font(Math.round(big), 700); ctx.fillStyle = CAMP_COLOR[camp.side]; pen.centre(camp.value, cx, valueY);
+      pen.font(small); ctx.fillStyle = BOARD.dim; pen.centre(pen.clip(camp.sub, campW), cx, subY);
     });
-    lines.forEach((line, i) => { pen.font(small, i ? 700 : 400); ctx.fillStyle = i ? BOARD.gold : BOARD.dim; pen.centre(pen.clip(line, campsW), campsMid, bottom - foot + small * (1.1 + i * 1.45)); });
+    lines.forEach((line, i) => { const fresh = line === model.fresh; pen.font(small, fresh ? 700 : 400); ctx.fillStyle = fresh ? BOARD.gold : BOARD.dim; pen.centre(pen.clip(line, campsW), campsMid, bottom - foot + small * (1.1 + i * 1.45)); });
     return;
   }
 
