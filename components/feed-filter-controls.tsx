@@ -30,7 +30,8 @@ const arraysEqual = (left: SourceGroupId[], right: SourceGroupId[]): boolean => 
   return left.length === right.length && left.every((item, index) => right[index] === item);
 };
 
-export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: SourceGroupId[] }) {
+/** `grid`: just the four source toggles in one row (the world feed dialog); `toolbar` adds 전체/전체해제. */
+export function FeedFilterControls({ selectedGroupIds, variant = "toolbar" }: { selectedGroupIds: SourceGroupId[]; variant?: "toolbar" | "grid" }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -94,6 +95,22 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
   const allSelected = arraysEqual(pendingGroupIds, SOURCE_GROUP_IDS);
   const noneSelected = pendingGroupIds.length === 0;
 
+  const groupButtons = SOURCE_GROUPS.map((group) => (
+    <button
+      key={group.id}
+      type="button"
+      className={`filter-chip ${pendingGroupIds.includes(group.id) ? "filter-chip-active" : ""}`}
+      aria-pressed={pendingGroupIds.includes(group.id)}
+      onClick={() => onToggleGroup(group.id)}
+    >
+      {group.shortLabel}
+    </button>
+  ));
+
+  if (variant === "grid") {
+    return <div className="feed-channel-buttons feed-source-grid" role="group" aria-label="출처 선택">{groupButtons}</div>;
+  }
+
   return (
     <div className="feed-filter-toolbar">
       <div className="feed-selection-actions" aria-label="전체 선택">
@@ -114,16 +131,7 @@ export function FeedFilterControls({ selectedGroupIds }: { selectedGroupIds: Sou
       </div>
 
       <div className="feed-channel-buttons" aria-label="커뮤니티 묶음">
-        {SOURCE_GROUPS.map((group) => (
-          <button
-            key={group.id}
-            type="button"
-            className={`filter-chip ${pendingGroupIds.includes(group.id) ? "filter-chip-active" : ""}`}
-            onClick={() => onToggleGroup(group.id)}
-          >
-            {group.shortLabel}
-          </button>
-        ))}
+        {groupButtons}
       </div>
     </div>
   );

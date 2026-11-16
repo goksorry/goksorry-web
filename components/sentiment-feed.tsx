@@ -8,7 +8,7 @@ import { resolveDisplayTitle } from "@/lib/clean-filter";
 import { filterRowsBySourceGroups, type FeedRow } from "@/lib/feed-data";
 import { SENTIMENT_DISPLAY } from "@/lib/sentiment-display";
 import { sentimentIntensityPercentPairFromScores, type SentimentIntensityTone } from "@/lib/sentiment-score";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type SymbolBadge = {
   name: string;
@@ -190,7 +190,7 @@ export function SentimentFeed({
   errorMessage,
   timezone,
   loading = false,
-  summary, sentiment, onSentimentChange, compact = false
+  summary, sentiment, onSentimentChange, compact = false, viewControlsEnd
 }: {
   rows: FeedRow[];
   errorMessage: string;
@@ -198,6 +198,7 @@ export function SentimentFeed({
   loading?: boolean;
   summary?: FeedPage["summary"];
   compact?: boolean;
+  viewControlsEnd?: ReactNode;
   sentiment: "all" | "bearish" | "bullish" | "neutral";
   onSentimentChange: (value: "all" | "bearish" | "bullish" | "neutral") => void;
 }) {
@@ -341,6 +342,7 @@ export function SentimentFeed({
       <div className="feed-view-controls" role="group" aria-label="피드 보기 방식">
         <button type="button" className="filter-chip" aria-pressed={layout === "split"} onClick={() => { setLayout("split"); onSentimentChange("all"); }}>좌우 보기</button>
         <button type="button" className="filter-chip" aria-pressed={layout === "unified"} onClick={() => setLayout("unified")}>통합 보기</button>
+        {viewControlsEnd && <div className="feed-view-controls-end">{viewControlsEnd}</div>}
       </div>
       <section className="panel feed-lanes-panel" data-feed-layout={layout}>
         {layout === "unified" ? <>

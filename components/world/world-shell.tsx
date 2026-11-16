@@ -58,6 +58,8 @@ const SECTION_SIDE: PanelSide[] = ["left", "center", "right"];
 const thirdOf = (fraction: number): PanelSide => fraction < 1 / 3 ? "left" : fraction > 2 / 3 ? "right" : "center";
 // Height reserved for the bottom scene nav when framing the wall.
 const HUD_BOTTOM = 60;
+// The feed dialog opens with what used to take one "더 보기" (20 + 20); each further page is this size too.
+const FEED_DIALOG_LIMIT = 40;
 
 /** `chatEnabled`: the chat hub is deployed, so the plaza can share the visitor's ant through it. */
 /** `menuHeader` tops the menu dialog (the site header without account and theme); `menu` follows the settings (the footer). */
@@ -178,11 +180,12 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const scopeStatus = !feedWall.loaded && filtered ? "선택 범위 조회 중" : feedWall.failed ? (wallSummary ? "조회 실패 · 마지막 정상 데이터" : "데이터 조회 실패")
     : wallSummary ? frameStatus(liveFrame, true, "", clock) : status;
   const stockOptions = feedWall.data?.stocks ?? frame.stocks;
+  const stockName = stockOptions.find((s) => s.symbol === stock)?.name ?? stock;
   const wall = useMemo(() => buildWallModel({
     frame, loaded, failed: !!error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark: PIERROT_DARK,
-    scopeLabel: stock ? stockOptions.find((s) => s.symbol === stock)?.name ?? stock : filtered ? "선택 출처" : "",
+    scopeLabel: stock ? stockName : filtered ? "선택 출처" : "",
     feed: feedWall, market: marketWall, room: roomWall
-  }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, stock, stockOptions, feedWall, marketWall, roomWall]);
+  }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, stock, stockName, feedWall, marketWall, roomWall]);
   const liveTime = liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : "";
   const statusLine = liveTime ? `${status} · ${liveTime}` : status;
   const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
@@ -225,21 +228,18 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>
     </div>
-    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 근거` : "전체 커뮤니티 · 지수와 피드"} name="detail" modal origin={origin} side={side} onClose={close}>
-      <div className="world-detail-tabs" role="tablist" aria-label="정보 전환">{tabs.map((value, i) => <button key={value} id={`world-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`world-tabpanel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1] : tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; setTab(next); document.getElementById(`world-tab-${next}`)?.focus(); } }}>{TAB_LABEL[value]}</button>)}{currentSelection && <button className="world-reset-selection" onClick={() => setSelection(null)}>전체 보기</button>}</div>
-      {currentSelection && <div className="world-selected-summary"><SummaryNumbers summary={currentSelection.summary} /><p className="world-note">선택 범위: {currentSelection.title} · 최근 6시간 분석 표본</p></div>}
+    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 근거` : "전체 커뮤니티 · 지수와 피드"} name="detail" modal origin={origin} side={side} onClose={close}
+      bar={<div className="world-detail-bar"><div className="world-detail-tabs" role="tablist" aria-label="정보 전환">{tabs.map((value, i) => <button key={value} id={`world-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`world-tabpanel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1] : tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; setTab(next); document.getElementById(`world-tab-${next}`)?.focus(); } }}>{TAB_LABEL[value]}</button>)}</div>{currentSelection && <button className="world-reset-selection" onClick={() => setSelection(null)}>전체 보기</button>}</div>}>
+      {currentSelection && <div className="world-selected-summary"><p className="world-selected-scope">{currentSelection.title} · 최근 6시간 분석 표본</p><SummaryNumbers summary={currentSelection.summary} /></div>}
       <div id="world-tabpanel-index" role="tabpanel" aria-labelledby="world-tab-index" hidden={tab !== "index"}>
-        <p className="world-note">희망·공포 비율은 중립을 제외한 글 건수 비율입니다. 곡소리 지수는 기존 감성 점수·커뮤니티 보정 산식으로 계산하며 비율과 다릅니다. 표본 부족·빈 결과는 안정이나 시장 전체를 뜻하지 않습니다.</p>
         {!currentSelection && <WorldIndex selectedGroupIds={selectedGroupIds} />}
         <div className="world-detail-selection"><h3>커뮤니티 선택</h3>{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: c.name, summary: c, community: c.id })}>{c.name} · {c.total}건 ↗</button>)}</div>
+        <p className="world-footnote">희망·공포 비율은 중립을 제외한 글 건수 비율입니다. 곡소리 지수는 기존 감성 점수·커뮤니티 보정 산식으로 계산하며 비율과 다릅니다. 표본 부족·빈 결과는 안정이나 시장 전체를 뜻하지 않습니다.</p>
       </div>
       <div id="world-tabpanel-feed" role="tabpanel" aria-labelledby="world-tab-feed" hidden={tab !== "feed"}>
-        {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} /> : <><CleanFilterToggle /><HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={20} embedded scope={stock ? { symbol: stock } : undefined}
-          scopeControl={<label className="world-wall-stock">종목 <select aria-label="피드 종목" value={stock} onChange={(event) => selectStock(event.target.value, false)}>
-            <option value="">전체 종목</option>
-            {stock && !stockOptions.some((s) => s.symbol === stock) && <option value={stock}>{stock}</option>}
-            {stockOptions.map((s) => <option key={s.symbol} value={s.symbol}>{s.name} · {s.total}건</option>)}
-          </select></label>} /></>}
+        {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} />
+          : <HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={FEED_DIALOG_LIMIT} embedded scope={stock ? { symbol: stock } : undefined} viewControlsEnd={<CleanFilterToggle />}
+            scopeControl={stock ? <button type="button" className="world-feed-scope" aria-label={`${stockName} 종목 범위 해제`} onClick={() => selectStock("", false)}><span>종목</span><b>{stockName}</b><span aria-hidden="true">✕</span></button> : undefined} />}
       </div>
       {!currentSelection && <div id="world-tabpanel-room" role="tabpanel" aria-labelledby="world-tab-room" hidden={tab !== "room"}>{tab === "room" && <GoksorryRoom />}</div>}
     </WorldPanel>}

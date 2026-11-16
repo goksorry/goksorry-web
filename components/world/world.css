@@ -84,13 +84,21 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-panel-body .sentiment-columns { grid-template-columns:repeat(2,minmax(0,1fr)); }.world-panel-body .mobile-feed-fabs { display:none; }
 .world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .world-panel-body .muted,.world-panel-body .world-note,.world-panel-body .sentiment-card-body { font-size:14px; line-height:1.7; }
-.world-detail-tabs { display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:12px; }
-.world-detail-tabs button,.world-evidence-tabs button,.world-detail-selection button,.world-more-evidence { padding:8px 18px; background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
-.world-detail-tabs [aria-selected=true],.world-evidence-tabs [aria-pressed=true] { background:var(--button-bg); color:var(--button-ink); }
-.world-reset-selection { margin-left:auto; }.world-selected-summary { background:#14242c; color:#d4e0dc; padding:18px; margin-bottom:18px; }.world-selected-summary .world-note { color:#b5c8ce; margin-bottom:0; }
+/* The detail dialog has no title: its tabs fill the heading row, 전체 보기 and ✕ at the right end. */
+.world-panel-heading[data-bar] { padding:10px 14px 10px 16px; gap:8px; }
+.world-detail-bar { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+.world-detail-tabs { display:flex; gap:6px; min-width:0; overflow-x:auto; scrollbar-width:none; }
+.world-detail-tabs button { flex-shrink:0; white-space:nowrap; min-height:44px; }.world-reset-selection { flex-shrink:0; white-space:nowrap; min-height:44px; }
+.world-detail-tabs button,.world-evidence-tabs [role=group] button,.world-detail-selection button,.world-more-evidence { padding:8px 18px; background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
+.world-detail-tabs [aria-selected=true],.world-evidence-tabs [role=group] [aria-pressed=true] { background:var(--button-bg); color:var(--button-ink); }
+.world-reset-selection { margin-left:auto; padding:8px 14px; background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:4px; }.world-selected-summary { background:#14242c; color:#d4e0dc; padding:18px; margin-bottom:18px; }.world-selected-scope { margin:0 0 6px; font-size:13px; font-weight:700; color:#b5c8ce; }
 .world-note { font-size:14px; color:var(--muted); line-height:1.7; }
 .world-detail-selection { display:flex; flex-wrap:wrap; gap:8px; }.world-detail-selection h3 { width:100%; font-size:16px; }
-.world-evidence-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
+.world-evidence-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 18px; }.world-evidence-tabs [role=group] { display:flex; flex-wrap:wrap; gap:8px; }.world-evidence-tabs [role=group] b { font-weight:inherit; }.world-evidence-tabs .clean-filter-toggle-group { margin-left:auto; }
+/* Footnotes close a tab in small type so they never push the main content down. */
+.world-footnote { margin:28px 0 0; padding-top:12px; border-top:1px dashed var(--line); font-size:12px; line-height:1.6; color:var(--muted); }
+/* 시장 지수 and 곡소리 지수 are separate blocks in the index tab. */
+.world-panel-body .overview-market-block { margin-bottom:24px; }.world-panel-body .overview-panel { margin-bottom:24px; }
 .world-evidence-list { list-style:none; margin:0; padding:0; }.world-evidence-list li { display:grid; gap:10px; padding:18px 0; border-bottom:1px solid var(--line); }.world-evidence-list li > span,.world-evidence-list time { font-size:14px; color:var(--muted); }.world-evidence-list a { font-size:16px; line-height:1.6; color:var(--ink); }
 .world-panel-menu .header { position:static; margin:0 0 20px; width:100%; flex-wrap:wrap; }.world-panel-menu .header-main { flex-wrap:wrap; }.world-panel-menu .site-footer-grid { grid-template-columns:1fr; }
 .world-panel-menu .first-visit-header-hint { position:static; transform:none; margin:16px 0; max-width:100%; }.world-panel-menu .first-visit-header-hint-pointer { display:none; }
@@ -113,7 +121,7 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
   .world-camps { gap:9px; grid-template-columns:1fr 1fr; }.world-camps button:last-child { grid-column:span 2; grid-template-columns:1fr 1fr; align-items:center; text-align:left; }.world-camps button:last-child > span:last-child { grid-column:span 2; }.world-camps strong { font-size:28px; }
   .world-community-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.world-community-list button { padding:14px 10px; font-size:14px; }.world-community-list strong { font-size:16px; }
   .world-theater-top > span { font-size:14px; }.world-theater-top label { display:flex; align-items:center; gap:8px; }.world-theater-controls input[type=date] { min-width:0; max-width:190px; }
-  .world-modal-backdrop { padding:0; align-items:flex-end; }.world-panel { width:100%; max-height:calc(100dvh - 68px); height:calc(100dvh - 68px); border-radius:16px 16px 0 0; }.world-panel-heading { padding:12px 16px; }.world-panel-heading h2 { font-size:16px; }.world-panel-body { padding:16px 14px max(24px,env(safe-area-inset-bottom)); }.world-detail-tabs { gap:6px; }.world-detail-tabs button { padding:8px 16px; }.world-evidence-tabs { gap:6px; }.world-evidence-tabs button { padding:8px 12px; }.world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:1fr; }
+  .world-modal-backdrop { padding:0; align-items:flex-end; }.world-panel { width:100%; max-height:calc(100dvh - 68px); height:calc(100dvh - 68px); border-radius:16px 16px 0 0; }.world-panel-heading { padding:12px 16px; }.world-panel-heading h2 { font-size:16px; }.world-panel-body { padding:16px 14px max(24px,env(safe-area-inset-bottom)); }.world-panel-heading[data-bar] { padding:8px 10px 8px 12px; }.world-detail-tabs button { padding:8px 14px; }.world-evidence-tabs,.world-evidence-tabs [role=group] { gap:6px; flex-wrap:nowrap; }.world-evidence-tabs [role=group] { flex:1; min-width:0; }.world-evidence-tabs [role=group] button { flex:1 1 0; min-width:0; padding:4px; display:flex; flex-direction:column; align-items:center; line-height:1.25; white-space:nowrap; }.world-evidence-tabs [role=group] button span { font-size:12px; opacity:.85; }.world-evidence-tabs .clean-filter-toggle-group { flex-shrink:0; }.world-panel-body .overview-market-row,.world-panel-body .overview-community-row { grid-template-columns:1fr; }
 }
 @media(min-width:960px) and (max-width:1100px) { .world-stock-list { grid-template-columns:repeat(3,1fr); }.world-community-list { grid-template-columns:repeat(2,1fr); } }
 
@@ -243,13 +251,14 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
 /* Narrow phones: a slightly smaller logo and tighter shortcuts keep the account on the bar. */
 @media(max-width:379px) { .world-brand-logo { height:22px; }.world-topbar .world-brand-mark { width:18px; height:22px; }.world-hud-actions { gap:3px; }.world-hud-actions button { padding:6px 6px; }.world-topbar .mode-switch a { padding:0 5px; } }
 
-/* Feed dialog: stock scope and source picker moved here from the wall. */
-.world-panel-body .feed-scope-controls { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:8px; }
-.world-panel-body .feed-source-picker summary { display:flex; align-items:center; min-height:44px; padding:6px 10px; cursor:pointer; border:1px solid var(--line); border-radius:4px; }
-.world-panel-body .feed-source-picker[open] { grid-column:1/-1; }
-.world-wall-stock { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:center; min-width:0; font-size:14px; }
-.world-wall-stock select { min-height:44px; width:100%; min-width:0; padding:6px; }
-.world-panel-body .world-wall-stock select { background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
+/* Feed dialog: a removable chip for a ?stock= scope, then the four sources in one row. */
+.world-panel-body .feed-scope-controls { display:grid; gap:8px; }
+.world-panel-body .feed-source-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.world-panel-body .feed-source-grid .filter-chip { min-height:44px; min-width:0; padding:6px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-radius:6px; }
+.world-feed-scope { justify-self:start; display:inline-flex; align-items:center; gap:8px; min-height:44px; max-width:100%; padding:6px 14px; background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:999px; font-size:14px; }
+.world-feed-scope span:first-child { color:var(--muted); }.world-feed-scope b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* 예쁜말 sits at the right end of the 좌우/통합 row. */
+.feed-view-controls-end { margin-left:auto; display:flex; align-items:center; }
 .world-modal-backdrop { animation:world-backdrop-in .22s ease-out; }
 @keyframes world-backdrop-in { from { background:#040e1400; } }
 /* Loading skeleton (DOM twin of wall-skeleton.ts); the sweep matches the WebGL shimmer's period. */

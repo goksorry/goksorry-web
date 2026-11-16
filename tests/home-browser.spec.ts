@@ -139,27 +139,30 @@ for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pier
 
 test("late stock is server scoped before pagination and sentiment never changes summary", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.unroute("**/api/internal/world");
-  await staticWorld(page); await page.goto("/?feed=1");
-  await expect(page.getByLabel("피드 종목").locator('option[value="LATE"]')).toHaveCount(1);
-  await page.getByLabel("피드 종목").selectOption("LATE");
-  await expect(page).toHaveURL(/stock=LATE/);
+  // The feed dialog has no stock dropdown: a ?stock= scope shows as a removable chip.
+  await staticWorld(page); await page.goto("/?feed=1&stock=LATE");
+  const scope = panel(page).getByRole("button", { name: "다음 페이지 종목 종목 범위 해제", exact: true });
+  await expect(scope).toBeVisible();
+  await expect(panel(page).locator("select")).toHaveCount(0);
   await panel(page).getByRole("button", { name: "통합 보기", exact: true }).click();
   await expect(index(page)).toContainText("분석 표본 120건");
-  await expect(panel(page).locator(".sentiment-card")).toHaveCount(20);
-  for (const count of [40, 60, 80, 100, 120]) {
+  // The dialog opens with what one "더 보기" used to give (40), and pages by 40.
+  await expect(panel(page).locator(".sentiment-card")).toHaveCount(40);
+  for (const count of [80, 120]) {
     await panel(page).getByRole("button", { name: "더 보기", exact: true }).click();
     await expect(panel(page).locator(".sentiment-card")).toHaveCount(count);
   }
   const summary = await index(page).locator(".world-numbers").textContent();
   await panel(page).getByRole("group", { name: "글 감성 필터" }).getByRole("button", { name: "공포", exact: true }).click();
-  await expect(panel(page).locator(".sentiment-card")).toHaveCount(20);
+  await expect(panel(page).locator(".sentiment-card")).toHaveCount(40);
   await expect(panel(page).locator(".sentiment-card-hope")).toHaveCount(0);
   await expect(index(page).locator(".world-numbers")).toHaveText(summary!);
   await panel(page).getByRole("button", { name: "좌우 보기", exact: true }).click();
-  await expect(panel(page).locator("#hope-lane .sentiment-card")).toHaveCount(6);
-  await page.getByLabel("피드 종목").selectOption("");
+  await expect(panel(page).locator("#hope-lane .sentiment-card")).toHaveCount(13);
+  await scope.click();
+  await expect(page).not.toHaveURL(/stock=/);
   await expect(index(page)).toContainText("분석 표본 620건");
-  await page.goBack(); await expect(page.getByLabel("피드 종목")).toHaveValue("LATE");
+  await page.goBack(); await expect(scope).toBeVisible();
   await expect(index(page)).toContainText("분석 표본 120건");
 });
 
@@ -184,19 +187,19 @@ test("feed refresh keeps loaded pages and failure preserves values and actual ti
   await prepareWorld(page); await page.unroute("**/api/feed?*");
   await staticWorld(page); await page.clock.install(); await page.goto("/?feed=1");
   await panel(page).getByRole("button", { name: "통합 보기", exact: true }).click();
-  await expect(panel(page).locator(".sentiment-card")).toHaveCount(20);
-  await panel(page).getByRole("button", { name: "더 보기", exact: true }).click();
   await expect(panel(page).locator(".sentiment-card")).toHaveCount(40);
+  await panel(page).getByRole("button", { name: "더 보기", exact: true }).click();
+  await expect(panel(page).locator(".sentiment-card")).toHaveCount(80);
   let reads = 0; page.on("request", req => { if (new URL(req.url()).pathname === "/api/feed") reads++; });
   await page.clock.fastForward(60_001);
   await expect.poll(() => reads).toBeGreaterThanOrEqual(2);
   await expect(panel(page).locator("#feed-top")).toHaveAttribute("aria-busy", "false");
-  await expect(panel(page).locator(".sentiment-card")).toHaveCount(40);
+  await expect(panel(page).locator(".sentiment-card")).toHaveCount(80);
   const time = await index(page).locator("time").getAttribute("datetime");
   await page.route("**/api/feed?*", route => route.fulfill({ json: { rows: [], errorMessage: "테스트 갱신 오류" } }));
   await page.clock.fastForward(60_001);
   await expect(panel(page).locator(".error")).toContainText("테스트 갱신 오류");
-  await expect(panel(page).locator(".sentiment-card")).toHaveCount(40);
+  await expect(panel(page).locator(".sentiment-card")).toHaveCount(80);
   await expect(index(page).locator("time")).toHaveAttribute("datetime", time!);
 });
 
@@ -235,8 +238,11 @@ test("360 by 640 shows index and original Pierrot without a panel; the arrow rea
 test("multiple sources filter wall summary and list together; empty selection stays empty", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*");
   await staticWorld(page); await page.goto("/?feed=1");
-  await panel(page).locator(".feed-source-picker summary").click();
-  await panel(page).getByRole("button", { name: "전체해제", exact: true }).click();
+  // Four source toggles in one row; turning all of them off is an empty selection.
+  const sources = panel(page).getByRole("group", { name: "출처 선택", exact: true }).getByRole("button");
+  await expect(sources).toHaveText(["토스증권", "뽐뿌", "블라인드", "디시 4종"]);
+  expect(new Set(await sources.evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().top)))).size).toBe(1);
+  for (const name of ["토스증권", "뽐뿌", "블라인드", "디시 4종"]) await panel(page).getByRole("button", { name, exact: true }).click();
   await expect(index(page)).toContainText("분석 표본 0건");
   await expect(index(page).locator(".world-index-number strong")).toHaveText("—");
   await expect(index(page).locator("time")).not.toHaveAttribute("datetime");

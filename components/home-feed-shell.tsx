@@ -41,6 +41,8 @@ type Props = {
   scope?: { symbol?: string; community?: SourceGroupId };
   embedded?: boolean;
   scopeControl?: ReactNode;
+  /** Extra control at the right end of the 좌우 보기/통합 보기 row (embedded: the 예쁜말 toggle). */
+  viewControlsEnd?: ReactNode;
   onSummary?: (summary: FeedPage["summary"] | undefined, error: string, loading: boolean, stocks: FeedPage["stocks"] | undefined) => void;
 };
 
@@ -50,7 +52,7 @@ export function HomeFeedShell(props: Props) {
   </FeedSelectionProvider>;
 }
 
-function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, scope, embedded = false, scopeControl, onSummary }: Props) {
+function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, scope, embedded = false, scopeControl, viewControlsEnd, onSummary }: Props) {
   const { activeGroupIds } = useFeedSelection();
   const channels = serializeSourceGroupSelection(activeGroupIds);
   const symbol = scope?.symbol ?? "";
@@ -228,11 +230,11 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
     <>
       <section id="feed-top" aria-busy={refreshing} className={`panel feed-filter-panel scroll-anchor${embedded ? " feed-embedded-controls" : ""}`}>
         {!embedded && <><h1>최근 글</h1><p className="muted">최근 {windowHours}시간 분석 글. AI 분류에는 오류가 있을 수 있습니다.</p></>}
-        {embedded ? <div className="feed-scope-controls">{scopeControl}<details className="feed-source-picker"><summary>출처 선택</summary><FeedFilterControls selectedGroupIds={selectedGroupIds} /></details></div>
+        {embedded ? <div className="feed-scope-controls">{scopeControl}<FeedFilterControls selectedGroupIds={selectedGroupIds} variant="grid" /></div>
           : !scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
       </section>
       {!embedded && summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
-      <SentimentFeed compact={embedded} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
+      <SentimentFeed compact={embedded} viewControlsEnd={viewControlsEnd} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
 
       <div className="feed-pagination" aria-live="polite">
         {loadMoreError ? <p className="error">추가 피드를 불러오지 못했습니다: {loadMoreError}</p> : null}

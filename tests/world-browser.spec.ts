@@ -78,8 +78,18 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   // ?feed=1 opens the full feed dialog; filters and paging live there, not on the wall.
   const wall = dialog(page);
   await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true");
-  await wall.locator(".feed-source-picker summary").click();
+  // No visible title: the tabs fill the heading row and ✕ sits at its right end.
+  const heading = wall.locator(".world-panel-heading");
+  await expect(heading.locator("h2")).toHaveCount(0);
+  await expect(heading.getByRole("tablist", { name: "정보 전환" })).toBeVisible();
+  const close = heading.getByRole("button", { name: "전체 커뮤니티 · 지수와 피드 닫기", exact: true });
+  const [bar, x] = [await heading.boundingBox(), await close.boundingBox()];
+  expect(bar!.x + bar!.width - (x!.x + x!.width)).toBeLessThan(24);
+  // No stock dropdown; the four sources are always shown and 예쁜말 ends the 좌우/통합 row.
+  await expect(wall.locator("select")).toHaveCount(0);
   await expect(wall.locator(".feed-channel-buttons .filter-chip-active")).toHaveText("토스증권");
+  await expect(wall.locator(".clean-filter-toggle")).toHaveCount(1);
+  await expect(wall.getByRole("group", { name: "피드 보기 방식" }).locator(".clean-filter-toggle")).toBeVisible();
   while (await wall.getByRole("button", { name: "더 보기", exact: true }).count()) {
     await wall.getByRole("button", { name: "더 보기", exact: true }).click();
     await expect(wall.getByRole("button", { name: "불러오는 중...", exact: true })).toHaveCount(0);
@@ -87,6 +97,13 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   await expect(wall.locator(".feed-pagination")).toContainText("최근 6시간 피드를 모두 불러왔습니다.");
   await page.getByRole("tab", { name: "지수", exact: true }).click();
   await expect(dialog(page).locator(".overview-value").first()).toHaveText("1,234.56");
+  // 시장 and 곡소리 지수 are spaced apart; the ratio note is a small footnote at the very end.
+  const tabpanel = dialog(page).locator("#world-tabpanel-index");
+  const [market, goksorry] = [await tabpanel.locator(".overview-market-block").boundingBox(), await tabpanel.locator(".overview-panel").boundingBox()];
+  expect(goksorry!.y - (market!.y + market!.height)).toBeGreaterThanOrEqual(16);
+  await expect(tabpanel.locator(":scope > :last-child")).toHaveClass("world-footnote");
+  await expect(tabpanel.locator(".world-footnote")).toContainText("희망·공포 비율은 중립을 제외한");
+  expect(await tabpanel.locator(".world-footnote").evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeLessThan(14);
   await page.keyboard.press("Escape"); await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   const menu = page.locator('[data-world-panel="menu"]');
   // The menu opens with the site header (no account, no theme: the account lives in the top bar), then the settings, then the footer.
