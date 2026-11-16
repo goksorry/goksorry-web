@@ -83,10 +83,14 @@ test("portrait zooms one wall section; arrows pan the camera and overview shows 
   await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
   const inside = async (id: "market" | "feed" | "pierrot") => { const r = (await wallMetrics(page)).rects[id]; return r.x >= 0 && r.x + r.width <= 390; };
+  // Each section frames its doors whole: the middle one both centre doors, the feed one the 심리 전장 door.
+  const door = async (scene: string) => { const r = (await wallMetrics(page)).doors[scene]; return r.x >= 0 && r.x + r.width <= 390; };
   await expect.poll(() => inside("pierrot")).toBe(true); expect(await inside("feed")).toBe(false);
+  await expect.poll(async () => (await wallMetrics(page)).settled && await door("broadcast") && await door("theater")).toBe(true);
   const zoomed = (await wallMetrics(page)).ppu;
   await page.locator('.world-wall-arrow[data-dir="right"]').click();
   await expect.poll(async () => (await wallMetrics(page)).settled && await inside("feed")).toBe(true); expect(await inside("pierrot")).toBe(false);
+  expect(await door("battle")).toBe(true);
   // Arrows live in the floor band, never over panel text.
   const arrow = (await page.locator('.world-wall-arrow[data-dir="left"]').boundingBox())!, canvas = (await page.locator("canvas").boundingBox())!;
   const feed = (await wallMetrics(page)).rects.feed; expect(arrow.y).toBeGreaterThan(canvas.y + feed.y + feed.height);

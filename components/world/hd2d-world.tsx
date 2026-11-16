@@ -83,11 +83,11 @@ export default function HD2DWorld(props: Props) {
       renderer.current = instance; instance.setView(latest.current.view); instance.update(latest.current); setMode("webgl");
       // Read-only measurement surface; measures actual renderer.render calls.
       Object.defineProperty(canvas.current!, "worldMetrics", { configurable: true, get: () => instance.metrics });
-      // `bare` renders the room without wall data, for the static fallback art.
+      // `bare` renders the room without wall data or the visitor's tag, for the static fallback art (door plates are scenery).
       Object.defineProperty(canvas.current!, "worldCapture", { configurable: true, value: (bare = false) => {
-        if (bare) instance.setBoards([]);
+        if (bare) { instance.setBoards([]); instance.setVisitorTag(null); }
         instance.draw(); const image = canvas.current!.toDataURL("image/png");
-        if (bare) { instance.setBoards(specs.current); instance.draw(); }
+        if (bare) { instance.setBoards(specs.current); instance.setVisitorTag(latest.current.emote); instance.draw(); }
         return image;
       } });
       Object.defineProperty(canvas.current!, "worldWallTexture", { configurable: true, value: (id: string) => instance.wallTexture(id)?.toDataURL("image/png") ?? null });

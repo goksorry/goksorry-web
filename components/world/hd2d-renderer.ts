@@ -43,8 +43,8 @@ export type WorldRenderer = {
   /** Mood band the wall shows (for the plaza faces); null derives it from the frame. */
   setBand: (band: string | null) => void;
   wallTexture: (id: string) => HTMLCanvasElement | undefined;
-  /** Text over the visitor's head ("나" or an emote). */
-  setVisitorTag: (text: string) => void;
+  /** Text over the visitor's head ("나" or an emote); null leaves it off (the static fallback art). */
+  setVisitorTag: (text: string | null) => void;
   /** Page font for painted labels. */
   setFont: (family: string) => void;
   move: (x: number, z: number) => void;
@@ -282,7 +282,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   let band: string | null = null;
   // Text tags over the scene: the visitor's name/emote and the plaza's entrance signs.
   const labels = createLabelLayer(); scene.add(labels.group);
-  let visitorTag = "나", labelKey = "";
+  let visitorTag: string | null = "나", labelKey = "";
   const antGeometry = new THREE.PlaneGeometry(1, 1);
   const offsets = new Float32Array(MAX_ANTS * 4);
   antGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(offsets, 4));
@@ -656,7 +656,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     // The name tag sits just above the visitor's head. Each door carries its name plate; at a door the visitor stands in front of
     // that plate (a low door is about head high on screen), so the prompt lies on the floor just past its feet instead.
     const head = (talls[you] ?? 1.73) * 1.04, near = entranceAt(state.scene, position)?.scene;
-    const tags: LabelSpec[] = [...peerTags, { id: "visitor", text: visitorTag, style: "name", at: { x: position.x, y: head, z: position.z } }];
+    const tags: LabelSpec[] = [...peerTags, ...visitorTag === null ? [] : [{ id: "visitor", text: visitorTag, style: "name" as const, at: { x: position.x, y: head, z: position.z } }]];
     if (plaza) for (const e of PLAZA_ENTRANCES) {
       tags.push({ id: `door-${e.scene}`, text: e.name, style: "sign", at: { x: e.x, y: SIGN_Y, z: SIGN_Z } });
       if (near === e.scene) tags.push({ id: `entrance-${e.scene}`, text: `${e.name} 입구 · 들어가기 ↗`, style: "prompt", at: { x: e.x, y: .05, z: position.z + 1.4 } });
@@ -738,7 +738,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     },
     setBoards(specs) { boards.set(specs); },
     setBand(next) { band = next; },
-    setVisitorTag(text) { visitorTag = text || "나"; },
+    setVisitorTag(text) { visitorTag = text === null ? null : text || "나"; },
     setPeers(next) { peers = next; population(); },
     say(id, seconds) { crowd.say(`peer:${id}`, seconds); },
     setFont(family) { labels.setFont(family); },
