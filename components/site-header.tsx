@@ -1,15 +1,14 @@
-import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
+import { HeaderAccount } from "@/components/auth-controls";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { ModeSwitch } from "@/components/mode-switch";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-/** `themes={false}` for the metaverse room's menu: the room has no theme, only the change-colour choice stays. */
-export function SiteHeader({ themes = true }: { themes?: boolean }) {
+/** The ant room's menu copy passes `theme={false} account={false}`: the room has no theme and shows the account in its own top bar. */
+export function SiteHeader({ theme = true, account = true }: { theme?: boolean; account?: boolean }) {
   return (
     <header className="header">
       <div className="header-main">
@@ -29,14 +28,12 @@ export function SiteHeader({ themes = true }: { themes?: boolean }) {
         <ModeSwitch />
       </div>
       <div className="header-controls">
-        <ThemeToggle themes={themes} />
+        {theme && <ThemeToggle />}
         <CleanFilterToggle />
       </div>
       <div className="header-profile">
         <SiteShareButton />
-        <Suspense fallback={<HeaderAuthSkeleton />}>
-          <AuthControls />
-        </Suspense>
+        {account && <HeaderAccount />}
       </div>
     </header>
   );

@@ -2,6 +2,8 @@
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
+import { HeaderAccount } from "@/components/auth-controls";
 import { HomeFeedShell } from "@/components/home-feed-shell";
 import { useMediaQuery } from "@/components/use-media-query";
 import { CleanFilterToggle } from "@/components/clean-filter-toggle";
@@ -58,13 +60,14 @@ const thirdOf = (fraction: number): PanelSide => fraction < 1 / 3 ? "left" : fra
 const HUD_BOTTOM = 60;
 
 /** `chatEnabled`: the chat hub is deployed, so the plaza can share the visitor's ant through it. */
-type ShellProps = { timezone: string; selectedGroupIds: SourceGroupId[]; menu: ReactNode; chatEnabled?: boolean };
+/** `menuHeader` tops the menu dialog (the site header without account and theme); `menu` follows the settings (the footer). */
+type ShellProps = { timezone: string; selectedGroupIds: SourceGroupId[]; menuHeader: ReactNode; menu: ReactNode; chatEnabled?: boolean };
 /** The world page; errors anywhere inside surface as snacks (world-snackbar.tsx). */
 export function WorldShell(props: ShellProps) {
   return <WorldSnackbarProvider><WorldShellView {...props} /></WorldSnackbarProvider>;
 }
 
-function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false }: ShellProps) {
+function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnabled = false }: ShellProps) {
   const params = useSearchParams();
   const rawScene = params.get("scene") ?? "plaza";
   const scene: WorldScene = WORLD_SCENES.includes(rawScene as WorldScene) ? rawScene as WorldScene : "plaza";
@@ -198,9 +201,10 @@ function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false 
   const liveBadge = <div className="world-live-badge" data-state={error ? "error" : status.startsWith("갱신") ? "delayed" : "ready"}><i /><span>{status}</span><time dateTime={liveFrame.data_at ?? undefined}>{liveTime}</time></div>;
   return <div className="world-root" data-paused={!visible || reduced} data-scene={scene} data-cookie-banner={bannerVisible} data-layout={landscape === null ? "pending" : layout} data-wall-section={section} data-wall-overview={overview}>
     <div className="world-content" aria-hidden={!!tab || menuOpen || sceneOpen ? true : undefined} ref={node => { if (node) node.inert = !!tab || menuOpen || sceneOpen; }}>
-    <header className="world-topbar"><a href="/" className="world-brand" aria-label="곡소리 개미 월드 홈"><span className="world-brand-mark" aria-hidden="true" /><span>곡소리</span></a>
+    <header className="world-topbar"><a href="/" className="world-brand"><span className="world-brand-mark" aria-hidden="true" /><Image className="world-brand-logo" src="/goksorry_logo.png" alt="곡소리닷컴" width={113} height={50} priority /></a>
       {liveBadge}
-      <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>피드</button><ModeSwitch /><button className="world-menu-button" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}>메뉴 <span aria-hidden="true">☰</span></button></div>
+      <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>피드</button><ModeSwitch /><button className="world-menu-button" aria-label="메뉴" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}><span className="world-menu-label">메뉴</span><span aria-hidden="true">☰</span></button></div>
+      <div className="world-account"><HeaderAccount /></div>
     </header>
     <div className="world-scene-stage" aria-busy={!loaded && !error} onClickCapture={(event) => {
       const bounds = event.currentTarget.getBoundingClientRect(), target = (event.target as Element).getBoundingClientRect();
@@ -244,9 +248,8 @@ function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false 
       {scene === "battle" && <div className="world-battle-detail"><label>전장 종목 <select aria-label="전장 종목" value={item?.symbol ?? ""} onChange={(e) => selectStock(e.target.value, false)}><option value="">전체 커뮤니티</option>{shown.stocks.map((s) => <option key={s.symbol} value={s.symbol}>{s.name} · {s.total}건</option>)}</select></label><div className="world-camps">{(["bullish", "bearish", "neutral"] as const).map((side) => <button key={side} data-side={side} onClick={() => evidence({ title: `${item?.name ?? "전체"} ${CAMP_LABEL[side]}`, summary: activeSummary, symbol: item?.symbol, side })}><span>{CAMP_LABEL[side]}</span><strong>{side === "neutral" ? `${activeSummary.neutral}건` : percent(side === "bullish" ? activeSummary.hope_ratio : activeSummary.fear_ratio)}</strong><span>{side === "neutral" ? "비율에서 별도" : `${activeSummary[side]}건`} · 근거 보기 ↗</span></button>)}</div><p>{sceneBoard?.scene === "battle" ? sceneBoard.note : ""}</p></div>}
       {scene === "broadcast" && <div className="world-community-list">{shown.communities.map((c) => <button key={c.id} onClick={() => evidence({ title: `${c.name} 현장`, summary: c, community: c.id })}><strong>{c.name}</strong><span>{c.total ? `${c.index.toFixed(1)} / 10` : "— / 10"} · 표본 {c.total}건</span><span>희망 {percent(c.hope_ratio)} · 공포 {percent(c.fear_ratio)}</span><span>{c.collection_disabled ? "수집 보류" : c.collection_problem ? "수집 확인 필요" : c.total < 3 ? "소표본 · 관찰 중" : `관심: ${c.top_stock ?? "종목 미지정"}`}</span></button>)}</div>}
     </WorldPanel>}
-    {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}><FirstVisitHeaderHint inWorldMenu />
-      <section className="world-settings world-scene-menu"><h3>장면 이동</h3><div className="world-emotes">{SCENES.map((s) => <button key={s.id} aria-pressed={scene === s.id} onClick={() => { setMenuOpen(false); onScene(s.id); }}>{s.name} · {s.title}</button>)}</div><p className="world-note">바닥 클릭 또는 방향키로 이동(세로 화면은 좌우 스와이프로 벽 이동), 개미를 누르면 근거 글, 벽의 판을 누르면 자세한 내용이 열립니다.</p></section>
-      <section className="world-settings"><h3>내 개미와 소리</h3><p>먼저 벽의 지수와 실제 글을 확인하세요. 이동과 감정 표현은 선택 사항입니다.</p><fieldset><legend>내 개미 색상</legend>{WORLD_COLORS.map((value, i) => <button key={value} aria-label={`내 개미 색상 ${i + 1}`} aria-pressed={color === value} style={{ background: value }} onClick={() => { setColor(value); writeClientLocalStorageValue(STORAGE.worldAvatarColor, value); }} />)}</fieldset><div className="world-emotes">{["♡", "ㅠㅠ", "존버"].map((value) => <button key={value} aria-label={`${value} 감정 표현`} onClick={() => { setEmote(value); clearTimeout(emoteTimer.current); emoteTimer.current = setTimeout(() => setEmote(""), 2400); }}>{value}</button>)}</div><button aria-label={muted ? "효과음 켜기" : "효과음 끄기"} aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); writeClientLocalStorageValue(STORAGE.worldMuted, next ? "on" : "off"); }}>{muted ? "효과음 켜기" : "효과음 끄기"}</button><p className="world-note">내 반응은 분석 수치에 영향을 주지 않습니다. 기본 무음.</p><CleanFilterToggle /><p className="world-note">개미는 분석 표본의 분위기입니다. 커뮤니티 심리이며 투자 권유가 아닙니다.</p></section>{menu}
+    {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}>{menuHeader}<FirstVisitHeaderHint inWorldMenu />
+      <section className="world-settings"><h3>내 개미와 소리</h3><fieldset><legend className="sr-only">내 개미 색상</legend>{WORLD_COLORS.map((value, i) => <button key={value} aria-label={`내 개미 색상 ${i + 1}`} aria-pressed={color === value} style={{ background: value }} onClick={() => { setColor(value); writeClientLocalStorageValue(STORAGE.worldAvatarColor, value); }} />)}</fieldset><div className="world-emotes">{["♡", "ㅠㅠ", "존버"].map((value) => <button key={value} aria-label={`${value} 감정 표현`} onClick={() => { setEmote(value); clearTimeout(emoteTimer.current); emoteTimer.current = setTimeout(() => setEmote(""), 2400); }}>{value}</button>)}</div><button aria-label={muted ? "효과음 켜기" : "효과음 끄기"} aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); writeClientLocalStorageValue(STORAGE.worldMuted, next ? "on" : "off"); }}>{muted ? "효과음 켜기" : "효과음 끄기"}</button></section>{menu}
     </WorldPanel>}
   </div>;
 }

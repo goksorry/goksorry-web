@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
 
@@ -93,5 +93,14 @@ export function HeaderAuthSkeleton() {
       <span className="header-auth-skeleton-icon" />
       <span className="header-auth-skeleton-pill" />
     </div>
+  );
+}
+
+/** The header's account slot: login button or profile, with the skeleton while the session resolves. */
+export function HeaderAccount() {
+  return (
+    <Suspense fallback={<HeaderAuthSkeleton />}>
+      <AuthControls />
+    </Suspense>
   );
 }

@@ -89,15 +89,16 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   await expect(dialog(page).locator(".overview-value").first()).toHaveText("1,234.56");
   await page.keyboard.press("Escape"); await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   const menu = page.locator('[data-world-panel="menu"]');
-  await expect(menu.getByRole("button", { name: "구글 로그인", exact: true })).toBeVisible();
+  // The menu opens with the site header (no account, no theme: the account lives in the top bar), then the settings, then the footer.
+  await expect(menu.locator(".world-panel-body > *").first()).toHaveClass(/\bheader\b/);
+  await expect(menu.getByRole("button", { name: "구글 로그인", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("button", { name: /테마 선택|등락률 색상 선택/ })).toHaveCount(0);
+  await expect(menu.locator(".clean-filter-toggle")).toHaveCount(1); await expect(menu.locator(".header .clean-filter-toggle")).toHaveCount(1);
+  await expect(menu.getByRole("heading", { name: "장면 이동" })).toHaveCount(0);
+  await expect(menu.locator(".world-settings p, .world-settings .world-note")).toHaveCount(0);
   await expect(menu.getByRole("link", { name: "이용약관", exact: true })).toBeVisible();
-  // The room has no theme: its menu keeps only the change-colour choice.
-  await expect(menu.getByRole("button", { name: /테마 선택/ })).toHaveCount(0);
-  await menu.getByRole("button", { name: /등락률 색상 선택/ }).click();
-  const colours = page.getByRole("menu", { name: "등락률 색상 선택" });
-  await expect(colours).toBeVisible(); await expect(colours.getByRole("button", { name: /^테마 / })).toHaveCount(0);
-  await colours.getByRole("button", { name: "등락률 색상 미국식", exact: true }).click(); await colours.getByRole("button", { name: "적용", exact: true }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "us"); await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".world-topbar .world-account").getByRole("button", { name: "구글 로그인", exact: true })).toBeVisible();
 });
 
 test("the room has no theme: ?theme is dropped, the world keeps its palette, classic mode brings the theme back", async ({ page }) => {
@@ -131,6 +132,11 @@ test("portrait frames one wall section; arrows, overview, header shortcuts and 4
   await expect(stage(page)).not.toHaveAttribute("data-renderer", "loading");
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   expect(await page.locator(".world-topbar").evaluate((node) => node.getBoundingClientRect().top)).toBe(0);
+  // Both logos, the shortcuts, the mode switch, the menu and the account fit in one 390px bar; the account sits at its right end.
+  const bar = await page.locator(".world-topbar").evaluate((node) => { const box = node.getBoundingClientRect(), parts = [...node.querySelectorAll(".world-brand, .world-hud-actions, .world-account")].map((e) => e.getBoundingClientRect());
+    return { fits: node.scrollWidth <= node.clientWidth && parts.every((r) => r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom), gap: box.right - parts[2].right, last: node.lastElementChild?.className }; });
+  expect(bar.fits).toBe(true); expect(bar.last).toBe("world-account"); expect(bar.gap).toBeLessThanOrEqual(12);
+  await expect(page.locator(".world-topbar .world-brand img")).toHaveAttribute("alt", "곡소리닷컴"); await expect(page.locator(".world-topbar .world-brand-mark")).toBeVisible();
   await expect(root).toHaveAttribute("data-wall-section", "1");
   const left = page.locator('.world-wall-arrow[data-dir="left"]'), right = page.locator('.world-wall-arrow[data-dir="right"]');
   await right.click(); await expect(root).toHaveAttribute("data-wall-section", "2");

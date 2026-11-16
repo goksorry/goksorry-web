@@ -22,7 +22,7 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-hud-actions { display:flex; gap:8px; }
 .world-hud-actions button { padding:9px 18px; border:1px solid #4c5960; background:#17232a; color:#e5e1d7; border-radius:3px; }
 .world-hud-actions .world-menu-button { background:transparent; color:#bac7c9; }
-.world-menu-button span { margin-left:14px; }
+.world-menu-button span + span { margin-left:10px; }
 .world-eyebrow { color:#b69b6e; font:10px var(--mono-font); letter-spacing:.18em; }
 .world-scene-heading h1 { color:#ece5d5; font-size:clamp(24px,2.6vw,38px); font-weight:650; letter-spacing:-.055em; line-height:1.4; margin:9px 0 6px; }
 .world-scene-heading p { margin:0; font-size:14px; color:#acbbc1; line-height:1.6; }
@@ -92,7 +92,7 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-detail-selection { display:flex; flex-wrap:wrap; gap:8px; }.world-detail-selection h3 { width:100%; font-size:16px; }
 .world-evidence-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
 .world-evidence-list { list-style:none; margin:0; padding:0; }.world-evidence-list li { display:grid; gap:10px; padding:18px 0; border-bottom:1px solid var(--line); }.world-evidence-list li > span,.world-evidence-list time { font-size:14px; color:var(--muted); }.world-evidence-list a { font-size:16px; line-height:1.6; color:var(--ink); }
-.world-panel-menu .header { position:static; margin:20px 0; width:100%; flex-wrap:wrap; }.world-panel-menu .header-main { flex-wrap:wrap; }.world-panel-menu .site-footer-grid { grid-template-columns:1fr; }
+.world-panel-menu .header { position:static; margin:0 0 20px; width:100%; flex-wrap:wrap; }.world-panel-menu .header-main { flex-wrap:wrap; }.world-panel-menu .site-footer-grid { grid-template-columns:1fr; }
 .world-panel-menu .first-visit-header-hint { position:static; transform:none; margin:16px 0; max-width:100%; }.world-panel-menu .first-visit-header-hint-pointer { display:none; }
 .world-settings { padding:0 0 20px; border-bottom:1px solid var(--line); }.world-settings h3 { margin:0; }.world-settings p { font-size:14px; line-height:1.7; }
 .world-settings fieldset { border:0; padding:12px 0; margin:0; display:flex; gap:12px; }.world-settings fieldset button { width:44px; height:44px; border:3px solid var(--panel); border-radius:50%; box-shadow:0 0 0 1px var(--line); }.world-settings fieldset button[aria-pressed=true] { box-shadow:0 0 0 3px var(--ink); }
@@ -120,14 +120,22 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 /* ── Full-viewport stage ─────────────────────────────────────────────── */
 .world-content { height:100%; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr); }
 .world-topbar { position:relative; z-index:5; display:flex; align-items:center; gap:12px; height:var(--world-header-h); padding:0 max(14px,2vw); background:#101b22; border-bottom:1px solid #a6b4b21a; }
-.world-topbar .world-brand { font-size:22px; gap:8px; }
-.world-topbar .world-brand-mark { width:26px; height:32px; }
+.world-topbar .world-brand { gap:8px; }
+.world-topbar .world-brand-mark { width:32px; height:40px; flex-shrink:0; }
+/* The regular goksorry logo (its wordmark reads 곡소리닷컴) beside the ant; lightened for the night bar, hues kept. */
+.world-brand-logo { display:block; width:auto; height:40px; filter:invert(1) hue-rotate(180deg); }
+/* Account (login button or profile) at the far right of the bar; the name shortens before the bar overflows. */
+.world-account { display:flex; justify-content:flex-end; flex:0 1 auto; min-width:44px; }
+.world-account .header-auth-shell { min-width:0; }
+.world-account .header-profile-link { min-width:0; }
+.world-account .header-profile-name { display:block; max-width:9em; overflow:hidden; text-overflow:ellipsis; }
+.world-account .header-profile-email { display:none; }
+.world-account :is(.header-login-button,.header-auth-shell,.header-auth-signout) { min-height:38px; }
 .world-live-badge { display:flex; gap:8px; align-items:center; margin-left:auto; color:#a5b5b9; font-size:12px; white-space:nowrap; }
 .world-hud-actions { flex-shrink:0; align-items:center; margin-left:auto; }
 .world-topbar .world-brand { white-space:nowrap; flex-shrink:0; }
 .world-live-badge + .world-hud-actions { margin-left:0; }
 @media(max-width:699px) { .world-live-badge + .world-hud-actions { margin-left:auto; } }
-@media(max-width:360px) { .world-topbar .world-brand > span:last-child { display:none; } .world-topbar .world-hud-actions button { padding:6px 7px; } .world-topbar .mode-switch a { padding:0 6px; } }
 .world-hud-actions button { min-height:36px; padding:6px 14px; }
 .world-scene-stage { position:relative; min-height:0; overflow:clip; }
 .hd2d-stage { position:absolute; inset:0; width:100%; height:100%; overflow:clip; }
@@ -215,8 +223,13 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
   .hd2d-stage[data-static] .world-wall-open { min-height:36px; padding:4px 10px; }
 }
 @media(max-width:959px) {
-  .world-topbar { gap:8px; padding:0 10px; }.world-topbar .world-brand { font-size:19px; gap:6px; }.world-topbar .world-brand-mark { width:22px; height:28px; }
-  .world-hud-actions { gap:5px; }.world-hud-actions button { min-height:44px; padding:6px 9px; font-size:13px; }.world-menu-button span { display:none; }
+  .world-topbar { gap:6px; padding:0 max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left)); }.world-topbar .world-brand { gap:4px; }.world-topbar .world-brand-mark { width:20px; height:25px; }.world-brand-logo { height:26px; }
+  .world-hud-actions { gap:4px; }.world-hud-actions button { min-height:44px; padding:6px 8px; font-size:13px; }.world-menu-button .world-menu-label { display:none; }.world-menu-button span + span { margin-left:0; }
+  /* Phone bar: login is the Google mark alone; a member shows a profile glyph (the link keeps its "내 프로필" name) and the sign-out door. */
+  .world-account :is(.header-login-button,.header-auth-shell,.header-auth-signout) { min-height:44px; }
+  .world-account .header-login-button { padding:0 10px; }.world-account .header-login-button .header-auth-emoji { display:none; }
+  .world-account .header-profile-link { padding:0 7px; }.world-account .header-profile-name { display:none; }.world-account .header-profile-link::before { content:"👤"; font-size:15px; line-height:1; }
+  .world-account .header-auth-signout { min-width:32px; padding:0 7px; }
   .world-live-badge time { display:none; }
   .world-theater-controls { padding:12px; }
 }
@@ -226,7 +239,9 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
 .world-topbar .mode-switch { display:flex; border:1px solid #4c5960; border-radius:3px; overflow:hidden; }
 .world-topbar .mode-switch a { display:flex; align-items:center; min-height:36px; padding:0 12px; color:#bac7c9; background:transparent; text-decoration:none; font-size:14px; white-space:nowrap; }
 .world-topbar .mode-switch a[aria-current=page] { background:#e0c69026; color:#f0dba8; box-shadow:inset 0 -2px #bda06e; }
-@media(max-width:959px) { .world-topbar .mode-switch a { min-height:44px; padding:0 8px; font-size:13px; }.world-topbar .mode-switch span { display:none; } }
+@media(max-width:959px) { .world-topbar .mode-switch a { min-height:44px; padding:0 6px; font-size:13px; } }
+/* Narrow phones: a slightly smaller logo and tighter shortcuts keep the account on the bar. */
+@media(max-width:379px) { .world-brand-logo { height:22px; }.world-topbar .world-brand-mark { width:18px; height:22px; }.world-hud-actions { gap:3px; }.world-hud-actions button { padding:6px 6px; }.world-topbar .mode-switch a { padding:0 5px; } }
 
 /* Feed dialog: stock scope and source picker moved here from the wall. */
 .world-panel-body .feed-scope-controls { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:8px; }
@@ -235,8 +250,6 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
 .world-wall-stock { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:center; min-width:0; font-size:14px; }
 .world-wall-stock select { min-height:44px; width:100%; min-width:0; padding:6px; }
 .world-panel-body .world-wall-stock select { background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); border-radius:4px; }
-.world-scene-menu .world-emotes { flex-wrap:wrap; }
-.world-scene-menu button[aria-pressed=true] { box-shadow:inset 0 -2px var(--ink); }
 .world-modal-backdrop { animation:world-backdrop-in .22s ease-out; }
 @keyframes world-backdrop-in { from { background:#040e1400; } }
 /* Loading skeleton (DOM twin of wall-skeleton.ts); the sweep matches the WebGL shimmer's period. */
