@@ -1,4 +1,4 @@
-import { WORLD_BOUNDS, clearSegment, findWorldPath, walkable, type Obstacle, type Point } from "./world-navigation";
+import { WORLD_BOUNDS, clearSegment, findWorldPath, inDoorway, walkable, type Obstacle, type Point } from "./world-navigation";
 
 // Plaza crowd: a pure, seeded simulation stepped by the renderer. No three.js and
 // no Math.random, so captures and tests are deterministic.
@@ -128,7 +128,8 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   // (no world data yet) or one of peers only must not use up the placement, or the whole crowd would march in.
   let lastCx: number | null = null, spawned = 0, settle = -1;
   const limit = (env: CrowdEnv) => env.front - .35;
-  const onFloor = (p: Point, env: CrowdEnv) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side && walkable(p, env.obstacles, CROWD.radius);
+  // Standing spots leave the door mouths free, so nobody gazes at the wall right in a doorway.
+  const onFloor = (p: Point, env: CrowdEnv) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side && walkable(p, env.obstacles, CROWD.radius) && !inDoorway(p);
   const mustSee = (a: CrowdAnt, env: CrowdEnv) => rand(a) < (env.view.zoomed ? .75 : .9);
   const sample = (a: CrowdAnt, env: CrowdEnv, must: boolean, local: boolean): Point => {
     if (local) { const angle = rand(a) * Math.PI * 2, reach = 1.5 + rand(a) * 2.5; return { x: a.x + Math.cos(angle) * reach, z: a.z + Math.sin(angle) * reach }; }

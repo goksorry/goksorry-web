@@ -75,6 +75,7 @@ export default function HD2DWorld(props: Props) {
       walk(target) { walked.current(target); },
       peers(heads) { peerBubbles.current?.place(heads); },
       section(next) { latest.current.onSection?.(next); },
+      enter(scene) { latest.current.onScene(scene); },
       failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
     })).then((instance) => {
       if (!instance) return;

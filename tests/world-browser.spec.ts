@@ -210,16 +210,41 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   await expect(snack).toHaveCount(0);
 });
 
-test("walking to a plaza entrance turns its painted sign into a prompt with a pinned hit target", async ({ page }) => {
+test("walking to a plaza door turns its plate into a prompt with a pinned hit target", async ({ page }) => {
   await prepareWorld(page); await page.goto("/"); await webgl(page);
   await page.locator(".hd2d-canvas").focus();
-  for (let i = 0; i < 3; i++) { await page.keyboard.press("ArrowLeft"); await page.waitForTimeout(450); }
+  // From the start point (0, .4) over and up to the floor in front of the 재난방송 door (x -2.3, at the back of the floor).
+  for (const key of ["ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowUp", "ArrowUp", "ArrowUp"]) { await page.keyboard.press(key); await page.waitForTimeout(450); }
   const enter = page.getByRole("button", { name: "재난방송 입구 · 들어가기 ↗" });
   await expect(enter).toBeVisible();
-  // Pinned over the painted prompt on the floor, not docked at the bottom of the stage.
-  const box = (await enter.boundingBox())!, canvas = (await page.locator(".hd2d-canvas").boundingBox())!;
+  // Pinned over the painted prompt on the floor just past the visitor's feet (the door plate is behind the visitor's head),
+  // not docked at the bottom of the stage.
+  const box = (await enter.boundingBox())!, canvas = (await page.locator(".hd2d-canvas").boundingBox())!, head = (await page.getByTestId("world-avatar").boundingBox())!;
   expect(box.width).toBeGreaterThan(40); expect(box.y + box.height).toBeLessThan(canvas.y + canvas.height - 40);
+  expect(box.y).toBeGreaterThan(head.y + head.height + 40);
   await enter.click(); await expect(page).toHaveURL(/scene=broadcast/);
+});
+
+test("clicking a plaza door walks the visitor to it, and a second click goes in", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prepareWorld(page); await page.goto("/"); await webgl(page);
+  type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
+  const wall = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.wall!);
+  const visitor = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.visitor());
+  const canvas = (await page.locator(".hd2d-canvas").boundingBox())!;
+  const { doors, rects } = await wall();
+  expect(Object.keys(doors).sort()).toEqual(["battle", "broadcast", "ecosystem", "theater"]);
+  // Low doors under the panels: every opening is on screen, below the panel it stands under, side by side.
+  for (const r of Object.values(doors)) { expect(r.x).toBeGreaterThan(0); expect(r.x + r.width).toBeLessThan(canvas.width); expect(r.height).toBeGreaterThan(40); }
+  expect(doors.broadcast.y).toBeGreaterThan(rects.index.y + rects.index.height); expect(doors.ecosystem.y).toBeGreaterThan(rects.room.y + rects.room.height);
+  // The lower part of the opening (under the name plate) is a click target for the door.
+  const door = doors.theater, at = { x: canvas.x + door.x + door.width / 2, y: canvas.y + door.y + door.height * .8 };
+  await page.mouse.click(at.x, at.y);
+  await expect.poll(async () => { const me = await visitor(); return me.state === "idle" && Math.abs(me.x - 2.3) < .05 && Math.abs(me.z + 2.9) < .05; }, { timeout: 15_000 }).toBe(true);
+  await expect(page.getByRole("button", { name: "개미극장 입구 · 들어가기 ↗" })).toBeVisible();
+  const now = (await wall()).doors.theater;
+  await page.mouse.click(canvas.x + now.x + now.width / 2, canvas.y + now.y + now.height * .8);
+  await expect(page).toHaveURL(/scene=theater/);
 });
 
 test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming", async ({ page }) => {

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
 import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdMember, type CrowdView } from "../lib/world-crowd";
-import { WORLD_BOUNDS, swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
+import { WORLD_BOUNDS, inDoorway, swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
 const WIDE: CrowdView = { cx: 0, halfW: 11.6, camZ: 27.115, dist: 32, zoomed: false };
@@ -592,4 +592,15 @@ test("inside the settle window roster changes are placed; after it they walk", (
   // Without step (reduced motion) the window never closes: a late roster is still placed.
   const still = createCrowd(5); still.sync(0, e); still.sync(20, e); still.sync(25, e);
   expect(still.ants.filter((a) => Math.abs(a.x) > CROWD.side + EPS)).toHaveLength(0);
+});
+
+test("standing ants keep the plaza door mouths clear", () => {
+  for (const seed of [1, 4, 9]) {
+    const e = env(), crowd = createCrowd(seed);
+    crowd.sync(20, e);
+    let blocking = 0;
+    const check = () => { for (const a of crowd.ants) if (a.state !== "walk" && !a.exit && inDoorway(a)) blocking++; };
+    check(); run(crowd, 60, e, check);
+    expect(blocking, `seed ${seed}`).toBe(0);
+  }
 });

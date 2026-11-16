@@ -5,8 +5,8 @@ import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdMember, type CrowdView } from "@/lib/world-crowd";
 import { fakeCapacity } from "@/lib/world-presence";
 import type { PlazaPeer } from "@/lib/chat-types";
-import { PLAZA_ENTRANCES, entranceAt, findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
-import { WALL_COS, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
+import { PLAZA_DOOR, PLAZA_ENTRANCES, WORLD_BOUNDS, entranceAt, findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
+import { WALL_COS, WALL_FACE_Z, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
@@ -16,7 +16,9 @@ import antAtlas from "./ant-atlas.json";
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean };
 export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
   /** Zoomed section view only: whether the frame is following the visitor (false while it walks to a section chosen by hand), and how far it is panned off the section's centre for it (world units). */
-  follow: boolean; pan: number };
+  follow: boolean; pan: number;
+  /** Screen bounds of each plaza doorway's opening, by scene. */
+  doors: Record<string, WallRect> };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null;
   /** Atlas image this renderer loaded: the full one or the reduced copy for small screens. */
   atlas: string;
@@ -74,6 +76,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   walk?: (target: Point) => void;
   /** Every plaza frame: the screen point over each peer ant's name tag, for its speech bubble. */
   peers?: (heads: Record<string, { x: number; y: number }>) => void;
+  /** The visitor clicked the plaza door it stands at. */
+  enter?: (scene: WorldScene) => void;
 } = {}): Promise<WorldRenderer> {
   let state = initial;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "low-power" });
@@ -146,6 +150,62 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     }
     for (const sign of [-1, 1]) box(x + sign * (r + .16), (height - r) / 2, z + .1, .32, height - r, .4, plasterMat);
   };
+  /** UVs from world position, picked by face direction (geometry already in place): split pieces continue one brick or plaster
+   * pattern. `s*` are the tile's world size along x, y and z, `o*` its origin. */
+  const planarUV = (g: THREE.BufferGeometry, sx: number, sy: number, sz: number, ox = 0, oy = 0, oz = 0) => {
+    const p = g.getAttribute("position"), n = g.getAttribute("normal"), uv = g.getAttribute("uv");
+    for (let i = 0; i < p.count; i++) {
+      const x = (p.getX(i) - ox) / sx, y = (p.getY(i) - oy) / sy, z = (p.getZ(i) - oz) / sz;
+      if (Math.abs(n.getZ(i)) > .5) uv.setXY(i, x, y); else if (Math.abs(n.getX(i)) > .5) uv.setXY(i, z, y); else uv.setXY(i, x, z);
+    }
+    return g;
+  };
+  /** Pieces of [lo, hi] left between the cuts (sorted, inside the range). */
+  const spans = (lo: number, hi: number, cuts: [number, number][]) => {
+    const out: [number, number][] = []; let at = lo;
+    for (const [a, b] of cuts) { if (a > at) out.push([at, a]); at = Math.max(at, b); }
+    if (hi > at) out.push([at, hi]); return out;
+  };
+  // A slab laid in world space with planar UVs (see planarUV), for split plinths and steps.
+  const slab = (x0: number, x1: number, y: number, z: number, h: number, d: number, m: THREE.Material, tile: [number, number, number, number, number, number]) =>
+    mesh(planarUV(new THREE.BoxGeometry(x1 - x0, h, d).translate((x0 + x1) / 2, y, z), ...tile), m, 0, 0, 0);
+  // Per-room look through each plaza doorway, on the recess's back plate: only its lower .7 shows under the name plate.
+  const glimpse = (scene: string, x: number, z: number) => {
+    if (scene === "ecosystem") { box(x, .4, z, 1, .8, .02, woodMat); for (let i = 0; i < 3; i++) box(x - .28 + i * .28, .22 + i % 2 * .2, z + .02, .14, .1, .02, darkMat); }
+    else if (scene === "broadcast") { box(x, .5, z, .5, .12, .02, redMat); box(x, .14, z + .1, .9, .28, .2, metalMat); }
+    else if (scene === "theater") { box(x, .4, z, 1, .8, .02, curtainMat); box(x, .08, z + .02, 1, .06, .02, goldMat); }
+    else { box(x, .4, z, 1, .8, .02, metalMat); box(x, .5, z + .02, .6, .05, .02, glowMat); }
+  };
+  /** The plaza's back wall between x ±11.2, with a low doorway cut under each panel column (see PLAZA_DOOR): framed by plaster
+   * jambs and a metal lintel, a name plate across the top of the opening, and a dark recess behind it, wider than the opening so
+   * a turned camera never looks past it into the void. The plinth and the steps stop at each door, so the floor runs in. */
+  function plazaWall() {
+    const { half, height, lintel, plate } = PLAZA_DOOR, doors = [...PLAZA_ENTRANCES].sort((a, b) => a.x - b.x), jamb = .22, back = WALL_FACE_Z - .65;
+    // One notched outline, no holes: earcut needs holes strictly inside the outline, and these touch the floor.
+    const shape = new THREE.Shape(); shape.moveTo(-11.2, 0);
+    for (const e of doors) { shape.lineTo(e.x - half, 0); shape.lineTo(e.x - half, height); shape.lineTo(e.x + half, height); shape.lineTo(e.x + half, 0); }
+    shape.lineTo(11.2, 0); shape.lineTo(11.2, 9); shape.lineTo(-11.2, 9);
+    // Same brick scale and seams as the 11.2 x 9 wall boxes on either side.
+    mesh(planarUV(new THREE.ExtrudeGeometry(shape, { depth: .65, bevelEnabled: false }).translate(0, 0, back), 11.2, 9, 11.2), brickMat, 0, 0, 0);
+    const cuts = doors.map((e): [number, number] => [e.x - half - jamb, e.x + half + jamb]);
+    for (const [x0, x1] of spans(-10.6, 10.6, cuts)) slab(x0, x1, .4, -4.2, .8, 1.5, plasterMat, [21.2, .8, 1.5, -10.6, 0, -4.95]);
+    for (let j = 0; j < 3; j++) for (const [x0, x1] of spans(-9.9, 9.9, cuts)) slab(x0, x1, .1 + j * .12, -3.3 - j * .32, .2, .45, brickMat, [19.8, .2, .45, -9.9, j * .12, -3.525 - j * .32]);
+    for (const e of doors) {
+      for (const sign of [-1, 1]) {
+        box(e.x + sign * (half + jamb / 2), height / 2, WALL_FACE_Z + .08, jamb, height, .26, plasterMat);
+        box(e.x + sign * (half + jamb / 2), height - plate - .09, WALL_FACE_Z + .23, .09, .09, .05, glowMat); // lamps under the plate
+        box(e.x + sign * 1.5, 1.1, back - .375, .1, 2.2, .75, darkMat); // recess cheeks
+      }
+      box(e.x, height + lintel / 2, WALL_FACE_Z + .08, 2 * (half + jamb) + .06, lintel, .26, metalMat);
+      // Name plate hung over the lintel and the top of the opening; its painted label (style "sign") stands in front of it.
+      box(e.x, height + (lintel - plate) / 2 + .01, PLATE_Z, 2 * (half + jamb) + .02, plate + lintel + .02, .05, metalMat);
+      box(e.x, .02, WALL_FACE_Z + .2, 2 * half + .1, .04, .5, plasterMat); // threshold
+      box(e.x, 1.1, back - .85, 3.1, 2.2, .2, darkMat); // recess back
+      // The recess floor stays dark: the plaza lights would otherwise light the floor tiles inside.
+      box(e.x, .006, back - .1, 2.9, .01, 1.95, darkMat).castShadow = false;
+      glimpse(e.scene, e.x, back - .74);
+    }
+  }
   const cable = (points: THREE.Vector3[]) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, .035, 4, false), darkMat, 0, 0, 0);
   function buildRoom() {
     room.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); staticRoot.remove(room); room = new THREE.Group(); staticRoot.add(room);
@@ -154,10 +214,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     // The follow camera pans sideways and swings the frame's lower corners forward, so the wall runs
     // as wide as the floor and a front strip continues the floor toward the camera.
     for (const x of [-23, 0, 23]) { box(x, -.38, 0, 23, .75, 17, floorMat); box(x, -.38, 10.5, 23, .75, 4, floorMat); }
-    for (const x of [-28, -16.8, -5.6, 5.6, 16.8, 28]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
+    const plaza = state.scene === "plaza";
+    for (const x of [-28, -16.8, ...(plaza ? [] : [-5.6, 5.6]), 16.8, 28]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
     box(0, 9.12, -5.2, 68, .24, 1.1, metalMat);
-    box(0, .4, -4.2, 21.2, .8, 1.5, plasterMat);
-    for (let j = 0; j < 3; j++) box(0, .1 + j * .12, -3.3 - j * .32, 19.8, .2, .45, brickMat);
+    if (plaza) plazaWall();
+    else {
+      box(0, .4, -4.2, 21.2, .8, 1.5, plasterMat);
+      for (let j = 0; j < 3; j++) box(0, .1 + j * .12, -3.3 - j * .32, 19.8, .2, .45, brickMat);
+    }
     for (const sign of [-1, 1]) {
       box(sign * 11.2, 2.1, 0, .7, 4.8, 11, brickMat);
       // Low side buildings stay below the panel bottoms from the camera's view.
@@ -174,7 +238,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const portrait = id === "pierrot";
       box(p.x, p.y, -4.94, p.w + (portrait ? .5 : .24), p.h + (portrait ? .5 : .24), .1, portrait ? goldMat : metalMat);
     }
-    if (state.scene !== "plaza") {
+    if (!plaza) {
       arch(0, -4.9, 2.3, 3.4);
       box(0, 4.3, -4.65, 2.9, .8, .18, metalMat);
       for (let i = 0; i < 5; i++) box(-.9 + i * .45, 4.3, -4.5, .14, .1, .02, glowMat);
@@ -283,6 +347,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const ANT_VIEW = 11.7, ANT_SMALL = .6;
   const antSize = () => Math.max(ANT_SMALL, Math.min(1, 2 * lens.halfW / ANT_VIEW));
   const CAMERA_DISTANCE = 32, CAMERA_HEIGHT = 8.4, WALL_Y0 = wallScreenY(0, WALL_PANEL_Z);
+  // A door's name label stands in front of its plate (far enough that a turned camera never cuts it into the plate), at the
+  // height where the resting camera sees it just above the plate's bottom edge.
+  const PLATE_Z = WALL_FACE_Z + .24, SIGN_Z = PLATE_Z + .18, CAMERA_Z = WALL_PANEL_Z + CAMERA_DISTANCE;
+  const SIGN_Y = CAMERA_HEIGHT + (PLAZA_DOOR.height - PLAZA_DOOR.plate + .025 - CAMERA_HEIGHT) * (CAMERA_Z - SIGN_Z) / (CAMERA_Z - PLATE_Z);
   // While turning, the camera also slides this far (world units per radian) toward the visitor.
   const CAMERA_SLIDE = 8;
   let yaw = 0, orbit = 0, front = 7;
@@ -382,16 +450,18 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const plaza = state.scene === "plaza";
     // Screen bounds of each panel's four corners: exact rectangles at rest, bounding boxes while turned.
     const layout = sceneBoardLayout(state.scene), ids = Object.keys(layout);
-    const rects = Object.fromEntries(ids.map((id) => {
-      const p = layout[id]; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const screenRect = (p: { x: number; y: number; w: number; h: number }, z: number): WallRect => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-        const q = project(corner.set(p.x + sx * p.w / 2, p.y + sy * p.h / 2, WALL_PANEL_Z));
+        const q = project(corner.set(p.x + sx * p.w / 2, p.y + sy * p.h / 2, z));
         x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
       }
-      return [id, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
-    })) as Record<string, WallRect>;
+      return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+    };
+    const rects = Object.fromEntries(ids.map((id) => [id, screenRect(layout[id], WALL_PANEL_Z)])) as Record<string, WallRect>;
+    const doors = plaza ? Object.fromEntries(PLAZA_ENTRANCES.map((e) => [e.scene, screenRect({ x: e.x, y: PLAZA_DOOR.height / 2, w: 2 * PLAZA_DOOR.half, h: PLAZA_DOOR.height }, WALL_FACE_Z)])) : {};
     const aim = aimCx(), settled = lens.cx === aim && lens.halfW === fit.halfW && lens.top === fit.top;
-    metrics.wall = plaza ? { rects, drawn: boards.drawn, get shimmer() { return boards.loading(); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: zoomed() && visiting === null, pan: aim - fit.cx } : null;
+    metrics.wall = plaza ? { rects, drawn: boards.drawn, get shimmer() { return boards.loading(); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: zoomed() && visiting === null, pan: aim - fit.cx, doors } : null;
     const key = ids.map((id) => `${id}:${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|");
     if (key !== rectKey) { rectKey = key; events.panels?.(ids.length ? rects : null); }
   }
@@ -583,10 +653,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (cueCount) { cues.instanceMatrix.needsUpdate = true; (cueGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true; }
     ants.instanceMatrix.needsUpdate = shadows.instanceMatrix.needsUpdate = true; if (ants.instanceColor) ants.instanceColor.needsUpdate = true;
     (antGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true;
-    // The name tag sits just above the visitor's head; entrance signs stand on the floor, the one at hand as a prompt.
+    // The name tag sits just above the visitor's head. Each door carries its name plate; at a door the visitor stands in front of
+    // that plate (a low door is about head high on screen), so the prompt lies on the floor just past its feet instead.
     const head = (talls[you] ?? 1.73) * 1.04, near = entranceAt(state.scene, position)?.scene;
     const tags: LabelSpec[] = [...peerTags, { id: "visitor", text: visitorTag, style: "name", at: { x: position.x, y: head, z: position.z } }];
-    if (plaza) for (const e of PLAZA_ENTRANCES) tags.push({ id: `entrance-${e.scene}`, text: near === e.scene ? `${e.name} 입구 · 들어가기 ↗` : `${e.name} 입구`, style: near === e.scene ? "prompt" : "sign", at: { x: e.x, y: .05, z: e.z } });
+    if (plaza) for (const e of PLAZA_ENTRANCES) {
+      tags.push({ id: `door-${e.scene}`, text: e.name, style: "sign", at: { x: e.x, y: SIGN_Y, z: SIGN_Z } });
+      if (near === e.scene) tags.push({ id: `entrance-${e.scene}`, text: `${e.name} 입구 · 들어가기 ↗`, style: "prompt", at: { x: e.x, y: .05, z: position.z + 1.4 } });
+    }
     labels.set(tags);
     const tagRects = labels.measure(camera, width, height), tagKey = Object.entries(tagRects).map(([id, r]) => `${id}:${r.x.toFixed(0)},${r.y.toFixed(0)},${r.width.toFixed(0)}`).join("|");
     if (tagKey !== labelKey) { labelKey = tagKey; events.labels?.(tagRects); }
@@ -603,12 +677,21 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     metrics.renders++; metrics.calls = renderer.info.render.calls; metrics.triangles = renderer.info.render.triangles;
     for (const values of [metrics.cpu, metrics.frames, metrics.gpu]) if (values.length > 600) values.splice(0, values.length - 600);
   }
-  const raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), wallPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -WALL_FACE_Z);
   function click(x: number, y: number) {
-    // Every click is a floor click: ants are not targets, so one that lands on an ant walks to the floor behind it.
+    // Every click is a floor click (ants are not targets, so one that lands on an ant walks to the floor behind it), except on a
+    // plaza doorway: a click on the door, or on the strip of floor and steps in front of it, walks to it, and one there goes in.
     raycaster.setFromCamera(new THREE.Vector2(x / width * 2 - 1, 1 - y / height * 2), camera);
     const target = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
     visiting = null;
+    if (state.scene === "plaza") {
+      const hit = !target || target.z < WALL_FACE_Z ? raycaster.ray.intersectPlane(wallPlane, new THREE.Vector3()) : target;
+      const door = hit && hit.z < WORLD_BOUNDS.back + .3 && hit.y <= PLAZA_DOOR.height + PLAZA_DOOR.lintel ? PLAZA_ENTRANCES.find((e) => Math.abs(hit.x - e.x) < PLAZA_DOOR.half + .4) : undefined;
+      if (door) {
+        if (entranceAt(state.scene, position)?.scene === door.scene) events.enter?.(door.scene); else walkTo({ x: door.x, z: door.z });
+        return;
+      }
+    }
     if (target) walkTo({ x: target.x, z: limitZ(target.z) });
   }
   function walkTo(target: Point) {

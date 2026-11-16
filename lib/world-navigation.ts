@@ -2,18 +2,29 @@ import type { WorldScene } from "./world";
 export type Point = { x: number; z: number };
 export type Obstacle = { x: number; z: number; width: number; depth: number };
 export const WORLD_BOUNDS = { left: -10, right: 10, back: -3.5, front: 7 };
-/** Plaza doorways to the other scenes, on the floor strip every framed view keeps visible. */
+/** Low doorways cut into the plaza's back wall, one under each panel column: the opening is `half` either side of the door's x
+ * and `height` tall, its metal lintel ends under the panel frames (1.58), and a name plate hangs over the lintel and the top `plate`
+ * of the opening (a low door has no wall above it for one). An ant
+ * stands at `approachZ` to use a door and goes in to `insideZ`, then `hideX` sideways behind a pier (from the camera's height
+ * an ant stays visible through the opening, so only the wall beside it hides it). */
+export const PLAZA_DOOR = { half: .6, height: 1.42, lintel: .1, plate: .3, approachZ: -2.9, insideZ: -5.85, hideX: 1.2 } as const;
+/** Plaza doorways to the other scenes: the floor point in front of each door. The centre pair stays inside the zoomed middle section. */
 export const PLAZA_ENTRANCES: { scene: Exclude<WorldScene, "plaza">; name: string; x: number; z: number }[] = [
-  { scene: "ecosystem", name: "개미 생태계", x: -6.5, z: .2 }, { scene: "broadcast", name: "재난방송", x: -2.6, z: .2 },
-  { scene: "theater", name: "개미극장", x: 2.6, z: .2 }, { scene: "battle", name: "심리 전장", x: 6.5, z: .2 }
+  { scene: "ecosystem", name: "개미 생태계", x: -6.5, z: PLAZA_DOOR.approachZ }, { scene: "broadcast", name: "재난방송", x: -2.3, z: PLAZA_DOOR.approachZ },
+  { scene: "theater", name: "개미극장", x: 2.3, z: PLAZA_DOOR.approachZ }, { scene: "battle", name: "심리 전장", x: 6.5, z: PLAZA_DOOR.approachZ }
 ];
+/** Through a door from the floor in front of it: up to the threshold, inside, then sideways (`side`) behind a pier. Reverse it to come out. */
+export const plazaDoorWay = (e: Point, side: -1 | 1 = 1): Point[] =>
+  [{ x: e.x, z: -3.2 }, { x: e.x, z: PLAZA_DOOR.insideZ }, { x: e.x + side * PLAZA_DOOR.hideX, z: PLAZA_DOOR.insideZ }];
 /** A finished touch gesture as a wall-section step: a quick, mostly horizontal swipe to the left shows the section
  * to the right (+1), to the right the one to the left (-1); anything else (a tap, a slow drag, a vertical swipe) is 0. */
 export const swipeStep = (dx: number, dy: number, ms: number): -1 | 0 | 1 =>
   Math.abs(dx) >= 48 && Math.abs(dx) > 1.5 * Math.abs(dy) && ms <= 700 ? (dx < 0 ? 1 : -1) : 0;
-/** The plaza entrance the visitor stands at (within 1.4 units), if any. */
+/** The plaza door the visitor stands at (in the strip of floor right in front of it), if any. */
 export const entranceAt = (scene: WorldScene, at: Point) =>
-  scene === "plaza" ? PLAZA_ENTRANCES.find((e) => Math.hypot(e.x - at.x, e.z - at.z) < 1.4) ?? null : null;
+  scene === "plaza" ? PLAZA_ENTRANCES.find((e) => Math.abs(e.x - at.x) < 1 && at.z < e.z + 1.3) ?? null : null;
+/** A door mouth: the floor in front of a door that standing ants keep clear. */
+export const inDoorway = (p: Point) => PLAZA_ENTRANCES.some((e) => Math.abs(p.x - e.x) < .9 && p.z < e.z + 1.2);
 export function worldObstacles(scene: WorldScene): Obstacle[] {
   const sides = [{ x: -8.7, z: -.6, width: 2.3, depth: 4.5 }, { x: 8.7, z: -.6, width: 2.3, depth: 4.5 }];
   const crates = Array.from({ length: 8 }, (_, i) => ({ x: (i % 2 ? -1 : 1) * (8 + i % 3 * .45), z: 2.6 + i % 3 * .4, width: .7, depth: .5 }));

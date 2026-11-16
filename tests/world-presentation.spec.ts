@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { buildWorldFrame, buildWorldReplay, worldSummary, type WorldSide } from "../lib/world";
-import { findWorldPath, clearSegment, worldObstacles, walkable } from "../lib/world-navigation";
+import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
+import { WALL_PANELS } from "../lib/world-wall";
 import { worldRows } from "./world-fixture";
 
 test("population follows full counts, including neutral, independent of representative lists", () => {
@@ -54,4 +55,29 @@ test("click paths go around barricades and never cut obstacle corners", () => {
   expect(walkable({ x: 0, z: 4.5 }, worldObstacles("theater"))).toBe(false);
   expect(walkable({ x: 8, z: 2.6 }, worldObstacles("plaza"))).toBe(false);
   for (const scene of ["plaza", "ecosystem", "battle", "broadcast", "theater"] as const) expect(walkable({ x: 0, z: 3.2 }, worldObstacles(scene))).toBe(true);
+});
+
+test("plaza doors stand under the panels, inside their zoomed sections, with a walkable floor in front", () => {
+  const obstacles = worldObstacles("plaza"), frame = PLAZA_DOOR.half + .22; // opening plus the jambs
+  const frames = [[-10.35, -3.65], [-3.35, 3.35], [3.65, 10.35]];
+  for (const e of PLAZA_ENTRANCES) {
+    expect(walkable(e, obstacles), e.scene).toBe(true);
+    expect(entranceAt("plaza", { x: e.x, z: -3 })?.scene).toBe(e.scene);
+    expect(entranceAt("plaza", { x: e.x, z: .4 })).toBeNull();
+    for (const side of [-1, 1]) expect(entranceAt("plaza", { x: e.x + side * 1.2, z: e.z })).toBeNull();
+    expect(entranceAt("ecosystem", e)).toBeNull();
+    // The framed door fits one zoomed phone section and keeps clear of the side buildings.
+    expect(frames.some(([a, b]) => e.x - frame >= a && e.x + frame <= b), e.scene).toBe(true);
+    for (const o of obstacles.filter((o) => o.z - o.depth / 2 < e.z + 1.3)) expect(Math.abs(e.x - o.x)).toBeGreaterThanOrEqual(o.width / 2 + frame);
+    // A low door: the lintel ends under the frame of the panel above it (frames reach .12 below a panel).
+    const above = Object.values(WALL_PANELS).filter((p) => Math.abs(e.x - p.x) <= p.w / 2 && p.y - p.h / 2 < 3);
+    expect(above, e.scene).toHaveLength(1);
+    for (const p of above) { expect(e.x - frame).toBeGreaterThanOrEqual(p.x - p.w / 2 - .12); expect(e.x + frame).toBeLessThanOrEqual(p.x + p.w / 2 + .12); expect(PLAZA_DOOR.height + PLAZA_DOOR.lintel).toBeLessThan(p.y - p.h / 2 - .12); }
+    // The way in ends sideways behind a pier: a sprite about .43 wide either side of its foot is out of the opening.
+    const way = plazaDoorWay(e, 1), end = way[way.length - 1];
+    expect(Math.abs(end.x - e.x) - .43).toBeGreaterThan(PLAZA_DOOR.half);
+    expect(end.z).toBe(PLAZA_DOOR.insideZ); expect(walkable(way[0], obstacles)).toBe(true);
+  }
+  const sorted = PLAZA_ENTRANCES.map((e) => e.x).sort((a, b) => a - b);
+  sorted.slice(1).forEach((x, i) => expect(x - sorted[i]).toBeGreaterThan(2 * frame + 2));
 });

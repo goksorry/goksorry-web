@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-/** `name`: the visitor's tag; `peer`: another viewer's tag; `sign`: a quiet floor sign; `prompt`: a highlighted call to action. */
+/** `name`: the visitor's tag; `peer`: another viewer's tag; `sign`: a door's name plate, mounted on the scenery (ants in front of it hide it);
+ * `prompt`: a highlighted call to action. */
 export type LabelStyle = "name" | "peer" | "sign" | "prompt";
 /** A text tag standing on `at` (its bottom centre), facing the camera. */
 export type LabelSpec = { id: string; text: string; style: LabelStyle; at: { x: number; y: number; z: number } };
@@ -15,11 +16,12 @@ export type LabelLayer = {
   dispose(): void;
 };
 
-/** World height of each style's tag, and its colours. */
-const STYLE: Record<LabelStyle, { height: number; ink: string; bg: string; border: string; weight: number }> = {
+/** World height of each style's tag, its colours, whether scenery and ants in front of it hide it (`depth`), and its text size and
+ * side padding as fractions of the tag height (default .62 and .3). */
+const STYLE: Record<LabelStyle, { height: number; ink: string; bg: string; border: string; weight: number; depth?: boolean; text?: number; pad?: number }> = {
   name: { height: .36, ink: "#e6c37d", bg: "#13242ade", border: "#a28551", weight: 600 },
   peer: { height: .3, ink: "#d4dcd8", bg: "#13242ac4", border: "#6b7f80", weight: 500 },
-  sign: { height: .34, ink: "#c9d3d6", bg: "#101c22cc", border: "#5b6f75", weight: 500 },
+  sign: { height: .38, ink: "#e8d09a", bg: "#17130df2", border: "#8a734f", weight: 700, depth: true, text: .66, pad: .2 },
   prompt: { height: .42, ink: "#f0dcae", bg: "#2a2416ee", border: "#d9b777", weight: 700 }
 };
 /** Canvas pixels per world unit of tag height; mipmaps cover the smaller on-screen sizes. */
@@ -27,7 +29,7 @@ const PX = 96;
 
 type Entry = { key: string; sprite: THREE.Sprite; material: THREE.SpriteMaterial; texture: THREE.CanvasTexture };
 
-/** Camera-facing text tags drawn over the scene (never hidden behind ants or scenery). */
+/** Camera-facing text tags drawn over the scene (never hidden behind ants or scenery, except the depth-tested door plates). */
 export function createLabelLayer(): LabelLayer {
   const group = new THREE.Group();
   const entries = new Map<string, Entry>();
@@ -35,7 +37,7 @@ export function createLabelLayer(): LabelLayer {
   const corner = new THREE.Vector3();
 
   const paint = (text: string, style: LabelStyle) => {
-    const s = STYLE[style], size = Math.round(PX * .62), padX = Math.round(PX * .3);
+    const s = STYLE[style], size = Math.round(PX * (s.text ?? .62)), padX = Math.round(PX * (s.pad ?? .3));
     const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d")!;
     const font = `${s.weight} ${size}px ${family}`;
     ctx.font = font;
@@ -63,7 +65,7 @@ export function createLabelLayer(): LabelLayer {
         if (entry && entry.key !== key) { remove(label.id); entry = undefined; }
         if (!entry) {
           const { texture, aspect } = paint(label.text, label.style), height = STYLE[label.style].height;
-          const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false, fog: false, toneMapped: false });
+          const material = new THREE.SpriteMaterial({ map: texture, depthTest: !!STYLE[label.style].depth, depthWrite: false, fog: false, toneMapped: false });
           const sprite = new THREE.Sprite(material); sprite.center.set(.5, 0); sprite.scale.set(height * aspect, height, 1); sprite.renderOrder = 10;
           group.add(sprite); entry = { key, sprite, material, texture }; entries.set(label.id, entry);
         }
