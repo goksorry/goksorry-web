@@ -2,25 +2,22 @@
 
 import { emitOwnChatMessage } from "@/lib/chat-own-message";
 import {
-  startTransition,
   type CSSProperties,
   type FormEvent,
   type ReactNode,
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from "react";
 import {
   CHAT_MESSAGE_MAX_LENGTH,
   CHAT_GUEST_NICKNAME_MAX_LENGTH,
   CHAT_RECENT_LIMIT,
-  type ChatClientEvent,
-  type ChatMessage,
-  type ChatServerEvent,
-  type ChatSessionResponse,
-  type ChatSessionViewer
+  type ChatClientEvent
 } from "@/lib/chat-types";
+import { chatConnection, type ChatConnectionState } from "@/lib/chat-connection";
 import { cleanGuestChatNicknameInput, normalizeGuestChatNickname } from "@/lib/chat-guest-nickname";
 import {
   readClientCookieValue,
@@ -28,8 +25,6 @@ import {
   writeClientCookieValue
 } from "@/lib/browser-persistence";
 import { CLIENT_PERSISTENCE_DEFINITIONS } from "@/lib/persistence-registry";
-
-type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "error";
 
 type LiveChatProps = {
   enabled: boolean;
@@ -40,28 +35,12 @@ type LiveChatProps = {
 
 const SEND_COOLDOWN_MS = 500;
 
-const statusLabel: Record<ConnectionState, string> = {
+const statusLabel: Record<ChatConnectionState, string> = {
   idle: "대기 중",
   connecting: "연결 중",
   open: "실시간 연결됨",
   reconnecting: "재연결 중",
   error: "연결 오류"
-};
-
-const mergeMessages = (current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] => {
-  const byId = new Map<string, ChatMessage>();
-
-  for (const message of current) {
-    byId.set(message.id, message);
-  }
-
-  for (const message of incoming) {
-    byId.set(message.id, message);
-  }
-
-  return [...byId.values()]
-    .sort((left, right) => left.sent_at.localeCompare(right.sent_at))
-    .slice(-CHAT_RECENT_LIMIT);
 };
 
 const formatTime = (value: string): string => {
@@ -91,31 +70,23 @@ const isScrolledToBottom = (element: HTMLDivElement | null): boolean => {
 };
 
 export function LiveChat({ enabled, className, title = "전체 채팅", headerActions = null }: LiveChatProps) {
-  const [viewer, setViewer] = useState<ChatSessionViewer | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [connectionCount, setConnectionCount] = useState<number | null>(null);
+  const connection = useSyncExternalStore(chatConnection.subscribe, chatConnection.getSnapshot, chatConnection.getServerSnapshot);
+  const { viewer, messages, connections: connectionCount } = connection;
+  const state: ChatConnectionState = enabled ? (connection.state === "idle" ? "connecting" : connection.state) : "idle";
+  const notice = enabled ? connection.notice : "채팅 설정이 아직 배포되지 않았습니다.";
   const [draft, setDraft] = useState("");
   const [guestNickname, setGuestNickname] = useState("");
-  const [guestNicknameReady, setGuestNicknameReady] = useState(false);
-  const [notice, setNotice] = useState<string | null>(enabled ? null : "채팅 설정이 아직 배포되지 않았습니다.");
-  const [state, setState] = useState<ConnectionState>(enabled ? "connecting" : "idle");
   const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<number | null>(null);
-  const reconnectAttemptRef = useRef(0);
-  const shouldReconnectRef = useRef(enabled);
   const logRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
-  const guestNicknameRef = useRef("");
 
-  const applyViewer = (nextViewer: ChatSessionViewer) => {
-    setViewer(nextViewer);
-    if (nextViewer.kind !== "guest") {
+  useEffect(() => {
+    if (viewer?.kind !== "guest") {
       return;
     }
 
-    setGuestNickname((current) => (current.trim() ? current : nextViewer.display_name));
-  };
+    setGuestNickname((current) => (current.trim() ? current : viewer.display_name));
+  }, [viewer]);
 
   useEffect(() => {
     if (cooldownRemainingMs <= 0) {
@@ -138,159 +109,16 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     );
     if (storedNickname) {
       setGuestNickname(storedNickname);
-      guestNicknameRef.current = storedNickname;
     }
-    setGuestNicknameReady(true);
   }, []);
 
   useEffect(() => {
-    guestNicknameRef.current = guestNickname;
-  }, [guestNickname]);
-
-  useEffect(() => {
-    if (!enabled || !guestNicknameReady) {
+    if (!enabled) {
       return;
     }
 
-    let cancelled = false;
-    shouldReconnectRef.current = true;
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimerRef.current !== null) {
-        window.clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-    };
-
-    const scheduleReconnect = (delayMs: number) => {
-      clearReconnectTimer();
-      if (cancelled || !shouldReconnectRef.current) {
-        return;
-      }
-
-      reconnectTimerRef.current = window.setTimeout(() => {
-        reconnectTimerRef.current = null;
-        void connect("reconnecting");
-      }, delayMs);
-    };
-
-    const connect = async (nextState: ConnectionState) => {
-      if (cancelled) {
-        return;
-      }
-
-      setState(nextState);
-
-      try {
-        const response = await fetch("/api/chat/session", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            guest_nickname: normalizeGuestChatNickname(guestNicknameRef.current) ?? undefined
-          })
-        });
-
-        const payload = (await response.json().catch(() => ({}))) as Partial<ChatSessionResponse> & {
-          error?: string;
-        };
-
-        if (!response.ok || !payload.ws_url || !payload.viewer) {
-          throw new Error(payload.error ?? "채팅 세션을 만들지 못했습니다.");
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        setNotice(null);
-        applyViewer(payload.viewer);
-
-        const socket = new WebSocket(payload.ws_url);
-        socketRef.current = socket;
-
-        socket.onopen = () => {
-          reconnectAttemptRef.current = 0;
-          setState("open");
-        };
-
-        socket.onmessage = (event) => {
-          let serverEvent: ChatServerEvent;
-          try {
-            serverEvent = JSON.parse(String(event.data)) as ChatServerEvent;
-          } catch {
-            return;
-          }
-
-          if (serverEvent.type === "session.ready") {
-            applyViewer(serverEvent.viewer);
-            setConnectionCount(serverEvent.connections);
-            startTransition(() => {
-              setMessages((current) => mergeMessages(current, serverEvent.recent));
-            });
-
-            return;
-          }
-
-          if (serverEvent.type === "presence.count") {
-            setConnectionCount(serverEvent.connections);
-            return;
-          }
-
-          if (serverEvent.type === "chat.message") {
-            startTransition(() => {
-              setMessages((current) => mergeMessages(current, [serverEvent.message]));
-            });
-            return;
-          }
-
-          if (serverEvent.type === "system.error") {
-            setNotice(serverEvent.message);
-          }
-        };
-
-        socket.onerror = () => {
-          setNotice("채팅 연결에 문제가 발생했습니다.");
-        };
-
-        socket.onclose = () => {
-          if (socketRef.current === socket) {
-            socketRef.current = null;
-          }
-
-          if (cancelled || !shouldReconnectRef.current) {
-            return;
-          }
-
-          reconnectAttemptRef.current += 1;
-          setState("reconnecting");
-          scheduleReconnect(Math.min(5000, 1000 * reconnectAttemptRef.current));
-        };
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        reconnectAttemptRef.current += 1;
-        setState("error");
-        setNotice(error instanceof Error ? error.message : "채팅 연결을 준비하지 못했습니다.");
-        scheduleReconnect(Math.min(10000, 1500 * reconnectAttemptRef.current));
-      }
-    };
-
-    void connect("connecting");
-
-    return () => {
-      cancelled = true;
-      shouldReconnectRef.current = false;
-      clearReconnectTimer();
-
-      const socket = socketRef.current;
-      socketRef.current = null;
-      socket?.close();
-    };
-  }, [enabled, guestNicknameReady]);
+    return chatConnection.acquire();
+  }, [enabled]);
 
   useEffect(() => {
     if (!stickToBottomRef.current) {
@@ -321,12 +149,12 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     event.preventDefault();
 
     if (!viewer?.can_send) {
-      setNotice("채팅에 참여할 수 없습니다.");
+      chatConnection.setNotice("채팅에 참여할 수 없습니다.");
       return;
     }
 
     if (viewer.kind === "guest" && !normalizedGuestNickname) {
-      setNotice("비회원 닉네임을 입력하세요.");
+      chatConnection.setNotice("비회원 닉네임을 입력하세요.");
       return;
     }
 
@@ -339,9 +167,8 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
       return;
     }
 
-    const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      setNotice("채팅이 아직 연결되지 않았습니다.");
+    if (!chatConnection.isOpen()) {
+      chatConnection.setNotice("채팅이 아직 연결되지 않았습니다.");
       return;
     }
 
@@ -356,7 +183,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
       writeClientCookieValue(CLIENT_PERSISTENCE_DEFINITIONS.guestChatNickname, normalizedGuestNickname);
     }
 
-    socket.send(JSON.stringify(nextEvent));
+    chatConnection.send(nextEvent);
     emitOwnChatMessage(normalizedDraft);
     setDraft("");
     setCooldownRemainingMs(SEND_COOLDOWN_MS);

@@ -279,3 +279,11 @@ body:has(.world-page .world-modal-backdrop) .chat-dock-shell { visibility:hidden
 .world-speech-bubble p::after { content:""; position:absolute; left:50%; bottom:-7px; width:12px; height:12px; background:inherit; border:inherit; border-width:0 1px 1px 0; border-radius:0 0 2px 0; transform:translateX(-50%) rotate(45deg); }
 @keyframes world-bubble-boing { 0% { opacity:0; transform:scale(.2); } 35% { opacity:1; transform:scale(1.18,.86); } 55% { transform:scale(.9,1.1); } 72% { transform:scale(1.05,.97); } 100% { transform:scale(1); } }
 @keyframes world-bubble-fade { to { opacity:0; transform:translateY(-6px); } }
+/* Plaza room (world-room-badge.tsx): top left of the stage, over the scene. */
+.world-room-badge { position:absolute; z-index:4; top:8px; left:max(16px, env(safe-area-inset-left)); display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; max-width:calc(100% - 32px); padding:4px 6px 4px 10px; background:#101b22d9; border:1px solid #6f7d7466; color:#c2ced2; font-size:13px; }
+.world-room-badge b { color:#e6c37d; font-weight:600; }
+.world-room-badge form { display:flex; gap:4px; }
+.world-room-badge input { width:64px; min-height:32px; padding:2px 8px; background:#0c141a; color:#e5e1d7; border:1px solid #4c5960; font-size:16px; }
+.world-room-badge input[aria-invalid=true] { border-color:#de9d87; }
+.world-room-badge button { min-height:32px; padding:2px 10px; background:#17232a; color:#e5e1d7; border:1px solid #4c5960; }
+.world-room-badge p { flex-basis:100%; margin:0; color:#de9d87; font-size:12px; }

@@ -57,13 +57,14 @@ const thirdOf = (fraction: number): PanelSide => fraction < 1 / 3 ? "left" : fra
 // Height reserved for the bottom scene nav when framing the wall.
 const HUD_BOTTOM = 60;
 
-type ShellProps = { timezone: string; selectedGroupIds: SourceGroupId[]; menu: ReactNode };
+/** `chatEnabled`: the chat hub is deployed, so the plaza can share the visitor's ant through it. */
+type ShellProps = { timezone: string; selectedGroupIds: SourceGroupId[]; menu: ReactNode; chatEnabled?: boolean };
 /** The world page; errors anywhere inside surface as snacks (world-snackbar.tsx). */
 export function WorldShell(props: ShellProps) {
   return <WorldSnackbarProvider><WorldShellView {...props} /></WorldSnackbarProvider>;
 }
 
-function WorldShellView({ timezone, selectedGroupIds, menu }: ShellProps) {
+function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false }: ShellProps) {
   const params = useSearchParams();
   const rawScene = params.get("scene") ?? "plaza";
   const scene: WorldScene = WORLD_SCENES.includes(rawScene as WorldScene) ? rawScene as WorldScene : "plaza";
@@ -207,7 +208,7 @@ function WorldShellView({ timezone, selectedGroupIds, menu }: ShellProps) {
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className="sr-only">{info.title}</h1></div>
-      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onSection={setSection}>
+      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={`${themeId}|${dark}`} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>

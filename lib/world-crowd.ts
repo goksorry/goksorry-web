@@ -1,4 +1,4 @@
-import { clearSegment, findWorldPath, walkable, type Obstacle, type Point } from "./world-navigation";
+import { WORLD_BOUNDS, clearSegment, findWorldPath, walkable, type Obstacle, type Point } from "./world-navigation";
 
 // Plaza crowd: a pure, seeded simulation stepped by the renderer. No three.js and
 // no Math.random, so captures and tests are deterministic.
@@ -12,7 +12,13 @@ export type AntVariant = "neutral" | "fear" | "hope";
 // variants, wherever that art exists. The fear ant has no bright form.
 export const ANT_BRIGHT: Partial<Record<AntVariant, string>> = { neutral: "neutral-bright", hope: "hope-bright" };
 export type CrowdState = "walk" | "gaze" | "phone" | "sigh";
-export type CrowdAnt = { x: number; z: number; hx: number; hz: number; state: CrowdState; pose: AntPose;
+export type CrowdAnt = { id: string; variant: AntVariant;
+  peer: boolean; // another viewer's ant: it walks to the point that viewer last chose and stands there (no roaming)
+  target: Point | null; // a peer's last shared point
+  talk: number; // seconds a peer still looks at its phone after chatting
+  exit: number; // -1 / 1 while walking off toward that side of the floor (it is then removed), 0 otherwise
+  exitAge: number;
+  x: number; z: number; hx: number; hz: number; state: CrowdState; pose: AntPose;
   t: number; span: number; path: Point[]; goal: Point; speed: number; stride: number; wait: number; moved: boolean; rng: number;
   lean: number; // side a camera-facing sprite turns to: -1 the viewer's left, 1 the right (see leanOf)
   fx: number; fz: number; dir8: number; dir4: number; fresh: boolean; // the facing that is drawn: the heading, steadied (see `face`)
@@ -36,6 +42,19 @@ export const leanOf = (hx: number, previous: number): number => Math.abs(hx) > L
 // The visible floor is a trapezoid: half-width at depth z, minus a margin for the sprite.
 export const viewHalf = (view: CrowdView, z: number): number => view.halfW * (view.camZ - z) / view.dist - CROWD.edge;
 export const inView = (p: Point, view: CrowdView): boolean => Math.abs(p.x - view.cx) <= viewHalf(view, p.z);
+/** One ant the crowd should hold. NPC ids are stable per slot, peer ids come from the chat hub; `peer` is the peer's last point. */
+export type CrowdMember = { id: string; variant: AntVariant; peer?: Point };
+export type Crowd = {
+  ants: CrowdAnt[];
+  /** Holds exactly these ants. The first sync places them on the floor; later ones walk newcomers in from a side and
+   * walk the dropped ones off to the nearer side. A number is that many neutral NPCs. */
+  sync(roster: number | CrowdMember[], env: CrowdEnv): void;
+  step(dt: number, env: CrowdEnv): void;
+  /** A peer chatted: it looks at its phone for `seconds`. */
+  say(id: string, seconds: number): void;
+};
+// Entrances and exits: the floor's side strip beyond the side stalls and crates, else just outside the view.
+const SIDE_X = WORLD_BOUNDS.right - .4, SIDE_LANE_Z = 4.2, ENTER_SPEED = 1.1, EXIT_SPEED = 1.2, PEER_SPEED = 1.35, EXIT_GIVE_UP = 15;
 
 const WALL_Z = -4.885, GAZE_ARC = 40 * Math.PI / 180, TOP_SPEED = 1.35, HARD = .36, SQUEEZE = .33, VISITOR_PASS = .6, EPS = 1e-9;
 const SIDESTEPS = [50, -50, 90, -90, 130, -130].map((degree) => degree * Math.PI / 180);
@@ -96,9 +115,9 @@ const segmentGap = (p: Point, a: Point, b: Point, reach = Infinity) => {
   return Math.hypot(p.x - a.x - dx / length * along, p.z - a.z - dz / length * along);
 };
 
-export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, env: CrowdEnv): void; step(dt: number, env: CrowdEnv): void } {
+export function createCrowd(seed = 1): Crowd {
   const ants: CrowdAnt[] = [];
-  let lastCx: number | null = null;
+  let lastCx: number | null = null, spawned = 0, synced = false;
   const limit = (env: CrowdEnv) => env.front - .35;
   const onFloor = (p: Point, env: CrowdEnv) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side && walkable(p, env.obstacles, CROWD.radius);
   const mustSee = (a: CrowdAnt, env: CrowdEnv) => rand(a) < (env.view.zoomed ? .75 : .9);
@@ -112,7 +131,10 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
   const spaced = (p: Point, self: CrowdAnt, env: CrowdEnv, bodies = false) => gap(p, env.visitor) >= CROWD.visitorGap && !hides(p, env.visitor)
     && ants.every((o) => o === self || (room(p, o.goal) >= CROWD.gap && ((!bodies && o.state === "walk") || room(p, o) >= CROWD.gap)));
   // Phones come out a few at a time, never as a wave.
-  const phoneFree = () => ants.filter((o) => o.state === "phone" || o.state === "sigh").length < Math.max(1, Math.round(ants.length * CROWD.busy));
+  const phoneFree = () => {
+    const npcs = ants.filter((o) => !o.peer && !o.exit);
+    return npcs.filter((o) => o.state === "phone" || o.state === "sigh").length < Math.max(1, Math.round(npcs.length * CROWD.busy));
+  };
   // A route is clear when it does not lead closer than `pass` to a standing ant, nor to any ant in its first 1.5 units.
   const pathClear = (a: CrowdAnt, p: Point) => ants.every((o) => {
     if (o === a) return true;
@@ -163,11 +185,63 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
     const path = pickSpot(a, env);
     if (path) go(a, path, .85 + rand(a) * .5); else gaze(a, 2);
   };
-  const spawn = (index: number, env: CrowdEnv) => {
-    const a: CrowdAnt = { x: 0, z: (CROWD.back + limit(env)) / 2, hx: 0, hz: -1, state: "gaze", pose: "idle", t: 0, span: 0,
+  const sidePoint = (a: CrowdAnt, side: number, env: CrowdEnv): Point => {
+    const low = CROWD.back, high = limit(env), tries: Point[] = [];
+    if (high > SIDE_LANE_Z) for (let i = 0; i < 6; i++) tries.push({ x: side * SIDE_X, z: SIDE_LANE_Z + rand(a) * (high - SIDE_LANE_Z) });
+    for (let i = 0; i < 6; i++) {
+      const z = low + rand(a) * (high - low), x = env.view.cx + side * (viewHalf(env.view, z) + CROWD.edge + .8);
+      if (Math.abs(x) <= SIDE_X) tries.push({ x, z });
+    }
+    for (let x = SIDE_X; x > 0; x -= .3) tries.push({ x: side * x, z: low + rand(a) * (high - low) });
+    return tries.find((p) => walkable(p, env.obstacles, CROWD.radius)) ?? { x: side * 7, z: (low + high) / 2 };
+  };
+  const route = (a: CrowdAnt, to: Point, env: CrowdEnv): Point[] => {
+    if (clearSegment(a, to, env.obstacles)) return [to];
+    const path = findWorldPath(a, to, env.obstacles);
+    return path.length ? path : [to]; // no collisions for these walks: at worst it brushes through a crate
+  };
+  // A peer's shared point, kept on the floor this view shows.
+  const peerGoal = (p: Point, env: CrowdEnv): Point => ({ x: Math.max(-SIDE_X, Math.min(SIDE_X, p.x)), z: Math.max(CROWD.back, Math.min(limit(env), p.z)) });
+  const peerWalk = (a: CrowdAnt, env: CrowdEnv) => {
+    if (!a.target) return;
+    const goal = peerGoal(a.target, env);
+    if (gap(a, goal) < .05) { if (a.state === "walk") gaze(a, gazeSpan(a, env)); return; }
+    go(a, route(a, goal, env), PEER_SPEED);
+  };
+  const leave = (a: CrowdAnt, env: CrowdEnv) => {
+    a.exit = a.x < 0 ? -1 : 1; a.exitAge = 0; a.talk = 0;
+    go(a, route(a, sidePoint(a, a.exit, env), env), EXIT_SPEED);
+  };
+  // Walks with no give-way (peers and leavers): straight along the path.
+  const glide = (a: CrowdAnt, dt: number) => {
+    const target = a.path[0];
+    if (!target) return true;
+    const dx = target.x - a.x, dz = target.z - a.z, distance = Math.hypot(dx, dz), reach = a.speed * dt;
+    if (distance > EPS) { a.hx = dx / distance; a.hz = dz / distance; }
+    face(a, dt, a.fresh); a.fresh = false;
+    if (distance <= reach) { a.x = target.x; a.z = target.z; a.path.shift(); } else { a.x += a.hx * reach; a.z += a.hz * reach; }
+    a.moved = true; a.stride += Math.min(distance, reach); a.pose = walkPose(a.stride);
+    return !a.path.length;
+  };
+  const spawn = (member: CrowdMember, env: CrowdEnv, enter: boolean) => {
+    const index = spawned++;
+    const a: CrowdAnt = { id: member.id, variant: member.variant, peer: !!member.peer, target: member.peer ?? null, talk: 0, exit: 0, exitAge: 0, x: 0, z: (CROWD.back + limit(env)) / 2, hx: 0, hz: -1, state: "gaze", pose: "idle", t: 0, span: 0,
       path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: hash(seed, index),
       lean: hash(seed ^ 0x5EED, index) & 1 ? 1 : -1, // a stable side of its own until its first sideways walk
       fx: 0, fz: -1, dir8: 4, dir4: 4, fresh: true, eye: 0, eyeRng: hash(seed ^ 0x100C, index), nod: 0 };
+    if (enter) {
+      const at = sidePoint(a, rand(a) < .5 ? -1 : 1, env);
+      a.x = at.x; a.z = at.z; a.goal = { ...at };
+      ants.push(a);
+      if (a.peer) peerWalk(a, env);
+      else { const path = pickSpot(a, env); if (path) go(a, path, ENTER_SPEED); else go(a, route(a, { x: env.view.cx, z: Math.min(limit(env), Math.max(CROWD.back, 0)) }, env), ENTER_SPEED); }
+      return;
+    }
+    if (a.peer && a.target) {
+      const at = peerGoal(a.target, env);
+      a.x = at.x; a.z = at.z; ants.push(a); gaze(a, gazeSpan(a, env)); a.t = a.span * rand(a);
+      return;
+    }
     let spot: Point | null = null;
     for (let i = 0; i < 80; i++) {
       const must = mustSee(a, env), p = sample(a, env, must, false);
@@ -221,12 +295,44 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
     a.pose = walkPose(a.stride);
     if (arrive && !slid) { a.path.shift(); if (!a.path.length) gaze(a, gazeSpan(a, env)); }
   };
+  const stepPeer = (a: CrowdAnt, dt: number, env: CrowdEnv) => {
+    a.talk = Math.max(0, a.talk - dt);
+    if (a.state === "walk") { if (glide(a, dt)) gaze(a, gazeSpan(a, env)); return; }
+    a.moved = false; a.t -= dt;
+    if (a.talk > 0) { if (a.state !== "phone") { a.state = "phone"; a.pose = "phone"; a.nod = 0; } return; }
+    if (a.state === "phone") { a.state = "sigh"; a.pose = "sigh"; a.span = a.t = 1.2; return; }
+    if (a.state === "sigh") { if (a.t <= 0) gaze(a, gazeSpan(a, env)); return; }
+    a.eye -= dt; a.nod = Math.max(0, a.nod - dt);
+    if (a.eye <= 0) { a.pose = a.pose === "look" ? "idle" : "look"; a.eye = eyeSpan(a); a.nod = NOD; }
+    if (a.t <= 0) gaze(a, gazeSpan(a, env)); // stands where its viewer left it, turning between the panels
+  };
   return {
     ants,
-    sync(count, env) {
-      const size = Math.max(0, Math.floor(count));
-      if (ants.length > size) ants.length = size;
-      while (ants.length < size) spawn(ants.length, env);
+    sync(roster, env) {
+      const list: CrowdMember[] = typeof roster === "number"
+        ? Array.from({ length: Math.max(0, Math.floor(roster)) }, (_, i) => ({ id: `npc:${i}`, variant: "neutral" as const }))
+        : roster;
+      const animate = synced; synced = true;
+      const wanted = new Map(list.map((m) => [m.id, m]));
+      if (!animate) { for (let i = ants.length - 1; i >= 0; i--) if (!wanted.has(ants[i].id)) ants.splice(i, 1); }
+      for (const a of ants) {
+        const m = wanted.get(a.id);
+        if (!m) { if (!a.exit) leave(a, env); continue; }
+        a.variant = m.variant;
+        const returned = a.exit !== 0; // came back while walking off
+        a.exit = 0;
+        if (a.peer) {
+          const moved = !!m.peer && (!a.target || a.target.x !== m.peer.x || a.target.z !== m.peer.z);
+          if (moved) a.target = { ...m.peer! };
+          if (moved || returned) peerWalk(a, env);
+        } else if (returned) roam(a, env);
+      }
+      const held = new Set(ants.map((a) => a.id));
+      for (const m of list) if (!held.has(m.id)) spawn(m, env, animate);
+    },
+    say(id, seconds) {
+      const a = ants.find((o) => o.id === id && o.peer && !o.exit);
+      if (a) a.talk = Math.max(a.talk, seconds);
     },
     step(dt, env) {
       const delta = Math.max(0, Math.min(dt, .1)), edge = limit(env) + EPS;
@@ -235,6 +341,12 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
       lastCx = env.view.cx;
       for (let i = 0; i < ants.length; i++) {
         const a = ants[i];
+        if (a.exit) {
+          a.exitAge += delta;
+          if (glide(a, delta) || a.exitAge > EXIT_GIVE_UP) { ants.splice(i, 1); i--; }
+          continue;
+        }
+        if (a.peer) { stepPeer(a, delta, env); continue; }
         if (a.z > edge) {
           // The visible floor shrank: walk out, never clamp or teleport.
           if (a.state !== "walk" || a.goal.z > edge) {

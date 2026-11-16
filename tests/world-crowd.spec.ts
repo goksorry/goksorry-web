@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
-import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
-import { swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
+import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdMember, type CrowdView } from "../lib/world-crowd";
+import { WORLD_BOUNDS, swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
 const WIDE: CrowdView = { cx: 0, halfW: 11.6, camZ: 27.115, dist: 32, zoomed: false };
@@ -106,25 +106,73 @@ test("a shrinking front makes ants walk out without teleporting", () => {
   expect(Math.max(...crowd.ants.map((a) => a.z))).toBeLessThanOrEqual(1.65 + EPS);
 });
 
-test("population sync keeps the retained ants and spawns valid new ones", () => {
+test("population sync walks newcomers in from a side and dropped ants off to the nearer side", () => {
   const e = env(), crowd = createCrowd(2);
   crowd.sync(20, e); run(crowd, 10, e);
-  const first = spots(crowd).slice(0, 12);
+  const kept = crowd.ants.slice(0, 12).map((a) => a.id);
+  // Largest per-step displacement by id, so ants removed mid-run do not read as jumps.
+  let worst = 0, before = new Map(crowd.ants.map((a) => [a.id, { x: a.x, z: a.z }]));
+  const each = () => { for (const a of crowd.ants) { const p = before.get(a.id); if (p) worst = Math.max(worst, Math.hypot(a.x - p.x, a.z - p.z)); } before = new Map(crowd.ants.map((a) => [a.id, { x: a.x, z: a.z }])); };
   crowd.sync(12, e);
-  expect(spots(crowd)).toEqual(first);
+  const leaving = crowd.ants.filter((a) => a.exit);
+  expect(leaving).toHaveLength(8);
+  for (const a of leaving) { expect(a.exit).toBe(a.x < 0 ? -1 : 1); expect(a.state).toBe("walk"); }
+  run(crowd, 20, e, each);
+  expect(crowd.ants.map((a) => a.id)).toEqual(kept);
   crowd.sync(20, e);
   expect(crowd.ants).toHaveLength(20);
-  expect(spots(crowd).slice(0, 12)).toEqual(first);
   for (const a of crowd.ants.slice(12)) {
+    expect(a.state).toBe("walk");
     expect(walkable(a, obstacles, CROWD.radius)).toBe(true);
-    expect(a.z).toBeGreaterThanOrEqual(CROWD.back); expect(a.z).toBeLessThanOrEqual(6.65); expect(Math.abs(a.x)).toBeLessThanOrEqual(CROWD.side);
-    expect(Math.min(...crowd.ants.filter((o) => o !== a).map((o) => Math.hypot(o.x - a.x, o.z - a.z)))).toBeGreaterThanOrEqual(CROWD.gap);
+    expect(Math.abs(a.x - e.view.cx)).toBeGreaterThan(viewHalf(e.view, a.z)); // walks in from outside the view
   }
-  const moves = tracker(crowd);
-  run(crowd, 5, e, moves.each);
-  expect(moves.worst()).toBeLessThanOrEqual(1.35 * DT + EPS);
-  crowd.sync(0, e); expect(crowd.ants).toHaveLength(0);
+  run(crowd, 30, e, each);
+  for (const a of crowd.ants) {
+    expect(walkable(a, obstacles, .3)).toBe(true);
+    expect(a.z).toBeGreaterThanOrEqual(CROWD.back - EPS); expect(a.z).toBeLessThanOrEqual(6.65 + EPS); expect(Math.abs(a.x)).toBeLessThanOrEqual(WORLD_BOUNDS.right);
+  }
+  expect(worst).toBeLessThanOrEqual(1.35 * DT + EPS);
+  crowd.sync(0, e);
+  expect(crowd.ants.every((a) => a.exit)).toBe(true);
+  run(crowd, 20, e);
+  expect(crowd.ants).toHaveLength(0);
 });
+
+test("a dropped ant in the middle leaves without shifting the others' costumes", () => {
+  const e = env(), crowd = createCrowd(7);
+  const roster: CrowdMember[] = [{ id: "a", variant: "hope" }, { id: "b", variant: "fear" }, { id: "c", variant: "neutral" }];
+  crowd.sync(roster, e); run(crowd, 2, e);
+  crowd.sync([roster[0], roster[2]], e);
+  expect(crowd.ants.map((a) => [a.id, a.variant, a.exit !== 0])).toEqual([["a", "hope", false], ["b", "fear", true], ["c", "neutral", false]]);
+  run(crowd, 20, e);
+  expect(crowd.ants.map((a) => a.id)).toEqual(["a", "c"]);
+});
+
+test("peer ants walk to the shared point, stand there, and look at the phone while chatting", () => {
+  const e = env(), crowd = createCrowd(8);
+  const npcs: CrowdMember[] = Array.from({ length: 10 }, (_, i) => ({ id: `npc:${i}`, variant: "neutral" }));
+  crowd.sync([...npcs, { id: "peer:x", variant: "neutral", peer: { x: -3, z: 1 } }], e);
+  const peer = () => crowd.ants.find((a) => a.id === "peer:x")!;
+  expect(peer()).toMatchObject({ x: -3, z: 1, peer: true });
+  run(crowd, 30, e);
+  expect(Math.hypot(peer().x + 3, peer().z - 1)).toBeLessThan(1e-6); // never roams off
+  crowd.sync([...npcs, { id: "peer:x", variant: "neutral", peer: { x: 4, z: 3 } }], e);
+  expect(peer().state).toBe("walk");
+  run(crowd, 15, e);
+  expect(Math.hypot(peer().x - 4, peer().z - 3)).toBeLessThan(1e-6);
+  crowd.say("peer:x", 3);
+  run(crowd, .5, e);
+  expect(peer().state).toBe("phone");
+  run(crowd, 5, e);
+  expect(peer().state).not.toBe("phone");
+  // A newcomer peer after the first sync walks in from a side.
+  crowd.sync([...npcs, { id: "peer:x", variant: "neutral", peer: { x: 4, z: 3 } }, { id: "peer:y", variant: "neutral", peer: { x: 0, z: 2 } }], e);
+  const y = crowd.ants.find((a) => a.id === "peer:y")!;
+  expect(Math.abs(y.x)).toBeGreaterThan(5); expect(y.state).toBe("walk");
+  run(crowd, 20, e);
+  expect(Math.hypot(y.x, y.z - 2)).toBeLessThan(1e-6);
+});
+
 
 test("the zoomed phone view keeps most ants in the watched section and follows a swipe", () => {
   const side: CrowdView = { ...WIDE, cx: 7, halfW: 3.35, zoomed: true }, middle = { ...side, cx: 0 };

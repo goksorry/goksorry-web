@@ -4,7 +4,7 @@ import { WorldShell } from "@/components/world/world-shell";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { isSourceGroupId, parseSourceGroupSelection } from "@/lib/feed-source-groups";
-import { getTimezone } from "@/lib/env";
+import { getChatServerEnv, getTimezone } from "@/lib/env";
 import { buildPageMetadata, SITE_NAME } from "@/lib/seo";
 
 type QueryValue = string | string[] | undefined;
@@ -59,7 +59,7 @@ export default async function Home({
 
   return (
     <Suspense fallback={<p className="world-loading">데이터 조회 중…</p>}>
-      <WorldShell timezone={timezone} selectedGroupIds={selectedGroupIds}
+      <WorldShell timezone={timezone} selectedGroupIds={selectedGroupIds} chatEnabled={getChatServerEnv().enabled}
         menu={<><SiteHeader /><Suspense fallback={null}><SiteFooter /></Suspense></>} />
     </Suspense>
   );

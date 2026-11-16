@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-/** `name`: the visitor's tag; `sign`: a quiet floor sign; `prompt`: a highlighted call to action. */
-export type LabelStyle = "name" | "sign" | "prompt";
+/** `name`: the visitor's tag; `peer`: another viewer's tag; `sign`: a quiet floor sign; `prompt`: a highlighted call to action. */
+export type LabelStyle = "name" | "peer" | "sign" | "prompt";
 /** A text tag standing on `at` (its bottom centre), facing the camera. */
 export type LabelSpec = { id: string; text: string; style: LabelStyle; at: { x: number; y: number; z: number } };
 
@@ -18,6 +18,7 @@ export type LabelLayer = {
 /** World height of each style's tag, and its colours. */
 const STYLE: Record<LabelStyle, { height: number; ink: string; bg: string; border: string; weight: number }> = {
   name: { height: .36, ink: "#e6c37d", bg: "#13242ade", border: "#a28551", weight: 600 },
+  peer: { height: .3, ink: "#d4dcd8", bg: "#13242ac4", border: "#6b7f80", weight: 500 },
   sign: { height: .34, ink: "#c9d3d6", bg: "#101c22cc", border: "#5b6f75", weight: 500 },
   prompt: { height: .42, ink: "#f0dcae", bg: "#2a2416ee", border: "#d9b777", weight: 700 }
 };

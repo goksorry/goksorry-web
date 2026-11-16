@@ -49,7 +49,14 @@ export type ChatPingEvent = {
   ts: number;
 };
 
-export type ChatClientEvent = ChatSendEvent | ChatFilterSetEvent | ChatPingEvent;
+/** Plaza presence: the viewer's ant appears where it stands, and each later floor click sends the new destination. */
+export type AntEnterEvent = { type: "ant.enter"; x: number; z: number; room?: number };
+export type AntMoveEvent = { type: "ant.move"; x: number; z: number };
+export type AntLeaveEvent = { type: "ant.leave" };
+/** Rooms are 0-based on the wire and shown from 1. */
+export type AntSwitchRoomEvent = { type: "ant.switch"; room: number };
+
+export type ChatClientEvent = ChatSendEvent | ChatFilterSetEvent | ChatPingEvent | AntEnterEvent | AntMoveEvent | AntLeaveEvent | AntSwitchRoomEvent;
 
 export type ChatSessionReadyEvent = {
   type: "session.ready";
@@ -61,6 +68,8 @@ export type ChatSessionReadyEvent = {
 export type ChatMessageEvent = {
   type: "chat.message";
   message: ChatMessage;
+  /** The author's plaza ant, when the author was standing on the plaza. */
+  ant_id?: string;
 };
 
 export type ChatFilterUpdatedEvent = {
@@ -84,7 +93,19 @@ export type ChatSystemErrorEvent = {
   message: string;
 };
 
+export type PlazaPeer = { id: string; name: string; x: number; z: number };
+
+/** Sent to the viewer that entered the plaza: its room and the others already in it. */
+export type AntRoomEvent = { type: "ant.room"; room: number; self: string; peers: PlazaPeer[] };
+export type AntJoinEvent = { type: "ant.join"; ant: PlazaPeer };
+export type AntMovedEvent = { type: "ant.move"; id: string; x: number; z: number };
+export type AntLeftEvent = { type: "ant.leave"; id: string };
+/** A refused plaza request (full room, too many room switches, bad input). */
+export type AntErrorEvent = { type: "ant.error"; code: string; message: string };
+export type AntServerEvent = AntRoomEvent | AntJoinEvent | AntMovedEvent | AntLeftEvent | AntErrorEvent;
+
 export type ChatServerEvent =
+  | AntServerEvent
   | ChatSessionReadyEvent
   | ChatMessageEvent
   | ChatFilterUpdatedEvent

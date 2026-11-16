@@ -4,6 +4,10 @@ import { PLAZA_ENTRANCES, entranceAt, swipeStep } from "@/lib/world-navigation";
 import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { WorldSpeechBubble } from "./world-speech-bubble";
+import { WorldPeerBubbles, type PeerBubblesHandle } from "./world-peer-bubbles";
+import { WorldRoomBadge } from "./world-room-badge";
+import { usePlazaPresence } from "./use-plaza-presence";
+import { useSessionSnapshot } from "@/components/use-session-snapshot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
@@ -14,6 +18,8 @@ import { type WallModel, type WallSection, type WallView } from "@/lib/world-wal
 
 type Props = RenderState & {
   emote: string; children: ReactNode; board: BoardSource; view: WallView; styleKey: string;
+  /** The plaza shares the visitor's ant with other viewers (the chat hub is deployed). */
+  shared?: boolean;
   onScene: (scene: WorldScene) => void; onStep: () => void;
   /** The zoomed section view follows the visitor into another wall section. */
   onSection?: (section: WallSection) => void;
@@ -32,6 +38,11 @@ export default function HD2DWorld(props: Props) {
   const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
   const [nearby, setNearby] = useState<WorldScene | null>(null);
+  // Other viewers on the plaza: shared through the chat hub while the 3D plaza is shown.
+  const { user } = useSessionSnapshot();
+  const presence = usePlazaPresence(renderer, !!props.shared && !user?.profile_setup_required && mode === "webgl" && props.scene === "plaza");
+  const peerBubbles = useRef<PeerBubblesHandle>(null), walked = useRef(presence.walked);
+  walked.current = presence.walked;
   const nearbyRef = useRef<WorldScene | null>(null), nearButton = useRef<HTMLButtonElement>(null);
   // Last screen rectangles of the painted tags; the entrance button is pinned over its sign.
   const tagRects = useRef<Record<string, { x: number; y: number; width: number; height: number }>>({});
@@ -61,6 +72,8 @@ export default function HD2DWorld(props: Props) {
       },
       labels(rects) { tagRects.current = rects; pinEntrance(); },
       step() { latest.current.onStep(); },
+      walk(target) { walked.current(target); },
+      peers(heads) { peerBubbles.current?.place(heads); },
       section(next) { latest.current.onSection?.(next); },
       failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
     })).then((instance) => {
@@ -156,6 +169,8 @@ export default function HD2DWorld(props: Props) {
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
     {!fallback && <WorldSpeechBubble ref={bubble} />}
+    {!fallback && props.scene === "plaza" && <WorldPeerBubbles ref={peerBubbles} bubbles={presence.bubbles} />}
+    {!fallback && props.scene === "plaza" && <WorldRoomBadge room={presence.room} peers={presence.peers} error={presence.error} onSwitch={presence.switchRoom} />}
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
     {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
