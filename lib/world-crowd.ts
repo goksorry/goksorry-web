@@ -1,4 +1,5 @@
 import { WORLD_BOUNDS, clearSegment, findWorldPath, inDoorway, walkable, type Obstacle, type Point } from "./world-navigation";
+import { advance, hash, unit } from "./world-random";
 
 // Plaza crowd: a pure, seeded simulation stepped by the renderer. No three.js and
 // no Math.random, so captures and tests are deterministic.
@@ -107,17 +108,7 @@ export function face(a: CrowdAnt, dt: number, snap = false, toward: { x: number;
 export const NOD = .15;
 const EYE_MIN = 2.5, EYE_RANGE = 3.5, PHONE_CHANCE = .35, PHONE_CHANCE_HOPEFUL = .15;
 const PHONE_FACING = [[.4, 0, 1], [.65, -1, 0], [.9, 1, 0], [2, 0, -1]];
-const hash = (seed: number, index: number) => {
-  let h = (seed ^ Math.imul(index + 1, 0x9E3779B1)) | 0;
-  h = Math.imul(h ^ h >>> 16, 0x85EBCA6B); h = Math.imul(h ^ h >>> 13, 0xC2B2AE35);
-  return (h ^ h >>> 16) | 0;
-};
-const unit = (state: number) => { // mulberry32's output for a state already advanced
-  let t = Math.imul(state ^ state >>> 15, 1 | state);
-  t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
-  return ((t ^ t >>> 14) >>> 0) / 4294967296;
-};
-const roll = (a: CrowdAnt, stream: "rng" | "eyeRng") => unit(a[stream] = (a[stream] + 0x6D2B79F5) | 0); // mulberry32 on the ant's own state
+const roll = (a: CrowdAnt, stream: "rng" | "eyeRng") => unit(a[stream] = advance(a[stream])); // mulberry32 on the ant's own state
 const rand = (a: CrowdAnt) => roll(a, "rng");
 const eyeSpan = (a: CrowdAnt) => EYE_MIN + roll(a, "eyeRng") * EYE_RANGE;
 const gap = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -147,7 +138,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   // The turnover has a stream of its own (which ant, which way, how long), so a crowd without doors never draws from it.
   // `clock`: seconds to the next trip, -1 until the first one is timed.
   let churnState = hash(seed ^ 0x7A11, 0), clock = -1;
-  const churn = () => unit(churnState = (churnState + 0x6D2B79F5) | 0);
+  const churn = () => unit(churnState = advance(churnState));
   const churnIn = ([low, high]: readonly [number, number]) => low + churn() * (high - low);
   const limit = (env: CrowdEnv) => env.front - .35;
   // Standing spots leave the door mouths free, so nobody gazes at the wall right in a doorway.
