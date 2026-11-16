@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
-import { ANT_DIRS, CROWD, LEAN_DEAD, WALK_PHASE, antFrameCandidates, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
+import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdView } from "../lib/world-crowd";
 import { walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
@@ -201,9 +201,10 @@ test("facing4 matches the renderer's visitor rule and facing8 the eight sprite d
 });
 
 // What the renderer draws for a heading, resolved against the real atlas: the side the sprite ends up turned to.
-// The art facts are restated here on purpose: these four "f" frames are drawn turned to the viewer's left, the rest right.
+// The art facts are restated here on purpose: these "f" frames are drawn turned to the viewer's left, the rest right.
+// (The scarf ant's passing step counts as left: its scarf tail hangs on the side it does in the mirrored first stride.)
 const ATLAS = antAtlas.frames as Record<string, unknown>, hasArt = (key: string) => key in ATLAS;
-const DRAWN_LEFT = ["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f"];
+const DRAWN_LEFT = ["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f", "hope.walk-p.f"];
 const shown = (variant: AntVariant, pose: AntPose, hx: number, hz: number, lean: number, walking = true) => {
   const dir4 = facing4(hx, hz), step = walking ? antWalkFrame(hasArt, variant, pose, facing8(hx, hz), dir4) : { pose, dir8: facing8(hx, hz) };
   const found = antFrameCandidates(variant, step.pose, step.dir8, dir4, lean).find((c) => hasArt(c.key))!;
@@ -230,13 +231,22 @@ test("an ant walking toward the camera turns to the side it is heading, in every
   // The cases from the report: down-left and down-right, 45 degrees off.
   expect(shown("neutral", "walk-a", -1, 1, -1)).toMatchObject({ key: "neutral.walk-a.fl", mirror: false });
   expect(shown("neutral", "walk-a", 1, 1, 1)).toMatchObject({ key: "neutral.walk-a.fr", mirror: false });
-  for (const variant of ["fear", "hope"] as const) {
-    expect(shown(variant, "walk-a", -.6, .8, -1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: true });
-    expect(shown(variant, "walk-a", .6, .8, 1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: false });
-    // The second stride is drawn the other way round, so it is the one mirrored when heading right.
-    expect(shown(variant, "walk-b", -.6, .8, -1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: false });
-    expect(shown(variant, "walk-b", .6, .8, 1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: true });
+  // The scarf ant has its own diagonal walk now, strides and passing step.
+  for (const pose of ["walk-a", "walk-b", "walk-p"] as const) {
+    expect(shown("hope", pose, -.6, .8, -1)).toMatchObject({ key: `hope.${pose}.fl`, mirror: false });
+    expect(shown("hope", pose, .6, .8, 1)).toMatchObject({ key: `hope.${pose}.fr`, mirror: false });
   }
+  // Without diagonal art (the fear ant; the scarf ant heading nearly straight down) the camera-facing frame turns instead.
+  for (const [variant, hx, hz] of [["fear", .6, .8], ["hope", .3, .95]] as const) {
+    expect(shown(variant, "walk-a", -hx, hz, -1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: true });
+    expect(shown(variant, "walk-a", hx, hz, 1)).toMatchObject({ key: `${variant}.walk-a.f`, mirror: false });
+    // The second stride is drawn the other way round, so it is the one mirrored when heading right.
+    expect(shown(variant, "walk-b", -hx, hz, -1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: false });
+    expect(shown(variant, "walk-b", hx, hz, 1)).toMatchObject({ key: `${variant}.walk-b.f`, mirror: true });
+  }
+  // So is the scarf ant's passing step: its scarf tail stays on one side through stride, feet together, stride.
+  expect(shown("hope", "walk-p", -.3, .95, -1)).toMatchObject({ key: "hope.walk-p.f", mirror: false });
+  expect(shown("hope", "walk-p", .3, .95, 1)).toMatchObject({ key: "hope.walk-p.f", mirror: true });
   // Standing poses that face the camera follow the same side; lean 0 leaves every frame as drawn.
   for (const variant of ["neutral", "fear", "hope"] as const) for (const pose of ["idle", "phone", "sigh"] as const) for (const lean of [-1, 1]) {
     expect(shown(variant, pose, 0, 1, lean, false).side, `${variant}.${pose} lean ${lean}`).toBe(lean);
@@ -318,13 +328,19 @@ test("every costume and heading walks stride, feet together, other stride, feet 
       runs.forEach((run, i) => {
         if (i + 2 >= runs.length) return;
         const [now, next, after] = [feet(run.key), feet(runs[i + 1].key), feet(runs[i + 2].key)];
-        if (now === "walk-a" || now === "walk-b") { expect(["walk-p", "idle"], `${label}: ${now} then ${next}`).toContain(next); expect(after, label).toBe(now === "walk-a" ? "walk-b" : "walk-a"); }
+        // The feet-together frame is real passing art everywhere, never the standing frame (the scarf ant's raised fist would pump).
+        if (now === "walk-a" || now === "walk-b") { expect(next, `${label}: ${now} then ${next}`).toBe("walk-p"); expect(after, label).toBe(now === "walk-a" ? "walk-b" : "walk-a"); }
         else expect(["walk-a", "walk-b"], `${label}: ${now} then ${next}`).toContain(next);
       });
       // No frame is held for longer than a phase (plus one rendered frame), so the legs never freeze.
       expect(Math.max(...runs.map((run) => run.n)) * dt, label).toBeLessThanOrEqual(phase / speed + dt + EPS);
     }
   }
+  // The passing frames this relies on: the scarf ant in all eight directions, the neutral ant on the diagonals too.
+  for (const dir of ANT_DIRS) for (const pose of ["walk-a", "walk-b", "walk-p"]) { expect(hasArt(`hope.${pose}.${dir}`), `hope.${pose}.${dir}`).toBe(true); expect(hasArt(`neutral.${pose}.${dir}`), `neutral.${pose}.${dir}`).toBe(true); }
+  for (const [variant, dir8] of [["hope", 2], ["hope", 0], ["hope", 3], ["neutral", 1], ["neutral", 5]] as const) expect(antWalkFrame(hasArt, variant, "walk-p", dir8, dir8 % 2 ? dir8 - 1 : dir8)).toEqual({ pose: "walk-p", dir8, bright: false });
+  // Only a build without that art falls back to the standing frame.
+  expect(antWalkFrame((key) => BASE.includes(key), "hope", "walk-p", 2, 2).pose).toBe("idle");
   // The body is lowest in the middle of a stride frame and highest as the feet pass.
   expect(walkLift(WALK_PHASE * .5)).toBeCloseTo(0); expect(walkLift(WALK_PHASE * 1.5)).toBeCloseTo(1); expect(walkLift(WALK_PHASE * 2.5)).toBeCloseTo(0);
 });
@@ -367,7 +383,7 @@ test("wall gazers look up about half the time, a few seconds at a go, each on it
   for (const [count, e] of [[20, env()], [12, env({ restless: true })], [20, env({ hopeful: true })]] as const) {
     const crowd = createCrowd(5); crowd.sync(count, e);
     let gazing = 0, up = 0, together = 0, longest = 0, flips = 0, stray = 0;
-    const held = crowd.ants.map(() => 0); let before = crowd.ants.map((a) => `${a.state}.${a.pose}`);
+    const held = crowd.ants.map(() => 0), tilting = crowd.ants.map(() => 0); let before = crowd.ants.map((a) => `${a.state}.${a.pose}`), nods = 0, badNod = 0;
     run(crowd, 240, e, () => {
       let moved = 0;
       crowd.ants.forEach((a, i) => {
@@ -377,12 +393,18 @@ test("wall gazers look up about half the time, a few seconds at a go, each on it
         // A head move: the same stand, the other pose.
         if (a.state === "gaze" && before[i].startsWith("gaze.") && before[i] !== `gaze.${a.pose}`) moved++;
         held[i] = a.pose === "look" ? held[i] + DT : 0; longest = Math.max(longest, held[i]);
+        // The in-between starts with the head move and is over in NOD seconds.
+        const changed = a.state === "gaze" && before[i].startsWith("gaze.") && before[i] !== `gaze.${a.pose}`;
+        if (changed) { nods++; if (a.nod !== NOD) badNod++; }
+        if (a.nod > NOD || a.nod < 0 || (a.nod > 0 && a.state !== "gaze")) badNod++;
+        tilting[i] = a.state === "gaze" && a.nod > 0 ? tilting[i] + DT : 0; if (tilting[i] > NOD + DT + EPS) badNod++;
       });
       if (moved) flips++; if (moved >= Math.max(4, count / 4)) together++;
       before = crowd.ants.map((a) => `${a.state}.${a.pose}`);
     });
     note(`${count} ants${e.restless ? " restless" : e.hopeful ? " hopeful" : ""}: looking up ${(up / gazing * 100).toFixed(1)}% of gaze time, longest ${longest.toFixed(1)} s, ${flips} head moves`);
     expect(stray).toBe(0);
+    expect(nods).toBeGreaterThan(count * 5); expect(badNod).toBe(0);
     expect(up / gazing).toBeGreaterThan(.38); expect(up / gazing).toBeLessThan(.62);
     expect(longest).toBeGreaterThan(3); expect(longest).toBeLessThanOrEqual(6 + DT + EPS);
     expect(flips).toBeGreaterThan(count * 5);
@@ -403,20 +425,40 @@ test("a hopeful index takes fewer phones out and changes nothing else about the 
 test("looking up and the bright faces resolve to their own art and fall back without changing costume or direction", () => {
   const pick = (variant: AntVariant, pose: AntPose, dir8: number, dir4: number, bright = false, keys?: string[]) => antFrameCandidates(variant, pose, dir8, dir4, 0, bright).find((c) => keys ? keys.includes(c.key) : hasArt(c.key))!;
   for (const variant of ["neutral", "fear", "hope"] as const) for (const dir of [3, 4, 5]) {
-    expect(pick(variant, "look", dir, 4)).toEqual({ key: `${variant}.look.${ANT_DIRS[dir]}`, mirror: false, posed: true });
+    // The scarf ant's back-left look-up is its back-right one mirrored (the drawn back-left had fist and scarf on the wrong sides).
+    expect(pick(variant, "look", dir, 4)).toEqual(variant === "hope" && dir === 3 ? { key: "hope.look.br", mirror: true, posed: true } : { key: `${variant}.look.${ANT_DIRS[dir]}`, mirror: false, posed: true });
     // Without the art: the same ant's level gaze in the same direction.
     expect(pick(variant, "look", dir, 4, false, Object.keys(ATLAS).filter((key) => !key.includes(".look.")))).toEqual({ key: `${variant}.idle.${ANT_DIRS[dir]}`, mirror: false, posed: false });
     expect(pick(variant, "look", dir, 4, true, BASE)?.key).toBe(`${variant}.idle.b`);
   }
   for (const variant of ["neutral", "hope"] as const) {
     for (const pose of ["idle", "walk-a", "walk-b", "walk-p"] as const) for (const dir of [0, 2, 4, 6]) expect(pick(variant, pose, dir, dir, true).key).toBe(`${variant}-bright.${pose}.${ANT_DIRS[dir]}`);
-    for (const dir of [3, 4, 5]) expect(pick(variant, "look", dir, 4, true).key).toBe(`${variant}-bright.look.${ANT_DIRS[dir]}`);
+    for (const dir of [3, 4, 5]) expect(pick(variant, "look", dir, 4, true)).toMatchObject(variant === "hope" && dir === 3 ? { key: "hope-bright.look.br", mirror: true } : { key: `${variant}-bright.look.${ANT_DIRS[dir]}`, mirror: false });
     // No bright art: the plain frame of the same pose and direction, not a bright frame of another one.
     for (const dir of [1, 3, 5, 7]) expect(pick(variant, "idle", dir, dir - 1, true).key).toBe(`${variant}.idle.${ANT_DIRS[dir]}`);
-    for (const dir of [0, 2, 4, 6]) expect(pick(variant, "phone", dir, dir, true).key).toBe(`${variant}.phone.${ANT_DIRS[dir]}`);
+    // On the phone a bright ant has its own art, and its "sigh" is the relieved pose, never the dull sigh or phone frame.
+    for (const dir of [0, 2, 4, 6]) for (const pose of ["phone", "sigh"] as const) {
+      expect(pick(variant, pose, dir, dir, true)).toMatchObject({ key: `${variant}-bright.${pose}.${ANT_DIRS[dir]}`, posed: true });
+      expect(pick(variant, pose, dir, dir, false).key).toBe(`${variant}.${pose}.${ANT_DIRS[dir]}`);
+      // Without the bright phone art: the plain frame of the same pose and direction.
+      expect(pick(variant, pose, dir, dir, true, Object.keys(ATLAS).filter((key) => !/-bright\.(phone|sigh)\./.test(key))).key).toBe(`${variant}.${pose}.${ANT_DIRS[dir]}`);
+    }
     // Not bright: never a bright frame.
     for (const pose of ["idle", "walk-a", "walk-b", "walk-p", "phone", "sigh", "look"] as const) for (let dir = 0; dir < 8; dir++) expect(antFrameCandidates(variant, pose, dir, dir % 2 ? dir - 1 : dir).some((c) => c.key.includes("-bright"))).toBe(false);
   }
+  // The in-between of a head move: only for a gazer, only for NOD seconds, only where that exact art exists (straight back view).
+  const gazer = (dir8: number, pose: AntPose, nod: number, state: "gaze" | "walk" = "gaze") => ({ state, pose, nod, dir8 });
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const pose of ["idle", "look"] as const) {
+    expect(antGazePose(hasArt, variant, gazer(4, pose, NOD))).toBe("tilt");
+    expect(antGazePose(hasArt, variant, gazer(4, pose, 0))).toBe(pose);
+    for (const dir of [3, 5]) expect(antGazePose(hasArt, variant, gazer(dir, pose, NOD))).toBe(pose);
+    expect(antGazePose((key) => BASE.includes(key), variant, gazer(4, pose, NOD))).toBe(pose);
+    expect(pick(variant, "tilt", 4, 4)).toEqual({ key: `${variant}.tilt.b`, mirror: false, posed: true });
+    expect(pick(variant, "tilt", 4, 4, variant !== "fear").key).toBe(`${variant === "fear" ? "fear" : `${variant}-bright`}.tilt.b`);
+  }
+  expect(antGazePose(hasArt, "neutral", gazer(4, "walk-a", NOD, "walk"))).toBe("walk-a");
+  // Looking up from straight behind is its own picture in every costume: not the level gaze, not the in-between.
+  for (const variant of ["neutral", "fear", "hope"] as const) for (const bright of [false, true]) expect(new Set((["idle", "tilt", "look"] as const).map((pose) => pick(variant, pose, 4, 4, bright).key)).size).toBe(3);
   // The fear ant has no bright form.
   for (const pose of ["idle", "walk-a", "walk-b", "walk-p", "phone", "sigh", "look"] as const) for (let dir = 0; dir < 8; dir++) expect(antFrameCandidates("fear", pose, dir, dir % 2 ? dir - 1 : dir, 1, true)).toEqual(antFrameCandidates("fear", pose, dir, dir % 2 ? dir - 1 : dir, 1));
 });
@@ -436,8 +478,8 @@ test("a bright ant keeps one face, one costume and one direction through a walk 
     expect(new Set(keys).size, label).toBe(3);
     expect(new Set(keys.map((key) => key.split(".")[0])).size, label).toBe(1);
     expect(new Set(keys.map((key) => key.split(".")[2])).size, label).toBe(1);
-    // Toward the camera and sideways the bright face shows; a neutral ant heading away on a diagonal keeps its plain diagonal walk.
-    expect(keys[0].split(".")[0], label).toBe(variant === "neutral" && (dir8 === 3 || dir8 === 5) ? "neutral" : `${variant}-bright`);
+    // Toward the camera and sideways the bright face shows; heading away on a diagonal (face hidden) the ant keeps its plain diagonal walk.
+    expect(keys[0].split(".")[0], label).toBe(dir8 === 3 || dir8 === 5 ? variant : `${variant}-bright`);
   }
   for (const variant of ["neutral", "hope"] as const) for (const lean of [-1, 1]) expect(antFrameCandidates(variant, "idle", 0, 0, lean, true)[0]).toEqual({ key: `${variant}-bright.idle.f`, mirror: lean < 0, posed: true });
   // Fear walks exactly as before under a hopeful index.

@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { prepareWorld } from "./world-fixture";
 
@@ -54,16 +55,20 @@ test("split is default; unified retains scope, shows neutral and original URLs",
   await expect(detail.locator(".feed-sentiment-chip")).toHaveCount(0);
 });
 
-test("unified rows keep their tint readable in every theme", async ({ page }) => {
-  test.setTimeout(90_000);
+// Every theme, on the world dialog and on /classic: unified rows show a painted left bar, a row tint and a coloured chip, and the title stays readable on the tint.
+for (const [place, path] of [["world dialog", "/?feed=1&"], ["classic page", "/classic?"]] as const) test(`unified rows keep bar, tint, chip and a readable title in every theme (${place})`, async ({ page }, info) => {
+  test.setTimeout(150_000);
   await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const report: Record<string, unknown> = {};
   for (const theme of ["light", "dark", "excel-light", "excel-dark", "docs-light", "docs-dark", "vscode-light", "vscode-dark"]) {
-    await page.goto(`/?feed=1&theme=${theme}`);
-    const detail = panel(page);
-    await detail.getByRole("button", { name: "통합 보기", exact: true }).click();
-    await expect(detail.locator(".feed-unified-list .sentiment-card").first()).toBeVisible(); await page.mouse.move(2, 2);
+    await page.goto(`${path}theme=${theme}`);
+    const scope = place === "world dialog" ? panel(page) : page.locator("main");
+    await scope.getByRole("button", { name: "통합 보기", exact: true }).click();
+    const list = scope.locator(".feed-unified-list");
+    await expect(list.locator(".sentiment-card").first()).toBeVisible(); await page.mouse.move(2, 2);
     // Contrast of the title against the row as painted (the tint composited over whatever lies behind it).
-    const rows = await detail.locator(".feed-unified-list").evaluate((list) => {
+    const rows = await list.evaluate((list) => {
       const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
       const rgba = (value: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1); const d = context.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
       const painted = (node: Element) => {
@@ -73,13 +78,44 @@ test("unified rows keep their tint readable in every theme", async ({ page }) =>
       };
       const luminance = (c: number[]) => { const f = (v: number) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
       return ["fear", "hope", "neutral"].map((tone) => {
-        const card = list.querySelector(`.sentiment-card[data-sentiment="${tone}"]`)!, row = painted(card), ink = luminance(rgba(getComputedStyle(card.querySelector(".sentiment-title")!).color)), back = luminance(row);
-        return { row: row.map(Math.round).join(","), contrast: (Math.max(ink, back) + .05) / (Math.min(ink, back) + .05) };
+        const card = list.querySelector(`.sentiment-card[data-sentiment="${tone}"]`)!, row = painted(card), chip = card.querySelector(".feed-sentiment-chip")!;
+        const ink = luminance(rgba(getComputedStyle(card.querySelector(".sentiment-title")!).color)), back = luminance(row);
+        return { tone, row: row.map(Math.round), chip: getComputedStyle(chip).color, label: chip.textContent, contrast: (Math.max(ink, back) + .05) / (Math.min(ink, back) + .05) };
       });
     });
-    expect(new Set(rows.map((row) => row.row)).size, theme).toBe(3);
-    for (const row of rows) expect(row.contrast, `${theme} ${row.row}`).toBeGreaterThanOrEqual(4.5);
+    // The bar is read from the screenshot, so it counts only when it is really painted (border, inset shadow or pseudo-element alike).
+    const bars: { tone: string; color: number[]; width: number }[] = [];
+    for (const row of rows) {
+      const card = list.locator(`.sentiment-card[data-sentiment="${row.tone}"]`).first();
+      await card.scrollIntoViewIfNeeded(); await page.mouse.move(2, 2);
+      const box = (await card.boundingBox())!;
+      const shot = await page.screenshot({ clip: { x: Math.round(box.x), y: Math.round(box.y + box.height / 2), width: 8, height: 1 } });
+      const pixels = await page.evaluate(async (base64) => {
+        const bitmap = await createImageBitmap(new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], { type: "image/png" }));
+        const context = document.createElement("canvas").getContext("2d")!; context.drawImage(bitmap, 0, 0);
+        const d = context.getImageData(0, 0, 8, 1).data; return Array.from({ length: 8 }, (_, i) => [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]);
+      }, shot.toString("base64"));
+      const far = (a: number[], b: number[]) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+      const solid = pixels.filter((pixel) => far(pixel, row.row) >= 24);
+      bars.push({ tone: row.tone, color: solid[Math.min(1, solid.length - 1)] ?? row.row, width: solid.length });
+    }
+    report[theme] = { rows, bars };
+    const far = (a: number[], b: number[]) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+    expect.soft(rows.map((row) => row.label), theme).toEqual(["공포", "희망", "중립"]);
+    expect.soft(new Set(rows.map((row) => row.row.join())).size, `${theme} tint`).toBe(3);
+    expect.soft(new Set(rows.map((row) => row.chip)).size, `${theme} chip`).toBe(3);
+    for (const bar of bars) expect.soft(bar.width, `${theme} ${bar.tone} bar width`).toBeGreaterThanOrEqual(3);
+    for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) expect.soft(far(bars[a].color, bars[b].color), `${theme} bar ${bars[a].tone}/${bars[b].tone}`).toBeGreaterThanOrEqual(24);
+    for (const row of rows) expect.soft(row.contrast, `${theme} ${row.tone} title on ${row.row}`).toBeGreaterThanOrEqual(4.5);
+    await list.locator(".sentiment-card").first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: info.outputPath(`unified-${theme}.png`) });
+    // Split lanes stay plain in every theme: no sentiment bar (border or inset shadow), no chip.
+    await scope.getByRole("button", { name: "좌우 보기", exact: true }).click();
+    const lane = await scope.locator("#fear-lane .sentiment-card").first().evaluate((card) => { const style = getComputedStyle(card); return { shadow: style.boxShadow, border: parseFloat(style.borderLeftWidth) }; });
+    expect.soft(lane.shadow, `${theme} split lane`).not.toContain("4px"); expect.soft(lane.border, `${theme} split lane`).toBeLessThan(3);
+    await expect.soft(scope.locator(".feed-sentiment-chip"), `${theme} split lane`).toHaveCount(0);
   }
+  const file = info.outputPath("unified-themes.json"); await writeFile(file, JSON.stringify(report, null, 1)); await info.attach("unified-themes", { path: file, contentType: "application/json" });
 });
 
 for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pierrot remain visible at ${width}px`, async ({ page }, info) => {

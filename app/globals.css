@@ -4887,9 +4887,9 @@ div.goksorry-room-list-status {
 .feed-scope-summary { font-size:14px; line-height:1.7; }
 .sentiment-card-neutral { border-color:var(--line); }
 /* Unified list: sentiment is a left bar + row tint + coloured chip (the chip text stays the non-colour cue). Split lanes are untouched. */
-.feed-unified-list .sentiment-card { border-left:4px solid var(--line); padding-left:0.6rem; padding-right:0.4rem; }
-.feed-unified-list .sentiment-card[data-sentiment=fear] { border-left-color:var(--danger); background:var(--fear-bg); }
-.feed-unified-list .sentiment-card[data-sentiment=hope] { border-left-color:var(--hope); background:var(--hope-bg); }
+.feed-unified-list .sentiment-card { --feed-bar:var(--line); border-left:4px solid var(--feed-bar); padding-left:0.6rem; padding-right:0.4rem; }
+.feed-unified-list .sentiment-card[data-sentiment=fear] { --feed-bar:var(--danger); border-left-color:var(--feed-bar); background:var(--fear-bg); }
+.feed-unified-list .sentiment-card[data-sentiment=hope] { --feed-bar:var(--hope); border-left-color:var(--feed-bar); background:var(--hope-bg); }
 .feed-unified-list .sentiment-card[data-sentiment=fear]:hover { background:color-mix(in srgb, var(--fear-bg) 86%, var(--danger)); }
 .feed-unified-list .sentiment-card[data-sentiment=hope]:hover { background:color-mix(in srgb, var(--hope-bg) 86%, var(--hope)); }
 /* VS Code themes define no --fear-bg / --hope-bg (the dark one would inherit the light tints) and their editor shell clears row backgrounds: tint from the theme's own colours, like diff lines. */
@@ -4898,6 +4898,17 @@ div.goksorry-room-list-status {
 /* On the editor page the titles are link-blue on the row itself, so the tint stays lighter there. */
 :root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=fear] { background:color-mix(in srgb, var(--danger) 9%, transparent) !important; }
 :root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=hope] { background:color-mix(in srgb, var(--hope) 9%, transparent) !important; }
+/* The Excel and VS Code page shells strip row borders (cells / editor lines), so the bar is an inset shadow there. The neutral bar is darker than a grid line so it does not read as one. */
+.theme-shell-excel .feed-unified-list .sentiment-card,
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card { --feed-bar:color-mix(in srgb, var(--muted) 62%, var(--line)); }
+.theme-shell-excel .feed-unified-list .sentiment-card[data-sentiment=fear],
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=fear] { --feed-bar:var(--danger); }
+.theme-shell-excel .feed-unified-list .sentiment-card[data-sentiment=hope],
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card[data-sentiment=hope] { --feed-bar:var(--hope); }
+.theme-shell-excel .feed-unified-list .sentiment-card { border-left:0; box-shadow:inset 4px 0 0 var(--feed-bar), inset 0 0 0 1px var(--excel-cell-line); }
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card { box-shadow:inset 4px 0 0 var(--feed-bar) !important; padding-left:1.5ch !important; }
+/* Editor-page titles are accent-blue links (3.0-4.5:1 on these rows); inside unified rows they take the theme's stronger link blue. */
+:root[data-theme-shell=vscode] .theme-shell-page .feed-unified-list .sentiment-card .sentiment-title { color:var(--brand-strong) !important; }
 .feed-sentiment-chip { font-weight:700; color:color-mix(in srgb, var(--muted) 70%, var(--ink)); }
 .feed-sentiment-chip[data-sentiment=fear] { color:color-mix(in srgb, var(--danger) 72%, var(--ink)); border-color:var(--danger); }
 .feed-sentiment-chip[data-sentiment=hope] { color:color-mix(in srgb, var(--hope) 72%, var(--ink)); border-color:var(--hope); }

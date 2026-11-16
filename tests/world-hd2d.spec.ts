@@ -3,6 +3,7 @@ import { prepareWorld, requireWebGL2 } from "./world-fixture";
 import { writeFile, mkdir } from "node:fs/promises";
 import { buildWorldFrame } from "../lib/world";
 import type { RenderMetrics } from "../components/world/hd2d-renderer";
+import antAtlas from "../components/world/ant-atlas.json";
 
 test("HD2D art capture", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
@@ -139,4 +140,118 @@ test("the visitor's walk alternates both strides through a feet-together frame, 
     // Side-view strides look alike, so they must never follow each other directly.
     seen.forEach((frame, i) => { if (i && /walk-[ab]/.test(frame)) expect(seen[i - 1], `${url}: ${seen.join(" ")}`).not.toMatch(/walk-[ab]/); });
   }
+});
+
+// Distance on the floor per step against the feet as they are drawn. The spread is measured here from the atlas image (the
+// centres of the two ground contacts of each side-view stride frame the walk showed) and scaled by the size the renderer
+// drew the sprite at, so it does not depend on the renderer's own step constant.
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) test(`the visitor's step covers the drawn foot spread and each pose lasts long enough to be seen (${viewport.width}x${viewport.height})`, async ({ page }) => {
+  await page.setViewportSize(viewport); await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
+  await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
+  await expect.poll(async () => (await wallMetrics(page)).settled).toBe(true);
+  await page.locator("canvas").focus();
+  const WALK = 5000;
+  const sampling = page.locator("canvas").evaluate((node, span) => new Promise<{ t: number; x: number; frame: string; unit: number }[]>((resolve) => {
+    const metrics = (node as WallCanvas).worldMetrics, seen: { t: number; x: number; frame: string; unit: number }[] = [], start = performance.now();
+    const tick = (now: number) => { const v = metrics.visitor(); seen.push({ t: now - start, x: v.x, frame: v.frame, unit: v.unit }); if (now - start < span) requestAnimationFrame(tick); else resolve(seen); };
+    requestAnimationFrame(tick);
+  }), WALK);
+  // Each press walks one unit further, so pressing faster than a unit takes keeps the visitor walking without a stop.
+  for (const end = Date.now() + WALK; Date.now() < end;) { await page.keyboard.press("ArrowRight"); await page.waitForTimeout(120); }
+  const seen = await sampling, size = await page.locator("canvas").evaluate((node) => (node as WallCanvas).worldMetrics.antSize);
+  expect(size).toBeCloseTo(viewport.width > 1000 ? 1 : .6, 1);
+  // Whole cycles: from one start of the first stride frame to a later one.
+  const starts = seen.filter((s, i) => i > 0 && /walk-a/.test(s.frame) && !/walk-a/.test(seen[i - 1].frame));
+  expect(starts.length).toBeGreaterThanOrEqual(4);
+  const first = starts[1], last = starts[starts.length - 1], cycles = starts.length - 2;
+  const step = (last.x - first.x) / cycles / 2, pose = (last.t - first.t) / cycles / 4, speed = (last.x - first.x) / (last.t - first.t) * 1000;
+  const strides = [...new Set(seen.map((s) => s.frame.replace("~", "")).filter((frame) => /walk-[ab]\.[lr]$/.test(frame)))];
+  expect(strides.length).toBe(2);
+  const spreadPx = await page.evaluate(async ({ src, rects }) => {
+    const image = new Image(); image.src = src; await image.decode();
+    const c = document.createElement("canvas"); c.width = image.width; c.height = image.height;
+    const ctx = c.getContext("2d", { willReadFrequently: true })!; ctx.drawImage(image, 0, 0);
+    return rects.map(([x, y, w, h]) => {
+      // Columns that touch the ground (the lowest 5% of the frame, above its 2px margin), grouped into the two feet.
+      const band = Math.floor(h * .05) + 1, data = ctx.getImageData(x, y + h - 2 - band, w, band).data, feet: number[][] = [];
+      for (let col = 0; col < w; col++) {
+        let solid = false; for (let row = 0; row < band && !solid; row++) solid = data[(row * w + col) * 4 + 3] > 89;
+        if (!solid) continue;
+        const foot = feet[feet.length - 1]; if (foot && col - foot[1] <= 3) foot[1] = col; else feet.push([col, col]);
+      }
+      return feet.length < 2 ? 0 : (feet[feet.length - 1][0] + feet[feet.length - 1][1]) / 2 - (feet[0][0] + feet[0][1]) / 2;
+    });
+  }, { src: antAtlas.image, rects: strides.map((key) => (antAtlas.frames as Record<string, number[]>)[key]) });
+  for (const px of spreadPx) expect(px).toBeGreaterThan(40);
+  const unit = last.unit, spread = spreadPx.reduce((sum, px) => sum + px, 0) / spreadPx.length * unit;
+  expect(unit).toBeGreaterThan(0);
+  const note = `step ${step.toFixed(3)}, drawn spread ${spread.toFixed(3)} (${spreadPx.map((px) => px.toFixed(1)).join(" / ")} px), pose ${pose.toFixed(0)} ms, speed ${speed.toFixed(2)}, antSize ${size.toFixed(3)}`;
+  // A step is as long as the feet are apart: neither sliding forward (the old run was 1.4x to 2.3x) nor treading on the spot.
+  expect(step / spread, note).toBeGreaterThan(.88); expect(step / spread, note).toBeLessThan(1.12);
+  // Every pose stays up for two rendered frames even at 19 fps (105 ms), and the ant still crosses the floor at a brisk pace.
+  expect(pose, note).toBeGreaterThanOrEqual(100);
+  expect(speed / size, note).toBeGreaterThan(2.2);
+});
+
+test("the zoomed phone view follows the visitor across wall sections and never loses it", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
+  await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
+  const root = page.locator(".world-root"), canvas = page.locator("canvas");
+  await expect(root).toHaveAttribute("data-wall-section", "1");
+  await expect.poll(async () => (await wallMetrics(page)).settled).toBe(true);
+  expect((await wallMetrics(page)).pan).toBe(0); // the visitor starts in the middle section, framed as it always was
+  const visitor = () => canvas.evaluate((node) => (node as WallCanvas).worldMetrics.visitor());
+  // Records, on every animation frame until stopped: the visitor's screen x and half sprite width, the largest pan, and
+  // each change of the section indicator with the floor x the visitor had reached.
+  type Watch = { min: number; max: number; half: number; pan: number; changes: { section: string; x: number }[]; on: boolean };
+  const watch = () => canvas.evaluate((node) => {
+    const metrics = (node as WallCanvas).worldMetrics, rootNode = document.querySelector<HTMLElement>(".world-root")!;
+    const log: Watch = { min: Infinity, max: -Infinity, half: 0, pan: 0, changes: [], on: true };
+    (window as unknown as { visitorWatch: Watch }).visitorWatch = log;
+    const tick = () => {
+      const v = metrics.visitor(), section = rootNode.dataset.wallSection ?? "";
+      log.min = Math.min(log.min, v.sx); log.max = Math.max(log.max, v.sx); log.half = Math.max(log.half, v.sh * .35); log.pan = Math.max(log.pan, Math.abs(metrics.wall!.pan));
+      if (log.changes[log.changes.length - 1]?.section !== section) log.changes.push({ section, x: v.x });
+      if (log.on) requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  const stop = () => page.evaluate(() => { const log = (window as unknown as { visitorWatch: Watch }).visitorWatch; log.on = false; return log; });
+  const hold = async (key: string, until: (x: number) => boolean) => {
+    await canvas.focus();
+    await expect.poll(async () => { await page.keyboard.press(key); return until((await visitor()).x); }, { intervals: [120], timeout: 30_000 }).toBe(true);
+  };
+  // Right across the border at x = 3.5 into the feed section, left across both borders to the far section, and back to the middle.
+  await watch();
+  await hold("ArrowRight", (x) => x >= 6.5);
+  await expect(root).toHaveAttribute("data-wall-section", "2");
+  await hold("ArrowLeft", (x) => x <= -6.5);
+  await expect(root).toHaveAttribute("data-wall-section", "0");
+  await expect(page.locator('.world-wall-arrow[data-dir="left"]')).toHaveAttribute("aria-disabled", "true");
+  await hold("ArrowRight", (x) => x >= 0);
+  await expect(root).toHaveAttribute("data-wall-section", "1");
+  const walked = await stop(), note = JSON.stringify(walked);
+  // The whole sprite (about .35 of its height to either side of its middle) stayed on the 390px canvas the whole way,
+  // which took framing some of the floor off the section's centre.
+  expect(walked.min - walked.half, note).toBeGreaterThanOrEqual(0); expect(walked.max + walked.half, note).toBeLessThanOrEqual(390);
+  expect(walked.pan, note).toBeGreaterThan(1);
+  // One change per border crossing, never flapping back, and each only once the visitor is .4 past the border (x = ±3.5):
+  // walking right the border trips later than walking left, so an ant standing on a border keeps its section.
+  expect(walked.changes.map((change) => change.section), note).toEqual(["1", "2", "1", "0", "1"]);
+  const [, toFeed, back, toMarket, home] = walked.changes.map((change) => change.x);
+  expect(toFeed, note).toBeGreaterThanOrEqual(3.9); expect(back, note).toBeLessThanOrEqual(3.1);
+  expect(toMarket, note).toBeLessThanOrEqual(-3.9); expect(home, note).toBeGreaterThanOrEqual(-3.1);
+  for (const x of [toFeed, back, toMarket, home]) expect(Math.abs(Math.abs(x) - 3.5), note).toBeLessThan(.9); // and not much later than that
+  await expect.poll(async () => (await visitor()).state).toBe("idle");
+  // The section buttons still choose a section by hand; the view then leaves the visitor...
+  await page.locator('.world-wall-arrow[data-dir="right"]').click();
+  await expect(root).toHaveAttribute("data-wall-section", "2");
+  await expect.poll(async () => { const wall = await wallMetrics(page); return wall.settled && !wall.follow && wall.pan === 0 && wall.rects.feed.x >= 0 && wall.rects.feed.x + wall.rects.feed.width <= 390; }).toBe(true);
+  expect((await visitor()).sx).toBeLessThan(0);
+  // ...until the visitor is moved again: the view comes back to the section it stands in.
+  await canvas.focus(); await page.keyboard.press("ArrowRight");
+  await expect(root).toHaveAttribute("data-wall-section", "1");
+  await expect.poll(async () => { const wall = await wallMetrics(page), me = await visitor(); return wall.follow && wall.settled && me.sx > 0 && me.sx < 390; }).toBe(true);
 });

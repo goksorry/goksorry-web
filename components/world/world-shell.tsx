@@ -179,7 +179,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className={plaza ? "sr-only" : undefined}>{info.title}</h1></div>
-      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene}>
+      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} wall={plaza ? wall : null} view={view} styleKey={`${themeId}|${dark}`} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>

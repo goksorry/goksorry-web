@@ -2,16 +2,22 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
-import { WALK_PHASE, antFrameCandidates, antWalkFrame, createCrowd, facing8, leanOf, walkLift, walkPose, type AntPose, type AntVariant } from "@/lib/world-crowd";
+import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdView } from "@/lib/world-crowd";
 import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
-import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallTextPanelId, type WallView } from "@/lib/world-wall";
+import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallSection, type WallTextPanelId, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
 import antAtlas from "./ant-atlas.json";
 
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean };
-export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number };
+export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
+  /** Zoomed section view only: whether the frame is following the visitor (see FOLLOW_KEEP), and how far it is panned off the section's centre for it (world units). */
+  follow: boolean; pan: number };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null;
+  /** Atlas image this renderer loaded: the full one or the reduced copy for small screens. */
+  atlas: string;
+  /** Breath puffs drawn in the last frame (one per ant in the middle of a sigh; none for the relieved pose of a hopeful index). */
+  puffs: number;
   /** Sprite scale of this frame (see ANT_VIEW): 1 on wide views, down to ANT_SMALL on a zoomed phone view. */
   antSize: number;
   /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
@@ -20,8 +26,9 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   crowd: () => AntMetric[];
   /** The visitor's ant, in every scene. */
   visitor: () => AntMetric };
-/** `frame` is the atlas frame drawn last ("key", or "key~" when mirrored; empty outside the plaza); `sh` is the sprite's height on screen in CSS px. */
-export type AntMetric = Point & { state: string; dir: number; sx: number; sy: number; sh: number; frame: string };
+/** `frame` is the atlas frame drawn last ("key", or "key~" when mirrored; empty outside the plaza); `sh` is the sprite's height on screen in CSS px;
+ * `unit` is the size it was drawn at, in world units per atlas pixel (so a length measured in the art times `unit` is a length on the floor). */
+export type AntMetric = Point & { state: string; dir: number; sx: number; sy: number; sh: number; frame: string; unit: number };
 export type WorldRenderer = {
   update: (state: RenderState) => void;
   setView: (view: WallView) => void;
@@ -41,6 +48,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   panels?: (rects: Record<WallPanelId, WallRect> | null) => void;
   avatar?: (x: number, y: number, position: Point) => void;
   step?: () => void;
+  /** The zoomed section view wants to show another wall section because the visitor walked into it. The owner of the view answers with setView. */
+  section?: (section: WallSection) => void;
   failure?: () => void;
 } = {}): Promise<WorldRenderer> {
   let state = initial;
@@ -66,8 +75,17 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const materials: THREE.Material[] = [];
   const geometry: THREE.BufferGeometry[] = [];
   const loader = new THREE.TextureLoader();
+  // The atlas comes in two sizes with the same layout (frames are addressed in fractions of the image). The reduced one
+  // is two thirds of the full one: enough wherever an ant is drawn at no more than two thirds of a framebuffer pixel
+  // per atlas pixel. Measured for the visitor, the largest sprite, standing mid-floor: .55 on a 390 px wide portrait
+  // phone at pixel ratio 2 (.00071 x the framebuffer width) and .51 on a 1440 px wide whole-wall view (.00036 x). So the
+  // reduced atlas serves screens up to 860 by 1900 device pixels (pixel ratio capped at 2 as in resize()): phones in
+  // either orientation, not tablets or desktops. It is decided once from the screen, not the window, so resizing never
+  // needs a second download.
+  const small = (antAtlas as { small?: { image: string } }).small, ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const atlasImage = small && Math.min(screen.width, screen.height) * ratio <= 860 && Math.max(screen.width, screen.height) * ratio <= 1900 ? small.image : antAtlas.image;
   let source: THREE.Texture, atlas: THREE.Texture;
-  try { [source, atlas] = await Promise.all((["/world/materials.png", antAtlas.image]).map((url) => loader.loadAsync(url).then((t) => { textures.push(t); return t; }))); }
+  try { [source, atlas] = await Promise.all((["/world/materials.png", atlasImage]).map((url) => loader.loadAsync(url).then((t) => { textures.push(t); return t; }))); }
   catch (error) { textures.forEach((t) => t.dispose()); renderer.dispose(); throw error; }
   for (const texture of textures) { texture.colorSpace = THREE.SRGBColorSpace; texture.magFilter = THREE.NearestFilter; texture.minFilter = THREE.NearestFilter; texture.generateMipmaps = false; }
   const tile = (column: number, row: number, repeat = 1) => {
@@ -206,7 +224,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const shadowGeometry = new THREE.CircleGeometry(.46, 12); geometry.push(shadowGeometry);
   const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x04090d, transparent: true, opacity: .36, depthWrite: false }); materials.push(shadowMaterial);
   const shadows = new THREE.InstancedMesh(shadowGeometry, shadowMaterial, 48); shadows.instanceMatrix.setUsage(THREE.DynamicDrawUsage); shadows.frustumCulled = false; scene.add(shadows);
-  // Plaza cues: a phone screen (only when the phone pose had to fall back to a frame without a phone) and the breath of a sigh.
+  // Plaza cues: a phone screen (only when the phone pose had to fall back to a frame without a phone) and the breath of a sigh
+  // (not of the relieved pose that replaces the sigh while the index is hopeful).
   const cueCanvas = document.createElement("canvas"); cueCanvas.width = 32; cueCanvas.height = 16;
   const cueContext = cueCanvas.getContext("2d")!;
   cueContext.fillStyle = "#c9f2ea"; cueContext.fillRect(0, 0, 16, 16); cueContext.fillStyle = "#86d3c8"; cueContext.fillRect(2, 2, 12, 12);
@@ -231,18 +250,25 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     let frame = frameMemo.get(id);
     if (!frame) {
       const found = antFrameCandidates(variant, pose, dir8, dir4, lean, bright).find((candidate) => FRAMES[candidate.key]);
-      frame = found ? { rect: FRAMES[found.key]!, mirror: found.mirror, posed: found.posed, key: found.key } : { rect: [...antAtlas.cells[0][0], 1, antAtlas.cells[0][0][2] / 2], mirror: false, posed: false, key: "neutral.idle.f" };
+      frame = found ? { rect: FRAMES[found.key]!, mirror: found.mirror, posed: found.posed, key: found.key } : { rect: FRAMES["neutral.idle.f"]!, mirror: false, posed: false, key: "neutral.idle.f" };
       frameMemo.set(id, frame);
     }
     return frame;
   };
+  // The other scenes pose their ants from the base sheet's grid: five rows, four directions.
+  const BASE_ROWS = ["neutral.idle", "neutral.walk-a", "neutral.walk-b", "fear.idle", "hope.idle"], BASE_DIRS = ["f", "l", "r", "b"];
   const crowd = createCrowd();
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], lastTime = 0, lastRender = 0, disposed = false;
   let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1, visitorStride = 0;
-  // The visitor runs (3 units a second), so its stride is longer than the crowd's walk.
-  const VISITOR_PHASE = .36;
+  // The visitor is drawn a little larger than the crowd. Its walk is tied to that drawing: one step (a stride frame and the
+  // passing frame after it) covers the distance between the two planted feet of the stride art, so the feet do not slide.
+  // VISITOR_FEET is that distance in atlas pixels, measured between the centres of the two ground contacts of the side-view
+  // stride frames (neutral walk-a 69 px, walk-b 82 px; the bright set is 71 and 83). On the floor it is .52 at full size.
+  // The speed scales with the sprite too, so every pose lasts VISITOR_STEP / 2 / VISITOR_SPEED = 108 ms at any size: two
+  // rendered frames at 19 fps, three at 30. A faster ant would need shorter poses, which a slow device skips ("legs do not move").
+  const VISITOR_SCALE = 1.12 * 1.45 / 235, VISITOR_FEET = 75.6, VISITOR_STEP = VISITOR_FEET * VISITOR_SCALE, VISITOR_SPEED = 2.4;
   // Sprites are sized for a frame that shows the whole wall. A phone's portrait frame shows a third of that width at the
   // same pixels per unit, so the same ants would fill the screen: below ANT_VIEW world units of visible width they
   // shrink in proportion, down to ANT_SMALL. It follows the eased lens, so zooming in and out resizes smoothly.
@@ -258,16 +284,42 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // Eased camera frame; `fit` is the target.
   const lens = { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
   let viewDirty = true, snap = true, rectKey = "";
-  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, antSize: 1, band: "neutral", bright: false,
+  // Zoomed section view (portrait phones): the frame follows the visitor, because one section shows only about 5 of the
+  // floor's 19 units. While `follow` is on, (1) the framed section becomes the one the visitor stands in: it changes once
+  // the visitor is FOLLOW_KEEP past the border between two sections, so standing on a border does not flap; and (2) the
+  // frame pans off the section's centre just far enough to keep the visitor inside the visible floor (FOLLOW_EDGE more
+  // than the crowd's own margin from the frame edge, which covers the lag of the eased lens and the name label). Near a
+  // section's centre the pan is zero and the section is framed exactly as before.
+  // Choosing a section by hand (arrow buttons, focusing a panel) turns `follow` off, so the view may leave the visitor;
+  // the next movement input (arrow key or floor click) turns it back on and the frame returns to the visitor.
+  const FOLLOW_KEEP = .4, FOLLOW_EDGE = .25, SECTION_HALF = (WALL_SECTION_X[1] - WALL_SECTION_X[0]) / 2;
+  let follow = true, asked: WallSection | null = null;
+  const crowdView = (): CrowdView => ({ cx: fit.cx, halfW: fit.halfW, camZ: WALL_PANEL_Z + CAMERA_DISTANCE, dist: CAMERA_DISTANCE, zoomed: zoomed() });
+  /** Centre the lens eases toward: the section's (`fit.cx`), moved as little as needed to keep a followed visitor in the frame. */
+  const aimCx = () => {
+    if (!follow || !zoomed()) return fit.cx;
+    // The orbiting camera (see yawTarget: one degree per unit off the centre) pushes the floor in front of the wall outward.
+    const reach = Math.max(0, viewHalf(crowdView(), position.z) - FOLLOW_EDGE) / (1 + (position.z - WALL_PANEL_Z) * Math.tan(Math.PI / 180));
+    return Math.max(position.x - reach, Math.min(position.x + reach, fit.cx));
+  };
+  function followSection() {
+    if (!follow || !zoomed()) return;
+    const current = asked ?? view.section;
+    if (Math.abs(position.x - WALL_SECTION_X[current]) <= SECTION_HALF + FOLLOW_KEEP) return;
+    const next = (position.x < -SECTION_HALF ? 0 : position.x > SECTION_HALF ? 2 : 1) as WallSection;
+    if (next !== current) { asked = next; events.section?.(next); }
+  }
+  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, band: "neutral", bright: false,
     crowd: () => state.scene === "plaza" ? crowd.ants.slice(0, sideList.length).map((a, i) => antMetric(i, a.x, a.z, a.state, a.dir8)) : [],
     visitor: () => antMetric(sideList.length, position.x, position.z, path.length ? "walk" : "idle", heading8) };
-  // What was drawn last for each instance: atlas frame and sprite height in world units.
-  const shown: string[] = [], talls: number[] = [];
+  // What was drawn last for each instance: atlas frame, sprite height in world units, and world units per atlas pixel.
+  const shown: string[] = [], talls: number[] = [], units: number[] = [];
   const antMetric = (i: number, x: number, z: number, state: string, dir: number): AntMetric => {
     const tall = talls[i] ?? 0, p = project(corner.set(x, tall / 2, z)), top = project(corner.set(x, tall, z)).y, foot = project(corner.set(x, 0, z)).y;
-    return { x, z, state, dir, sx: p.x, sy: p.y, sh: foot - top, frame: shown[i] ?? "" };
+    return { x, z, state, dir, sx: p.x, sy: p.y, sh: foot - top, frame: shown[i] ?? "", unit: units[i] ?? 0 };
   };
   const gl = renderer.getContext() as WebGL2RenderingContext; const debug = gl.getExtension("WEBGL_debug_renderer_info");
+  metrics.atlas = atlasImage;
   metrics.renderer = debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : "WebGL";
   const timer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
   let queries: WebGLQuery[] = [];
@@ -286,7 +338,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     let max = (close ? 4 : 10) * Math.PI / 180;
     // Very wide frames turn less so the frame edge stays on the built wall (x within ±33).
     while (!close && max > .01 && CAMERA_SLIDE * max + CAMERA_DISTANCE * Math.tan(max + Math.atan(fit.halfW / CAMERA_DISTANCE)) > 33) max -= .005;
-    return Math.max(-1, Math.min(1, (fit.cx - position.x) / reach)) * max || 0;
+    return Math.max(-1, Math.min(1, (aimCx() - position.x) / reach)) * max || 0;
   };
   /** Deepest floor z the frame shows above the bottom HUD (camera at rest). */
   function visibleFront() {
@@ -316,8 +368,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       }
       return [id, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
     })) as Record<WallPanelId, WallRect>;
-    const settled = lens.cx === fit.cx && lens.halfW === fit.halfW && lens.top === fit.top;
-    metrics.wall = plaza ? { rects, drawn, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw } : null;
+    const aim = aimCx(), settled = lens.cx === aim && lens.halfW === fit.halfW && lens.top === fit.top;
+    metrics.wall = plaza ? { rects, drawn, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: follow && zoomed(), pan: aim - fit.cx } : null;
     const key = plaza ? WALL_PANEL_IDS.map((id) => `${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|") : "";
     if (key !== rectKey) { rectKey = key; events.panels?.(plaza ? rects : null); }
   }
@@ -344,7 +396,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       while (!walkable(position, obstacles) && Math.abs(position.x) > .1) position.x -= Math.sign(position.x) * .1;
       if (!walkable(position, obstacles)) position.x = 0;
     }
-    if (snap) { snap = false; Object.assign(lens, { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); yaw = yawTarget(); orbit = zoomed() ? 1 : 0; }
+    if (snap) { snap = false; Object.assign(lens, { cx: aimCx(), top: fit.top, bottom: fit.bottom, halfW: fit.halfW }); yaw = yawTarget(); orbit = zoomed() ? 1 : 0; }
     applyCamera();
   }
   function paintWall() {
@@ -384,26 +436,32 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (disposed) return;
     resize();
     const dt = Math.min(.05, lastTime ? (time - lastTime) / 1000 : 0); lastTime = time;
-    if (lens.cx !== fit.cx || lens.halfW !== fit.halfW || lens.top !== fit.top || lens.bottom !== fit.bottom) {
-      // Section pan / overview zoom: ~300 ms ease, immediate when paused.
-      const k = state.paused ? 1 : 1 - Math.exp(-dt * 10);
-      for (const key of ["cx", "top", "bottom", "halfW"] as const) {
-        lens[key] += (fit[key] - lens[key]) * k;
-        if (Math.abs(fit[key] - lens[key]) < 1e-3) lens[key] = fit[key];
-      }
-      applyCamera();
-    }
-    paintWall();
-    const moving = !state.paused && path.length > 0;
+    const moving = !state.paused && path.length > 0, walkSize = antSize();
     if (moving) {
       const target = path[0], dx = target.x - position.x, dz = target.z - position.z, distance = Math.hypot(dx, dz);
       direction = Math.abs(dx) > Math.abs(dz) ? dx < 0 ? 1 : 2 : dz < 0 ? 3 : 0;
       heading8 = facing8(dx, dz);
       if (distance > 1e-6) visitorLean = leanOf(dx / distance, visitorLean);
-      if (distance < dt * 3) { position.x = target.x; position.z = target.z; path.shift(); }
-      else { position.x += dx / distance * dt * 3; position.z += dz / distance * dt * 3; }
-      visitorStride += Math.min(distance, dt * 3);
+      // Speed and step follow the size the visitor is drawn at (see VISITOR_FEET); the stride is counted in poses.
+      const reach = dt * VISITOR_SPEED * walkSize;
+      if (distance < reach) { position.x = target.x; position.z = target.z; path.shift(); }
+      else { position.x += dx / distance * reach; position.z += dz / distance * reach; }
+      visitorStride += Math.min(distance, reach) / (VISITOR_STEP / 2 * walkSize);
     } else visitorStride = 0;
+    followSection();
+    // The lens eases after the visitor has moved, so a followed visitor is framed where it is now.
+    const aim = { cx: aimCx(), top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
+    if (lens.cx !== aim.cx || lens.halfW !== fit.halfW || lens.top !== fit.top || lens.bottom !== fit.bottom) {
+      // Section pan / overview zoom: ~300 ms ease, immediate when paused.
+      const k = state.paused ? 1 : 1 - Math.exp(-dt * 10);
+      for (const key of ["cx", "top", "bottom", "halfW"] as const) {
+        lens[key] += (aim[key] - lens[key]) * k;
+        if (Math.abs(aim[key] - lens[key]) < 1e-3) lens[key] = aim[key];
+      }
+      applyCamera();
+    }
+    if (metrics.wall) metrics.wall.follow = follow && zoomed();
+    paintWall();
     const turn = yawTarget(), mode = zoomed() ? 1 : 0;
     if (yaw !== turn || orbit !== mode) {
       yaw += (turn - yaw) * (state.paused ? 1 : 1 - Math.exp(-dt * 3));
@@ -421,18 +479,19 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const band = metrics.band = wallModel?.pierrot.band ?? stockPierrotArt(sum).band;
     const hopeful = metrics.bright = plaza && (band === "bullish" || band === "extreme_bullish");
     if (plaza) {
-      // The crowd follows the settled frame (`fit`), not the easing lens: a moving centre would read as a section change.
+      // The crowd follows the framed section (`fit`), not the easing lens or the pan that follows the visitor: a moving
+      // centre would read as a section change on every frame.
       // In the zoomed section view the section arrows sit on the front of the floor: keep the crowd clear of them.
       const env = { obstacles, front: zoomed() ? Math.max(.8, front - 1.2) : front, visitor: position, restless: sum.mood === "mixed", hopeful,
-        view: { cx: fit.cx, halfW: fit.halfW, camZ: WALL_PANEL_Z + CAMERA_DISTANCE, dist: CAMERA_DISTANCE, zoomed: zoomed() } };
+        view: crowdView() };
       crowd.sync(sideList.length, env);
       if (!state.paused) crowd.step(dt, env);
     }
-    let cueCount = 0;
+    let cueCount = 0, puffs = 0;
     const size = metrics.antSize = antSize();
     right.set(1, 0, 0).applyQuaternion(camera.quaternion);
     const cue = (puff: boolean, x: number, y: number, z: number, w: number, h: number) => {
-      const n = cueCount++;
+      const n = cueCount++; if (puff) puffs++;
       cueRects[n * 4] = puff ? .5 : 0; cueRects[n * 4 + 1] = 0; cueRects[n * 4 + 2] = .5; cueRects[n * 4 + 3] = 1;
       dummy.position.set(x, y, z + .05); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(w, h / WALL_COS, 1); dummy.updateMatrix(); cues.setMatrixAt(n, dummy.matrix);
     };
@@ -457,13 +516,13 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
           // Stride, feet together, other stride, feet together: the two side-view strides alone look like frozen legs.
           row = stepping ? [1, 0, 2, 0][Math.floor(time / 200 + i) % 4] : 0;
         }
-        const rect = antAtlas.cells[row][column];
+        const rect = FRAMES[`${BASE_ROWS[row]}.${BASE_DIRS[column]}`]!;
         offsets[i * 4] = rect[0] / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
         offsets[i * 4 + 2] = rect[2] / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
         const scale = (.9 + i % 3 * .06) * 1.45 / 235 * size;
         // The frame squeezes heights by WALL_COS; sprites are stretched back so they keep their proportions.
         const tall = rect[3] * scale / WALL_COS;
-        shown[i] = ""; talls[i] = tall;
+        shown[i] = ""; talls[i] = tall; units[i] = scale;
         dummy.position.set(x, shift * size + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
         ants.setColorAt(i, color.set("#ffffff"));
         dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size, .55 * size, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
@@ -475,8 +534,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const dir4 = a ? a.dir4 : [0, 2, 6, 4][direction];
       const variant: AntVariant = !a ? "neutral" : side === "bearish" ? "fear" : side === "bullish" ? "hope" : "neutral";
       // The walk cycle advances with the floor covered, in steps that match the drawn size of the legs.
-      const walking = a ? a.state === "walk" && a.moved : moving, stride = a ? a.stride : visitorStride, phase = a ? WALK_PHASE * size : VISITOR_PHASE;
-      let dir8 = a ? a.dir8 : heading8, pose: AntPose = walking ? walkPose(stride, phase) : a ? a.pose : "idle";
+      // An ant that has just set off has not moved yet: it already shows the step its stride count is at, not a stray first frame.
+      const walking = a ? a.state === "walk" && (a.moved || a.pose !== "idle") : moving, stride = a ? a.stride : visitorStride, phase = a ? WALK_PHASE * size : 1;
+      let dir8 = a ? a.dir8 : heading8, pose: AntPose = walking ? walkPose(stride, phase) : a ? antGazePose(hasFrame, variant, a, hopeful) : "idle";
       let bright = hopeful;
       if (walking || (a && a.state === "walk")) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, hopeful));
       // Camera-facing art is a three-quarter view: `lean` turns it to the side the ant is heading (mirrored where needed).
@@ -485,13 +545,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const rect = frame.rect, k = rect[4] ?? 1;
       offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
-      const scale = (visitor ? 1.12 : .9 + i % 3 * .06) * 1.45 / 235 * k * size;
+      const scale = (visitor ? VISITOR_SCALE : (.9 + i % 3 * .06) * 1.45 / 235) * k * size;
       // Standing ants breathe; a sigh sinks and recovers over its span (t counts down from span).
       // Walkers rise as the feet pass and sink into each stride.
       const bob = (a && a.state === "gaze" && !state.paused ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
-      const sighing = a && a.state === "sigh" && a.span > 0 ? 1 - a.t / a.span : -1;
+      // Under a hopeful index the sigh state is drawn as the relieved pose (the bright "sigh" art): no sinking, no breath.
+      const sighing = a && a.state === "sigh" && a.span > 0 && !frame.key.includes("-bright.sigh.") ? 1 - a.t / a.span : -1;
       const tall = rect[3] * scale / WALL_COS * (sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);
-      shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall;
+      shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall; units[i] = scale;
       // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
       const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
       dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
@@ -509,7 +570,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
         }
       }
     }
-    cues.count = cueCount; cues.visible = cueCount > 0;
+    cues.count = cueCount; cues.visible = cueCount > 0; metrics.puffs = puffs;
     if (cueCount) { cues.instanceMatrix.needsUpdate = true; (cueGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true; }
     ants.instanceMatrix.needsUpdate = shadows.instanceMatrix.needsUpdate = true; if (ants.instanceColor) ants.instanceColor.needsUpdate = true;
     (antGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true;
@@ -531,6 +592,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     // Every click is a floor click: ants are not targets, so one that lands on an ant walks to the floor behind it.
     raycaster.setFromCamera(new THREE.Vector2(x / width * 2 - 1, 1 - y / height * 2), camera);
     const target = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+    follow = true;
     if (target) walkTo({ x: target.x, z: limitZ(target.z) });
   }
   function walkTo(target: Point) {
@@ -559,11 +621,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     update, draw, click, metrics, position,
     setView(next) {
       if (next.layout !== view.layout) snap = true;
+      // A section this renderer did not ask for was chosen by hand: stop following the visitor until it is moved again.
+      if (next.section !== view.section && next.section !== asked) follow = false;
+      if (next.section === asked || !follow) asked = null;
       view = next; viewDirty = true;
     },
     setWall(model, style) { wallModel = model; if (style) wallStyle = style; wallDirty = true; },
     wallTexture: (id) => wallCanvases[id],
-    move(x, z) { const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
+    move(x, z) { follow = true; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
     async capture(frame) {
       const target = document.createElement("canvas"); target.width = 1200; target.height = 620; target.style.width = "1200px"; target.style.height = "620px";
       // Export uses the exact scene builder, atlas, lighting and population mapping.

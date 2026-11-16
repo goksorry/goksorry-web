@@ -3,8 +3,10 @@ import { clearSegment, findWorldPath, walkable, type Obstacle, type Point } from
 // Plaza crowd: a pure, seeded simulation stepped by the renderer. No three.js and
 // no Math.random, so captures and tests are deterministic.
 export const ANT_DIRS = ["f", "fl", "l", "bl", "b", "br", "r", "fr"] as const; // 0 = toward camera (+z), 4 = toward wall
-// "look" is standing with the head tipped back, looking up at the wall. It only exists seen from behind (b, bl, br).
-export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh" | "look";
+// "look" is standing with the head thrown back, looking up at the wall. It only exists seen from behind (b, bl, br).
+// "tilt" is the in-between of idle and look (straight back view only), shown for a moment while the head moves.
+// Under a bright variant the "sigh" frames are the relieved pose: head up, smiling, phone lowered.
+export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh" | "look" | "tilt";
 export type AntVariant = "neutral" | "fear" | "hope";
 // While the index is in the hope state, neutral and hope ants wear a brighter face: the same poses under these atlas
 // variants, wherever that art exists. The fear ant has no bright form.
@@ -14,7 +16,8 @@ export type CrowdAnt = { x: number; z: number; hx: number; hz: number; state: Cr
   t: number; span: number; path: Point[]; goal: Point; speed: number; stride: number; wait: number; moved: boolean; rng: number;
   lean: number; // side a camera-facing sprite turns to: -1 the viewer's left, 1 the right (see leanOf)
   fx: number; fz: number; dir8: number; dir4: number; fresh: boolean; // the facing that is drawn: the heading, steadied (see `face`)
-  eye: number; eyeRng: number }; // seconds until a gazer next raises or lowers its head, and the private stream that times it
+  eye: number; eyeRng: number; // seconds until a gazer next raises or lowers its head, and the private stream that times it
+  nod: number }; // seconds left of the head movement that just started (see antGazePose)
 export type CrowdView = { cx: number; halfW: number; camZ: number; dist: number; zoomed: boolean };
 // `restless` (mixed index) shortens the stands; `hopeful` (index in the hope state) takes fewer phones out.
 export type CrowdEnv = { obstacles: Obstacle[]; front: number; visitor: Point; view: CrowdView; restless?: boolean; hopeful?: boolean };
@@ -64,6 +67,7 @@ export function face(a: CrowdAnt, dt: number, snap = false): void {
 }
 // A wall gazer alternates between a level gaze and looking up, a few seconds each, so about half of the standing time
 // is spent looking up. The timing has its own random stream: the walk and phone decisions are the same with or without it.
+export const NOD = .15;
 const EYE_MIN = 2.5, EYE_RANGE = 3.5, PHONE_CHANCE = .35, PHONE_CHANCE_HOPEFUL = .15;
 const PHONE_FACING = [[.4, 0, 1], [.65, -1, 0], [.9, 1, 0], [2, 0, -1]];
 const hash = (seed: number, index: number) => {
@@ -130,12 +134,14 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
     return path.length && path.every((p) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side) ? path : null;
   };
   const stand = (a: CrowdAnt, state: CrowdState, pose: AntPose, span: number) => {
-    a.state = state; a.pose = pose; a.span = a.t = span; a.path = []; a.goal = { x: a.x, z: a.z }; a.wait = 0; a.moved = false;
+    a.state = state; a.pose = pose; a.span = a.t = span; a.path = []; a.goal = { x: a.x, z: a.z }; a.wait = 0; a.moved = false; a.nod = 0;
   };
   // Standing ants turn at once; their lean is left alone (it only follows a walk).
   const turn = (a: CrowdAnt, hx: number, hz: number) => { const lean = a.lean; a.hx = hx; a.hz = hz; face(a, 0, true); a.lean = lean; };
   const gaze = (a: CrowdAnt, span: number) => {
+    const was = a.state === "gaze" ? a.pose : null; // a gazer that could not set off stands on: its head may move
     stand(a, "gaze", roll(a, "eyeRng") < .5 ? "look" : "idle", span);
+    if (was && was !== a.pose) a.nod = NOD;
     a.eye = eyeSpan(a) * roll(a, "eyeRng"); // already part-way through, so heads do not move together
     const nearest = CROWD.panels.reduce((best, x) => Math.abs(x - a.x) < Math.abs(best - a.x) ? x : best);
     const panel = rand(a) < .7 ? nearest : CROWD.panels[Math.floor(rand(a) * CROWD.panels.length)];
@@ -150,7 +156,7 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
   };
   const go = (a: CrowdAnt, path: Point[], speed: number) => {
     a.fresh = a.state !== "walk"; // setting off from a stand turns at once; a new route mid-walk turns through `face`
-    a.state = "walk"; a.path = path; a.goal = path[path.length - 1]; a.speed = speed; a.wait = 0; a.t = a.span = 0;
+    a.state = "walk"; a.path = path; a.goal = path[path.length - 1]; a.speed = speed; a.wait = 0; a.t = a.span = 0; a.nod = 0;
     a.pose = "walk-a"; // never carry a phone or sigh pose into the walk, even for the one frame before the first stride
   };
   const roam = (a: CrowdAnt, env: CrowdEnv) => {
@@ -161,7 +167,7 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
     const a: CrowdAnt = { x: 0, z: (CROWD.back + limit(env)) / 2, hx: 0, hz: -1, state: "gaze", pose: "idle", t: 0, span: 0,
       path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: hash(seed, index),
       lean: hash(seed ^ 0x5EED, index) & 1 ? 1 : -1, // a stable side of its own until its first sideways walk
-      fx: 0, fz: -1, dir8: 4, dir4: 4, fresh: true, eye: 0, eyeRng: hash(seed ^ 0x100C, index) };
+      fx: 0, fz: -1, dir8: 4, dir4: 4, fresh: true, eye: 0, eyeRng: hash(seed ^ 0x100C, index), nod: 0 };
     let spot: Point | null = null;
     for (let i = 0; i < 80; i++) {
       const must = mustSee(a, env), p = sample(a, env, must, false);
@@ -241,8 +247,8 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
         const crowded = gap(a, env.visitor) < VISITOR_PASS;
         if (a.state === "gaze") {
           if (crowded) a.t = Math.min(a.t, .25); // step aside for the visitor
-          a.eye -= delta;
-          if (a.eye <= 0) { a.pose = a.pose === "look" ? "idle" : "look"; a.eye = eyeSpan(a); }
+          a.eye -= delta; a.nod = Math.max(0, a.nod - delta);
+          if (a.eye <= 0) { a.pose = a.pose === "look" ? "idle" : "look"; a.eye = eyeSpan(a); a.nod = NOD; }
           // The phone is for an audience: next to the visitor or off the zoomed view the ant just walks on.
           if (a.t <= 0) { if (rand(a) < (env.hopeful ? PHONE_CHANCE_HOPEFUL : PHONE_CHANCE) && phoneFree() && gap(a, env.visitor) >= .9 && !(env.view.zoomed && !inView(a, env.view))) phone(a); else roam(a, env); }
         } else if (a.state === "phone") {
@@ -258,7 +264,8 @@ export function createCrowd(seed = 1): { ants: CrowdAnt[]; sync(count: number, e
 // "f" frames drawn turned to the viewer's left; every other one turns right. Within the fear and hope walks the second
 // stride came out the other way round from the first (the briefcase and the scarf tail swap sides), so tracking this per
 // frame also keeps the costume on one side through the whole cycle. Both bright passing steps were drawn turned left too.
-const FRONT_LEFT = new Set(["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f", "neutral-bright.walk-p.f", "hope-bright.walk-p.f"]);
+// The scarf ant's passing step has its scarf tail on the other side from its first stride, like its second stride.
+const FRONT_LEFT = new Set(["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f", "hope.walk-p.f", "neutral-bright.walk-p.f", "hope-bright.walk-p.f"]);
 
 // Frame lookup order for a pose: exact art first, then the nearest pose and direction that
 // exists. With only the 20 base frames the chain always ends on one of them.
@@ -272,7 +279,7 @@ export function antFrameCandidates(variant: AntVariant, pose: AntPose, dir8: num
   // look keeps the costume first: own look, own idle (the level gaze it alternates with), then the neutral ant.
   const pairs: [AntVariant, AntPose][] = pose === "sigh"
     ? [...variants.flatMap((v) => [[v, "sigh"], [v, "phone"]] as [AntVariant, AntPose][]), ...variants.map((v) => [v, "idle"] as [AntVariant, AntPose])]
-    : pose === "look" ? variants.flatMap((v) => [[v, "look"], [v, "idle"]] as [AntVariant, AntPose][])
+    : pose === "look" || pose === "tilt" ? variants.flatMap((v) => [[v, pose], [v, "idle"]] as [AntVariant, AntPose][])
     : poses.flatMap((p) => variants.map((v) => [v, p] as [AntVariant, AntPose]));
   const dirs: [number, boolean][] = dir8 % 2 ? [[dir8, false], [8 - dir8, true]] : [];
   dirs.push([dir4, false]);
@@ -284,10 +291,20 @@ export function antFrameCandidates(variant: AntVariant, pose: AntPose, dir8: num
   })));
 }
 
+// The pose a wall gazer is drawn in. For NOD seconds after its head starts to move it shows the in-between frame, but
+// only where that exact art exists (same face, same direction): a gazer turned bl or br goes straight to the new pose.
+export function antGazePose(has: (key: string) => boolean, variant: AntVariant, a: Pick<CrowdAnt, "state" | "pose" | "nod" | "dir8">, bright = false): AntPose {
+  if (a.state !== "gaze" || a.nod <= 0) return a.pose;
+  const skin = bright ? ANT_BRIGHT[variant] : undefined, dir = ANT_DIRS[a.dir8];
+  return (skin && has(`${skin}.tilt.${dir}`)) || has(`${variant}.tilt.${dir}`) ? "tilt" : a.pose;
+}
+
 // A walk must not change costume, face or facing between steps: where this variant has no diagonal walk art it walks
-// 4-way (toward the camera that is the "f" frame, turned by `lean`). Where it has no passing frame, its own standing
-// frame in that direction is the passing frame: feet together between the two strides. Alternating only the two stride
-// frames does not work, because seen from the side they are the same silhouette and the legs look frozen.
+// 4-way (toward the camera that is the "f" frame, turned by `lean`). Every walk in the atlas has its passing frame (feet
+// together between the two strides); only if one is missing (a build from the base sheet alone) does the ant's own
+// standing frame in that direction stand in for it. Alternating only the two stride frames does not work, because seen
+// from the side they are the same silhouette and the legs look frozen. The standing frame is a poor stand-in for the
+// scarf ant, whose raised fist then pumps up and down on every step.
 // A bright ant has no diagonal art. Heading toward the camera it walks 4-way so the bright face shows; heading away on a
 // diagonal its face is hidden, so it keeps the plain diagonal cycle. The returned `bright` says which set the whole
 // cycle uses in that direction, so the face cannot change between two steps.

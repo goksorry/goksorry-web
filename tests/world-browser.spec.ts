@@ -3,6 +3,7 @@ import { prepareWorld, worldRows, requireWebGL2 } from "./world-fixture";
 import { readFile, writeFile } from "node:fs/promises";
 import { buildWorldFrame, worldDate } from "../lib/world";
 import type { RenderMetrics } from "../components/world/hd2d-renderer";
+import antAtlas from "../components/world/ant-atlas.json";
 
 const stage = (page: Page) => page.locator(".hd2d-stage");
 const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
@@ -271,12 +272,74 @@ test("plaza shows about twenty roaming ants that mostly face the wall; clicking 
   const size = await page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.antSize);
   expect(size).toBeGreaterThanOrEqual(.6); expect(size).toBeLessThan(.7);
   expect(Math.max(...phone.map((a) => a.sh), (await visitor()).sh)).toBeLessThan(844 * .1);
-  // Whoever walks is drawn in a walk frame of the direction it faces (or its standing frame as the feet pass).
+  // Whoever walks is drawn in a walk frame of the direction it faces (or its standing frame while it waits for another ant to pass).
   for (const a of phone.filter((a) => a.state === "walk")) expect(a.frame).toMatch(/^(neutral|fear|hope)\.(walk-[abp]|idle)\.(f|fl|l|bl|b|br|r|fr)~?$/);
 });
 
+// Samples every animation frame in the page: all frame keys drawn per state, and the most breath puffs drawn at once.
+const watchCrowd = (page: Page, seconds: number) => page.locator("canvas").evaluate(async (node, seconds) => {
+  const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics, seen: Record<string, string[]> = {}, cycles: string[][] = [], open: Record<number, string[]> = {};
+  let puffs = 0, relievedPuffs = 0;
+  for (const end = performance.now() + seconds * 1000; performance.now() < end;) {
+    const crowd = metrics.crowd();
+    crowd.forEach((a, i) => {
+      const key = `${a.state}:${a.dir}`; if (!(seen[key] ??= []).includes(a.frame)) seen[key].push(a.frame);
+      // Pose sequence of each uninterrupted walk (consecutive repeats dropped).
+      const pose = a.frame.split(".")[1];
+      if (a.state === "walk") { const run = open[i] ??= []; if (run[run.length - 1] !== pose) run.push(pose); } else if (open[i]) { cycles.push(open[i]); delete open[i]; }
+    });
+    puffs = Math.max(puffs, metrics.puffs);
+    // A puff belongs to an ant drawn in a real sigh frame (or a stand-in for one), never to the relieved pose.
+    if (metrics.puffs > crowd.filter((a) => a.state === "sigh" && !a.frame.includes("-bright.sigh.")).length) relievedPuffs++;
+    await new Promise((done) => requestAnimationFrame(done));
+  }
+  return { seen, cycles: [...cycles, ...Object.values(open)], puffs, relievedPuffs, atlas: metrics.atlas };
+}, seconds);
+const drawn = (watch: { seen: Record<string, string[]> }, state: string) => Object.entries(watch.seen).filter(([key]) => key.startsWith(`${state}:`)).flatMap(([, frames]) => frames);
+
+test("walkers pass their feet through real passing frames; gazers tip their heads through the in-between; a sigh breathes", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await expect.poll(() => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().length)).toBe(20);
+  const all = { seen: {} as Record<string, string[]>, cycles: [] as string[][], puffs: 0, relievedPuffs: 0, atlas: "" };
+  const wanted = [/^hope\.walk-p\.(f|l|r|b)~?$/, /^(neutral|hope)\.walk-p\.(fl|fr|bl|br)$/];
+  await expect(async () => {
+    const part = await watchCrowd(page, 4);
+    for (const [key, frames] of Object.entries(part.seen)) all.seen[key] = [...new Set([...(all.seen[key] ?? []), ...frames])];
+    all.cycles.push(...part.cycles); all.puffs = Math.max(all.puffs, part.puffs); all.relievedPuffs += part.relievedPuffs; all.atlas = part.atlas;
+    for (const frame of wanted) expect(drawn(all, "walk").some((key) => frame.test(key)), String(frame)).toBe(true);
+    expect(drawn(all, "gaze").some((key) => /\.tilt\.b$/.test(key))).toBe(true);
+    expect(drawn(all, "sigh").length).toBeGreaterThan(0); expect(all.puffs).toBeGreaterThan(0);
+  }).toPass({ timeout: 90_000 });
+  // A desktop screen loads the full atlas.
+  expect(all.atlas).toBe("/world/ant-atlas.png");
+  // Between two strides there is always the passing step. The standing frame only shows while a walker waits, and then
+  // never as the bridge from one stride to the other (the old stand-in, which pumped the scarf ant's raised fist).
+  expect(all.cycles.length).toBeGreaterThan(3);
+  for (const cycle of all.cycles) cycle.forEach((pose, i) => {
+    expect(["walk-a", "walk-b", "walk-p", "idle"], cycle.join(" ")).toContain(pose);
+    if (pose.startsWith("walk-") && pose !== "walk-p" && cycle[i + 1] && cycle[i + 1] !== "idle") expect(cycle[i + 1], cycle.join(" ")).toBe("walk-p");
+    if (pose === "idle" && i > 0 && i + 1 < cycle.length && cycle[i - 1] !== "walk-p" && cycle[i + 1] !== "walk-p") expect(cycle[i + 1], cycle.join(" ")).toBe(cycle[i - 1]);
+  });
+  // The in-between is only ever drawn for a wall gazer seen from straight behind (dir 4); other states never show it.
+  for (const [key, frames] of Object.entries(all.seen)) if (key !== "gaze:4") expect(frames.filter((frame) => frame.includes(".tilt.")), key).toEqual([]);
+  // Straight behind, looking up is its own picture next to the level gaze.
+  expect(all.seen["gaze:4"].some((key) => /\.look\.b$/.test(key))).toBe(true); expect(all.seen["gaze:4"].some((key) => /\.idle\.b$/.test(key))).toBe(true);
+  // Under the default (중립) index nobody is bright: phones and sighs are the dull art, with breath.
+  expect(Object.values(all.seen).flat().filter((key) => key.includes("-bright"))).toEqual([]);
+  for (const key of drawn(all, "sigh")) expect(key).toMatch(/^(neutral|fear|hope)\.sigh\./);
+  expect(all.relievedPuffs).toBe(0);
+  // A phone-sized screen loads the two-thirds copy and draws the same frames from it.
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await webgl(page);
+  const small = await page.locator("canvas").evaluate((node) => { const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics; return { atlas: m.atlas, ants: [...m.crowd(), m.visitor()] }; });
+  expect(small.atlas).toBe("/world/ant-atlas-small.png");
+  // Nothing is enlarged from it: at pixel ratio 2 every sprite is drawn at no more than two thirds of a screen pixel per atlas pixel.
+  const frames = antAtlas.frames as Record<string, number[]>;
+  for (const a of small.ants) { const frame = frames[a.frame.replace("~", "")]; expect(a.sh * 2 / (frame[3] * frame[4]), a.frame).toBeLessThanOrEqual(2 / 3); }
+});
+
 test("resting ants look up at the wall; when the index turns to hope the faces brighten in place", async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(180_000);
   const read = () => page.locator("canvas").evaluate((node) => { const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics; return { band: m.band, bright: m.bright, crowd: m.crowd(), visitor: m.visitor() }; });
   await page.setViewportSize({ width: 1440, height: 900 }); const frame = await prepareWorld(page); await page.goto("/"); await webgl(page);
   await expect.poll(async () => (await read()).crowd.length).toBe(20);
@@ -309,14 +372,27 @@ test("resting ants look up at the wall; when the index turns to hope the faces b
   await expect.poll(async () => (await read()).crowd.filter((a) => /^(neutral|hope)-bright\./.test(a.frame)).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(8);
   await expect.poll(async () => looking((await read()).crowd).filter((a) => a.frame.includes("-bright.look.")).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
   expect((await read()).crowd.filter((a) => a.frame.startsWith("fear-")).length).toBe(0);
+  // On the phone the neutral and hope ants keep the bright face, and what follows is the relieved pose: no sigh frame, no breath.
+  const mood = { seen: {} as Record<string, string[]>, relievedPuffs: 0 };
+  await expect(async () => {
+    const part = await watchCrowd(page, 4);
+    for (const [key, frames] of Object.entries(part.seen)) mood.seen[key] = [...new Set([...(mood.seen[key] ?? []), ...frames])];
+    mood.relievedPuffs += part.relievedPuffs;
+    expect(drawn(mood, "phone").some((key) => /^(neutral|hope)-bright\.phone\./.test(key))).toBe(true);
+    expect(drawn(mood, "sigh").some((key) => /^(neutral|hope)-bright\.sigh\./.test(key))).toBe(true);
+  }).toPass({ timeout: 100_000 });
+  for (const state of ["phone", "sigh"]) for (const key of drawn(mood, state)) expect(key, state).toMatch(new RegExp(`^((neutral|hope)-bright|fear)\\.${state}\\.(f|l|r|b)~?$`));
+  expect(mood.relievedPuffs).toBe(0);
   // Walkers keep one face through the cycle: every frame of a bright walk is bright, in one direction.
   const walk = await page.locator("canvas").evaluate(async (node) => {
     const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics, seen: Record<number, string[]> = {};
     for (let n = 0; n < 90; n++) { metrics.crowd().forEach((a, i) => { if (a.state === "walk") (seen[i] ??= []).push(a.frame); else delete seen[i]; }); await new Promise((done) => requestAnimationFrame(done)); }
     return Object.values(seen);
   });
-  for (const frames of walk) {
-    const skins = new Set(frames.map((key) => key.split(".")[0]));
+  // (A walker that turns from b to bl goes from the bright 4-way set to the plain diagonal one, where its face is hidden;
+  // within one direction the set never changes.)
+  for (const frames of walk) for (const dir of new Set(frames.map((key) => key.replace("~", "").split(".")[2]))) {
+    const skins = new Set(frames.filter((key) => key.replace("~", "").split(".")[2] === dir).map((key) => key.split(".")[0]));
     expect(skins.size, frames.join(" ")).toBe(1);
   }
 });

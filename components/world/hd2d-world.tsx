@@ -4,11 +4,13 @@ import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
-import { WALL_PANEL_IDS, type WallModel, type WallView } from "@/lib/world-wall";
+import { WALL_PANEL_IDS, type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
 
 type Props = RenderState & {
   reduced: boolean; emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
   onScene: (scene: WorldScene) => void; onStep: () => void;
+  /** The zoomed section view follows the visitor into another wall section. */
+  onSection?: (section: WallSection) => void;
 };
 // Plaza entrances sit on the floor strip that every framed view keeps visible.
 const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
@@ -37,6 +39,7 @@ export default function HD2DWorld(props: Props) {
         if (nearbyRef.current !== next) { nearbyRef.current = next; setNearby(next); }
       },
       step() { latest.current.onStep(); },
+      section(next) { latest.current.onSection?.(next); },
       failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
     })).then((instance) => {
       if (!instance) return;
