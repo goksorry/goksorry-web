@@ -2,10 +2,10 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
-import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdMember, type CrowdView } from "@/lib/world-crowd";
+import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdDoor, type CrowdMember, type CrowdView } from "@/lib/world-crowd";
 import { fakeCapacity } from "@/lib/world-presence";
 import type { PlazaPeer } from "@/lib/chat-types";
-import { PLAZA_DOOR, PLAZA_ENTRANCES, WORLD_BOUNDS, entranceAt, findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
+import { PLAZA_DOOR, PLAZA_ENTRANCES, WORLD_BOUNDS, entranceAt, findWorldPath, plazaDoorWay, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
 import { WALL_COS, WALL_FACE_Z, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
@@ -28,8 +28,9 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   antSize: number;
   /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
   band: string; bright: boolean;
-  /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body. */
-  crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean })[];
+  /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body;
+   * the turnover phase it is in (`trip`), how many trips its slot has made (`lap`) and how much of it is drawn (`fade`, 0 hidden). */
+  crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean; trip: "out" | "away" | "in" | null; lap: number; fade: number })[];
   /** The visitor's ant, in every scene. */
   visitor: () => AntMetric };
 /** `frame` is the atlas frame drawn last ("key", or "key~" when mirrored; empty outside the plaza); `sh` is the sprite's height on screen in CSS px;
@@ -330,6 +331,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   // The other scenes pose their ants from the base sheet's grid: five rows, four directions.
   const BASE_ROWS = ["neutral.idle", "neutral.walk-a", "neutral.walk-b", "fear.idle", "hope.idle"], BASE_DIRS = ["f", "l", "r", "b"];
   const crowd = createCrowd();
+  // NPCs come and go through the back-wall doors, each hiding behind the pier on its outer side; a darkening ant is tinted
+  // toward the doorway's dark (darkMat), and a hidden one is drawn at zero size.
+  const crowdDoors: CrowdDoor[] = PLAZA_ENTRANCES.map((e) => ({ x: e.x, z: e.z, legs: plazaDoorWay(e, e.x < 0 ? -1 : 1) }));
+  const DOOR_DARK = new THREE.Color(0x121b20);
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
   let path: Point[] = [], sideList: WorldSide[] = [], roster: CrowdMember[] = [], peers: PlazaPeer[] = [], lastTime = 0, lastRender = 0, disposed = false;
@@ -387,7 +392,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (next !== current) { asked = next; events.section?.(next); }
   }
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, band: "neutral", bright: false,
-    crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 })) : [],
+    crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
     visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8) };
   // Plaza instances are the crowd (including ants walking off) then the visitor; other scenes draw sideList then the visitor.
   const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : sideList.length;
@@ -554,7 +559,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       // centre would read as a section change on every frame.
       // In the zoomed section view the section arrows sit on the front of the floor: keep the crowd clear of them.
       const env = { obstacles, front: zoomed() ? Math.max(.8, front - 1.2) : front, visitor: position, restless: sum.mood === "mixed", hopeful,
-        view: crowdView() };
+        view: crowdView(), doors: crowdDoors };
       crowd.sync(roster, env);
       if (ambient()) crowd.step(dt, env);
       ants.count = shadows.count = visitorIndex() + 1;
@@ -602,7 +607,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
         continue;
       }
       // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
-      const a = visitor ? null : crowd.ants[i];
+      const a = visitor ? null : crowd.ants[i], fade = a ? a.fade : 1;
+      if (fade <= 0) { // away on a trip: nothing drawn, no tag, no cue
+        shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix);
+        continue;
+      }
       const x = a ? a.x : position.x, z = a ? a.z : position.z;
       const dir4 = a ? a.dir4 : [0, 2, 6, 4][direction];
       const variant: AntVariant = a ? a.variant : "neutral";
@@ -629,15 +638,15 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
       const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
       dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
-      ants.setColorAt(i, color.set(visitor ? state.color : "#ffffff"));
-      if (a?.peer && !a.exit) {
+      ants.setColorAt(i, visitor ? color.set(state.color) : color.set("#ffffff").lerp(DOOR_DARK, 1 - fade));
+      if (a?.peer && !a.exit && fade >= 1) {
         const name = peers.find((peer) => `peer:${peer.id}` === a.id)?.name;
         const top = tall * 1.04 + bob;
         if (name) peerTags.push({ id: a.id, text: name, style: "peer", at: { x, y: top, z } });
         const head = project(corner.set(x, top, z)); heads[a.id.slice(5)] = { x: head.x, y: head.y };
       }
-      dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size, .55 * size, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
-      if (a && cueCount < MAX_ANTS) {
+      dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * fade, .55 * size * fade, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+      if (a && fade >= 1 && cueCount < MAX_ANTS) {
         const high = rect[3] * scale / WALL_COS;
         if (a.state === "phone" && !frame.posed && dir4 !== 4) {
           const off = (dir4 === 0 ? .12 * lean : dir4 === 2 ? -.2 : .2) * size;

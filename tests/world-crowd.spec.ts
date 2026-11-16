@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
-import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdEnv, type CrowdMember, type CrowdView } from "../lib/world-crowd";
-import { WORLD_BOUNDS, inDoorway, swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
+import { ANT_DIRS, CROWD, LEAN_DEAD, NOD, TURNOVER, WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, SETTLE, walkLift, walkPose, facing4, facing8, inView, leanOf, viewHalf, type AntPose, type AntVariant, type CrowdAnt, type CrowdDoor, type CrowdEnv, type CrowdMember, type CrowdView } from "../lib/world-crowd";
+import { PLAZA_ENTRANCES, WORLD_BOUNDS, inDoorway, plazaDoorWay, swipeStep, walkable, worldObstacles } from "../lib/world-navigation";
 
 const DT = 1 / 30, EPS = 1e-6, obstacles = worldObstacles("plaza");
 const WIDE: CrowdView = { cx: 0, halfW: 11.6, camZ: 27.115, dist: 32, zoomed: false };
@@ -603,4 +603,151 @@ test("standing ants keep the plaza door mouths clear", () => {
     check(); run(crowd, 60, e, check);
     expect(blocking, `seed ${seed}`).toBe(0);
   }
+});
+
+// The plaza doors as the renderer hands them to the crowd.
+const DOORS: CrowdDoor[] = PLAZA_ENTRANCES.map((e) => ({ x: e.x, z: e.z, legs: plazaDoorWay(e, e.x < 0 ? -1 : 1) }));
+const NPCS: CrowdMember[] = Array.from({ length: 20 }, (_, i) => ({ id: `npc:${i}`, variant: "neutral" }));
+const hiddenEnd = (d: CrowdDoor) => d.legs[d.legs.length - 1];
+// Steps until `found` returns an ant (at most `seconds`), and returns it.
+const until = (crowd: ReturnType<typeof createCrowd>, e: CrowdEnv, seconds: number, found: () => CrowdAnt | undefined) => {
+  for (let i = 0; i < seconds / DT; i++) { crowd.step(DT, e); const a = found(); if (a) return a; }
+  return undefined;
+};
+
+test("with doors the crowd turns over now and then, through the doors and off the sides, keeping every slot", () => {
+  const e = env({ doors: DOORS });
+  let doorTrips = 0, sideTrips = 0;
+  for (const seed of [1, 2, 3]) {
+    const crowd = createCrowd(seed), ids = NPCS.map((m) => m.id);
+    crowd.sync(NPCS, e);
+    const before = new Map(crowd.ants.map((a) => [a.id, { x: a.x, z: a.z, trip: a.trip?.phase ?? null, lap: a.lap }]));
+    let starts = 0, slots = 0, crowdedOut = 0, jumps = 0, badLaps = 0, badStarts = 0;
+    run(crowd, 180, e, () => {
+      crowd.sync(NPCS, e);
+      if (crowd.ants.length !== 20 || crowd.ants.some((a, i) => a.id !== ids[i])) slots++;
+      if (crowd.ants.filter((a) => a.trip?.phase === "out").length > 2) crowdedOut++;
+      for (const a of crowd.ants) {
+        const was = before.get(a.id)!;
+        if (!was.trip && a.trip) { starts++; if (a.trip.phase !== "out") badStarts++; else if (a.trip.via) doorTrips++; else sideTrips++; }
+        if (a.lap !== was.lap && !(a.lap === was.lap + 1 && was.trip === "out" && a.trip?.phase === "away")) badLaps++;
+        // Nobody moves faster than a walk, except a slot that has just become someone new out of sight.
+        if (a.lap === was.lap && Math.hypot(a.x - was.x, a.z - was.z) > 1.35 * DT + EPS) jumps++;
+        before.set(a.id, { x: a.x, z: a.z, trip: a.trip?.phase ?? null, lap: a.lap });
+      }
+    });
+    note(`seed ${seed}: ${starts} trips in 180 s, laps ${crowd.ants.reduce((n, a) => n + a.lap, 0)}`);
+    expect(starts, `seed ${seed}`).toBeGreaterThanOrEqual(Math.floor((180 - SETTLE - TURNOVER.first[1]) / (TURNOVER.every[1] + 2)));
+    expect(starts, `seed ${seed}`).toBeLessThanOrEqual(Math.ceil((180 - TURNOVER.first[0]) / TURNOVER.every[0]) + 1);
+    expect([slots, crowdedOut, jumps, badLaps, badStarts], `seed ${seed}`).toEqual([0, 0, 0, 0, 0]);
+  }
+  expect(doorTrips).toBeGreaterThan(0); expect(sideTrips).toBeGreaterThan(0);
+});
+
+test("a door trip walks in to the hidden end, stays out of sight, and the slot comes back through a door or from a side", () => {
+  let doorArrivals = 0, sideArrivals = 0;
+  for (const seed of [1, 2, 3, 4]) {
+    const e = env({ doors: DOORS }), crowd = createCrowd(seed);
+    crowd.sync(NPCS, e);
+    const a = until(crowd, e, 120, () => crowd.ants.find((o) => o.trip?.phase === "out" && o.trip.via))!;
+    expect(a, `seed ${seed}`).toBeDefined();
+    let fade = 1, lit = 0;
+    while (a.trip?.phase === "out") {
+      crowd.step(DT, e);
+      if (a.fade > fade + EPS) lit++; // fades out steadily
+      fade = a.fade;
+    }
+    expect(lit).toBe(0);
+    expect(a.trip?.phase).toBe("away"); expect(a.state).toBe("away"); expect(a.fade).toBe(0); expect(a.lap).toBe(1);
+    const from = a.trip!.via, at = { x: a.x, z: a.z };
+    if (from) expect(at).toEqual(hiddenEnd(from)); else expect(inView(at, e.view)).toBe(false);
+    // Nobody stands at the threshold it will come out of.
+    if (from) for (const o of crowd.ants) if (o !== a && o.state !== "away") expect(Math.hypot((o.x - from.x) / CROWD.wide, (o.z - from.z) / CROWD.deep), o.id).toBeGreaterThanOrEqual(1 - EPS);
+    const wait = a.trip!.wait;
+    expect(wait).toBeGreaterThanOrEqual(TURNOVER.away[0]); expect(wait).toBeLessThanOrEqual(TURNOVER.away[1]);
+    run(crowd, wait - DT * 2, e);
+    expect([a.x, a.z, a.fade, a.state]).toEqual([at.x, at.z, 0, "away"]);
+    run(crowd, DT * 3, e);
+    expect(a.state).toBe("walk");
+    if (from) {
+      doorArrivals++;
+      expect(a.trip?.phase).toBe("in");
+      let dark = 0;
+      fade = a.fade;
+      while (a.trip) { crowd.step(DT, e); if (a.fade < fade - EPS) dark++; fade = a.fade; }
+      expect(dark).toBe(0);
+      expect(a.fade).toBe(1); expect(Math.abs(a.x - from.x)).toBeLessThan(.6); // out of the door, onto the floor in front of it
+    } else { sideArrivals++; expect(a.trip).toBeNull(); expect(a.fade).toBe(1); expect(inView(a, e.view)).toBe(false); }
+  }
+  note(`arrivals: ${doorArrivals} through a door, ${sideArrivals} from a side`);
+  expect(doorArrivals).toBeGreaterThan(0);
+});
+
+test("turnover is deterministic for a seed, leaves peers alone, and keeps clear of the visitor's door", () => {
+  const atDoor = PLAZA_ENTRANCES[1], e = env({ doors: DOORS, visitor: { x: atDoor.x, z: atDoor.z } });
+  const peer: CrowdMember = { id: "peer:p", variant: "neutral", peer: { x: 3, z: 2 } };
+  const make = (seed: number) => {
+    const crowd = createCrowd(seed), used = new Set<number>();
+    let peerTrips = 0, fromStand = 0, starts = 0;
+    crowd.sync([...NPCS, peer], e);
+    const was = new Map(crowd.ants.map((a) => [a.id, { trip: false, state: a.state as string }]));
+    run(crowd, 150, e, () => {
+      for (const a of crowd.ants) {
+        const before = was.get(a.id)!;
+        if (a.peer && a.trip) peerTrips++;
+        if (a.trip?.via) used.add(a.trip.via.x);
+        if (a.trip && !before.trip) { starts++; if (before.state !== "gaze" && before.state !== "walk") fromStand++; }
+        was.set(a.id, { trip: !!a.trip, state: a.state });
+      }
+    });
+    return { ants: crowd.ants, used, peerTrips, fromStand, starts };
+  };
+  const one = make(7);
+  expect(one.ants).toEqual(make(7).ants);
+  expect(one.ants).not.toEqual(make(8).ants);
+  expect(one.starts).toBeGreaterThan(5);
+  expect([one.peerTrips, one.fromStand]).toEqual([0, 0]);
+  expect(one.used.has(atDoor.x)).toBe(false);
+});
+
+test("an ant dropped from the roster mid-trip is removed out of sight, never walked back across the floor", () => {
+  const find = (phase: "out" | "away" | "in", door: boolean) => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const e = env({ doors: DOORS }), crowd = createCrowd(seed);
+      crowd.sync(NPCS, e);
+      const a = until(crowd, e, 240, () => crowd.ants.find((o) => o.trip?.phase === phase && !!o.trip.via === door && (phase !== "out" || o.path.length > 1)));
+      if (a) return { e, crowd, a };
+    }
+    throw new Error(`no ${phase} trip`);
+  };
+  { // out of sight: gone at once
+    const { e, crowd, a } = find("away", true);
+    crowd.sync(NPCS.filter((m) => m.id !== a.id), e);
+    expect(crowd.ants.map((o) => o.id)).not.toContain(a.id); expect(crowd.ants).toHaveLength(19);
+  }
+  for (const phase of ["out", "in"] as const) { // in a doorway: on (or back) inside, removed at the hidden end
+    const { e, crowd, a } = find(phase, true), via = a.trip!.via!, roster = NPCS.filter((m) => m.id !== a.id);
+    crowd.sync(roster, e);
+    expect(a.trip).toMatchObject({ phase: "out", drop: true }); expect(a.exit).toBe(0);
+    const gone = until(crowd, e, 15, () => { crowd.sync(roster, e); if (crowd.ants.includes(a)) { expect(a.exit, phase).toBe(0); return undefined; } return a; });
+    expect(gone, phase).toBeDefined();
+    expect({ x: a.x, z: a.z }, phase).toEqual(hiddenEnd(via)); // where it was removed
+  }
+  { // walking off a side: an ordinary leaver
+    const { e, crowd, a } = find("out", false);
+    crowd.sync(NPCS.filter((m) => m.id !== a.id), e);
+    expect(a.trip).toBeNull(); expect(a.exit).not.toBe(0); expect(a.fade).toBe(1);
+  }
+});
+
+test("without doors, or before the crowd settles, nobody goes on a trip", () => {
+  const crowd = createCrowd(4);
+  crowd.sync(20, env());
+  let trips = 0;
+  run(crowd, 120, env(), () => { trips += crowd.ants.filter((a) => a.trip || a.state === "away" || a.lap || a.fade !== 1).length; });
+  expect(trips).toBe(0);
+  // Unstepped (reduced motion) the clock never runs.
+  const still = createCrowd(4), e = env({ doors: DOORS });
+  still.sync(20, e); for (let i = 0; i < 600; i++) still.sync(20, e);
+  expect(still.ants.filter((a) => a.trip)).toHaveLength(0);
 });

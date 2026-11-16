@@ -11,7 +11,13 @@ export type AntVariant = "neutral" | "fear" | "hope";
 // While the index is in the hope state, neutral and hope ants wear a brighter face: the same poses under these atlas
 // variants, wherever that art exists. The fear ant has no bright form.
 export const ANT_BRIGHT: Partial<Record<AntVariant, string>> = { neutral: "neutral-bright", hope: "hope-bright" };
-export type CrowdState = "walk" | "gaze" | "phone" | "sigh";
+export type CrowdState = "walk" | "gaze" | "phone" | "sigh" | "away"; // away: off the floor between two halves of a trip (see TURNOVER)
+/** A way off the plaza floor for the crowd: the floor point in front of it, then the legs walked through it. The last leg
+ * point is out of sight (behind the wall beside the opening); the legs may leave the walkable floor. */
+export type CrowdDoor = Point & { legs: readonly Point[] };
+/** A turnover: the ant walks `out` (through `via`, or off a side when it is null), waits `away` out of sight, then its slot
+ * comes back as someone new, `in` through `via` (or walking in from a side). `drop`: left the roster, removed once inside. */
+export type CrowdTrip = { phase: "out" | "away" | "in"; via: CrowdDoor | null; wait: number; drop?: boolean };
 export type CrowdAnt = { id: string; variant: AntVariant;
   peer: boolean; // another viewer's ant: it walks to the point that viewer last chose and stands there (no roaming)
   target: Point | null; // a peer's last shared point
@@ -23,10 +29,12 @@ export type CrowdAnt = { id: string; variant: AntVariant;
   lean: number; // side a camera-facing sprite turns to: -1 the viewer's left, 1 the right (see leanOf)
   fx: number; fz: number; dir8: number; dir4: number; fresh: boolean; // the facing that is drawn: the heading, steadied (see `face`)
   eye: number; eyeRng: number; // seconds until a gazer next raises or lowers its head, and the private stream that times it
-  nod: number }; // seconds left of the head movement that just started (see antGazePose)
+  nod: number; // seconds left of the head movement that just started (see antGazePose)
+  trip: CrowdTrip | null; fade: number; lap: number }; // fade: 1 drawn, darkening toward 0 in a doorway, 0 hidden; lap: trips completed by the slot
 export type CrowdView = { cx: number; halfW: number; camZ: number; dist: number; zoomed: boolean };
 // `restless` (mixed index) shortens the stands; `hopeful` (index in the hope state) takes fewer phones out.
-export type CrowdEnv = { obstacles: Obstacle[]; front: number; visitor: Point; view: CrowdView; restless?: boolean; hopeful?: boolean };
+export type CrowdEnv = { obstacles: Obstacle[]; front: number; visitor: Point; view: CrowdView; restless?: boolean; hopeful?: boolean;
+  doors?: readonly CrowdDoor[] }; // with doors the crowd turns over now and then (see TURNOVER); without, it never does
 // gap is the least distance between standing spots; `wide` and `deep` stretch it to the sprite's footprint on screen (a
 // sprite is about .85 wide, and one standing close in front of another hides it). `busy` caps the share on the phone at once.
 export const CROWD = { back: -2.9, side: 9.4, radius: .35, gap: .7, wide: 1.1, deep: 1.3, pass: .45, visitorGap: 1.2, edge: .6, busy: .15, panels: [-7, 0, 7] };
@@ -48,12 +56,15 @@ export type Crowd = {
   ants: CrowdAnt[];
   /** Holds exactly these ants. Until `settleSeconds` of stepped time after the first roster that holds an NPC, newcomers
    * are placed on the floor and dropped ants removed at once; after that newcomers walk in from a side and dropped ones
-   * walk off to the nearer side. A number is that many neutral NPCs. */
+   * walk off to the nearer side (one on a trip goes out of sight instead, see CrowdTrip). A number is that many neutral NPCs. */
   sync(roster: number | CrowdMember[], env: CrowdEnv): void;
   step(dt: number, env: CrowdEnv): void;
   /** A peer chatted: it looks at its phone for `seconds`. */
   say(id: string, seconds: number): void;
 };
+// Turnover, in seconds: the first trip after the crowd settles, then one every `every`, each away for `away`; `outside` is
+// the share of trips that go off a side instead of through a door (both ways). Ten NPCs allow one trip out at a time.
+export const TURNOVER = { first: [10, 18], every: [8, 14], away: [2, 6], outside: .35, per: 10 } as const;
 // Entrances and exits: the floor's side strip beyond the side stalls and crates, else just outside the view.
 const SIDE_X = WORLD_BOUNDS.right - .4, SIDE_LANE_Z = 4.2, ENTER_SPEED = 1.1, EXIT_SPEED = 1.2, PEER_SPEED = 1.35, EXIT_GIVE_UP = 15;
 
@@ -98,15 +109,18 @@ const hash = (seed: number, index: number) => {
   h = Math.imul(h ^ h >>> 16, 0x85EBCA6B); h = Math.imul(h ^ h >>> 13, 0xC2B2AE35);
   return (h ^ h >>> 16) | 0;
 };
-const roll = (a: CrowdAnt, stream: "rng" | "eyeRng") => { // mulberry32 on the ant's own state
-  const state = a[stream] = (a[stream] + 0x6D2B79F5) | 0;
+const unit = (state: number) => { // mulberry32's output for a state already advanced
   let t = Math.imul(state ^ state >>> 15, 1 | state);
   t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
   return ((t ^ t >>> 14) >>> 0) / 4294967296;
 };
+const roll = (a: CrowdAnt, stream: "rng" | "eyeRng") => unit(a[stream] = (a[stream] + 0x6D2B79F5) | 0); // mulberry32 on the ant's own state
 const rand = (a: CrowdAnt) => roll(a, "rng");
 const eyeSpan = (a: CrowdAnt) => EYE_MIN + roll(a, "eyeRng") * EYE_RANGE;
 const gap = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
+const pathLength = (from: Point, path: readonly Point[]) => path.reduce((sum, p, i) => sum + gap(i ? path[i - 1] : from, p), 0);
+// An ant out of sight between two halves of a trip is no body on the floor: nobody keeps their distance from it.
+const hidden = (o: CrowdAnt) => o.state === "away";
 // Standing room: `gap` scaled so that two spots need `wide` between them side by side and `deep` front to back.
 const room = (a: Point, b: Point) => Math.hypot((a.x - b.x) / CROWD.wide, (a.z - b.z) / CROWD.deep) * CROWD.gap;
 // A spot right in front of the visitor would hide it behind the standing ant.
@@ -127,6 +141,11 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   // -1 until a roster brings an NPC, then the seconds of the placing window left, 0 once settled. An empty first roster
   // (no world data yet) or one of peers only must not use up the placement, or the whole crowd would march in.
   let lastCx: number | null = null, spawned = 0, settle = -1;
+  // The turnover has a stream of its own (which ant, which way, how long), so a crowd without doors never draws from it.
+  // `clock`: seconds to the next trip, -1 until the first one is timed.
+  let churnState = hash(seed ^ 0x7A11, 0), clock = -1;
+  const churn = () => unit(churnState = (churnState + 0x6D2B79F5) | 0);
+  const churnIn = ([low, high]: readonly [number, number]) => low + churn() * (high - low);
   const limit = (env: CrowdEnv) => env.front - .35;
   // Standing spots leave the door mouths free, so nobody gazes at the wall right in a doorway.
   const onFloor = (p: Point, env: CrowdEnv) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side && walkable(p, env.obstacles, CROWD.radius) && !inDoorway(p);
@@ -139,7 +158,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   };
   // Goals keep a body's distance from the visitor, every other goal and every standing ant.
   const spaced = (p: Point, self: CrowdAnt, env: CrowdEnv, bodies = false) => gap(p, env.visitor) >= CROWD.visitorGap && !hides(p, env.visitor)
-    && ants.every((o) => o === self || (room(p, o.goal) >= CROWD.gap && ((!bodies && o.state === "walk") || room(p, o) >= CROWD.gap)));
+    && ants.every((o) => o === self || hidden(o) || (room(p, o.goal) >= CROWD.gap && ((!bodies && o.state === "walk") || room(p, o) >= CROWD.gap)));
   // Phones come out a few at a time, never as a wave.
   const phoneFree = () => {
     const npcs = ants.filter((o) => !o.peer && !o.exit);
@@ -147,7 +166,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   };
   // A route is clear when it does not lead closer than `pass` to a standing ant, nor to any ant in its first 1.5 units.
   const pathClear = (a: CrowdAnt, p: Point) => ants.every((o) => {
-    if (o === a) return true;
+    if (o === a || hidden(o)) return true;
     const near = segmentGap(o, a, p, o.state === "walk" ? 1.5 : Infinity);
     return near >= CROWD.pass || near >= gap(o, a) - 1e-6;
   });
@@ -236,18 +255,24 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
     a.moved = true; a.stride += Math.min(distance, reach); a.pose = walkPose(a.stride);
     return !a.path.length;
   };
-  const spawn = (member: CrowdMember, env: CrowdEnv, enter: boolean) => {
+  // Someone new: the streams and side of the next spawn index. A slot coming back from a trip is reseeded the same way.
+  const reseed = (a: CrowdAnt) => {
     const index = spawned++;
+    a.rng = hash(seed, index); a.eyeRng = hash(seed ^ 0x100C, index); a.stride = 0;
+    a.lean = hash(seed ^ 0x5EED, index) & 1 ? 1 : -1; // a stable side of its own until its first sideways walk
+  };
+  // From a side onto the floor (a newcomer, or a slot back from a trip off a side), giving way like any walker.
+  const enterFloor = (a: CrowdAnt, env: CrowdEnv) => go(a, pickSpot(a, env) ?? route(a, { x: env.view.cx, z: Math.min(limit(env), Math.max(CROWD.back, 0)) }, env), ENTER_SPEED);
+  const spawn = (member: CrowdMember, env: CrowdEnv, enter: boolean) => {
     const a: CrowdAnt = { id: member.id, variant: member.variant, peer: !!member.peer, target: member.peer ?? null, talk: 0, exit: 0, exitAge: 0, x: 0, z: (CROWD.back + limit(env)) / 2, hx: 0, hz: -1, state: "gaze", pose: "idle", t: 0, span: 0,
-      path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: hash(seed, index),
-      lean: hash(seed ^ 0x5EED, index) & 1 ? 1 : -1, // a stable side of its own until its first sideways walk
-      fx: 0, fz: -1, dir8: 4, dir4: 4, fresh: true, eye: 0, eyeRng: hash(seed ^ 0x100C, index), nod: 0 };
+      path: [], goal: { x: 0, z: 0 }, speed: 1, stride: 0, wait: 0, moved: false, rng: 0, lean: 1,
+      fx: 0, fz: -1, dir8: 4, dir4: 4, fresh: true, eye: 0, eyeRng: 0, nod: 0, trip: null, fade: 1, lap: 0 };
+    reseed(a);
     if (enter) {
       const at = sidePoint(a, rand(a) < .5 ? -1 : 1, env);
       a.x = at.x; a.z = at.z; a.goal = { ...at };
       ants.push(a);
-      if (a.peer) peerWalk(a, env);
-      else { const path = pickSpot(a, env); if (path) go(a, path, ENTER_SPEED); else go(a, route(a, { x: env.view.cx, z: Math.min(limit(env), Math.max(CROWD.back, 0)) }, env), ENTER_SPEED); }
+      if (a.peer) peerWalk(a, env); else enterFloor(a, env);
       return;
     }
     if (a.peer && a.target) {
@@ -270,11 +295,56 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
     else if (roll < .84) { phone(a); a.t = a.span * (.25 + .75 * rand(a)); }
     else { a.goal = { x: a.x, z: a.z }; roam(a, env); }
   };
+  // Doors a trip may use: none the visitor stands at, none another trip is already using.
+  const freeDoors = (env: CrowdEnv, self: CrowdAnt) => (env.doors ?? []).filter((d) => gap(d, env.visitor) >= 1.6 && ants.every((o) => o === self || o.trip?.via !== d));
+  // A trip sets off from the floor (a gazer or a walker, never a peer, a leaver, a phone or one next to the visitor), through
+  // one of the two doors nearest to it or off its nearer side. Every trip walk starts through `go`, so an about-turn is immediate.
+  const depart = (env: CrowdEnv) => {
+    const free = ants.filter((a) => !a.peer && !a.exit && !a.trip && (a.state === "gaze" || a.state === "walk") && gap(a, env.visitor) > 1.5);
+    if (!free.length) return false;
+    const a = free[Math.floor(churn() * free.length)], outside = churn() < TURNOVER.outside;
+    const near = freeDoors(env, a).sort((p, q) => gap(a, p) - gap(a, q)).slice(0, 2), via = outside || !near.length ? null : near[Math.floor(churn() * near.length)];
+    a.trip = { phase: "out", via, wait: 0 }; a.talk = 0;
+    go(a, via ? [...route(a, { x: via.x, z: via.z }, env), ...via.legs] : route(a, sidePoint(a, a.x < 0 ? -1 : 1, env), env), EXIT_SPEED);
+    return true;
+  };
+  // Out of sight: the slot becomes someone new and waits behind another door (one with nobody in front of it), or off a side.
+  const vanish = (a: CrowdAnt, env: CrowdEnv) => {
+    const exit = a.trip?.via ?? null;
+    reseed(a); a.lap++; a.trip = null;
+    const doors = freeDoors(env, a).filter((d) => ants.every((o) => o === a || hidden(o) || room(d, o) >= CROWD.gap));
+    const others = doors.length > 1 ? doors.filter((d) => d !== exit) : doors, outside = churn() < TURNOVER.outside;
+    const from = outside || !others.length ? null : others[Math.floor(churn() * others.length)];
+    const at = from ? from.legs[from.legs.length - 1] : sidePoint(a, churn() < .5 ? -1 : 1, env);
+    a.x = at.x; a.z = at.z; stand(a, "away", "idle", 0); a.fade = 0;
+    a.trip = { phase: "away", via: from, wait: churnIn(TURNOVER.away) };
+  };
+  // One step of a trip. Door legs are walked without give-way (like a leaver) and darken with the doorway: the drawn ant
+  // fades over the legs, out to nothing at the hidden end and back in from it. True once a dropped ant is inside: remove it.
+  const stepTrip = (a: CrowdAnt, dt: number, env: CrowdEnv) => {
+    const trip = a.trip!, via = trip.via;
+    if (trip.phase === "away") {
+      if ((trip.wait -= dt) > 0) return false;
+      if (via) { trip.phase = "in"; go(a, [...via.legs.slice(0, -1).reverse(), { x: via.x, z: via.z }], ENTER_SPEED); }
+      else { a.trip = null; a.fade = 1; enterFloor(a, env); }
+      return false;
+    }
+    const done = glide(a, dt);
+    if (via) {
+      const total = pathLength(via, via.legs), left = pathLength(a, a.path);
+      a.fade = trip.phase === "in" ? Math.max(0, Math.min(1, 1 - left / total)) : a.path.length > via.legs.length ? 1 : Math.max(0, Math.min(1, left / total));
+    }
+    if (!done) return false;
+    if (trip.phase === "in") { a.trip = null; a.fade = 1; roam(a, env); return false; }
+    if (trip.drop) return true;
+    vanish(a, env);
+    return false;
+  };
   const blocked = (a: CrowdAnt, index: number, next: Point, env: CrowdEnv) => {
     const visitor = gap(next, env.visitor);
     if (visitor < VISITOR_PASS && visitor < gap(a, env.visitor)) return true;
     return ants.some((o, j) => {
-      if (j === index) return false;
+      if (j === index || hidden(o)) return false;
       const near = gap(next, o);
       if (near >= CROWD.pass || near >= gap(a, o)) return false;
       // Standing ants are spaced `gap` apart, so a walker may squeeze between two of them.
@@ -329,9 +399,20 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
       const animate = settle === 0;
       const wanted = new Map(list.map((m) => [m.id, m]));
       if (!animate) { for (let i = ants.length - 1; i >= 0; i--) if (!wanted.has(ants[i].id)) ants.splice(i, 1); }
-      for (const a of ants) {
-        const m = wanted.get(a.id);
-        if (!m) { if (!a.exit) leave(a, env); continue; }
+      for (let i = 0; i < ants.length; i++) {
+        const a = ants[i], m = wanted.get(a.id), trip = a.trip;
+        if (!m) {
+          // Dropped mid-trip: out of sight it goes at once; in a doorway it carries on (or turns back) inside and goes there.
+          if (trip?.phase === "away") { ants.splice(i--, 1); continue; }
+          if (trip?.via) {
+            if (trip.phase === "in") { trip.phase = "out"; go(a, trip.via.legs.slice(Math.max(0, a.path.length - 1)), EXIT_SPEED); }
+            trip.drop = true; continue;
+          }
+          if (trip) { a.trip = null; a.fade = 1; }
+          if (!a.exit) leave(a, env);
+          continue;
+        }
+        if (trip) trip.drop = false;
         a.variant = m.variant;
         const returned = a.exit !== 0; // came back while walking off
         a.exit = 0;
@@ -354,6 +435,16 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
       // Section change: gazers left outside the new view drift in over a few seconds.
       if (lastCx !== null && lastCx !== env.view.cx) for (const a of ants) if (a.state === "gaze" && !inView(a, env.view)) a.t = Math.min(a.t, rand(a) * 4);
       lastCx = env.view.cx;
+      // Turnover, once the crowd has settled: when the clock runs out a trip sets off, unless enough are already on the way
+      // out (or nobody can go), and then the clock tries again shortly.
+      if (env.doors?.length && settle === 0) {
+        const npcs = ants.filter((a) => !a.peer && !a.exit).length;
+        if (npcs && clock < 0) clock = churnIn(TURNOVER.first);
+        else if (npcs && (clock -= delta) <= 0) {
+          const slack = ants.filter((a) => a.trip?.phase === "out").length < Math.ceil(npcs / TURNOVER.per);
+          clock = slack && depart(env) ? churnIn(TURNOVER.every) : 2;
+        }
+      }
       for (let i = 0; i < ants.length; i++) {
         const a = ants[i];
         if (a.exit) {
@@ -361,6 +452,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
           if (glide(a, delta) || a.exitAge > EXIT_GIVE_UP) { ants.splice(i, 1); i--; }
           continue;
         }
+        if (a.trip) { if (stepTrip(a, delta, env)) { ants.splice(i, 1); i--; } continue; }
         if (a.peer) { stepPeer(a, delta, env); continue; }
         if (a.z > edge) {
           // The visible floor shrank: walk out, never clamp or teleport.

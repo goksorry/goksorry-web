@@ -247,11 +247,15 @@ test("clicking a plaza door walks the visitor to it, and a second click goes in"
   await expect(page).toHaveURL(/scene=theater/);
 });
 
-test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming", async ({ page }) => {
+test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming and its comings and goings", async ({ page }) => {
+  test.setTimeout(60_000);
   await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);
-  const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().map((a) => `${a.x.toFixed(3)},${a.z.toFixed(3)}`).join("|"));
+  const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().map((a) => `${a.x.toFixed(3)},${a.z.toFixed(3)},${a.trip},${a.lap}`).join("|"));
   await expect.poll(async () => (await crowd()).length).toBeGreaterThan(0);
   const before = await crowd(); await page.waitForTimeout(1500);
+  expect(await crowd()).toBe(before);
+  // Past the latest first trip (settle window plus TURNOVER.first): still nobody has set off through a door or a side.
+  await page.waitForTimeout(19_000);
   expect(await crowd()).toBe(before);
 });
 
@@ -331,7 +335,7 @@ test("plaza shows about twenty roaming ants that mostly face the wall; clicking 
     // A standing ant whose legs are not under a HUD element or wall button, away from the visitor, nearest mid-screen.
     const picked = await page.locator("canvas").evaluate((node) => {
       const canvas = node as HTMLCanvasElement & { worldMetrics: RenderMetrics }, bounds = canvas.getBoundingClientRect(), me = canvas.worldMetrics.visitor();
-      const ant = canvas.worldMetrics.crowd().filter((a) => a.state === "gaze" && a.z > -1.5 && Math.hypot(a.x - me.x, a.z - me.z) > 2 && document.elementFromPoint(bounds.left + a.sx, bounds.top + a.sy + a.sh * .35) === canvas)
+      const ant = canvas.worldMetrics.crowd().filter((a) => a.state === "gaze" && !a.trip && a.fade === 1 && a.z > -1.5 && Math.hypot(a.x - me.x, a.z - me.z) > 2 && document.elementFromPoint(bounds.left + a.sx, bounds.top + a.sy + a.sh * .35) === canvas)
         .sort((a, b) => Math.abs(a.sy - bounds.height / 2) - Math.abs(b.sy - bounds.height / 2))[0] ?? null;
       return ant && { ant, far: Math.hypot(ant.x - me.x, ant.z - me.z) };
     });
@@ -353,6 +357,41 @@ test("plaza shows about twenty roaming ants that mostly face the wall; clicking 
   expect(Math.max(...phone.map((a) => a.sh), (await visitor()).sh)).toBeLessThan(844 * .1);
   // Whoever walks is drawn in a walk frame of the direction it faces (or its standing frame while it waits for another ant to pass).
   for (const a of phone.filter((a) => a.state === "walk")) expect(a.frame).toMatch(/^(neutral|fear|hope)\.(walk-[abp]|idle)\.(f|fl|l|bl|b|br|r|fr)~?$/);
+});
+
+test("now and then an ant leaves through a door or off a side, and its slot comes back as someone new", async ({ page }) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await expect.poll(() => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().length)).toBe(20);
+  // Every animation frame until the first ant to set off is back on the floor as someone new (its slot's lap went up).
+  const watch = await page.locator("canvas").evaluate(async (node) => {
+    const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics, slots = metrics.crowd().map((a) => a.id).join("|");
+    const log = { slotsChanged: 0, out: 0, hiddenDrawn: 0, id: "", lap: 0, phases: [] as string[], back: false, door: false };
+    for (const end = performance.now() + 100_000; performance.now() < end && !log.back;) {
+      const crowd = metrics.crowd();
+      if (crowd.map((a) => a.id).join("|") !== slots) log.slotsChanged++;
+      log.out = Math.max(log.out, crowd.filter((a) => a.trip === "out").length);
+      log.hiddenDrawn += crowd.filter((a) => a.trip === "away" && (a.sh > 0 || a.frame)).length; // out of sight: drawn at zero size
+      if (!log.id) { const a = crowd.find((o) => o.trip === "out"); if (a) { log.id = a.id; log.lap = a.lap; } }
+      const a = crowd.find((o) => o.id === log.id);
+      if (a) {
+        const phase = a.trip ?? "floor";
+        if (log.phases[log.phases.length - 1] !== phase) log.phases.push(phase);
+        if (a.fade > 0 && a.fade < 1) log.door = true;
+        if (a.lap > log.lap && !a.trip) log.back = true;
+      }
+      await new Promise((done) => requestAnimationFrame(done));
+    }
+    return log;
+  });
+  expect(watch.id).not.toBe("");
+  expect(watch.back, watch.phases.join(" ")).toBe(true);
+  expect(watch.phases.slice(0, 2)).toEqual(["out", "away"]);
+  expect([["out", "away", "in", "floor"], ["out", "away", "floor"]]).toContainEqual(watch.phases);
+  expect([watch.slotsChanged, watch.hiddenDrawn]).toEqual([0, 0]);
+  expect(watch.out).toBeLessThanOrEqual(2);
+  // A door trip darkens into the doorway (or out of it) instead of popping.
+  if (watch.phases.includes("in")) expect(watch.door).toBe(true);
 });
 
 // Samples every animation frame in the page: all frame keys drawn per state, and the most breath puffs drawn at once.
@@ -414,7 +453,7 @@ test("walkers pass their feet through real passing frames; gazers tip their head
   expect(small.atlas).toBe("/world/ant-atlas-small.png");
   // Nothing is enlarged from it: at pixel ratio 2 every sprite is drawn at no more than two thirds of a screen pixel per atlas pixel.
   const frames = antAtlas.frames as Record<string, number[]>;
-  for (const a of small.ants) { const frame = frames[a.frame.replace("~", "")]; expect(a.sh * 2 / (frame[3] * frame[4]), a.frame).toBeLessThanOrEqual(2 / 3); }
+  for (const a of small.ants.filter((a) => a.frame)) { const frame = frames[a.frame.replace("~", "")]; expect(a.sh * 2 / (frame[3] * frame[4]), a.frame).toBeLessThanOrEqual(2 / 3); }
 });
 
 test("resting ants look up at the wall; when the index turns to hope the faces brighten in place", async ({ page }) => {
@@ -433,7 +472,7 @@ test("resting ants look up at the wall; when the index turns to hope the faces b
   // A data refresh moves the index to 희망: same ants, same places, brighter faces.
   const hopeful = buildWorldFrame(worldRows().map((row, i) => row.label === "bearish" && i % 4 ? { ...row, label: "bullish" as const, sentiment_score: 8 } : row));
   expect(hopeful.overall.fear_ratio).toBeGreaterThan(0); expect(frame.overall.mood).toBe("mixed");
-  const standing = (await read()).crowd.map((a, i) => ({ ...a, i })).filter((a) => a.state === "gaze");
+  const standing = (await read()).crowd.filter((a) => a.state === "gaze" && !a.trip);
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: hopeful }));
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
   await expect(page.locator(".world-root")).toHaveAttribute("data-paused", "true");
@@ -442,10 +481,11 @@ test("resting ants look up at the wall; when the index turns to hope the faces b
   const bright = await read();
   expect(["bullish", "extreme_bullish"]).toContain(bright.band);
   expect(bright.crowd).toHaveLength(20);
-  // Nobody was moved by the refresh: whoever stood still stands in the same spot.
-  const kept = standing.filter((a) => bright.crowd[a.i].state === "gaze");
+  // Nobody was moved by the refresh: whoever stood still stands in the same spot (by slot; a slot that went on a trip since is someone else).
+  const now = new Map(bright.crowd.map((a) => [a.id, a]));
+  const kept = standing.filter((a) => { const b = now.get(a.id); return b && b.state === "gaze" && !b.trip && b.lap === a.lap; });
   expect(kept.length).toBeGreaterThanOrEqual(5);
-  for (const a of kept) expect(Math.hypot(bright.crowd[a.i].x - a.x, bright.crowd[a.i].z - a.z)).toBeLessThan(.01);
+  for (const a of kept) expect(Math.hypot(now.get(a.id)!.x - a.x, now.get(a.id)!.z - a.z)).toBeLessThan(.01);
   // Neutral and hope ants (and the visitor) show bright frames; fear ants never do; looking up carries on.
   expect(bright.visitor.frame).toMatch(/^neutral-bright\./);
   await expect.poll(async () => (await read()).crowd.filter((a) => /^(neutral|hope)-bright\./.test(a.frame)).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(8);
