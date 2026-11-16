@@ -46,8 +46,9 @@ export const inView = (p: Point, view: CrowdView): boolean => Math.abs(p.x - vie
 export type CrowdMember = { id: string; variant: AntVariant; peer?: Point };
 export type Crowd = {
   ants: CrowdAnt[];
-  /** Holds exactly these ants. The first sync places them on the floor; later ones walk newcomers in from a side and
-   * walk the dropped ones off to the nearer side. A number is that many neutral NPCs. */
+  /** Holds exactly these ants. Until `settleSeconds` of stepped time after the first roster that holds an NPC, newcomers
+   * are placed on the floor and dropped ants removed at once; after that newcomers walk in from a side and dropped ones
+   * walk off to the nearer side. A number is that many neutral NPCs. */
   sync(roster: number | CrowdMember[], env: CrowdEnv): void;
   step(dt: number, env: CrowdEnv): void;
   /** A peer chatted: it looks at its phone for `seconds`. */
@@ -71,6 +72,9 @@ export const walkLift = (stride: number, phase = WALK_PHASE): number => .5 - .5 
 // clearly inside another one. A sidestep that alternates with the route, or a heading on the border between two
 // directions, would otherwise swap the sprite's direction every frame.
 const FACE_TAU = .18, FACE_KEEP8 = Math.PI / 8 + .16, FACE_KEEP4 = Math.PI / 4 + .2;
+// A new route whose first leg turns more than ~120 degrees from the drawn facing turns at once (see `go`): through the
+// low-pass an about-turn would walk most of a short leg backwards, and an exact one would never turn at all.
+const FACE_TURN = -.5;
 const DIR_ANGLE = (dir: number) => dir * Math.PI / 4; // angle of an ANT_DIRS index, as atan2(-x, z)
 const off = (angle: number, dir: number) => Math.abs(Math.atan2(Math.sin(angle - DIR_ANGLE(dir)), Math.cos(angle - DIR_ANGLE(dir))));
 export function face(a: CrowdAnt, dt: number, snap = false): void {
@@ -115,9 +119,14 @@ const segmentGap = (p: Point, a: Point, b: Point, reach = Infinity) => {
   return Math.hypot(p.x - a.x - dx / length * along, p.z - a.z - dz / length * along);
 };
 
-export function createCrowd(seed = 1): Crowd {
+// Seconds of stepped time after the first roster that holds an NPC during which roster changes are placed and removed at
+// once: the world data, the feed summary and the chat hub's first snapshot land close together after load.
+export const SETTLE = 1.5;
+export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   const ants: CrowdAnt[] = [];
-  let lastCx: number | null = null, spawned = 0, synced = false;
+  // -1 until a roster brings an NPC, then the seconds of the placing window left, 0 once settled. An empty first roster
+  // (no world data yet) or one of peers only must not use up the placement, or the whole crowd would march in.
+  let lastCx: number | null = null, spawned = 0, settle = -1;
   const limit = (env: CrowdEnv) => env.front - .35;
   const onFloor = (p: Point, env: CrowdEnv) => p.z >= CROWD.back && p.z <= limit(env) && Math.abs(p.x) <= CROWD.side && walkable(p, env.obstacles, CROWD.radius);
   const mustSee = (a: CrowdAnt, env: CrowdEnv) => rand(a) < (env.view.zoomed ? .75 : .9);
@@ -177,7 +186,10 @@ export function createCrowd(seed = 1): Crowd {
     turn(a, facing[1], facing[2]);
   };
   const go = (a: CrowdAnt, path: Point[], speed: number) => {
-    a.fresh = a.state !== "walk"; // setting off from a stand turns at once; a new route mid-walk turns through `face`
+    // Setting off from a stand turns at once, and so does a new route that doubles back (a peer sent back the way it
+    // came, a walker called off to the nearer side). Other reroutes mid-walk turn through `face`.
+    const first = path[0], dx = first ? first.x - a.x : 0, dz = first ? first.z - a.z : 0, length = Math.hypot(dx, dz);
+    a.fresh = a.state !== "walk" || (length > EPS && (a.fx * dx + a.fz * dz) / length < FACE_TURN);
     a.state = "walk"; a.path = path; a.goal = path[path.length - 1]; a.speed = speed; a.wait = 0; a.t = a.span = 0; a.nod = 0;
     a.pose = "walk-a"; // never carry a phone or sigh pose into the walk, even for the one frame before the first stride
   };
@@ -312,7 +324,8 @@ export function createCrowd(seed = 1): Crowd {
       const list: CrowdMember[] = typeof roster === "number"
         ? Array.from({ length: Math.max(0, Math.floor(roster)) }, (_, i) => ({ id: `npc:${i}`, variant: "neutral" as const }))
         : roster;
-      const animate = synced; synced = true;
+      if (settle < 0 && list.some((m) => !m.peer)) settle = settleSeconds;
+      const animate = settle === 0;
       const wanted = new Map(list.map((m) => [m.id, m]));
       if (!animate) { for (let i = ants.length - 1; i >= 0; i--) if (!wanted.has(ants[i].id)) ants.splice(i, 1); }
       for (const a of ants) {
@@ -336,6 +349,7 @@ export function createCrowd(seed = 1): Crowd {
     },
     step(dt, env) {
       const delta = Math.max(0, Math.min(dt, .1)), edge = limit(env) + EPS;
+      if (settle > 0) settle = Math.max(0, settle - delta);
       // Section change: gazers left outside the new view drift in over a few seconds.
       if (lastCx !== null && lastCx !== env.view.cx) for (const a of ants) if (a.state === "gaze" && !inView(a, env.view)) a.t = Math.min(a.t, rand(a) * 4);
       lastCx = env.view.cx;

@@ -544,3 +544,52 @@ test("a quick horizontal swipe steps one wall section; taps, slow drags and vert
   expect(swipeStep(-120, 0, 1200)).toBe(0); // a slow drag
   expect(swipeStep(-80, 90, 200)).toBe(0); // mostly vertical
 });
+
+test("a peer sent back the way it came turns at once", () => {
+  const e = env(), crowd = createCrowd(8);
+  crowd.sync([{ id: "npc:0", variant: "neutral" }, { id: "peer:x", variant: "neutral", peer: { x: 0, z: 2 } }], e);
+  const peer = () => crowd.ants.find((a) => a.id === "peer:x")!;
+  run(crowd, 3, e);
+  crowd.sync([{ id: "npc:0", variant: "neutral" }, { id: "peer:x", variant: "neutral", peer: { x: -4, z: 2 } }], e);
+  run(crowd, .5, e);
+  expect(peer()).toMatchObject({ state: "walk", dir8: 2, lean: -1 });
+  crowd.sync([{ id: "npc:0", variant: "neutral" }, { id: "peer:x", variant: "neutral", peer: { x: 4, z: 2 } }], e); // exact reversal mid-walk
+  run(crowd, DT * 2, e);
+  expect(peer()).toMatchObject({ state: "walk", dir8: 6, dir4: 6, lean: 1 });
+  crowd.sync([{ id: "npc:0", variant: "neutral" }, { id: "peer:x", variant: "neutral", peer: { x: -4, z: 2.6 } }], e); // near reversal
+  run(crowd, DT * 2, e);
+  expect(peer().dir8).toBe(2);
+});
+
+test("an empty or peers-only first roster does not use up the placement", () => {
+  const e = env();
+  const direct = createCrowd(3); direct.sync(20, e);
+  const late = createCrowd(3); late.sync(0, e); run(late, 1, e); late.sync(20, e);
+  expect(spots(late)).toEqual(spots(direct));
+  for (const a of late.ants) {
+    expect(a.exit).toBe(0); expect(Math.abs(a.x)).toBeLessThanOrEqual(CROWD.side + EPS);
+    expect(walkable(a, obstacles, CROWD.radius)).toBe(true);
+  }
+  expect(late.ants.filter((a) => a.state === "gaze" || a.state === "phone").length).toBeGreaterThanOrEqual(12);
+  const peerFirst = createCrowd(3), peer: CrowdMember = { id: "peer:p", variant: "neutral", peer: { x: 2, z: 1 } };
+  peerFirst.sync([peer], e); run(peerFirst, 1, e);
+  const npcs: CrowdMember[] = Array.from({ length: 20 }, (_, i) => ({ id: `npc:${i}`, variant: "neutral" }));
+  peerFirst.sync([...npcs, peer], e);
+  expect(peerFirst.ants.find((a) => a.id === "peer:p")).toMatchObject({ x: 2, z: 1 });
+  expect(peerFirst.ants.filter((a) => Math.abs(a.x) > CROWD.side + EPS)).toHaveLength(0);
+});
+
+test("inside the settle window roster changes are placed; after it they walk", () => {
+  const e = env(), crowd = createCrowd(5);
+  crowd.sync(20, e); run(crowd, .5, e);
+  crowd.sync(12, e);
+  expect(crowd.ants).toHaveLength(12); expect(crowd.ants.every((a) => !a.exit)).toBe(true);
+  crowd.sync(16, e);
+  for (const a of crowd.ants.slice(12)) expect(Math.abs(a.x)).toBeLessThanOrEqual(CROWD.side + EPS);
+  run(crowd, 3, e);
+  crowd.sync(20, e);
+  for (const a of crowd.ants.slice(16)) { expect(a.state).toBe("walk"); expect(Math.abs(a.x - e.view.cx)).toBeGreaterThan(viewHalf(e.view, a.z)); }
+  // Without step (reduced motion) the window never closes: a late roster is still placed.
+  const still = createCrowd(5); still.sync(0, e); still.sync(20, e); still.sync(25, e);
+  expect(still.ants.filter((a) => Math.abs(a.x) > CROWD.side + EPS)).toHaveLength(0);
+});
