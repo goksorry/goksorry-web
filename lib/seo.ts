@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const SITE_NAME = "곡소리닷컴";
 export const SITE_URL = "https://goksorry.com";
-export const SITE_DESCRIPTION = "주식 삐에로와 개미들이 살아 움직이는 곡소리 메타버스. 곡소리 지수, 희망·공포 피드, 종목별 개미굴과 개미극장을 탐색하세요.";
+export const SITE_DESCRIPTION = "주식 삐에로와 개미들이 살아 움직이는 개미인생. 곡소리 지수, 희망·공포 피드, 심리 전장과 개미극장을 탐색하세요.";
 const DEFAULT_SOCIAL_IMAGE_URL = "/goksorry_logo.png";
 
 const normalizeText = (value: string): string => value.replace(/\s+/g, " ").trim();
