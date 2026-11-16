@@ -67,6 +67,8 @@ export type Crowd = {
 export const TURNOVER = { first: [10, 18], every: [8, 14], away: [2, 6], outside: .35, per: 10 } as const;
 // Entrances and exits: the floor's side strip beyond the side stalls and crates, else just outside the view.
 const SIDE_X = WORLD_BOUNDS.right - .4, SIDE_LANE_Z = 4.2, ENTER_SPEED = 1.1, EXIT_SPEED = 1.2, PEER_SPEED = 1.35, EXIT_GIVE_UP = 15;
+// The strip in front of a door (a little wider than entranceAt's): no trip uses a door while the visitor stands in it.
+const DOOR_CLEAR = 1.6;
 
 const WALL_Z = -4.885, GAZE_ARC = 40 * Math.PI / 180, TOP_SPEED = 1.35, HARD = .36, SQUEEZE = .33, VISITOR_PASS = .6, EPS = 1e-9;
 const SIDESTEPS = [50, -50, 90, -90, 130, -130].map((degree) => degree * Math.PI / 180);
@@ -296,7 +298,10 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
     else { a.goal = { x: a.x, z: a.z }; roam(a, env); }
   };
   // Doors a trip may use: none the visitor stands at, none another trip is already using.
-  const freeDoors = (env: CrowdEnv, self: CrowdAnt) => (env.doors ?? []).filter((d) => gap(d, env.visitor) >= 1.6 && ants.every((o) => o === self || o.trip?.via !== d));
+  const freeDoors = (env: CrowdEnv, self: CrowdAnt) => (env.doors ?? []).filter((d) => gap(d, env.visitor) >= DOOR_CLEAR && ants.every((o) => o === self || o.trip?.via !== d));
+  // Nobody on the floor right in front of a door, where an ant coming out of it would walk through them (`walkers`: counting
+  // the ones passing by, who otherwise give way to it).
+  const opening = (d: Point, self: CrowdAnt, walkers = true) => ants.every((o) => o === self || hidden(o) || (!walkers && o.state === "walk") || room(d, o) >= CROWD.gap);
   // A trip sets off from the floor (a gazer or a walker, never a peer, a leaver, a phone or one next to the visitor), through
   // one of the two doors nearest to it or off its nearer side. Every trip walk starts through `go`, so an about-turn is immediate.
   const depart = (env: CrowdEnv) => {
@@ -312,7 +317,7 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
   const vanish = (a: CrowdAnt, env: CrowdEnv) => {
     const exit = a.trip?.via ?? null;
     reseed(a); a.lap++; a.trip = null;
-    const doors = freeDoors(env, a).filter((d) => ants.every((o) => o === a || hidden(o) || room(d, o) >= CROWD.gap));
+    const doors = freeDoors(env, a).filter((d) => opening(d, a));
     const others = doors.length > 1 ? doors.filter((d) => d !== exit) : doors, outside = churn() < TURNOVER.outside;
     const from = outside || !others.length ? null : others[Math.floor(churn() * others.length)];
     const at = from ? from.legs[from.legs.length - 1] : sidePoint(a, churn() < .5 ? -1 : 1, env);
@@ -325,8 +330,10 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
     const trip = a.trip!, via = trip.via;
     if (trip.phase === "away") {
       if ((trip.wait -= dt) > 0) return false;
-      if (via) { trip.phase = "in"; go(a, [...via.legs.slice(0, -1).reverse(), { x: via.x, z: via.z }], ENTER_SPEED); }
-      else { a.trip = null; a.fade = 1; enterFloor(a, env); }
+      // The visitor (or someone standing) may have come to that door meanwhile: then the slot walks in from a side. The side
+      // point is taken now, for the view as it is: one picked when it went away may lie in view after a section change.
+      if (via && gap(via, env.visitor) >= DOOR_CLEAR && opening(via, a, false)) { trip.phase = "in"; go(a, [...via.legs.slice(0, -1).reverse(), { x: via.x, z: via.z }], ENTER_SPEED); }
+      else { const at = sidePoint(a, a.x < 0 ? -1 : 1, env); a.x = at.x; a.z = at.z; a.trip = null; a.fade = 1; enterFloor(a, env); }
       return false;
     }
     const done = glide(a, dt);
@@ -335,7 +342,11 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
       a.fade = trip.phase === "in" ? Math.max(0, Math.min(1, 1 - left / total)) : a.path.length > via.legs.length ? 1 : Math.max(0, Math.min(1, left / total));
     }
     if (!done) return false;
-    if (trip.phase === "in") { a.trip = null; a.fade = 1; roam(a, env); return false; }
+    if (trip.phase === "in") { // onto the floor; with no spot free it at least steps out of the door mouth instead of standing in it
+      a.trip = null; a.fade = 1; roam(a, env);
+      if (a.state !== "walk") go(a, route(a, { x: via!.x, z: via!.z + DOOR_CLEAR }, env), ENTER_SPEED);
+      return false;
+    }
     if (trip.drop) return true;
     vanish(a, env);
     return false;

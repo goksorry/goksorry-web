@@ -631,8 +631,9 @@ test("with doors the crowd turns over now and then, through the doors and off th
         const was = before.get(a.id)!;
         if (!was.trip && a.trip) { starts++; if (a.trip.phase !== "out") badStarts++; else if (a.trip.via) doorTrips++; else sideTrips++; }
         if (a.lap !== was.lap && !(a.lap === was.lap + 1 && was.trip === "out" && a.trip?.phase === "away")) badLaps++;
-        // Nobody moves faster than a walk, except a slot that has just become someone new out of sight.
-        if (a.lap === was.lap && Math.hypot(a.x - was.x, a.z - was.z) > 1.35 * DT + EPS) jumps++;
+        // Nobody moves faster than a walk, except out of sight: a slot that has just become someone new, or one that
+        // comes back from a side and is placed there as it sets off.
+        if (a.lap === was.lap && was.trip !== "away" && Math.hypot(a.x - was.x, a.z - was.z) > 1.35 * DT + EPS) jumps++;
         before.set(a.id, { x: a.x, z: a.z, trip: a.trip?.phase ?? null, lap: a.lap });
       }
     });
@@ -750,4 +751,30 @@ test("without doors, or before the crowd settles, nobody goes on a trip", () => 
   const still = createCrowd(4), e = env({ doors: DOORS });
   still.sync(20, e); for (let i = 0; i < 600; i++) still.sync(20, e);
   expect(still.ants.filter((a) => a.trip)).toHaveLength(0);
+});
+
+test("a slot coming back avoids a door the visitor has come to meanwhile, and a side that has come into view", () => {
+  // Waiting behind a door when the visitor walks up to it: it walks in from a side instead, never out of that door.
+  for (const seed of [1, 2, 3, 4]) {
+    const e = env({ doors: DOORS }), crowd = createCrowd(seed);
+    crowd.sync(NPCS, e);
+    const a = until(crowd, e, 120, () => crowd.ants.find((o) => o.trip?.phase === "away" && o.trip.via))!;
+    const via = a.trip!.via!, there = env({ doors: DOORS, visitor: { x: via.x, z: via.z + .4 } });
+    until(crowd, there, 10, () => a.state === "away" ? undefined : a);
+    expect(a.trip, `seed ${seed}`).toBeNull(); expect(a.fade).toBe(1); expect(inView(a, there.view)).toBe(false);
+  }
+  // Waiting off a side of the zoomed phone view when a swipe brings that side into view: it is placed off the new view.
+  const side: CrowdView = { ...WIDE, cx: 0, halfW: 3.35, zoomed: true };
+  let checked = 0;
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const e = env({ doors: DOORS, view: side }), crowd = createCrowd(seed);
+    crowd.sync(12, e);
+    const a = until(crowd, e, 240, () => crowd.ants.find((o) => o.trip?.phase === "away" && !o.trip.via));
+    if (!a) continue;
+    const next = env({ doors: DOORS, view: { ...side, cx: a.x < 0 ? -7 : 7 } });
+    until(crowd, next, 10, () => a.state === "away" ? undefined : a);
+    expect(a.trip, `seed ${seed}`).toBeNull(); expect(inView(a, next.view), `seed ${seed}`).toBe(false);
+    checked++;
+  }
+  expect(checked).toBeGreaterThan(0);
 });
