@@ -5,7 +5,7 @@ import type { GoksorryRoomEntryPayload } from "./goksorry-room-types";
 import type { MarketIndicator } from "./overview-data";
 import { pickDisplayTitle } from "./clean-filter";
 import { stockPierrotArt } from "./stock-pierrot";
-import { worldSummary, type WorldFrame, type WorldSummary } from "./world";
+import { worldSummary, type WorldFrame, type WorldScene, type WorldSummary } from "./world";
 
 // Rest pose of the wall frame. It was designed for a frontal orthographic camera at 22° elevation:
 // wall x maps 1:1 to screen x and wall y is scaled by cos, so wall panels are rectangles. The renderer
@@ -36,6 +36,13 @@ export const WALL_PANELS: Record<WallPanelId, { x: number; y: number; w: number;
   index: { x: 0, y: 2.8, w: 6.4, h: 2.2, section: 1 },
   feed: { x: 7, y: 5.1, w: 6.4, h: 6.8, section: 2 }
 };
+
+/** A board's centre and size on the back wall plane, in world units. */
+export type BoardRect = { x: number; y: number; w: number; h: number };
+/** Boards each scene hangs on its back wall (frames, projection and DOM twins all follow this). */
+export function sceneBoardLayout(scene: WorldScene): Record<string, BoardRect> {
+  return scene === "plaza" ? WALL_PANELS : {};
+}
 
 export type WallView = { layout: WallLayout; section: WallSection; overview: boolean; hudBottom: number };
 export type WallFit = { ppu: number; cx: number; top: number; bottom: number; halfW: number; front: number };

@@ -5,7 +5,9 @@ import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
-import { WALL_PANEL_IDS, type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
+import { plazaBoardSpecs } from "./board-specs";
+import type { BoardSpec } from "./board-layer";
+import { type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
 
 type Props = RenderState & {
   emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
@@ -23,6 +25,7 @@ const NOTE: Record<RenderMode, string> = {
 const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
+  const specs = useRef<BoardSpec[]>([]);
   const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
   latest.current = props;
   const [onScreen, setOnScreen] = useState(true);
@@ -35,8 +38,8 @@ export default function HD2DWorld(props: Props) {
     void import("./hd2d-renderer").then(({ createWorldRenderer }) => cancelled ? null : createWorldRenderer(canvas.current!, latest.current, {
       panels(rects) {
         // Pin each DOM twin (hit target + screen-reader copy) onto its wall panel.
-        if (rects) for (const id of WALL_PANEL_IDS) {
-          const element = host.current?.querySelector<HTMLElement>(`[data-wall-panel=${id}]`), r = rects[id];
+        if (rects) for (const [id, r] of Object.entries(rects)) {
+          const element = host.current?.querySelector<HTMLElement>(`[data-wall-panel=${id}]`);
           if (element) Object.assign(element.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` });
         }
       },
@@ -56,12 +59,12 @@ export default function HD2DWorld(props: Props) {
       Object.defineProperty(canvas.current!, "worldMetrics", { configurable: true, get: () => instance.metrics });
       // `bare` renders the room without wall data, for the static fallback art.
       Object.defineProperty(canvas.current!, "worldCapture", { configurable: true, value: (bare = false) => {
-        if (bare) instance.setWall(null);
+        if (bare) instance.setBoards([]);
         instance.draw(); const image = canvas.current!.toDataURL("image/png");
-        if (bare) { instance.setWall(latest.current.wall); instance.draw(); }
+        if (bare) { instance.setBoards(specs.current); instance.draw(); }
         return image;
       } });
-      Object.defineProperty(canvas.current!, "worldWallTexture", { configurable: true, value: (id: "market" | "room" | "index" | "feed") => instance.wallTexture(id).toDataURL("image/png") });
+      Object.defineProperty(canvas.current!, "worldWallTexture", { configurable: true, value: (id: string) => instance.wallTexture(id)?.toDataURL("image/png") ?? null });
       // The canvas is still display:none here; the mode effect draws once it has a layout box.
     }).catch((error) => { if (!cancelled) { console.warn("HD2D renderer unavailable", error); setMode("failed"); } });
     return () => { cancelled = true; cancelAnimationFrame(animation.current); renderer.current?.dispose(); renderer.current = null; };
@@ -78,10 +81,12 @@ export default function HD2DWorld(props: Props) {
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl" || !host.current) return;
     const computed = getComputedStyle(host.current);
-    instance.setWall(props.wall, {
+    const style = {
       family: computed.fontFamily || "sans-serif",
       up: computed.getPropertyValue("--change-up").trim() || "#e0705f", down: computed.getPropertyValue("--change-down").trim() || "#6fa3e0"
-    });
+    };
+    specs.current = props.wall ? plazaBoardSpecs(props.wall, style) : [];
+    instance.setBoards(specs.current); instance.setBand(props.wall?.pierrot.band ?? null);
     if (props.paused || !onScreen) instance.draw();
   }, [props.wall, props.styleKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

@@ -4,15 +4,14 @@ import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/worl
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdView } from "@/lib/world-crowd";
 import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
-import { WALL_COS, WALL_PANELS, WALL_PANEL_IDS, WALL_PANEL_Z, wallPanelLoading, WALL_SECTION_X, WALL_SHORT_STAGE, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallPanelId, type WallRect, type WallSection, type WallTextPanelId, type WallView } from "@/lib/world-wall";
+import { WALL_COS, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
-import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
-import { createWallShimmer } from "./wall-shimmer";
+import { createBoardLayer, type BoardSpec } from "./board-layer";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean };
-export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; /** Panels showing the loading sweep, read live. */ readonly shimmer: WallPanelId[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
+export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
   /** Zoomed section view only: whether the frame is following the visitor (see FOLLOW_KEEP), and how far it is panned off the section's centre for it (world units). */
   follow: boolean; pan: number };
 export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; gpu: number[]; calls: number; triangles: number; renderer: string; population: number; wall: WallMetrics | null;
@@ -34,8 +33,11 @@ export type AntMetric = Point & { state: string; dir: number; sx: number; sy: nu
 export type WorldRenderer = {
   update: (state: RenderState) => void;
   setView: (view: WallView) => void;
-  setWall: (model: WallModel | null, style?: WallPaintStyle) => void;
-  wallTexture: (id: WallTextPanelId) => HTMLCanvasElement;
+  /** Boards on the current scene's back wall (see board-specs.ts); an empty list hides them. */
+  setBoards: (specs: BoardSpec[]) => void;
+  /** Mood band the wall shows (for the plaza faces); null derives it from the frame. */
+  setBand: (band: string | null) => void;
+  wallTexture: (id: string) => HTMLCanvasElement | undefined;
   move: (x: number, z: number) => void;
   click: (x: number, y: number) => void;
   draw: (time?: number) => void;
@@ -44,10 +46,9 @@ export type WorldRenderer = {
   metrics: RenderMetrics;
   position: Point;
 };
-const TEXT_PANELS: WallTextPanelId[] = ["market", "room", "index", "feed"];
 
 export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: RenderState, events: {
-  panels?: (rects: Record<WallPanelId, WallRect> | null) => void;
+  panels?: (rects: Record<string, WallRect> | null) => void;
   avatar?: (x: number, y: number, position: Point) => void;
   step?: () => void;
   /** The zoomed section view wants to show another wall section because the visitor walked into it. The owner of the view answers with setView. */
@@ -150,8 +151,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     }
     if (state.scene === "plaza") {
       // Frames are lit scenery; the panel faces themselves are separate unlit meshes.
-      for (const id of WALL_PANEL_IDS) {
-        const p = WALL_PANELS[id], portrait = id === "pierrot";
+      for (const [id, p] of Object.entries(sceneBoardLayout(state.scene))) {
+        const portrait = id === "pierrot";
         box(p.x, p.y, -4.94, p.w + (portrait ? .5 : .24), p.h + (portrait ? .5 : .24), .1, portrait ? goldMat : metalMat);
       }
     } else {
@@ -192,29 +193,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     for (const [m, gs] of groups) { const g = mergeGeometries(gs); gs.forEach((v) => v.dispose()); if (g) mesh(g, m, 0, 0, 0); }
     renderer.shadowMap.needsUpdate = true;
   }
-  // Wall panels: unlit textured planes on the back wall, never merged with the room.
-  const wallGroup = new THREE.Group(); wallGroup.visible = false; scene.add(wallGroup);
-  const panelGeometry = new THREE.PlaneGeometry(1, 1); geometry.push(panelGeometry);
-  const panelMesh = (id: WallPanelId, map: THREE.Texture | null) => {
-    const m = new THREE.MeshBasicMaterial({ map, color: map ? 0xffffff : 0x101c22, toneMapped: false, fog: false }); materials.push(m);
-    const p = WALL_PANELS[id], o = new THREE.Mesh(panelGeometry, m);
-    o.position.set(p.x, p.y, WALL_PANEL_Z); o.scale.set(p.w, p.h, 1); o.userData.panel = id; wallGroup.add(o); return o;
-  };
-  const wallCanvases = {} as Record<WallTextPanelId, HTMLCanvasElement>, wallTextures = {} as Record<WallTextPanelId, THREE.CanvasTexture>;
-  for (const id of TEXT_PANELS) {
-    const c = document.createElement("canvas"); c.width = c.height = 4;
-    const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace;
-    texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
-    texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-    textures.push(texture); wallCanvases[id] = c; wallTextures[id] = texture; panelMesh(id, texture);
-  }
-  const pierrotMesh = panelMesh("pierrot", null), pierrotMaterial = pierrotMesh.material as THREE.MeshBasicMaterial;
-  const pierrotCache = new Map<string, THREE.Texture>(), pierrotSettled = new Set<string>();
-  // Loading sweep over panels that still wait for data (or, for the portrait, for its image).
-  const shimmer = createWallShimmer(wallGroup, WALL_PANELS, WALL_PANEL_Z);
-  let wallModel: WallModel | null = null, wallStyle: WallPaintStyle = { family: "sans-serif", up: "#e0705f", down: "#6fa3e0" };
-  let wallDirty = true, pierrotSrc = "";
-  const drawn: Partial<Record<WallPanelId, string>> = {};
+  // Wall boards: unlit textured planes on the back wall, never merged with the room.
+  const boards = createBoardLayer({ z: WALL_PANEL_Z, anisotropy: Math.min(4, renderer.capabilities.getMaxAnisotropy()), loader, onImage: () => { if (!disposed) draw(); } });
+  scene.add(boards.group);
+  let band: string | null = null;
   const antGeometry = new THREE.PlaneGeometry(1, 1);
   const offsets = new Float32Array(48 * 4);
   antGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(offsets, 4));
@@ -364,18 +346,19 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     camera.rotation.set(0, yaw, 0); camera.updateMatrixWorld();
     const plaza = state.scene === "plaza";
     // Screen bounds of each panel's four corners: exact rectangles at rest, bounding boxes while turned.
-    const rects = Object.fromEntries(WALL_PANEL_IDS.map((id) => {
-      const p = WALL_PANELS[id]; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const layout = sceneBoardLayout(state.scene), ids = Object.keys(layout);
+    const rects = Object.fromEntries(ids.map((id) => {
+      const p = layout[id]; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
         const q = project(corner.set(p.x + sx * p.w / 2, p.y + sy * p.h / 2, WALL_PANEL_Z));
         x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
       }
       return [id, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
-    })) as Record<WallPanelId, WallRect>;
+    })) as Record<string, WallRect>;
     const aim = aimCx(), settled = lens.cx === aim && lens.halfW === fit.halfW && lens.top === fit.top;
-    metrics.wall = plaza ? { rects, drawn, get shimmer() { return WALL_PANEL_IDS.filter(shimmer.isActive); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: follow && zoomed(), pan: aim - fit.cx } : null;
-    const key = plaza ? WALL_PANEL_IDS.map((id) => `${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|") : "";
-    if (key !== rectKey) { rectKey = key; events.panels?.(plaza ? rects : null); }
+    metrics.wall = plaza ? { rects, drawn: boards.drawn, get shimmer() { return boards.loading(); }, body: metrics.wall?.body ?? 0, ppu: width / (2 * lens.halfW), section: view.section, overview: view.overview, settled, front, yaw, follow: follow && zoomed(), pan: aim - fit.cx } : null;
+    const key = ids.map((id) => `${id}:${rects[id].x.toFixed(1)},${rects[id].y.toFixed(1)},${rects[id].width.toFixed(1)}`).join("|");
+    if (key !== rectKey) { rectKey = key; events.panels?.(ids.length ? rects : null); }
   }
   function resize() {
     // Detached export canvases have no layout box: use their drawing buffer at 1x.
@@ -389,7 +372,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       renderer.setPixelRatio(Math.min(dpr, Math.sqrt((state.mobile ? 3.5e6 : 8.3e6) / (w * h)))); renderer.setSize(w, h, false);
     }
     if (!viewDirty) return;
-    viewDirty = false; wallDirty = true;
+    viewDirty = false;
     fit = wallFit(w, h, { plaza: state.scene === "plaza", ...view });
     front = visibleFront();
     // Keep the visitor on the floor the new frame still shows.
@@ -404,46 +387,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     applyCamera();
   }
   function paintWall() {
-    wallGroup.visible = state.scene === "plaza" && !!wallModel;
-    if (!wallDirty || !wallGroup.visible || !wallModel) return;
-    wallDirty = false;
-    // Text is sized for the readable view; the overview only shrinks the same textures.
-    const reference = view.overview ? wallFit(width, height, { plaza: true, ...view, overview: false }) : fit;
-    const body = wallBodyPx(reference.ppu), ratio = renderer.getPixelRatio();
+    // Text is sized for the readable view; the plaza overview only shrinks the same textures.
+    const reference = state.scene === "plaza" && view.overview ? wallFit(width, height, { plaza: true, ...view, overview: false }) : fit;
+    const body = wallBodyPx(reference.ppu);
     if (metrics.wall) metrics.wall.body = body;
-    for (const id of TEXT_PANELS) {
-      const p = WALL_PANELS[id], cssW = p.w * reference.ppu, cssH = p.h * WALL_COS * reference.ppu;
-      const scale = Math.min(ratio, 2048 / cssW), pxW = Math.max(4, Math.round(cssW * scale)), pxH = Math.max(4, Math.round(cssH * scale));
-      const key = JSON.stringify([wallModel[id], pxW, pxH, body, wallStyle]);
-      if (drawn[id] === key) continue;
-      const c = wallCanvases[id], texture = wallTextures[id];
-      // WebGL2 texture storage is immutable: release it before a size change.
-      if (c.width !== pxW || c.height !== pxH) { c.width = pxW; c.height = pxH; texture.dispose(); }
-      paintWallPanel(id, c, wallModel, { width: cssW, height: cssH, scale: pxW / cssW, body }, wallStyle);
-      texture.needsUpdate = true; drawn[id] = key;
-    }
-    for (const id of TEXT_PANELS) shimmer.set(id, wallPanelLoading(wallModel, id));
-    // Until the index arrives the portrait's mood is unknown: keep the frame blank rather than show a guess.
-    const src = wallPanelLoading(wallModel, "pierrot") ? "" : wallModel.pierrot.src;
-    if (src !== pierrotSrc) {
-      pierrotSrc = src; drawn.pierrot = src;
-      let texture = src ? pierrotCache.get(src) ?? null : null;
-      if (src && !texture) {
-        // Original 300×200 artwork, full frame: no crop or redraw.
-        // A failed image settles too: the sweep means "on its way", not "missing".
-        const settle = () => {
-          pierrotSettled.add(src);
-          if (disposed) return;
-          if (pierrotSrc === src) shimmer.set("pierrot", false);
-          draw();
-        };
-        texture = loader.load(src, settle, undefined, settle);
-        texture.colorSpace = THREE.SRGBColorSpace; texture.minFilter = THREE.LinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = false;
-        textures.push(texture); pierrotCache.set(src, texture);
-      }
-      pierrotMaterial.map = texture; pierrotMaterial.color.set(texture ? 0xffffff : 0x101c22); pierrotMaterial.needsUpdate = true;
-    }
-    shimmer.set("pierrot", !pierrotSettled.has(pierrotSrc));
+    boards.paint({ ppu: reference.ppu, squeeze: WALL_COS, ratio: renderer.getPixelRatio(), body });
   }
   const project = (point: THREE.Vector3) => { const p = point.project(camera); return { x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }; };
   /** Motion nobody asked for: crowd roaming and idling, camera eases, the loading sweep. */
@@ -478,7 +426,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     }
     if (metrics.wall) metrics.wall.follow = follow && zoomed();
     paintWall();
-    if (ambient()) shimmer.tick(time / 1000);
+    if (ambient()) boards.tick(time / 1000);
     const turn = yawTarget(), mode = zoomed() ? 1 : 0;
     if (yaw !== turn || orbit !== mode) {
       yaw += (turn - yaw) * (ambient() ? 1 - Math.exp(-dt * 3) : 1);
@@ -493,8 +441,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const obstacles = worldObstacles(state.scene), plaza = state.scene === "plaza";
     // When the 곡소리 지수 reads 희망 the plaza faces brighten. The band is the one the wall's index panel and portrait
     // show (the same scope), read every draw: a data refresh that moves the index changes the faces in place.
-    const band = metrics.band = wallModel?.pierrot.band ?? stockPierrotArt(sum).band;
-    const hopeful = metrics.bright = plaza && (band === "bullish" || band === "extreme_bullish");
+    const shownBand = metrics.band = band ?? stockPierrotArt(sum).band;
+    const hopeful = metrics.bright = plaza && (shownBand === "bullish" || shownBand === "extreme_bullish");
     if (plaza) {
       // The crowd follows the framed section (`fit`), not the easing lens or the pan that follows the visitor: a moving
       // centre would read as a section change on every frame.
@@ -643,8 +591,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       if (next.section === asked || !follow) asked = null;
       view = next; viewDirty = true;
     },
-    setWall(model, style) { wallModel = model; if (style) wallStyle = style; wallDirty = true; },
-    wallTexture: (id) => wallCanvases[id],
+    setBoards(specs) { boards.set(specs); },
+    setBand(next) { band = next; },
+    wallTexture: (id) => boards.canvas(id),
     move(x, z) { follow = true; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
     async capture(frame) {
       const target = document.createElement("canvas"); target.width = 1200; target.height = 620; target.style.width = "1200px"; target.style.height = "620px";
@@ -654,7 +603,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       finally { exported.dispose(); }
     },
     dispose() {
-      disposed = true; canvas.removeEventListener("webglcontextlost", lost); shimmer.dispose();
+      disposed = true; canvas.removeEventListener("webglcontextlost", lost); boards.dispose();
       scene.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); geometry.forEach((g) => g.dispose()); materials.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); queries.forEach((q) => gl.deleteQuery(q)); queries = [];
       renderer.dispose();
     }
