@@ -6,6 +6,7 @@ import { normalizePolicyPayload } from "@/lib/collection-policy-status";
 import { buildCollectionStatusFilters, getCachedMarketOverview } from "@/lib/overview-data";
 import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+import { frameFromRecord } from "@/lib/world-record";
 import { buildWorldFrame, buildWorldReplay, worldDayBounds, type WorldFrame, type WorldSlot } from "@/lib/world";
 
 export async function loadWorldFrame(service = getServiceSupabaseClient({ cache: "no-store" })): Promise<WorldFrame> {
@@ -44,6 +45,7 @@ export async function loadWorldReplay(date: string) {
   const { data, error } = await service.from("world_snapshots").select("bucket_at,frame")
     .gte("bucket_at", bounds.start).lt("bucket_at", bounds.end).order("bucket_at", { ascending: true });
   if (error) throw new Error("극장 기록을 불러오지 못했습니다. 기록은 기능 도입 후 수집 완료 시점부터 쌓입니다.");
-  const snapshots: WorldSlot[] = (data ?? []).filter((row) => row.frame?.version === 1);
+  // Old rows still hold evidence posts and new ones only index data; both read back as index-only frames.
+  const snapshots: WorldSlot[] = (data ?? []).flatMap((row) => { const frame = frameFromRecord(row.frame); return frame ? [{ bucket_at: row.bucket_at, frame }] : []; });
   return buildWorldReplay(date, snapshots);
 }

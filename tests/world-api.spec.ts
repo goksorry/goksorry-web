@@ -24,6 +24,10 @@ test("detector auth, same-bucket update and snapshot failure isolation", async (
   }
   let state = await (await request.get("http://127.0.0.1:3101/_control")).json();
   expect(state.snapshots).toHaveLength(1);
+  // The record holds index data only: no evidence lists, no post titles or links.
+  const stored = state.snapshots[0].frame;
+  expect(stored.overall.total).toBe(620); expect(stored.overall.evidence).toBeUndefined();
+  expect(JSON.stringify(stored)).not.toMatch(/테스트 수집 제목|example\.com|post_key/);
   await request.post("http://127.0.0.1:3101/_control", { data: { failWrite: true } });
   const response = await request.post("/api/v1/detector/register", { data, headers: { authorization: "Bearer local-dev-detector-token" } });
   expect(response.status()).toBe(200); expect((await response.json()).status).toBe("ok");
@@ -39,6 +43,8 @@ test("replay validates dates and preserves gaps and read failure", async ({ requ
   const replay = await response.json();
   expect(replay.slots).toHaveLength(144);
   expect(replay.slots.filter((slot: { frame: unknown }) => slot.frame)).toHaveLength(1);
+  const recorded = replay.slots.find((slot: { frame: unknown }) => slot.frame).frame;
+  expect(recorded.overall.evidence).toEqual({ bullish: [], bearish: [], neutral: [] });
   await request.post("http://127.0.0.1:3101/_control", { data: { failRead: true } });
   const failed = await request.get(`/api/internal/world/replay?date=${worldDate()}`);
   expect(failed.status()).toBe(503); expect((await failed.json()).slots.every((slot: { frame: unknown }) => slot.frame === null)).toBe(true);

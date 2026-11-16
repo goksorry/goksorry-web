@@ -3,6 +3,7 @@ import type { FeedRow } from "../lib/feed-data";
 import { buildSourceGroupSummaries, buildOverallFromSourceGroupSummaries } from "../lib/feed-data";
 import { buildWorldFrame, buildWorldReplay, worldBucket, worldDate, worldDayBounds, worldHealth, worldSummary } from "../lib/world";
 import { storeWorldSnapshot } from "../lib/world-store";
+import { frameFromRecord, worldRecord } from "../lib/world-record";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INDEX_CACHE_CONTROL, INDEX_MAX_AGE_SEC, INDEX_REFRESH_SEC, INDEX_WINDOW_SEC, indexCacheWindow, indexWorstCaseAgeSec } from "../lib/index-cache-policy";
 
@@ -72,6 +73,12 @@ test("snapshot writer upserts same bucket, prunes seven days and surfaces failur
   await storeWorldSnapshot(service, { ...frame, data_at: "updated" }, new Date("2026-11-15T01:09:00Z"));
   expect(snapshots.size).toBe(1);
   expect([...snapshots.values()][0]).toMatchObject({ data_at: "updated" });
+  // Only index data is written: no evidence lists, no post titles or links anywhere in the stored frame.
+  const stored = [...snapshots.values()][0] as ReturnType<typeof worldRecord>;
+  expect(stored).toEqual(worldRecord({ ...frame, data_at: "updated" }));
+  expect("evidence" in stored.overall).toBe(false);
+  expect([...stored.communities, ...stored.stocks].some((s) => "evidence" in s)).toBe(false);
+  expect(JSON.stringify(stored)).not.toMatch(/실제 수집 제목|정제 제목|example\.com|post_key/);
   expect(cutoffs[0]).toBe("2026-11-08T01:01:00.000Z");
   fail = true;
   await expect(storeWorldSnapshot(service, frame, now)).rejects.toThrow("write failed");
@@ -96,4 +103,26 @@ test("index data on a reload is never older than ten minutes across server and C
   expect(indexCacheWindow(start)).toBe(indexCacheWindow(start + INDEX_WINDOW_SEC * 1000 - 1));
   expect(indexCacheWindow(start + INDEX_WINDOW_SEC * 1000)).toBe(indexCacheWindow(start) + 1);
   expect(indexCacheWindow(start + 3 * 60 * 60_000)).toBeGreaterThan(indexCacheWindow(start));
+});
+
+test("records keep index data only, and old rows with posts read back the same way", () => {
+  const frame = buildWorldFrame([post(1), post(2, { label: "bearish", sentiment_score: 2 }), post(3, { symbol: "TSLA", symbol_name: "테슬라" })], { now });
+  expect(frame.overall.evidence.bullish).toHaveLength(2);
+  const record = worldRecord(frame);
+  expect(record.overall).toEqual({ total: 3, bullish: 2, bearish: 1, neutral: 0, hope_ratio: 2 / 3, fear_ratio: 1 / 3, mood: "hope", index: frame.overall.index });
+  expect(record.communities.map((c) => [c.id, c.name, c.total, c.top_stock, c.collection_problem])).toEqual(frame.communities.map((c) => [c.id, c.name, c.total, c.top_stock, c.collection_problem]));
+  expect(record.stocks.map((s) => [s.symbol, s.name, s.total])).toEqual(frame.stocks.map((s) => [s.symbol, s.name, s.total]));
+  expect(record).toMatchObject({ version: 1, generated_at: frame.generated_at, data_at: frame.data_at, window_hours: 6, collection: frame.collection });
+  // New rows and old rows (written with evidence posts) both come back as frames with empty evidence.
+  const empty = { bullish: [], bearish: [], neutral: [] };
+  for (const raw of [JSON.parse(JSON.stringify(record)), JSON.parse(JSON.stringify(frame))]) {
+    const read = frameFromRecord(raw)!;
+    expect(read.overall).toEqual({ ...record.overall, evidence: empty });
+    expect(read.communities.every((c) => c.evidence.bullish.length + c.evidence.bearish.length + c.evidence.neutral.length === 0)).toBe(true);
+    expect(read.stocks.map((s) => s.symbol)).toEqual(record.stocks.map((s) => s.symbol));
+    expect(JSON.stringify(read)).not.toMatch(/실제 수집 제목|example\.com/);
+  }
+  expect(frameFromRecord(null)).toBeNull();
+  expect(frameFromRecord({ ...record, version: 2 })).toBeNull();
+  expect(frameFromRecord({ version: 1 })).toBeNull();
 });
