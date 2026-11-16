@@ -18,6 +18,8 @@ import { type WallModel, type WallSection, type WallView } from "@/lib/world-wal
 
 type Props = RenderState & {
   emote: string; children: ReactNode; board: BoardSource; view: WallView; styleKey: string;
+  /** Theater: the day's records are still loading (the no-WebGL card says so rather than "기록 없음"). */
+  pending?: boolean;
   /** The plaza shares the visitor's ant with other viewers (the chat hub is deployed). */
   shared?: boolean;
   onScene: (scene: WorldScene) => void; onStep: () => void;
@@ -173,7 +175,7 @@ export default function HD2DWorld(props: Props) {
     {!fallback && props.scene === "plaza" && <WorldPeerBubbles ref={peerBubbles} bubbles={presence.bubbles} />}
     {!fallback && props.scene === "plaza" && <WorldRoomBadge room={presence.room} peers={presence.peers} error={presence.error} onSwitch={presence.switchRoom} />}
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
-    {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} missing={props.scene === "theater" && !!props.absent} />}
+    {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} missing={props.scene !== "theater" ? "" : props.pending ? "기록 확인 중…" : props.absent ? "기록 없음" : ""} />}
     {props.children}
     {/* With WebGL the prompt is painted over the entrance; this button is its pinned hit target (visible without WebGL). */}
     {nearby && <button ref={nearButton} className="world-nearby" onClick={() => props.onScene(nearby)}>{PLAZA_ENTRANCES.find((e) => e.scene === nearby)?.name} 입구 · 들어가기 ↗</button>}

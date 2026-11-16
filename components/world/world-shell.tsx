@@ -88,7 +88,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const { changeColorMode } = useTheme();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)") !== false;
   const { bannerVisible } = useCookieConsent();
-  const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null), [replayCorrected, setReplayCorrected] = useState(false);
+  const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null), [replayCorrected, setReplayCorrected] = useState(false), [replayPending, setReplayPending] = useState(true);
   const [timeline, setTimeline] = useState<TheaterTimeline | null>(null);
   const [origin, setOrigin] = useState<PanelOrigin | null>(null), [roomRefresh, setRoomRefresh] = useState(0);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState("");
@@ -116,8 +116,8 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
     const next = new URL(window.location.href); scene === "plaza" ? next.searchParams.delete("scene") : next.searchParams.set("scene", scene);
     window.history.replaceState(null, "", `${next.pathname}${next.search}${next.hash}`);
   }, [rawScene, scene]);
-  const onDate = useCallback((value: string) => { setReplayFrame(null); setUrl("date", value); }, [setUrl]);
-  const onFrame = useCallback((value: WorldFrame | null, corrected: boolean) => { setReplayFrame(value); setReplayCorrected(corrected); }, []);
+  const onDate = useCallback((value: string) => { setReplayFrame(null); setReplayPending(true); setUrl("date", value); }, [setUrl]);
+  const onFrame = useCallback((value: WorldFrame | null, corrected: boolean, pending: boolean) => { setReplayFrame(value); setReplayCorrected(corrected); setReplayPending(pending); }, []);
   const open = (next: DetailTab, from: PanelOrigin | null = null, at?: PanelSide) => { setSide(at ?? (from ? thirdOf((from.x + from.width / 2) / window.innerWidth) : "right")); setOrigin(from); setSelection(null); setTab(next); setMenuOpen(false); };
   const evidence = (value: EvidenceSelection) => { setSceneOpen(false); if (!tab) setSide(clickAt.current === null ? "right" : thirdOf(clickAt.current)); setOrigin(null); setSelection(scene === "theater" ? { ...value, recordedAt: shown.generated_at } : value); setTab("feed"); setMenuOpen(false); };
   const close = () => { if (tab === "room") setRoomRefresh((n) => n + 1); setTab(null); if (params.get("feed") === "1") setUrl("feed", ""); };
@@ -204,9 +204,9 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const liveTime = liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : "";
   const statusLine = liveTime ? `${status} · ${liveTime}` : status;
   const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
-    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame, corrected: replayCorrected, timeline,
+    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame, corrected: replayCorrected, pending: replayPending, timeline,
     status: statusLine, art: stockPierrotArt(activeSummary, PIERROT_DARK)
-  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, replayCorrected, timeline, statusLine]);
+  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, replayCorrected, replayPending, timeline, statusLine]);
   const board = useMemo<BoardSource>(() => plaza ? { kind: "plaza", model: wall } : sceneBoard && { kind: "scene", model: sceneBoard }, [plaza, wall, sceneBoard]);
   const openScene = (from: PanelOrigin) => {
     if (scene === "theater") { if (replayFrame) evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at }); return; }
@@ -230,7 +230,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className="sr-only">{info.title}</h1></div>
-      <HD2DWorld frame={shown} absent={scene === "theater" && !replayFrame} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={changeColorMode} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
+      <HD2DWorld frame={shown} absent={scene === "theater" && !replayFrame} pending={scene === "theater" && replayPending} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={changeColorMode} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onCommunity={openCommunity} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>

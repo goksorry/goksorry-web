@@ -8,13 +8,14 @@ import { useWorldSnack } from "./world-snackbar";
 
 /**
  * Replay controls of the theater. Owns loading, gap correction and playback; reports the shown frame (`onFrame`: null
- * where no record can be shown, `corrected` for a slot filled between two records) and what the wall board paints about
+ * where no record can be shown, `corrected` for a slot filled between two records, `pending` while the day's records are
+ * still being fetched, so a null frame then means "not known yet" rather than "no record") and what the wall board paints about
  * the replay (`onTimeline`). The chart and record lines here are the HTML copy of that board.
  */
 const svgPoint = (p: TracePoint) => `${p.x * 600},${timelineY(p.index)}`;
 
 export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, reduced, color }: {
-  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null, corrected: boolean) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
+  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null, corrected: boolean, pending: boolean) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
   paused: boolean; reduced: boolean; color: string;
 }) {
   const [replay, setReplay] = useState<WorldReplay>(() => buildWorldReplay(date, []));
@@ -59,7 +60,9 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
   useEffect(() => { if (position >= 30) setPlaying(false); }, [position]);
   const corrected = useMemo(() => correctReplay(replay), [replay]);
   const slot = corrected.slots[theaterSlotIndex(corrected, position)];
-  useEffect(() => { onFrame(slot?.frame ?? null, !!slot?.corrected); }, [slot, onFrame]);
+  useEffect(() => { onFrame(slot?.frame ?? null, !!slot?.corrected, loading && !slot?.frame); }, [slot, loading, onFrame]);
+  // Unmounted (scene left, date changed): nothing is known about the next replay until it loads.
+  useEffect(() => () => onFrame(null, false, true), [onFrame]);
   const timeline = useMemo(() => theaterTimeline(corrected, position, loading), [corrected, position, loading]);
   useEffect(() => { onTimeline(timeline); }, [timeline, onTimeline]);
   useEffect(() => () => onTimeline(null), [onTimeline]);

@@ -31,6 +31,9 @@ test("scene board models carry status, portrait and each scene's content", () =>
   const theater = board("theater", { loaded: false });
   expect(theater.state).toBe("ready"); expect(theater.portrait).toEqual({ src: "", caption: "기록 시점", missing: "기록 없음" });
   expect(theater.scene === "theater" && theater.headline).toBe("이 구간은 기록이 없습니다");
+  // While the day's records are still loading a null replay is not "no record" yet: the board waits (skeleton).
+  expect(board("theater", { pending: true }).state).toBe("loading");
+  expect(board("theater", { pending: true, replay: frame }).state).toBe("ready");
   const recorded = board("theater", { replay: frame }), corrected = board("theater", { replay: frame, corrected: true });
   expect([recorded.portrait.src, recorded.portrait.caption, recorded.portrait.missing]).toEqual([art.src, "기록 시점 · 중립", undefined]);
   expect(corrected.portrait.caption).toBe("기록 시점 (보정) · 중립");

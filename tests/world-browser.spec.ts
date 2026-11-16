@@ -246,8 +246,11 @@ test("replay gaps, date changes, 0-10 axis, share and rendered PNG", async ({ pa
 
 test("theater shows 기록 없음 outside the records and fades its ants out and back in", async ({ page }) => {
   test.setTimeout(60_000); const frame = await prepareWorld(page);
-  // Records from slot 10 to 129 only: nothing to join before or after.
-  await page.route("**/api/internal/world/replay?*", (route) => {
+  // Records from slot 10 to 129 only: nothing to join before or after. The first answer is held back so the loading
+  // state can be checked: it must not read as "no record" yet.
+  let release!: () => void; const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/internal/world/replay?*", async (route) => {
+    await held;
     const date = new URL(route.request().url()).searchParams.get("date") ?? worldDate();
     const start = Date.parse(`${date}T00:00:00+09:00`);
     return route.fulfill({ json: { date, timezone: "Asia/Seoul", slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(start + i * 600_000).toISOString(), frame: i >= 10 && i < 130 ? { ...frame, generated_at: new Date(start + i * 600_000).toISOString() } : null })) } });
@@ -256,6 +259,9 @@ test("theater shows 기록 없음 outside the records and fades its ants out and
   type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
   const cast = () => page.locator("canvas").evaluate((node) => { const m = (node as Metered).worldMetrics; return { cast: m.cast, population: m.population }; });
   const seek = (value: string) => page.getByLabel("극장 시간 탐색", { exact: true }).fill(value);
+  await expect(page.locator(".world-record-state")).toHaveText("기록 확인 중…");
+  await expect(page.locator(".world-scene-dom")).not.toContainText("기록이 없습니다");
+  release();
   await expect(page.locator(".world-record-state")).toHaveText("기록 없음");
   await expect(page.locator(".world-scene-dom")).toContainText("이 구간은 기록이 없습니다");
   await expect.poll(async () => (await cast()).cast).toBe(0);

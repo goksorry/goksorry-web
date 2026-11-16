@@ -44,12 +44,14 @@ export function buildSceneBoard(input: {
   stock?: WorldStock; summary: WorldSummary; fresh: number;
   /** Theater: the replayed date and frame (null = no record can be shown in this slot), and whether that frame is a gap correction. */
   date: string; replay: WorldFrame | null; corrected?: boolean; timeline?: TheaterTimeline | null;
+  /** Theater: the day's records are still loading, so a null `replay` is not yet "no record" (the board shows its skeleton). */
+  pending?: boolean;
   /** Live status line (e.g. "관측 중 · 13:09 KST") and the portrait art for the summary the scene shows. */
   status: string; art: { src: string; label: string };
 }): SceneBoardModel {
   const { frame, art } = input, theater = input.scene === "theater";
   const common = {
-    state: (theater || input.loaded ? "ready" : input.failed ? "failed" : "loading") as Loadable, status: input.status,
+    state: (theater ? (input.pending && !input.replay ? "loading" : "ready") : input.loaded ? "ready" : input.failed ? "failed" : "loading") as Loadable, status: input.status,
     portrait: theater && !input.replay ? { src: "", caption: "기록 시점", missing: "기록 없음" }
       : { src: art.src, caption: `${theater ? "기록 시점" : "현재 분위기"}${theater && input.corrected ? " (보정)" : ""} · ${art.label}` }
   };
