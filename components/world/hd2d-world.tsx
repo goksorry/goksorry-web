@@ -6,6 +6,7 @@ import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
+import { useWorldSnack } from "./world-snackbar";
 import { boardSpecs, type BoardSource } from "./board-specs";
 import type { BoardSpec } from "./board-layer";
 import { type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
@@ -20,7 +21,7 @@ type Props = RenderState & {
 type RenderMode = "loading" | "webgl" | "unsupported" | "failed";
 const NOTE: Record<RenderMode, string> = {
   loading: "화면 불러오는 중…", webgl: "바닥 클릭 / 방향키로 이동",
-  unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면을 불러오지 못했습니다"
+  unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면 오류 · 간단한 화면"
 };
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
@@ -80,6 +81,7 @@ export default function HD2DWorld(props: Props) {
     instance.update({ ...props, paused: props.paused || !onScreen });
   }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
   useLayoutEffect(pinEntrance, [nearby]);
+  useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => setAttempt((n) => n + 1) } } : null);
   useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
@@ -143,6 +145,5 @@ export default function HD2DWorld(props: Props) {
     {/* With WebGL the prompt is painted over the entrance; this button is its pinned hit target (visible without WebGL). */}
     {nearby && <button ref={nearButton} className="world-nearby" onClick={() => props.onScene(nearby)}>{PLAZA_ENTRANCES.find((e) => e.scene === nearby)?.name} 입구 · 들어가기 ↗</button>}
     <p className="world-render-note" role={mode === "loading" ? "status" : undefined}>{NOTE[mode]}</p>
-    {mode === "failed" && <button className="world-render-retry" onClick={() => setAttempt((n) => n + 1)}>3D 화면 다시 시도</button>}
   </div>;
 }

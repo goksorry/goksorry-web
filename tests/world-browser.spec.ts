@@ -203,7 +203,11 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   await expect(page.locator(".world-live-badge time")).toHaveAttribute("datetime", time!);
   await expect(page.locator(".world-index-screen")).toContainText(`분석 표본 ${frame.overall.total}건`);
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: { ...frame, data_at: new Date(Date.now() - 3_600_000).toISOString() } }));
-  await page.getByRole("button", { name: "다시 시도", exact: true }).click(); await expect(page.locator(".world-live-badge")).toContainText("갱신 지연");
+  // The failed read surfaced as an error snackbar; its retry recovers and the snackbar goes away.
+  const snack = page.locator(".world-snackbar[role=alert]");
+  await expect(snack).toContainText("테스트 데이터 장애");
+  await snack.getByRole("button", { name: "다시 시도", exact: true }).click(); await expect(page.locator(".world-live-badge")).toContainText("갱신 지연");
+  await expect(snack).toHaveCount(0);
 });
 
 test("walking to a plaza entrance turns its painted sign into a prompt with a pinned hit target", async ({ page }) => {
@@ -244,10 +248,12 @@ test("WebGL and asset failures use same static art with working screens", async 
   await requireWebGL2(page);
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
-  // A failure is an error, not a mode: it says so and offers a retry.
-  await expect(page.locator(".world-render-note")).toHaveText("3D 화면을 불러오지 못했습니다");
+  // A failure is an error, not a mode: a snackbar says so and offers a retry.
+  await expect(page.locator(".world-snackbar[role=alert]")).toContainText("3D 화면을 불러오지 못했습니다");
   await page.getByRole("button", { name: "3D 화면 다시 시도" }).click();
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
+  // Closing the snackbar keeps it closed for the same error; the screens stay usable.
+  await page.getByRole("button", { name: "알림 닫기" }).click(); await expect(page.locator(".world-snackbar")).toHaveCount(0);
   await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();
 });
 

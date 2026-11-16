@@ -31,6 +31,7 @@ import { stockPierrotArt } from "@/lib/stock-pierrot";
 import type { TheaterTimeline } from "@/lib/world-theater";
 import { buildSceneBoard, CAMP_LABEL, sampleVerdict, type BoardScene } from "@/lib/world-scene-boards";
 import { useWorldSound } from "./world-sound";
+import { WorldSnackbarProvider, useWorldSnack } from "./world-snackbar";
 import type { EvidenceSelection } from "./scene-types";
 import "./world.css";
 
@@ -56,7 +57,13 @@ const thirdOf = (fraction: number): PanelSide => fraction < 1 / 3 ? "left" : fra
 // Height reserved for the bottom scene nav when framing the wall.
 const HUD_BOTTOM = 60;
 
-export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: string; selectedGroupIds: SourceGroupId[]; menu: ReactNode }) {
+type ShellProps = { timezone: string; selectedGroupIds: SourceGroupId[]; menu: ReactNode };
+/** The world page; errors anywhere inside surface as snacks (world-snackbar.tsx). */
+export function WorldShell(props: ShellProps) {
+  return <WorldSnackbarProvider><WorldShellView {...props} /></WorldSnackbarProvider>;
+}
+
+function WorldShellView({ timezone, selectedGroupIds, menu }: ShellProps) {
   const params = useSearchParams();
   const rawScene = params.get("scene") ?? "plaza";
   const scene: WorldScene = WORLD_SCENES.includes(rawScene as WorldScene) ? rawScene as WorldScene : "plaza";
@@ -184,6 +191,8 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
     setSceneOrigin(from); setTab(null); setMenuOpen(false); setSceneOpen(true);
   };
   const fromButton = (event: { currentTarget: Element }) => event.currentTarget.getBoundingClientRect();
+  useWorldSnack("world-data", error ? { text: error, tone: "error", action: { label: "다시 시도", run: () => setRetry((n) => n + 1) } } : null);
+  useWorldSnack("world-collection", !error && (frame.collection.errors > 0 || frame.collection.degraded || frame.collection.unavailable) ? { text: "일부 수집·분석 상태 확인 필요", tone: "info" } : null);
   const tabs: DetailTab[] = currentSelection ? ["index", "feed"] : ["index", "feed", "room"];
   const liveBadge = <div className="world-live-badge" data-state={error ? "error" : status.startsWith("갱신") ? "delayed" : "ready"}><i /><span>{status}</span><time dateTime={liveFrame.data_at ?? undefined}>{liveTime}</time></div>;
   return <div className="world-root" data-paused={!visible || reduced} data-scene={scene} data-cookie-banner={bannerVisible} data-layout={landscape === null ? "pending" : layout} data-wall-section={section} data-wall-overview={overview}>
@@ -207,7 +216,6 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
         </div>}
         {sceneBoard && <SceneBoardDom model={sceneBoard} onOpen={openScene} />}
       </HD2DWorld>
-      {(error || frame.collection.errors > 0 || frame.collection.degraded || frame.collection.unavailable) && <p className="world-data-notice" role="status">{error || "일부 수집·분석 상태 확인 필요"}{error && <button onClick={() => setRetry((n) => n + 1)}>다시 시도</button>}</p>}
       {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} onTimeline={setTimeline} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>

@@ -4,6 +4,7 @@ import { buildWorldReplay, worldDate, type WorldFrame, type WorldReplay } from "
 import { timelineSegments } from "@/lib/world-presentation";
 import { theaterSlotIndex, theaterTimeline, type TheaterTimeline } from "@/lib/world-theater";
 import { saveWorldPostcard } from "./world-postcard";
+import { useWorldSnack } from "./world-snackbar";
 
 /**
  * Replay controls of the theater. Owns loading and playback; reports the shown frame (`onFrame`) and what the wall
@@ -61,6 +62,7 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
   const recorded = replay.slots.filter((item) => item.frame);
   const lastFrame = recorded[recorded.length - 1]?.frame;
   const segments = useMemo(() => timelineSegments(replay.slots), [replay]);
+  useWorldSnack("theater-replay", error ? { text: error, tone: "error", action: { label: "다시 시도", run: () => setRetry((v) => v + 1) } } : null);
   const share = async () => {
     const url = new URL(window.location.href); url.searchParams.set("scene", "theater"); url.searchParams.set("date", date);
     for (const key of ["panels", "feed", "channels", "channel"]) url.searchParams.delete(key);
@@ -82,7 +84,6 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
       <span className="world-theater-info">{timeline.clock}</span>
       <span className="world-record-state world-theater-info">{timeline.state}</span></div>
     <p className="world-note world-theater-info">{reduced ? "동작 줄이기: 시간 막대로 정적 장면을 탐색하세요. " : ""}심리 추이입니다. 정상 수집 뒤 10분 버킷으로 기록합니다. 기록이 없으면 수집·기록 저장 상태를 확인해야 합니다. 빈 구간은 보간하지 않습니다.</p>
-    {error && <p role="alert">{error} <button onClick={() => setRetry((v) => v + 1)}>다시 시도</button></p>}
     {position >= 30 && lastFrame && <div className="world-postcard-actions"><strong>오늘의 곡소리 한 컷 · 마지막 기록 기준</strong><button onClick={() => void saveWorldPostcard(lastFrame, date, color).then(() => setMessage("PNG 저장 완료")).catch((e) => setMessage(String(e.message)))}>PNG 저장</button><button onClick={() => void share()}>링크 공유</button></div>}
     {shareLink && <input aria-label="극장 공유 링크" readOnly value={shareLink} onFocus={(e) => e.target.select()} />}
     <span role="status">{message}</span>
