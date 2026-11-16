@@ -2,9 +2,10 @@ import type { FeedRow } from "./feed-data";
 import type { WorldCommunity, WorldFrame, WorldScene, WorldSide, WorldSummary } from "./world";
 
 export const WORLD_COLORS = ["#d9bc79", "#91b4ae", "#efa5ac", "#aaa0c4"];
-// NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd.
+// NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd; the battle's camps hold at most
+// 20 ants on any screen (lib/world-battle-crowd.ts), so a change of mood reads as a few ants walking over.
 export const crowdCapacity = (scene: WorldScene, mobile: boolean): number =>
-  scene === "plaza" ? (mobile ? 12 : 20) : (mobile ? 23 : 47);
+  scene === "plaza" ? (mobile ? 12 : 20) : scene === "battle" ? 20 : (mobile ? 23 : 47);
 export const SIDE_LABEL: Record<WorldSide, string> = { bullish: "희망", bearish: "공포", neutral: "중립" };
 
 /**

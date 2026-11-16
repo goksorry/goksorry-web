@@ -12,6 +12,7 @@ import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
 import { createMoveMarker, type MoveMarkerState } from "./move-marker";
 import { castFade } from "@/lib/world-theater";
+import { SIDE_VARIANT, battlePose, createBattleCrowd, emoteFrames } from "@/lib/world-battle-crowd";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
@@ -34,6 +35,9 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   cast: number;
   /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
   band: string; bright: boolean;
+  /** 심리 전장 camp ants (empty elsewhere): their camp side and spot (see campSpots), "walk" / "stand" / "emote" (with the loop
+   * playing), whether they are walking off, and how much of them is drawn. */
+  battle: () => (AntMetric & { id: string; side: WorldSide; spot: number; leaving: boolean; emote: string | null; fade: number })[];
   /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body;
    * the turnover phase it is in (`trip`), how many trips its slot has made (`lap`) and how much of it is drawn (`fade`, 0 hidden). */
   crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean; trip: "out" | "away" | "in" | null; lap: number; fade: number })[];
@@ -69,7 +73,8 @@ export type WorldRenderer = {
   position: Point;
 };
 
-/** Ant instances: the plaza holds at most about 20 NPCs, 19 peers, a few ants walking off and the visitor. */
+/** Ant instances: the plaza holds at most about 20 NPCs, 19 peers, a few ants walking off and the visitor; the battle 20 camp
+ * ants and at most 20 walking off; the theater 47. */
 const MAX_ANTS = 48;
 
 export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: RenderState, events: {
@@ -350,6 +355,8 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   // The other scenes pose their ants from the base sheet's grid: five rows, four directions.
   const BASE_ROWS = ["neutral.idle", "neutral.walk-a", "neutral.walk-b", "fear.idle", "hope.idle"], BASE_DIRS = ["f", "l", "r", "b"];
   const crowd = createCrowd();
+  // 심리 전장: ants standing in their camps (lib/world-battle-crowd.ts), playing the atlas's emotion loops.
+  const battleLoops = emoteFrames(hasFrame), battle = createBattleCrowd({ frames: battleLoops });
   // NPCs come and go through the back-wall doors, each hiding behind the pier on its outer side; a darkening ant is tinted
   // toward the doorway's dark (darkMat), and a hidden one is drawn at zero size.
   const crowdDoors: CrowdDoor[] = PLAZA_ENTRANCES.map((e) => ({ x: e.x, z: e.z, legs: plazaDoorWay(e, e.x < 0 ? -1 : 1) }));
@@ -413,11 +420,13 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     if (next !== current) { asked = next; events.section?.(next); }
   }
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, cast: 1, band: "neutral", bright: false,
+    battle: () => state.scene === "battle" ? battle.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.path.length ? "walk" : a.emote ? "emote" : "stand", a.dir8), id: a.id, side: a.side, spot: a.spot, leaving: a.leaving, emote: a.emote?.loop ?? null, fade: a.fade })) : [],
     crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
     visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8),
     marker: () => { const m = marker.state; if (!m) return null; const p = project(corner.set(m.x, 0, m.z)); return { ...m, sx: p.x, sy: p.y }; } };
-  // Plaza instances are the crowd (including ants walking off) then the visitor; other scenes draw sideList then the visitor.
-  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : sideList.length;
+  // Plaza instances are the crowd (including ants walking off) then the visitor, the battle its camp ants (with those walking
+  // off) then the visitor; the theater draws sideList then the visitor.
+  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : state.scene === "battle" ? Math.min(MAX_ANTS - 1, battle.ants.length) : sideList.length;
   // What was drawn last for each instance: atlas frame, sprite height in world units, and world units per atlas pixel.
   const shown: string[] = [], talls: number[] = [], units: number[] = [];
   const antMetric = (i: number, x: number, z: number, state: string, dir: number): AntMetric => {
@@ -430,9 +439,13 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   const timer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
   let queries: WebGLQuery[] = [];
   function summary(): WorldSummary { return state.scene === "battle" ? state.frame.stocks.find((s) => s.symbol === state.stock) ?? state.frame.overall : state.frame.overall; }
-  const VARIANT: Record<WorldSide, AntVariant> = { bullish: "hope", bearish: "fear", neutral: "neutral" };
   function population() {
     const plaza = state.scene === "plaza", base = crowdCapacity(state.scene, state.mobile);
+    // The battle's camps: only the ants that change camp walk; reduced motion places them at once.
+    if (state.scene === "battle") {
+      battle.sync(crowdDistribution(summary(), base), { instant: state.reduced });
+      roster = []; sideList = []; ants.count = shadows.count = visitorIndex() + 1; metrics.population = battle.ants.filter((a) => !a.leaving).length + 1; return;
+    }
     // No record to show: the theater keeps the ants it has (they fade out in draw) rather than taking the empty frame's none.
     if (!plaza && state.absent) { roster = []; ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count; return; }
     // On the plaza, every two other viewers take the place of one NPC.
@@ -440,7 +453,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
     // NPC ids are per slot: a change in the mood mix changes costumes in place, only a change in headcount walks ants in or out.
     roster = plaza ? [
-      ...sideList.map((side, i) => ({ id: `npc:${i}`, variant: VARIANT[side] })),
+      ...sideList.map((side, i) => ({ id: `npc:${i}`, variant: SIDE_VARIANT[side] })),
       ...peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } }))
     ] : [];
     ants.count = shadows.count = sideList.length + (plaza ? peers.length : 0) + 1; metrics.population = ants.count;
@@ -589,6 +602,11 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       crowd.sync(roster, env);
       if (ambient()) crowd.step(dt, env);
       ants.count = shadows.count = visitorIndex() + 1;
+    } else if (state.scene === "battle") {
+      // The camps keep to the floor the frame shows (a portrait phone frames only the middle of the field).
+      battle.frame(crowdView(), { instant: state.reduced });
+      if (!state.paused) battle.step(dt, { still: state.reduced });
+      ants.count = shadows.count = visitorIndex() + 1;
     }
     let cueCount = 0, puffs = 0;
     const size = metrics.antSize = antSize();
@@ -598,16 +616,44 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       cueRects[n * 4] = puff ? .5 : 0; cueRects[n * 4 + 1] = 0; cueRects[n * 4 + 2] = .5; cueRects[n * 4 + 3] = 1;
       dummy.position.set(x, y, z + .05); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(w, h / WALL_COS, 1); dummy.updateMatrix(); cues.setMatrixAt(n, dummy.matrix);
     };
+    const hide = (i: number) => { shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix); };
+    /** Draws an atlas frame (k-scaled, mirrored as resolved) standing on (x, z), `stretch` times its height; returns that height. */
+    const placeSprite = (i: number, frame: AntFrame, x: number, z: number, scale: number, bob: number, stretch = 1) => {
+      const rect = frame.rect;
+      offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
+      offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
+      // The frame squeezes heights by WALL_COS; sprites are stretched back so they keep their proportions.
+      const tall = rect[3] * scale / WALL_COS * stretch;
+      shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall; units[i] = scale;
+      // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
+      const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
+      dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
+      return tall;
+    };
+    const placeShadow = (i: number, x: number, z: number, k: number) => { dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * k, .55 * size * k, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix); };
     const you = visitorIndex(), heads: Record<string, { x: number; y: number }> = {}, peerTags: LabelSpec[] = [];
     for (let i = 0; i < ants.count; i++) {
       const visitor = i === you, side = sideList[i];
+      if (state.scene === "battle" && !visitor) {
+        // A camp ant: standing at its spot (hope smiling), walking to a new camp, or playing an emotion loop. Without ambient
+        // motion it stands still in its plain pose.
+        const b = battle.ants[i], variant = SIDE_VARIANT[b.side], walking = b.path.length > 0, still = !ambient();
+        fades[i] = b.fade;
+        if (b.fade <= 0) { hide(i); continue; }
+        let pose = battlePose(still ? { ...b, emote: null } : b, battleLoops, WALK_PHASE * size), dir8 = b.dir8, bright = b.side === "bullish";
+        if (walking) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, b.dir4, bright));
+        const bob = (walking ? walkLift(b.stride, WALK_PHASE * size) * .04 : !b.emote && !still ? Math.sin(time / 2400 + b.build * 53) * .025 : 0) * size;
+        const frame = frameOf(variant, pose, dir8, b.dir4, b.lean, bright), k = frame.rect[4] ?? 1;
+        placeSprite(i, frame, b.x, b.z, b.build * 1.45 / 235 * k * size, bob);
+        ants.setColorAt(i, color.set("#ffffff"));
+        placeShadow(i, b.x, b.z, b.fade);
+        continue;
+      }
       if (!plaza && !visitor) {
         let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
-        // Battle camps read like the gauge: fear on the left half, hope on the right, neutral in the front row.
-        if (state.scene === "battle") { const camp = CAMP_X[side]; x = camp < 0 ? -6.4 + (i * 29 % 45) / 10 : camp > 0 ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (!camp) z = 5.8; }
         if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
         fades[i] = cast;
-        if (cast <= 0) { shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix); continue; }
+        if (cast <= 0) { hide(i); continue; }
         const shift = !ambient() ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
         let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;
         // Mixed sentiment: short steps, pauses, and turns in opposite directions.
@@ -632,16 +678,13 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         shown[i] = ""; talls[i] = tall; units[i] = scale;
         dummy.position.set(x, shift * size + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
         ants.setColorAt(i, color.set("#ffffff"));
-        dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * cast, .55 * size * cast, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+        placeShadow(i, x, z, cast);
         continue;
       }
       fades[i] = 1;
       // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
       const a = visitor ? null : crowd.ants[i], fade = a ? a.fade : 1;
-      if (fade <= 0) { // away on a trip: nothing drawn, no tag, no cue
-        shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix);
-        continue;
-      }
+      if (fade <= 0) { hide(i); continue; } // away on a trip: nothing drawn, no tag, no cue
       const x = a ? a.x : position.x, z = a ? a.z : position.z;
       const dir4 = a ? a.dir4 : [0, 2, 6, 4][direction];
       const variant: AntVariant = a ? a.variant : "neutral";
@@ -655,19 +698,13 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       const lean = a ? a.lean : visitorLean;
       const frame = frameOf(variant, pose, dir8, dir4, lean, bright);
       const rect = frame.rect, k = rect[4] ?? 1;
-      offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
-      offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
       const scale = (visitor ? VISITOR_SCALE : (.9 + i % 3 * .06) * 1.45 / 235) * k * size;
       // Standing ants breathe; a sigh sinks and recovers over its span (t counts down from span).
       // Walkers rise as the feet pass and sink into each stride.
       const bob = (a && a.state === "gaze" && ambient() ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
       // Under a hopeful index the sigh state is drawn as the relieved pose (the bright "sigh" art): no sinking, no breath.
       const sighing = a && a.state === "sigh" && a.span > 0 && !frame.key.includes("-bright.sigh.") ? 1 - a.t / a.span : -1;
-      const tall = rect[3] * scale / WALL_COS * (sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);
-      shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall; units[i] = scale;
-      // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
-      const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
-      dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
+      const tall = placeSprite(i, frame, x, z, scale, bob, sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);
       ants.setColorAt(i, visitor ? color.set(state.color) : color.set("#ffffff").lerp(DOOR_DARK, 1 - fade));
       if (a?.peer && !a.exit && fade >= 1) {
         const name = peers.find((peer) => `peer:${peer.id}` === a.id)?.name;
@@ -675,7 +712,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         if (name) peerTags.push({ id: a.id, text: name, style: "peer", at: { x, y: top, z } });
         const head = project(corner.set(x, top, z)); heads[a.id.slice(5)] = { x: head.x, y: head.y };
       }
-      dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * fade, .55 * size * fade, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+      placeShadow(i, x, z, fade);
       if (a && fade >= 1 && cueCount < MAX_ANTS) {
         const high = rect[3] * scale / WALL_COS;
         if (a.state === "phone" && !frame.posed && dir4 !== 4) {
@@ -759,6 +796,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       path = []; snap = true; visiting = null; marker.hide();
       // A new room starts with its own ants: none yet where the theater has no record to show (they fade in with one).
       cast = state.absent ? 0 : 1; if (state.absent) sideList = [];
+      battle.reset(); // the camps are placed as they stand, not walked in
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
       else if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; }
       buildRoom();

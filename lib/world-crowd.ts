@@ -7,7 +7,11 @@ export const ANT_DIRS = ["f", "fl", "l", "bl", "b", "br", "r", "fr"] as const; /
 // "look" is standing with the head thrown back, looking up at the wall. It only exists seen from behind (b, bl, br).
 // "tilt" is the in-between of idle and look (straight back view only), shown for a moment while the head moves.
 // Under a bright variant the "sigh" frames are the relieved pose: head up, smiling, phone lowered.
-export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh" | "look" | "tilt";
+// Emotion loops are numbered frames played in place (`howl-1`, `howl-2`, ...), camera-facing only: the fear ant howls at the
+// sky or kneels in despair, the hope ant dances or laughs smugly ("거 봐 내가 오른다 했제"). The battle crowd plays them.
+export type EmoteLoop = "howl" | "kneel" | "dance" | "smug";
+export type EmotePose = `${EmoteLoop}-${number}`;
+export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh" | "look" | "tilt" | EmotePose;
 export type AntVariant = "neutral" | "fear" | "hope";
 // While the index is in the hope state, neutral and hope ants wear a brighter face: the same poses under these atlas
 // variants, wherever that art exists. The fear ant has no bright form.
@@ -490,7 +494,9 @@ export function createCrowd(seed = 1, settleSeconds = SETTLE): Crowd {
 // stride came out the other way round from the first (the briefcase and the scarf tail swap sides), so tracking this per
 // frame also keeps the costume on one side through the whole cycle. Both bright passing steps were drawn turned left too.
 // The scarf ant's passing step has its scarf tail on the other side from its first stride, like its second stride.
-const FRONT_LEFT = new Set(["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f", "hope.walk-p.f", "neutral-bright.walk-p.f", "hope-bright.walk-p.f"]);
+// The kneeling fear ant faces front, slightly left; the other emotion loops turn right (howl, dance, smug).
+const FRONT_LEFT = new Set(["fear.idle.f", "fear.sigh.f", "fear.walk-b.f", "hope.walk-b.f", "hope.walk-p.f", "neutral-bright.walk-p.f", "hope-bright.walk-p.f",
+  ...[1, 2, 3, 4, 5, 6].map((n) => `fear.kneel-${n}.f`)]);
 
 // Frame lookup order for a pose: exact art first, then the nearest pose and direction that
 // exists. With only the 20 base frames the chain always ends on one of them.

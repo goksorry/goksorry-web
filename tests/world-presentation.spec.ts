@@ -30,9 +30,10 @@ test("three scenes; links to the merged scenes land where their content went", (
   expect(worldSceneOf("ecosystem")).toBe("battle"); expect(worldSceneOf("broadcast")).toBe("plaza");
   for (const raw of [null, undefined, "", "nowhere", "constructor", "toString", "__proto__"]) expect(worldSceneOf(raw)).toBe("plaza");
 });
-test("the plaza is a sparse crowd; other scenes keep the full population", () => {
+test("the plaza is a sparse crowd, the battle's camps hold 20 and the theater keeps the full population", () => {
   expect([crowdCapacity("plaza", false), crowdCapacity("plaza", true)]).toEqual([20, 12]);
-  for (const scene of ["battle", "theater"] as const) expect([crowdCapacity(scene, false), crowdCapacity(scene, true)]).toEqual([47, 23]);
+  expect([crowdCapacity("battle", false), crowdCapacity("battle", true)]).toEqual([20, 20]);
+  expect([crowdCapacity("theater", false), crowdCapacity("theater", true)]).toEqual([47, 23]);
 });
 test("latest evidence sorted across all three sides; no repeated or fabricated entries", () => {
   const frame = buildWorldFrame(worldRows());

@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import base from "./playwright.config";
 export default defineConfig({
   ...base,
-  testMatch: /(?:world-(data|api|presentation|presence|crowd|atlas|browser|hd2d|wall|scene-boards)|home-(data|browser|api))\.spec\.ts/,
+  testMatch: /(?:world-(data|api|presentation|presence|crowd|battle-crowd|atlas|browser|hd2d|wall|scene-boards)|home-(data|browser|api))\.spec\.ts/,
   testIgnore: [],
   workers: 1,
   webServer: [

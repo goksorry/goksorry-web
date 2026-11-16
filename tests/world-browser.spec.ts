@@ -200,7 +200,7 @@ test("phone landscape keeps the full wall like desktop", async ({ page }) => {
 
 test("battle uses total counts, avatar moves and survives details, preferences in menu", async ({ page }) => {
   await prepareWorld(page); await page.goto("/?scene=battle"); await webgl(page);
-  await expect(stage(page)).toHaveAttribute("data-population", "48");
+  await expect(stage(page)).toHaveAttribute("data-population", "21");
   const avatar = page.getByTestId("world-avatar"), before = await avatar.getAttribute("data-position");
   await page.locator(".hd2d-canvas").focus(); await page.keyboard.press("ArrowRight");
   await expect(avatar).not.toHaveAttribute("data-position", before!);
@@ -721,11 +721,11 @@ test("hidden tab stops actual render and polling; resumes once visible", async (
   await expect.poll(() => reads).toBe(hiddenReads + 1);
 });
 
-test("measure actual render throughput at 48/24 ants during movement, detail and replay", async ({ page }, testInfo) => {
+test("measure actual render throughput at 21 battle and 48/24 theater ants during movement, detail and replay", async ({ page }, testInfo) => {
   test.setTimeout(90_000); await prepareWorld(page); const results: unknown[] = [];
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); await page.goto("/?scene=battle"); await webgl(page);
-    await expect(stage(page)).toHaveAttribute("data-population", viewport.width > 760 ? "48" : "24");
+    await expect(stage(page)).toHaveAttribute("data-population", "21");
     for (const scenario of ["movement", "detail", "replay"]) {
       if (scenario === "movement") { await page.locator("canvas").focus(); await page.keyboard.press("ArrowRight"); }
       if (scenario === "detail") { await page.getByRole("button", { name: "진영·종목 선택 열기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click(); }
