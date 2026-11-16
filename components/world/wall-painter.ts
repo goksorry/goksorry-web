@@ -12,7 +12,7 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
   // Short panels (phone landscape) shrink their text instead of clipping it.
   const pen = openBoard(canvas, box, style, { title: TITLES[id], hint, body: id === "index" ? Math.min(box.body, box.height / 5.6) : box.body });
   if (!pen) return;
-  const { ctx, w, h, body, small, pad, top, bottom, font, right, clip, notice } = pen;
+  const { ctx, w, h, body, small, pad, top, bottom, font, alignRight: right, clip, notice } = pen;
   // First payload pending: skeleton rows until real content replaces them (the renderer adds the shimmer).
   if (loading) { pen.skeleton(); return; }
 

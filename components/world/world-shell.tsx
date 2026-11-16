@@ -27,6 +27,7 @@ import { WorldEvidence } from "./world-evidence";
 import { WorldWallDom, SummaryNumbers } from "./world-screens";
 import { SceneBoardDom } from "./scene-board-dom";
 import type { BoardSource } from "./board-specs";
+import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { buildSceneBoard, CAMP_LABEL, sampleVerdict, type BoardScene } from "@/lib/world-scene-boards";
 import { useWorldSound } from "./world-sound";
 import type { EvidenceSelection } from "./scene-types";
@@ -169,9 +170,12 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
     scopeLabel: stock ? stockOptions.find((s) => s.symbol === stock)?.name ?? stock : filtered ? "선택 출처" : "",
     feed: feedWall, market: marketWall, room: roomWall
   }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark, stock, stockOptions, feedWall, marketWall, roomWall]);
+  const liveTime = liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : "";
+  const statusLine = liveTime ? `${status} · ${liveTime}` : status;
   const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
-    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame
-  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame]);
+    scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame,
+    status: statusLine, art: stockPierrotArt(activeSummary, dark)
+  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, statusLine, dark]);
   const board = useMemo<BoardSource>(() => plaza ? { kind: "plaza", model: wall } : sceneBoard && { kind: "scene", model: sceneBoard }, [plaza, wall, sceneBoard]);
   const openScene = (from: PanelOrigin) => {
     if (scene === "theater") { if (replayFrame) evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at }); return; }
@@ -179,7 +183,7 @@ export function WorldShell({ timezone, selectedGroupIds, menu }: { timezone: str
   };
   const fromButton = (event: { currentTarget: Element }) => event.currentTarget.getBoundingClientRect();
   const tabs: DetailTab[] = currentSelection ? ["index", "feed"] : ["index", "feed", "room"];
-  const liveBadge = <div className="world-live-badge" data-state={error ? "error" : status.startsWith("갱신") ? "delayed" : "ready"}><i /><span>{status}</span><time dateTime={liveFrame.data_at ?? undefined}>{liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : ""}</time></div>;
+  const liveBadge = <div className="world-live-badge" data-state={error ? "error" : status.startsWith("갱신") ? "delayed" : "ready"}><i /><span>{status}</span><time dateTime={liveFrame.data_at ?? undefined}>{liveTime}</time></div>;
   return <div className="world-root" data-paused={!visible || reduced} data-scene={scene} data-cookie-banner={bannerVisible} data-layout={landscape === null ? "pending" : layout} data-wall-section={section} data-wall-overview={overview}>
     <div className="world-content" aria-hidden={!!tab || menuOpen || sceneOpen ? true : undefined} ref={node => { if (node) node.inert = !!tab || menuOpen || sceneOpen; }}>
     <header className="world-topbar"><a href="/" className="world-brand" aria-label="곡소리 개미 월드 홈"><span className="world-brand-mark" aria-hidden="true" /><span>곡소리</span></a>

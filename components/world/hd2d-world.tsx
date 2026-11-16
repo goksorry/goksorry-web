@@ -129,7 +129,8 @@ export default function HD2DWorld(props: Props) {
     }} />
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
-    {props.scene !== "plaza" && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
+    {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
+    {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
     {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
     <p className="world-render-note" role={mode === "loading" ? "status" : undefined}>{NOTE[mode]}</p>

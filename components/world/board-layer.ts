@@ -4,12 +4,15 @@ import { createWallShimmer } from "./wall-shimmer";
 
 /** Logical (CSS px) size of a painted board, device scale of its backing canvas and body text size. */
 export type BoardBox = { width: number; height: number; scale: number; body: number };
+/** Pictures a painted board asked for (`images`), by src; only those that finished loading are present. */
+export type BoardImages = ReadonlyMap<string, HTMLImageElement>;
 /**
- * What a board shows. `paint` boards draw into a canvas; `key` must change whenever the drawing would
- * (the layer adds the size itself). `image` boards show a picture; an empty `src` leaves the board blank.
+ * What a board shows. `paint` boards draw into a canvas; `key` must change whenever the drawing would (the layer
+ * adds the size and which `images` have loaded, and repaints when one arrives). `image` boards show a picture as
+ * the whole face; an empty `src` leaves the board blank.
  */
 export type BoardContent =
-  | { kind: "paint"; key: string; paint: (canvas: HTMLCanvasElement, box: BoardBox) => void }
+  | { kind: "paint"; key: string; images?: string[]; paint: (canvas: HTMLCanvasElement, box: BoardBox, images: BoardImages) => void }
   | { kind: "image"; src: string };
 /** One unlit textured plane on the wall. `loading` adds the loading sweep until content arrives. */
 export type BoardSpec = { id: string; rect: BoardRect; content: BoardContent; loading: boolean };
@@ -47,6 +50,15 @@ export function createBoardLayer({ z, anisotropy, loader, onImage }: { z: number
   const entries = new Map<string, Entry>(), drawn: Record<string, string> = {};
   // Images are cached for the life of the layer: scenes and moods swap between a handful of pictures.
   const images = new Map<string, THREE.Texture>(), settled = new Set<string>();
+  // Pictures drawn inside painted boards, kept as decoded elements.
+  const pictures = new Map<string, HTMLImageElement>(), loaded = new Map<string, HTMLImageElement>();
+  const picture = (src: string) => {
+    if (pictures.has(src)) return;
+    const element = new Image(); element.decoding = "async"; pictures.set(src, element);
+    element.onload = () => { loaded.set(src, element); if (!disposed) onImage(); };
+    element.onerror = () => { if (!disposed) onImage(); };
+    element.src = src;
+  };
   let order: string[] = [], disposed = false;
 
   const sweep = (entry: Entry) => {
@@ -115,11 +127,13 @@ export function createBoardLayer({ z, anisotropy, loader, onImage }: { z: number
         const cssW = spec.rect.w * ppu, cssH = spec.rect.h * squeeze * ppu;
         // Cap the backing store; a huge board on a high-density screen would exceed texture limits.
         const scale = Math.min(ratio, 2048 / cssW), pxW = Math.max(4, Math.round(cssW * scale)), pxH = Math.max(4, Math.round(cssH * scale));
-        const key = `${content.key}|${pxW}x${pxH}|${body}`;
+        const wanted = content.images ?? [];
+        wanted.forEach(picture);
+        const key = `${content.key}|${pxW}x${pxH}|${body}|${wanted.map((src) => loaded.has(src) ? 1 : 0).join("")}`;
         if (drawn[spec.id] === key) continue;
         // WebGL2 texture storage is immutable: release it before a size change.
         if (canvas.width !== pxW || canvas.height !== pxH) { canvas.width = pxW; canvas.height = pxH; texture.dispose(); }
-        content.paint(canvas, { width: cssW, height: cssH, scale: pxW / cssW, body });
+        content.paint(canvas, { width: cssW, height: cssH, scale: pxW / cssW, body }, loaded);
         texture.needsUpdate = true; drawn[spec.id] = key;
       }
     },
@@ -130,7 +144,7 @@ export function createBoardLayer({ z, anisotropy, loader, onImage }: { z: number
       disposed = true;
       for (const id of [...entries.keys()]) remove(id);
       for (const texture of images.values()) texture.dispose();
-      images.clear(); shimmer.dispose(); geometry.dispose(); group.removeFromParent();
+      images.clear(); pictures.clear(); loaded.clear(); shimmer.dispose(); geometry.dispose(); group.removeFromParent();
     }
   };
 }

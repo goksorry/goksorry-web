@@ -1,5 +1,5 @@
 import type { BoardBox } from "./board-layer";
-import { paintWallSkeleton } from "./wall-skeleton";
+import { paintWallSkeleton, WALL_SKELETON_COLOR } from "./wall-skeleton";
 
 /** Fonts and direction colours taken from the page theme. */
 export type BoardPaintStyle = { family: string; up: string; down: string };
@@ -39,10 +39,10 @@ export function wrapLines(ctx: Pick<CanvasRenderingContext2D, "measureText">, te
 export type BoardPen = {
   ctx: CanvasRenderingContext2D;
   w: number; h: number; body: number; small: number; pad: number; head: number;
-  /** Content area below the header strip. */
-  top: number; bottom: number;
+  /** Content area below the header strip; `left`/`right` narrow when a portrait takes the left column. */
+  top: number; bottom: number; left: number; right: number;
   font(size: number, weight?: number): void;
-  right(text: string, x: number, y: number): void;
+  alignRight(text: string, x: number, y: number): void;
   centre(text: string, x: number, y: number): void;
   /** One line, ellipsised to `max` px. */
   clip(text: string, max: number): string;
@@ -50,6 +50,11 @@ export type BoardPen = {
   notice(text: string): void;
   /** Skeleton rows over the content area. */
   skeleton(): void;
+  /**
+   * Draws a 3:2 picture with its caption in a left column of the content area (a placeholder until it loads)
+   * and moves `left` past it. The picture is scaled whole, never cropped.
+   */
+  portrait(image: HTMLImageElement | undefined, caption: string): void;
 };
 
 /**
@@ -74,10 +79,20 @@ export function openBoard(canvas: HTMLCanvasElement, box: BoardBox, style: Board
   aligned("right")(clip(`${header.hint} ↗`, w - pad * 3 - titleWidth), w - pad, head * .7);
   ctx.fillStyle = BOARD.line; ctx.fillRect(pad, head, w - pad * 2, 1);
   const top = head + Math.round(body * .5), bottom = h - Math.round(body * .5);
-  return {
-    ctx, w, h, body, small, pad, head, top, bottom, font, clip,
-    right: aligned("right"), centre: aligned("center"),
-    notice(text) { font(body); ctx.fillStyle = BOARD.dim; ctx.fillText(text, pad, top + body * 1.4); },
-    skeleton() { paintWallSkeleton(ctx, { x: pad, y: top, width: w - pad * 2, height: bottom - top }, body); }
+  const pen: BoardPen = {
+    ctx, w, h, body, small, pad, head, top, bottom, left: pad, right: w - pad, font, clip,
+    alignRight: aligned("right"), centre: aligned("center"),
+    notice(text) { font(body); ctx.fillStyle = BOARD.dim; ctx.fillText(clip(text, pen.right - pen.left), pen.left, top + body * 1.4); },
+    skeleton() { paintWallSkeleton(ctx, { x: pen.left, y: top, width: pen.right - pen.left, height: bottom - top }, body); },
+    portrait(image, caption) {
+      const captionH = small * 1.6, artH = Math.min(bottom - top - captionH, (w - pad * 2) * .3 / 1.5), artW = artH * 1.5;
+      // Narrow boards (portrait phones) or tiny art: leave the whole width to the content.
+      if (artH < body * 2 || w - pad * 2 < body * 36) return;
+      if (image) ctx.drawImage(image, pen.left, top, artW, artH);
+      else { ctx.fillStyle = WALL_SKELETON_COLOR; ctx.fillRect(pen.left, top, artW, artH); }
+      font(small); ctx.fillStyle = BOARD.gold; pen.centre(clip(caption, artW), pen.left + artW / 2, top + artH + small * 1.25);
+      pen.left += artW + pad;
+    }
   };
+  return pen;
 }
