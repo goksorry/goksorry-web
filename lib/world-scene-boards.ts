@@ -8,9 +8,7 @@ import type { TheaterTimeline } from "./world-theater";
  * (from 8.6), and within ±5.8 so a portrait phone (12 units of wall) shows all of it.
  */
 export const SCENE_BOARDS = {
-  ecosystem: { stocks: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
   battle: { camps: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
-  broadcast: { communities: { x: 0, y: 6.6, w: 11.4, h: 3.5 } },
   theater: { replay: { x: 0, y: 6.6, w: 11.4, h: 3.5 } }
 } satisfies Record<Exclude<WorldScene, "plaza">, Record<string, BoardRect>>;
 export type BoardScene = keyof typeof SCENE_BOARDS;
@@ -20,12 +18,18 @@ export type SceneBoardId = { [S in BoardScene]: keyof (typeof SCENE_BOARDS)[S] }
 export const sampleVerdict = (s: WorldSummary): string =>
   s.total < 3 ? "소표본 · 관찰 중" : s.mood === "fear" ? "공포 우세" : s.mood === "hope" ? "희망 우세" : "혼조";
 
+/** One row of the battle's stock picker: the recent mention ranking that 개미 생태계 used to show. */
+export type StockRank = { symbol: string; rank: string; name: string; count: string; hope: string; verdict: string; mood: WorldSummary["mood"]; thin: boolean; selected: boolean };
+/** The frame's stocks by mention count (as the frame orders them), `selected` marking the battle's stock. */
+export const stockRanking = (stocks: WorldStock[], selected: string): StockRank[] => stocks.map((s, i) => ({
+  symbol: s.symbol, rank: String(i + 1).padStart(2, "0"), name: s.name, count: `${s.total}건`, hope: `희망 ${percent(s.hope_ratio)}`,
+  verdict: sampleVerdict(s), mood: s.mood, thin: s.total < 3, selected: s.symbol === selected
+}));
+
 /** Shared by every scene board: header status line and the mood portrait (original Pierrot art). */
 type BoardCommon = { title: string; state: Loadable; status: string; portrait: { src: string; caption: string } };
 export type SceneBoardModel = BoardCommon & (
-  | { scene: "ecosystem"; id: "stocks"; items: { symbol: string; rank: string; name: string; count: string; hope: string; verdict: string; mood: WorldSummary["mood"]; thin: boolean }[] }
-  | { scene: "battle"; id: "camps"; scope: string; camps: { side: "bullish" | "bearish" | "neutral"; label: string; value: string; sub: string }[]; note: string; fresh: string }
-  | { scene: "broadcast"; id: "communities"; items: { id: string; name: string; index: string; ratios: string; status: string }[] }
+  | { scene: "battle"; id: "camps"; scope: string; camps: { side: "bullish" | "bearish" | "neutral"; label: string; value: string; sub: string }[]; note: string; fresh: string; ranking: StockRank[] }
   | { scene: "theater"; id: "replay"; date: string; headline: string; line: string; timeline: TheaterTimeline | null });
 
 export const CAMP_LABEL = { bullish: "희망군", bearish: "절망군", neutral: "중립 관찰석" } as const;
@@ -45,13 +49,6 @@ export function buildSceneBoard(input: {
     state: (theater || input.loaded ? "ready" : input.failed ? "failed" : "loading") as Loadable, status: input.status,
     portrait: { src: art.src, caption: `${theater ? "기록 시점" : "현재 분위기"} · ${art.label}` }
   };
-  if (input.scene === "ecosystem") return {
-    ...common, scene: "ecosystem", id: "stocks", title: "최근 6시간 종목별 언급",
-    items: frame.stocks.map((s, i) => ({
-      symbol: s.symbol, rank: String(i + 1).padStart(2, "0"), name: s.name, count: `${s.total}건`, hope: `희망 ${percent(s.hope_ratio)}`,
-      verdict: sampleVerdict(s), mood: s.mood, thin: s.total < 3
-    }))
-  };
   if (input.scene === "battle") {
     const s = input.summary;
     return {
@@ -62,17 +59,10 @@ export function buildSceneBoard(input: {
         sub: side === "neutral" ? "비율에서 별도" : `${s[side]}건`
       })),
       note: s.total < 3 ? "표본 부족 · 진영 우세 판단 보류" : "희망·공포 비율은 중립 제외. 가격·수익률 예측이 아닙니다.",
-      fresh: input.fresh > 0 ? `새로운 근거 글 ${input.fresh}건이 도착했습니다.` : ""
+      fresh: input.fresh > 0 ? `새로운 근거 글 ${input.fresh}건이 도착했습니다.` : "",
+      ranking: stockRanking(frame.stocks, input.stock?.symbol ?? "")
     };
   }
-  if (input.scene === "broadcast") return {
-    ...common, scene: "broadcast", id: "communities", title: "커뮤니티별 현황",
-    items: frame.communities.map((c) => ({
-      id: c.id, name: c.name, index: c.total ? `${c.index.toFixed(1)} / 10` : "— / 10",
-      ratios: `표본 ${c.total}건 · 희망 ${percent(c.hope_ratio)} · 공포 ${percent(c.fear_ratio)}`,
-      status: c.collection_disabled ? "수집 보류" : c.collection_problem ? "수집 확인 필요" : c.total < 3 ? "소표본 · 관찰 중" : `관심: ${c.top_stock ?? "종목 미지정"}`
-    }))
-  };
   const r = input.replay;
   return {
     ...common, scene: "theater", id: "replay", title: "오늘의 개미극장", date: `기록 · ${input.date}`,

@@ -175,10 +175,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     mesh(planarUV(new THREE.BoxGeometry(x1 - x0, h, d).translate((x0 + x1) / 2, y, z), ...tile), m, 0, 0, 0);
   // Per-room look through each plaza doorway, on the recess's back plate: only its lower .7 shows under the name plate.
   const glimpse = (scene: string, x: number, z: number) => {
-    if (scene === "ecosystem") { box(x, .4, z, 1, .8, .02, woodMat); for (let i = 0; i < 3; i++) box(x - .28 + i * .28, .22 + i % 2 * .2, z + .02, .14, .1, .02, darkMat); }
-    else if (scene === "broadcast") { box(x, .5, z, .5, .12, .02, redMat); box(x, .14, z + .1, .9, .28, .2, metalMat); }
-    else if (scene === "theater") { box(x, .4, z, 1, .8, .02, curtainMat); box(x, .08, z + .02, 1, .06, .02, goldMat); }
-    else { box(x, .4, z, 1, .8, .02, metalMat); box(x, .5, z + .02, .6, .05, .02, glowMat); }
+    if (scene === "theater") { box(x, .4, z, 1, .8, .02, curtainMat); box(x, .08, z + .02, 1, .06, .02, goldMat); }
+    // The battle: its two camp flags, fear (red) on the left and hope (amber) on the right as on the field.
+    else { box(x, .4, z, 1, .8, .02, metalMat); box(x - .24, .5, z + .02, .34, .2, .02, redMat); box(x + .24, .5, z + .02, .34, .2, .02, glowMat); }
   };
   /** The plaza's back wall between x ±11.2, with a low doorway cut under each panel column (see PLAZA_DOOR): framed by plaster
    * jambs and a metal lintel, a name plate across the top of the opening, and a dark recess behind it, wider than the opening so
@@ -259,15 +258,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       paper.rotation.y = i * 2.4; paper.castShadow = false;
     }
     for (let i = 0; i < 8; i++) box(-4 + i * 1.1, .006, 5.8, .65, .008, .06, metalMat);
-    if (state.scene === "ecosystem") {
-      for (let i = 0; i < 6; i++) { const x = -6.8 + i * 2.7; box(x, 1.1, -3.6, 2.35, 2.2, 1.1, brickMat); arch(x, -2.99, 1.25, 1.8); }
-    } else if (state.scene === "battle") {
+    if (state.scene === "battle") {
       for (let i = 0; i < 4; i++) { const p = box(0, .7, -.9 + i * .7, .65, 1.25, .5, woodMat); p.rotation.z = (i % 2 ? 1 : -1) * .15; }
       // Camp flags: red over the fear camp, amber over the hope camp, each on its CAMP_X side.
       for (const side of ["bearish", "bullish"] as const) { const sign = CAMP_X[side]; box(sign * 5.5, 1.8, -.5, .08, 3.6, .08, metalMat); box(sign * 5.1, 3.2, -.5, .8, .6, .04, side === "bullish" ? glowMat : redMat); }
-    } else if (state.scene === "broadcast") {
-      box(0, .3, -1, 6.5, .6, 3.5, woodMat);
-      for (const sign of [-1, 1]) { box(sign * 3.5, 1.7, -2, 1, 2.8, .9, metalMat); for (let i = 0; i < 5; i++) box(sign * 3.5, .8 + i * .45, -1.5, .7, .12, .04, darkMat); }
     } else if (state.scene === "theater") {
       box(0, .35, -2, 10, .7, 3, woodMat);
       for (const sign of [-1, 1]) for (let i = 0; i < 5; i++) box(sign * (4.5 - i * .24), 2.7, -2.8 + i * .09, .3, 4.5, .4, curtainMat);
@@ -414,7 +408,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   metrics.renderer = debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : "WebGL";
   const timer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
   let queries: WebGLQuery[] = [];
-  function summary(): WorldSummary { return state.scene === "battle" || state.scene === "ecosystem" ? state.frame.stocks.find((s) => s.symbol === state.stock) ?? state.frame.overall : state.frame.overall; }
+  function summary(): WorldSummary { return state.scene === "battle" ? state.frame.stocks.find((s) => s.symbol === state.stock) ?? state.frame.overall : state.frame.overall; }
   const VARIANT: Record<WorldSide, AntVariant> = { bullish: "hope", bearish: "fear", neutral: "neutral" };
   function population() {
     const plaza = state.scene === "plaza", base = crowdCapacity(state.scene, state.mobile);

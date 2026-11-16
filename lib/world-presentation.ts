@@ -1,5 +1,5 @@
 import type { FeedRow } from "./feed-data";
-import type { WorldFrame, WorldScene, WorldSide, WorldSlot, WorldSummary } from "./world";
+import type { WorldCommunity, WorldFrame, WorldScene, WorldSide, WorldSlot, WorldSummary } from "./world";
 
 export const WORLD_COLORS = ["#d9bc79", "#91b4ae", "#efa5ac", "#aaa0c4"];
 // NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd.
@@ -57,6 +57,17 @@ export function timelineSegments(slots: WorldSlot[]): string[] {
   }
   if (points.length) segments.push(points.join(" "));
   return segments;
+}
+
+/**
+ * A community's collection and sample state as one line (the plaza's community board and the index tab's list): a collection
+ * problem outranks a thin sample, which outranks the stock it talks about most.
+ */
+export function communityStatus(c: Pick<WorldCommunity, "total" | "collection_disabled" | "collection_problem" | "top_stock">): { text: string; tone: "problem" | "thin" | "ok" } {
+  if (c.collection_disabled) return { text: "수집 보류", tone: "problem" };
+  if (c.collection_problem) return { text: "수집 확인 필요", tone: "problem" };
+  if (c.total < 3) return { text: "소표본 · 관찰 중", tone: "thin" };
+  return { text: `관심: ${c.top_stock ?? "종목 미지정"}`, tone: "ok" };
 }
 
 export function frameStatus(frame: WorldFrame, loaded: boolean, error: string, now: number): string {

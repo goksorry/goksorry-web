@@ -6,7 +6,9 @@ import type { MarketIndicator } from "./overview-data";
 import { pickDisplayTitle } from "./clean-filter";
 import { stockPierrotArt } from "./stock-pierrot";
 import { SCENE_BOARDS } from "./world-scene-boards";
+import { communityStatus } from "./world-presentation";
 import { worldSummary, type WorldFrame, type WorldScene, type WorldSummary } from "./world";
+import type { SourceGroupId } from "./feed-source-groups";
 
 // Rest pose of the wall frame. It was designed for a frontal orthographic camera at 22° elevation:
 // wall x maps 1:1 to screen x and wall y is scaled by cos, so wall panels are rectangles. The renderer
@@ -23,19 +25,21 @@ export const WALL_PANEL_Z = -4.885;
 export const wallScreenY = (y: number, z: number): number => y * WALL_COS - z * WALL_SIN;
 const TOP = wallScreenY(WALL_HEIGHT, WALL_FACE_Z) + .5;
 
-export const WALL_PANEL_IDS = ["market", "room", "pierrot", "index", "feed"] as const;
+export const WALL_PANEL_IDS = ["market", "room", "pierrot", "index", "feed", "communities"] as const;
 export type WallPanelId = (typeof WALL_PANEL_IDS)[number];
 export type WallTextPanelId = Exclude<WallPanelId, "pierrot">;
 export type WallSection = 0 | 1 | 2;
 export type WallLayout = "wide" | "sectioned";
 export const WALL_SECTION_X = [-7, 0, 7] as const;
-// The portrait is 3.6 / cos tall so the original 300×200 art projects at exactly 3:2.
+// The portrait is 3.6 / cos tall so the original 300×200 art projects at exactly 3:2. The community board (what the
+// 재난방송 scene used to show) shares the bottom row with the 곡소리 지수 it breaks down; the feed takes the rest of its column.
 export const WALL_PANELS: Record<WallPanelId, { x: number; y: number; w: number; h: number; section: WallSection }> = {
   market: { x: -7, y: 7.2, w: 6.4, h: 2.6, section: 0 },
   room: { x: -7, y: 3.65, w: 6.4, h: 3.9, section: 0 },
   pierrot: { x: 0, y: 6.31, w: 5.4, h: 3.6 / WALL_COS, section: 1 },
   index: { x: 0, y: 2.8, w: 6.4, h: 2.2, section: 1 },
-  feed: { x: 7, y: 5.1, w: 6.4, h: 6.8, section: 2 }
+  feed: { x: 7, y: 6.35, w: 6.4, h: 4.3, section: 2 },
+  communities: { x: 7, y: 2.8, w: 6.4, h: 2.2, section: 2 }
 };
 
 /** A board's centre and size on the back wall plane, in world units. */
@@ -89,12 +93,15 @@ export function projectPanel(id: WallPanelId, fit: WallFit): WallRect {
 export const wallBodyPx = (ppu: number): number => Math.max(11, Math.min(20, Math.round(ppu * .26)));
 
 export type Loadable = "loading" | "ready" | "failed";
+/** One column of the community board: its 곡소리 지수, the fear/hope split of its sample, and its collection state. */
+export type WallCommunity = { id: SourceGroupId; name: string; index: string; total: number; fear_ratio: number | null; hope_ratio: number | null; status: string; tone: "problem" | "thin" | "ok" };
 export type WallModel = {
   index: { state: Loadable; summary: Omit<WorldSummary, "evidence">; dataAt: string | null; time: string | null; status: string; label: string };
   pierrot: { src: string; band: string; label: string };
   market: { state: Loadable; items: { id: string; label: string; value: string; delta: string; tone: string }[] };
   room: { state: Loadable; items: { id: string; text: string; author: string; guest: boolean; time: string; replies: number }[] };
   feed: { state: Loadable; scope: string; items: { key: string; title: string; label: FeedRow["label"]; source: string; symbol: string; time: string }[] };
+  communities: { state: Loadable; items: WallCommunity[] };
 };
 
 export type WallSource<T> = { data: T | null; failed: boolean; loaded: boolean };
@@ -106,6 +113,7 @@ const loadable = (source: WallSource<unknown>): Loadable => source.data ? "ready
  */
 export function wallPanelLoading(model: WallModel, id: WallPanelId): boolean {
   if (id === "index" || id === "pierrot") return model.index.state === "loading";
+  if (id === "communities") return model.communities.state === "loading";
   return model[id].state === "loading" && !model[id].items.length;
 }
 
@@ -153,6 +161,14 @@ export function buildWallModel(input: {
           title: pickDisplayTitle({ title: row.title, cleanTitle: row.clean_title, cleanFilterEnabled: input.cleanFilterEnabled }).replace(/\s+/g, " ").trim(),
           time: clock(row.analyzed_at) ?? ""
         }))
+      },
+      // Every community of the live frame, whatever sources the feed is filtered to: the board compares them.
+      communities: {
+        state: input.loaded ? "ready" : input.failed ? "failed" : "loading",
+        items: input.frame.communities.map((c) => {
+          const status = communityStatus(c);
+          return { id: c.id, name: c.name, index: c.total ? c.index.toFixed(1) : "—", total: c.total, fear_ratio: c.fear_ratio, hope_ratio: c.hope_ratio, status: status.text, tone: status.tone };
+        })
       }
     }
   };

@@ -48,29 +48,42 @@ test("wall carries live data without a modal; panels open details with keyboard 
 });
 
 test("stock and community scope stays in same layer; evidence filter and original URL", async ({ page }) => {
-  await prepareWorld(page); await page.goto("/?scene=ecosystem");
-  // The wall board opens the scene's list; picking a stock moves on to its evidence.
-  await page.getByRole("button", { name: "종목 목록 열기" }).click();
-  await expect(page.getByRole("button", { name: /개미굴 ·/ })).toHaveCount(12);
-  await page.getByRole("button", { name: /삼성전자 개미굴/ }).click();
-  await expect(dialog(page)).toHaveAccessibleName("삼성전자 · 분위기와 근거");
+  await prepareWorld(page);
+  // An old 개미 생태계 link opens the battle, which now carries its mention ranking as the stock picker.
+  await page.goto("/?scene=ecosystem"); await expect(page).toHaveURL(/scene=battle/);
+  await expect(nav(page, "심리 전장")).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "진영·종목 선택 열기" }).click();
+  const picker = page.getByRole("group", { name: "전장 종목" });
+  await expect(picker.getByRole("button")).toHaveCount(13);
+  await expect(picker.getByRole("button", { name: "전체 커뮤니티" })).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: /^삼성전자 ·/ }).click();
+  await expect(page).toHaveURL(/stock=S0/); await expect(picker.getByRole("button", { name: /^삼성전자 ·/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".world-battle-scope")).toContainText("삼성전자");
+  // The camps follow the picked stock; a camp moves on to its evidence.
+  await page.locator(".world-camps").getByRole("button", { name: /희망군/ }).click();
+  await expect(dialog(page)).toHaveAccessibleName("삼성전자 희망군 · 분위기와 근거");
   await expect(page.getByRole("link", { name: /삼성전자 오늘의 생각/ }).first()).toHaveAttribute("href", /^https:\/\/example.com/);
   await page.getByRole("button", { name: "클린필터 끄기", exact: true }).click();
   await expect(page.getByRole("link", { name: /삼성전자 시발/ }).first()).toBeVisible();
   await page.getByRole("tab", { name: "지수", exact: true }).click();
-  // The index tab offers communities only; stocks are chosen in the ecosystem/battle scenes and the feed tab.
-  await expect(dialog(page).getByRole("heading", { name: "커뮤니티 선택", exact: true })).toBeVisible();
-  await expect(dialog(page).locator(".world-detail-selection button")).toHaveText([/^토스증권 ·/, /^뽐뿌 ·/, /^블라인드 ·/, /^디시 4종 ·/]);
-  await page.getByRole("button", { name: /^토스증권 ·/ }).click();
+  // The index tab offers communities only (the former 재난방송 list); stocks are chosen in the battle and the feed tab.
+  await expect(dialog(page).getByRole("heading", { name: "커뮤니티 현황", exact: true })).toBeVisible();
+  await expect(dialog(page).locator(".world-community-list button strong")).toHaveText(["토스증권", "뽐뿌", "블라인드", "디시 4종"]);
+  await expect(dialog(page).locator(".world-community-list button").first()).toContainText(/\/ 10 · 표본 \d+건.*공포 \d+% · 희망 \d+%.*관심: /);
+  await dialog(page).locator(".world-community-list button").first().click();
   await expect(page.getByRole("dialog")).toHaveCount(1); await expect(dialog(page)).toHaveAccessibleName(/토스증권/);
   await page.keyboard.press("Tab");
   expect(await dialog(page).evaluate((node) => node.contains(document.activeElement))).toBe(true);
   await page.getByRole("button", { name: "전체 보기", exact: true }).click();
   await expect(dialog(page)).toHaveAccessibleName("전체 커뮤니티 · 지수와 피드");
   await page.keyboard.press("Escape"); await expect(page).toHaveURL(/stock=S0/);
-  await nav(page, "곡소리 재난방송").click(); await page.getByRole("button", { name: "커뮤니티 목록 열기" }).click();
-  await expect(page.locator('[data-world-panel="scene"]')).toHaveAccessibleName("커뮤니티별 현황");
-  await page.locator(".world-community-list").getByRole("button").first().click(); await expect(dialog(page)).toHaveAccessibleName(/현장/);
+  // An old 재난방송 link opens the plaza, whose wall carries the community board: each community opens its evidence.
+  await page.goto("/?scene=broadcast"); await expect(page).not.toHaveURL(/scene=/);
+  await expect(nav(page, "광장")).toHaveAttribute("aria-current", "page");
+  const board = page.locator('[data-wall-panel="communities"]');
+  await expect(board.getByRole("button")).toHaveCount(4);
+  await expect(board.getByRole("button").first()).toContainText(/토스증권.*곡소리 지수 \d+\.\d \/ 10.*공포 \d+% · 희망 \d+%/);
+  await board.getByRole("button", { name: /^뽐뿌/ }).click(); await expect(dialog(page)).toHaveAccessibleName("뽐뿌 · 분위기와 근거");
 });
 
 test("existing feed deep links, filters, more, theme and auth stay accessible", async ({ page }) => {
@@ -168,7 +181,9 @@ test("portrait frames one wall section; arrows, overview, header shortcuts and 4
   await expect(page.getByRole("tab", { name: "지수", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
   await page.locator(".world-feed-toggle").click();
   await expect(page.getByRole("tab", { name: "피드", exact: true })).toHaveAttribute("aria-selected", "true"); await page.keyboard.press("Escape");
-  await nav(page, "개미 생태계").click(); await page.getByRole("button", { name: "종목 목록 열기" }).click();
+  // Three scene tabs; the battle's stock picker keeps readable labels and full-size targets.
+  await expect(page.getByRole("navigation", { name: "월드 장면 선택" }).locator("button b")).toHaveText(["광장", "전장", "극장"]);
+  await nav(page, "심리 전장").click(); await page.getByRole("button", { name: "진영·종목 선택 열기" }).click();
   const labels = await page.locator(".world-stock-list strong").evaluateAll((elements) => elements.map((e) => parseFloat(getComputedStyle(e).fontSize)));
   expect(labels.every((value) => value >= 14)).toBe(true);
   const targets = await page.locator(".world-stock-list button,.world-hud-actions button,.world-hud-actions a,.world-bottom button").evaluateAll((elements) => elements.map((e) => e.getBoundingClientRect().height));
@@ -190,7 +205,7 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   await page.locator(".hd2d-canvas").focus(); await page.keyboard.press("ArrowRight");
   await expect(avatar).not.toHaveAttribute("data-position", before!);
   await page.waitForTimeout(600); const moved = await avatar.getAttribute("data-position");
-  await page.getByRole("button", { name: "진영·근거 보기" }).click();
+  await page.getByRole("button", { name: "진영·종목 선택 열기" }).click();
   // Camps read like the 곡소리 지수 gauge: fear left, neutral between, hope right.
   expect(await page.locator(".world-camps button").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.side))).toEqual(["bearish", "neutral", "bullish"]);
   await page.locator('.world-camps button[data-side="bearish"]').click();
@@ -265,16 +280,16 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
 test("walking to a plaza door turns its plate into a prompt with a pinned hit target", async ({ page }) => {
   await prepareWorld(page); await page.goto("/"); await webgl(page);
   await page.locator(".hd2d-canvas").focus();
-  // From the start point (0, .4) over and up to the floor in front of the 재난방송 door (x -2.3, at the back of the floor).
+  // From the start point (0, .4) over and up to the floor in front of the 심리 전장 door (x -2.3, at the back of the floor).
   for (const key of ["ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowUp", "ArrowUp", "ArrowUp"]) { await page.keyboard.press(key); await page.waitForTimeout(450); }
-  const enter = page.getByRole("button", { name: "재난방송 입구 · 들어가기 ↗" });
+  const enter = page.getByRole("button", { name: "심리 전장 입구 · 들어가기 ↗" });
   await expect(enter).toBeVisible();
   // Pinned over the painted prompt on the floor just past the visitor's feet (the door plate is behind the visitor's head),
   // not docked at the bottom of the stage.
   const box = (await enter.boundingBox())!, canvas = (await page.locator(".hd2d-canvas").boundingBox())!, head = (await page.getByTestId("world-avatar").boundingBox())!;
   expect(box.width).toBeGreaterThan(40); expect(box.y + box.height).toBeLessThan(canvas.y + canvas.height - 40);
   expect(box.y).toBeGreaterThan(head.y + head.height + 40);
-  await enter.click(); await expect(page).toHaveURL(/scene=broadcast/);
+  await enter.click(); await expect(page).toHaveURL(/scene=battle/);
 });
 
 test("clicking a plaza door walks the visitor to it, and a second click goes in", async ({ page }) => {
@@ -285,10 +300,13 @@ test("clicking a plaza door walks the visitor to it, and a second click goes in"
   const visitor = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.visitor());
   const canvas = (await page.locator(".hd2d-canvas").boundingBox())!;
   const { doors, rects } = await wall();
-  expect(Object.keys(doors).sort()).toEqual(["battle", "broadcast", "ecosystem", "theater"]);
-  // Low doors under the panels: every opening is on screen, below the panel it stands under, side by side.
-  for (const r of Object.values(doors)) { expect(r.x).toBeGreaterThan(0); expect(r.x + r.width).toBeLessThan(canvas.width); expect(r.height).toBeGreaterThan(40); }
-  expect(doors.broadcast.y).toBeGreaterThan(rects.index.y + rects.index.height); expect(doors.ecosystem.y).toBeGreaterThan(rects.room.y + rects.room.height);
+  expect(Object.keys(doors).sort()).toEqual(["battle", "theater"]);
+  // Low doors under the 곡소리 지수 panel: every opening is on screen, below it and within its width, battle on the left.
+  for (const r of Object.values(doors)) {
+    expect(r.x).toBeGreaterThan(0); expect(r.x + r.width).toBeLessThan(canvas.width); expect(r.height).toBeGreaterThan(40);
+    expect(r.y).toBeGreaterThan(rects.index.y + rects.index.height); expect(r.x).toBeGreaterThan(rects.index.x); expect(r.x + r.width).toBeLessThan(rects.index.x + rects.index.width);
+  }
+  expect(doors.battle.x + doors.battle.width).toBeLessThan(doors.theater.x);
   // The lower part of the opening (under the name plate) is a click target for the door.
   const door = doors.theater, at = { x: canvas.x + door.x + door.width / 2, y: canvas.y + door.y + door.height * .8 };
   await page.mouse.click(at.x, at.y);
@@ -369,8 +387,8 @@ test("WebGL wall sweeps a shimmer over panels until their first payload arrives"
   for (const url of ["**/api/feed?*", "**/api/internal/world"]) await page.route(url, async (route) => { await pending; await route.fallback(); });
   await page.goto("/"); await webgl(page);
   const shimmer = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.wall?.shimmer ?? null);
-  // Market and room are fixture-fast; feed, index and portrait wait.
-  await expect.poll(shimmer).toEqual(["pierrot", "index", "feed"]);
+  // Market and room are fixture-fast; feed, index, portrait and the community board (from the world frame) wait.
+  await expect.poll(shimmer).toEqual(["pierrot", "index", "feed", "communities"]);
   release();
   await expect.poll(shimmer).toEqual([]);
 });
@@ -416,6 +434,11 @@ test("a dialog opens on the side of the wall panel that opened it", async ({ pag
   expect(1440 - (feed.x + feed.width)).toBeLessThanOrEqual(25); expect(feed.x).toBeGreaterThan(1440 - (feed.x + feed.width));
   await dialog(page).getByRole("tab", { name: "지수" }).click();
   await expect.poll(centre).toBeGreaterThan(1440 * 2 / 3);
+  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+  // The community board under the feed opens a community's evidence on the right too.
+  await page.locator('[data-wall-panel="communities"]').getByRole("button", { name: /^블라인드/ }).click(); await settled();
+  await expect(page.locator(".world-modal-backdrop")).toHaveAttribute("data-side", "right");
+  await expect(dialog(page)).toHaveAccessibleName("블라인드 · 분위기와 근거");
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
 });
 
@@ -656,7 +679,7 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
     await expect(stage(page)).toHaveAttribute("data-population", viewport.width > 760 ? "48" : "24");
     for (const scenario of ["movement", "detail", "replay"]) {
       if (scenario === "movement") { await page.locator("canvas").focus(); await page.keyboard.press("ArrowRight"); }
-      if (scenario === "detail") { await page.getByRole("button", { name: "진영·근거 보기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click(); }
+      if (scenario === "detail") { await page.getByRole("button", { name: "진영·종목 선택 열기" }).click(); await page.locator('.world-camps button[data-side="bearish"]').click(); }
       if (scenario === "replay") { await page.keyboard.press("Escape"); await nav(page, "오늘의 개미극장").click(); await page.getByRole("button", { name: "재생", exact: true }).click(); }
       const measure = await page.evaluate(async () => {
         const canvas = document.querySelector("canvas") as HTMLCanvasElement & { worldMetrics: RenderMetrics };

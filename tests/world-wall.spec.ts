@@ -64,6 +64,28 @@ test("wall model keeps scope fallback, clean filter and row caps", () => {
   const pending = buildWallModel({ ...base, loaded: false, cleanFilterEnabled: true, feed: { data: null, failed: false, loaded: false } }).model;
   expect(pending.index.state).toBe("loading");
   // Skeletons: waiting panels and the portrait that follows the index; failures and ready panels never.
-  expect(WALL_PANEL_IDS.filter((id) => wallPanelLoading(pending, id))).toEqual(["market", "pierrot", "index", "feed"]);
+  expect(WALL_PANEL_IDS.filter((id) => wallPanelLoading(pending, id))).toEqual(["market", "pierrot", "index", "feed", "communities"]);
   expect(WALL_PANEL_IDS.filter((id) => wallPanelLoading(clean.model, id))).toEqual(["market"]);
+});
+
+test("the community board (the former 재난방송) lists every community of the live frame with its index, split and state", () => {
+  const rows = worldRows(), frame = buildWorldFrame(rows);
+  const base = { frame, loaded: true, failed: false, status: "관측 중", timezone: "Asia/Seoul", filtered: true, scopeLabel: "", dark: false, cleanFilterEnabled: true,
+    market: { data: null, failed: false, loaded: false }, room: { data: null, failed: false, loaded: false }, feed: { data: null, failed: false, loaded: false } };
+  const { communities } = buildWallModel(base).model;
+  // Filtered feeds still compare every community: the board shows the frame, not the feed scope.
+  expect(communities.state).toBe("ready");
+  expect(communities.items.map((c) => c.name)).toEqual(frame.communities.map((c) => c.name));
+  const first = communities.items[0], source = frame.communities[0];
+  expect(first).toMatchObject({ id: source.id, index: source.index.toFixed(1), total: source.total, fear_ratio: source.fear_ratio, hope_ratio: source.hope_ratio, tone: "ok" });
+  expect(first.status).toBe(`관심: ${source.top_stock}`);
+  // A collection problem outranks the sample; an empty community has no index.
+  const troubled = { ...frame, communities: frame.communities.map((c, i) => i === 0 ? { ...c, collection_problem: true } : i === 1 ? { ...c, total: 0 } : c) };
+  const [problem, empty] = buildWallModel({ ...base, frame: troubled }).model.communities.items;
+  expect([problem.status, problem.tone]).toEqual(["수집 확인 필요", "problem"]);
+  expect([empty.index, empty.status, empty.tone]).toEqual(["—", "소표본 · 관찰 중", "thin"]);
+  expect(buildWallModel({ ...base, loaded: false, failed: true }).model.communities.state).toBe("failed");
+  // It shares the bottom row with the 곡소리 지수 and sits under the feed in the third section.
+  expect([WALL_PANELS.communities.y, WALL_PANELS.communities.h, WALL_PANELS.communities.section]).toEqual([WALL_PANELS.index.y, WALL_PANELS.index.h, 2]);
+  expect(WALL_PANELS.feed.y - WALL_PANELS.feed.h / 2).toBeGreaterThan(WALL_PANELS.communities.y + WALL_PANELS.communities.h / 2 + .24);
 });

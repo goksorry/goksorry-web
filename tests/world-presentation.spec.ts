@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { MOVE_MARKER, markerLook } from "../lib/world-move-marker";
 import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
-import { buildWorldFrame, buildWorldReplay, worldSummary, type WorldSide } from "../lib/world";
+import { WORLD_SCENES, buildWorldFrame, buildWorldReplay, worldSceneOf, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
 import { WALL_PANELS } from "../lib/world-wall";
 import { worldRows } from "./world-fixture";
@@ -23,9 +23,16 @@ test("hope/fear splits read left to right with the index: fear left, neutral bet
   expect(ratioGauge({ fear_ratio: null, hope_ratio: null })).toEqual({ fear: 0, hope: 0 });
   expect(ratioGauge({ fear_ratio: 1.2, hope_ratio: -.1 })).toEqual({ fear: 1, hope: 0 });
 });
+test("three scenes; links to the merged scenes land where their content went", () => {
+  expect([...WORLD_SCENES]).toEqual(["plaza", "battle", "theater"]);
+  for (const scene of WORLD_SCENES) expect(worldSceneOf(scene)).toBe(scene);
+  // 개미 생태계's stock ranking is the battle's stock picker; 재난방송's community board hangs on the plaza wall.
+  expect(worldSceneOf("ecosystem")).toBe("battle"); expect(worldSceneOf("broadcast")).toBe("plaza");
+  for (const raw of [null, undefined, "", "nowhere", "constructor", "toString", "__proto__"]) expect(worldSceneOf(raw)).toBe("plaza");
+});
 test("the plaza is a sparse crowd; other scenes keep the full population", () => {
   expect([crowdCapacity("plaza", false), crowdCapacity("plaza", true)]).toEqual([20, 12]);
-  for (const scene of ["battle", "ecosystem", "broadcast", "theater"] as const) expect([crowdCapacity(scene, false), crowdCapacity(scene, true)]).toEqual([47, 23]);
+  for (const scene of ["battle", "theater"] as const) expect([crowdCapacity(scene, false), crowdCapacity(scene, true)]).toEqual([47, 23]);
 });
 test("latest evidence sorted across all three sides; no repeated or fabricated entries", () => {
   const frame = buildWorldFrame(worldRows());
@@ -60,10 +67,9 @@ test("click paths go around barricades and never cut obstacle corners", () => {
   for (const to of path) { expect(clearSegment(from, to, obstacles)).toBe(true); expect(walkable(to, obstacles)).toBe(true); from = to; }
   expect(findWorldPath(start, { x: 0, z: 0 }, obstacles)).toEqual([]);
   expect(findWorldPath(start, { x: 99, z: 99 }, obstacles)).toEqual([]);
-  expect(walkable({ x: 3, z: 0 }, worldObstacles("broadcast"))).toBe(false);
   expect(walkable({ x: 0, z: 4.5 }, worldObstacles("theater"))).toBe(false);
   expect(walkable({ x: 8, z: 2.6 }, worldObstacles("plaza"))).toBe(false);
-  for (const scene of ["plaza", "ecosystem", "battle", "broadcast", "theater"] as const) expect(walkable({ x: 0, z: 3.2 }, worldObstacles(scene))).toBe(true);
+  for (const scene of ["plaza", "battle", "theater"] as const) expect(walkable({ x: 0, z: 3.2 }, worldObstacles(scene))).toBe(true);
 });
 
 test("plaza doors stand under the panels, inside their zoomed sections, with a walkable floor in front", () => {
@@ -74,7 +80,7 @@ test("plaza doors stand under the panels, inside their zoomed sections, with a w
     expect(entranceAt("plaza", { x: e.x, z: -3 })?.scene).toBe(e.scene);
     expect(entranceAt("plaza", { x: e.x, z: .4 })).toBeNull();
     for (const side of [-1, 1]) expect(entranceAt("plaza", { x: e.x + side * 1.2, z: e.z })).toBeNull();
-    expect(entranceAt("ecosystem", e)).toBeNull();
+    expect(entranceAt("battle", e)).toBeNull();
     // The framed door fits one zoomed phone section and keeps clear of the side buildings.
     expect(frames.some(([a, b]) => e.x - frame >= a && e.x + frame <= b), e.scene).toBe(true);
     for (const o of obstacles.filter((o) => o.z - o.depth / 2 < e.z + 1.3)) expect(Math.abs(e.x - o.x)).toBeGreaterThanOrEqual(o.width / 2 + frame);
@@ -87,6 +93,9 @@ test("plaza doors stand under the panels, inside their zoomed sections, with a w
     expect(Math.abs(end.x - e.x) - .43).toBeGreaterThan(PLAZA_DOOR.half);
     expect(end.z).toBe(PLAZA_DOOR.insideZ); expect(walkable(way[0], obstacles)).toBe(true);
   }
+  // One door per other scene, left to right in the order of the scene tabs, both framed by the zoomed middle section.
+  expect(PLAZA_ENTRANCES.map((e) => e.scene)).toEqual(["battle", "theater"]);
+  for (const e of PLAZA_ENTRANCES) expect(e.x - frame >= -3.35 && e.x + frame <= 3.35, e.scene).toBe(true);
   const sorted = PLAZA_ENTRANCES.map((e) => e.x).sort((a, b) => a - b);
   sorted.slice(1).forEach((x, i) => expect(x - sorted[i]).toBeGreaterThan(2 * frame + 2));
 });

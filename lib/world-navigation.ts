@@ -8,10 +8,10 @@ export const WORLD_BOUNDS = { left: -10, right: 10, back: -3.5, front: 7 };
  * stands at `approachZ` to use a door and goes in to `insideZ`, then `hideX` sideways behind a pier (from the camera's height
  * an ant stays visible through the opening, so only the wall beside it hides it). */
 export const PLAZA_DOOR = { half: .6, height: 1.42, lintel: .1, plate: .3, approachZ: -2.9, insideZ: -5.85, hideX: 1.2 } as const;
-/** Plaza doorways to the other scenes: the floor point in front of each door. The centre pair stays inside the zoomed middle section. */
+/** Plaza doorways to the other scenes: the floor point in front of each door. Both stand under the 곡소리 지수 panel, either side of
+ * the middle, so the zoomed middle section a phone opens on frames them both; left to right they follow the scene tabs. */
 export const PLAZA_ENTRANCES: { scene: Exclude<WorldScene, "plaza">; name: string; x: number; z: number }[] = [
-  { scene: "ecosystem", name: "개미 생태계", x: -6.5, z: PLAZA_DOOR.approachZ }, { scene: "broadcast", name: "재난방송", x: -2.3, z: PLAZA_DOOR.approachZ },
-  { scene: "theater", name: "개미극장", x: 2.3, z: PLAZA_DOOR.approachZ }, { scene: "battle", name: "심리 전장", x: 6.5, z: PLAZA_DOOR.approachZ }
+  { scene: "battle", name: "심리 전장", x: -2.3, z: PLAZA_DOOR.approachZ }, { scene: "theater", name: "개미극장", x: 2.3, z: PLAZA_DOOR.approachZ }
 ];
 /** Through a door from the floor in front of it: up to the threshold, inside, then sideways (`side`) behind a pier. Reverse it to come out. */
 export const plazaDoorWay = (e: Point, side: -1 | 1 = 1): Point[] =>
@@ -29,9 +29,7 @@ export function worldObstacles(scene: WorldScene): Obstacle[] {
   const sides = [{ x: -8.7, z: -.6, width: 2.3, depth: 4.5 }, { x: 8.7, z: -.6, width: 2.3, depth: 4.5 }];
   const crates = Array.from({ length: 8 }, (_, i) => ({ x: (i % 2 ? -1 : 1) * (8 + i % 3 * .45), z: 2.6 + i % 3 * .4, width: .7, depth: .5 }));
   const common = [...sides, ...crates];
-  if (scene === "ecosystem") return [...common, ...Array.from({ length: 6 }, (_, i) => ({ x: -6.8 + i * 2.7, z: -3.6, width: 2.35, depth: 1.1 }))];
   if (scene === "battle") return [...common, { x: 0, z: .2, width: .9, depth: 3.4 }];
-  if (scene === "broadcast") return [...common, { x: 0, z: -1, width: 6.5, depth: 3.5 }];
   if (scene === "theater") return [...common, { x: 0, z: -2, width: 10, depth: 3 }, ...Array.from({ length: 10 }, (_, i) => ({ x: -6 + i % 5 * 3, z: 4.6 + Math.floor(i / 5) * 1.7, width: 1.2, depth: .85 }))];
   return common;
 }

@@ -3,6 +3,7 @@ import { percent, type WorldSummary } from "@/lib/world";
 import { ratioGauge } from "@/lib/world-presentation";
 import type { CSSProperties } from "react";
 import { WALL_PANELS, wallPanelLoading, type WallModel, type WallPanelId } from "@/lib/world-wall";
+import type { SourceGroupId } from "@/lib/feed-source-groups";
 import { WALL_SKELETON_COLOR, WALL_SKELETON_WIDTHS } from "./wall-skeleton";
 
 export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evidence"> }) {
@@ -32,7 +33,12 @@ const waiting = (state: "loading" | "ready" | "failed", empty: string) => state 
  * for assistive tech, and its button is the transparent hit target. Without
  * WebGL2 (unsupported browser) or after a renderer failure the same sections are visible cards.
  */
-export function WorldWallDom({ model, onOpen, onFocusPanel }: { model: WallModel; onOpen: (panel: WallPanelId, origin: DOMRect) => void; onFocusPanel?: (panel: WallPanelId) => void }) {
+export function WorldWallDom({ model, onOpen, onCommunity, onFocusPanel }: {
+  model: WallModel; onOpen: (panel: WallPanelId, origin: DOMRect) => void;
+  /** A column of the community board: that community's mood and evidence. */
+  onCommunity: (id: SourceGroupId) => void;
+  onFocusPanel?: (panel: WallPanelId) => void;
+}) {
   const section = (id: WallPanelId, label: string, action: string, body: React.ReactNode, extra: { id?: string; className?: string } = {}) =>
     <section key={id} id={extra.id} tabIndex={-1} className={`world-wall-panel ${extra.className ?? ""}`} data-wall-panel={id} data-section={WALL_PANELS[id].section} aria-label={label}>
       <div className="world-wall-copy"><h2 className="world-screen-title">{label}</h2>{body}</div>
@@ -59,5 +65,26 @@ export function WorldWallDom({ model, onOpen, onFocusPanel }: { model: WallModel
     {section("feed", "곡소리 피드", "곡소리 피드 전체 보기", model.feed.items.length
       ? <ul className="world-wall-list">{model.feed.items.map((item) => <li key={item.key} data-label={item.label}><p>{item.title}</p><span>{[item.source, item.symbol, item.time].filter(Boolean).join(" · ")}</span></li>)}</ul>
       : waiting(model.feed.state, "최근 6시간 글 없음"), { id: "world-feed-wall" })}
+    <CommunityBoard model={model.communities} onCommunity={onCommunity} onFocus={() => onFocusPanel?.("communities")} onOpen={(origin) => onOpen("communities", origin)} />
   </div>;
+}
+
+/**
+ * DOM twin of the community board. Each community is its own hit target, one quarter of the panel like its painted column,
+ * opening that community's evidence; without WebGL2 they are the card's buttons. Until there are communities to show, the
+ * whole panel opens the index tab like the 곡소리 지수 panel.
+ */
+function CommunityBoard({ model, onCommunity, onFocus, onOpen }: { model: WallModel["communities"]; onCommunity: (id: SourceGroupId) => void; onFocus: () => void; onOpen: (origin: DOMRect) => void }) {
+  const { items, state } = model;
+  return <section tabIndex={-1} className="world-wall-panel world-communities-screen" data-wall-panel="communities" data-section={WALL_PANELS.communities.section} aria-label="커뮤니티 현황">
+    <div className="world-wall-copy"><h2 className="world-screen-title">커뮤니티 현황</h2>
+      {state === "loading" ? <WallSkeleton rows={2} /> : !items.length && <p className="world-screen-meta">{state === "failed" ? "조회 실패" : "커뮤니티 데이터 없음"}</p>}
+    </div>
+    {state !== "loading" && items.length ? <div className="world-wall-communities">{items.map((c) =>
+      <button key={c.id} type="button" data-tone={c.tone} onFocus={onFocus} onClick={() => onCommunity(c.id)}>
+        <b>{c.name}</b><span>곡소리 지수 {c.index} / 10 · 표본 {c.total.toLocaleString()}건</span>
+        <span>공포 {percent(c.fear_ratio)} · 희망 {percent(c.hope_ratio)}</span><span>{c.status}</span><span className="world-sr-only">근거 보기</span>
+      </button>)}</div>
+      : <button type="button" className="world-wall-open" onFocus={onFocus} onClick={(event) => onOpen(event.currentTarget.closest("section")!.getBoundingClientRect())}><span>곡소리 지수·커뮤니티 자세히</span></button>}
+  </section>;
 }

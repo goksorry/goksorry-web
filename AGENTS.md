@@ -20,7 +20,7 @@
 - `CHAT_WS_BASE_URL` (optional)
 
 ## Responsibilities
-- Ant world (`/`): full-viewport WebGL room whose back wall shows market indices, 곡소리방, Pierrot, 곡소리 지수 and feed; panels open detail dialogs
+- Ant world (`/`): full-viewport WebGL room in three scenes (`lib/world.ts` `WORLD_SCENES`): the plaza, whose back wall shows market indices, 곡소리방, Pierrot, 곡소리 지수, feed and the per-community board (panels open detail dialogs); 심리 전장 (hope/fear camps of a stock picked from the mention ranking); 개미극장 (replay). Old `?scene=ecosystem` / `?scene=broadcast` links resolve to battle / plaza (`MERGED_SCENES`)
 - Classic document-style home (`/classic`, 웹 mode; the ant room at `/` is 개미인생 mode)
 - Community MVP (Google OAuth only)
 - Account creation gate at `/profile`

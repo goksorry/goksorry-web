@@ -142,7 +142,7 @@ export default function HD2DWorld(props: Props) {
     const observer = new ResizeObserver(() => { if (!latest.current.paused) renderer.current?.draw(); });
     if (host.current) observer.observe(host.current); return () => observer.disconnect();
   }, []);
-  const summary = (props.scene === "battle" || props.scene === "ecosystem") ? props.frame.stocks.find((s) => s.symbol === props.stock) ?? props.frame.overall : props.frame.overall;
+  const summary = props.scene === "battle" ? props.frame.stocks.find((s) => s.symbol === props.stock) ?? props.frame.overall : props.frame.overall;
   const counts = crowdDistribution(summary, crowdCapacity(props.scene, props.mobile));
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
   const fallback = mode !== "webgl", designedStatic = mode === "unsupported" || mode === "failed";
@@ -158,7 +158,7 @@ export default function HD2DWorld(props: Props) {
     }} onPointerCancel={() => { swipe.current = null; }} onClickCapture={(event) => {
       if (swiped.current) { swiped.current = false; event.preventDefault(); event.stopPropagation(); }
     }}>
-    {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
+    {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene}.png)` }}>
       {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${(props.scene === "plaza" && i % 5 ? 3 : i % 4) / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}
     <canvas ref={canvas} className="hd2d-canvas" hidden={fallback} tabIndex={fallback ? -1 : 0} role="group" aria-label="개미 월드. 바닥 클릭 또는 방향키로 이동" onClick={(event) => {

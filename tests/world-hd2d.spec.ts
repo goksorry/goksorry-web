@@ -20,7 +20,7 @@ test("HD2D art capture", async ({ page }, testInfo) => {
     await mkdir("public/world", { recursive: true });
     await page.route("**/api/internal/world", (route) => route.fulfill({ json: buildWorldFrame([]) }));
     await page.route("**/api/internal/world/replay?*", (route) => route.fulfill({ json: { slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(Date.now() + i * 600_000).toISOString(), frame: null })) } }));
-    for (const scene of ["plaza", "ecosystem", "battle", "broadcast", "theater"]) {
+    for (const scene of ["plaza", "battle", "theater"]) {
       await page.goto(`/?scene=${scene}`);
       await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
       const png = await page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldCapture: (bare?: boolean) => string }).worldCapture(true));
@@ -43,7 +43,7 @@ test("wall panels are drawn inside the WebGL scene and each one opens its detail
   await page.setViewportSize({ width: 1440, height: 900 });
   await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
-  await expect.poll(async () => Object.keys((await wallMetrics(page)).drawn).length).toBe(5);
+  await expect.poll(async () => Object.keys((await wallMetrics(page)).drawn).length).toBe(6);
   const wall = await wallMetrics(page), box = (await page.locator("canvas").boundingBox())!;
   // The canvas is the whole viewport under the fixed header.
   expect(box.width).toBe(1440); expect(Math.round(box.y + box.height)).toBe(900);
@@ -76,24 +76,31 @@ test("wall panels are drawn inside the WebGL scene and each one opens its detail
     await expect(page.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Escape"); await expect(page.getByRole("dialog")).toHaveCount(0);
   }
+  // The community board: each painted quarter opens that community's evidence.
+  const communities = (await wallMetrics(page)).rects.communities, names = ["토스증권", "뽐뿌", "블라인드", "디시 4종"];
+  for (const [i, name] of names.entries()) {
+    await page.mouse.click(box.x + communities.x + communities.width * (i + .5) / names.length, box.y + communities.y + communities.height * .6);
+    await expect(page.locator('[data-world-panel="detail"]')).toHaveAccessibleName(`${name} · 분위기와 근거`);
+    await page.keyboard.press("Escape"); await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
 });
 
 test("portrait zooms one wall section; arrows pan the camera and overview shows the whole wall", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepareWorld(page); await page.goto("/"); await requireWebGL2(page);
   await expect(page.locator(".hd2d-stage")).toHaveAttribute("data-renderer", "webgl", { timeout: 45_000 });
-  const inside = async (id: "market" | "feed" | "pierrot") => { const r = (await wallMetrics(page)).rects[id]; return r.x >= 0 && r.x + r.width <= 390; };
-  // Each section frames its doors whole: the middle one both centre doors, the feed one the 심리 전장 door.
+  const inside = async (id: "market" | "feed" | "pierrot" | "communities") => { const r = (await wallMetrics(page)).rects[id]; return r.x >= 0 && r.x + r.width <= 390; };
+  // The middle section, where a phone opens, frames both doors whole.
   const door = async (scene: string) => { const r = (await wallMetrics(page)).doors[scene]; return r.x >= 0 && r.x + r.width <= 390; };
   await expect.poll(() => inside("pierrot")).toBe(true); expect(await inside("feed")).toBe(false);
-  await expect.poll(async () => (await wallMetrics(page)).settled && await door("broadcast") && await door("theater")).toBe(true);
+  await expect.poll(async () => (await wallMetrics(page)).settled && await door("battle") && await door("theater")).toBe(true);
   const zoomed = (await wallMetrics(page)).ppu;
   await page.locator('.world-wall-arrow[data-dir="right"]').click();
   await expect.poll(async () => (await wallMetrics(page)).settled && await inside("feed")).toBe(true); expect(await inside("pierrot")).toBe(false);
-  expect(await door("battle")).toBe(true);
+  expect(await inside("communities")).toBe(true);
   // Arrows live in the floor band, never over panel text.
   const arrow = (await page.locator('.world-wall-arrow[data-dir="left"]').boundingBox())!, canvas = (await page.locator("canvas").boundingBox())!;
-  const feed = (await wallMetrics(page)).rects.feed; expect(arrow.y).toBeGreaterThan(canvas.y + feed.y + feed.height);
+  const board = (await wallMetrics(page)).rects.communities; expect(arrow.y).toBeGreaterThan(canvas.y + board.y + board.height);
   await page.getByRole("button", { name: "전체보기", exact: true }).click();
   await expect.poll(async () => (await wallMetrics(page)).settled && await inside("market") && await inside("feed")).toBe(true);
   expect((await wallMetrics(page)).ppu).toBeLessThan(zoomed / 2);

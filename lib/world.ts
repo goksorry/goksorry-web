@@ -11,8 +11,16 @@ import type { MarketAdjustmentSnapshot } from "@/lib/community-market-adjustment
 export const WORLD_BUCKET_MS = 10 * 60_000;
 export const WORLD_RETENTION_MS = 7 * 24 * 60 * 60_000;
 export const WORLD_DAY_MS = 24 * 60 * 60_000;
-export const WORLD_SCENES = ["plaza", "ecosystem", "battle", "broadcast", "theater"] as const;
+export const WORLD_SCENES = ["plaza", "battle", "theater"] as const;
 export type WorldScene = (typeof WORLD_SCENES)[number];
+/** Scenes merged into others: the stock ranking of 개미 생태계 moved to the battle, the community board of 재난방송 to the plaza wall. */
+export const MERGED_SCENES: Readonly<Record<string, WorldScene>> = { ecosystem: "battle", broadcast: "plaza" };
+/** The scene a `?scene=` value shows: a current scene, the one that took over a merged scene, or the plaza. */
+export function worldSceneOf(raw: string | null | undefined): WorldScene {
+  if (!raw) return "plaza";
+  if ((WORLD_SCENES as readonly string[]).includes(raw)) return raw as WorldScene;
+  return Object.prototype.hasOwnProperty.call(MERGED_SCENES, raw) ? MERGED_SCENES[raw] : "plaza";
+}
 export type WorldMood = "hope" | "fear" | "mixed" | "neutral" | "watching";
 export type WorldSide = "bullish" | "bearish" | "neutral";
 export type WorldSummary = {

@@ -1,17 +1,21 @@
 import { percent } from "@/lib/world";
 import { ratioGauge } from "@/lib/world-presentation";
 import { wallPanelLoading, type WallModel, type WallTextPanelId } from "@/lib/world-wall";
-import { BOARD, openBoard, wrapLines, type BoardPaintStyle } from "./board-canvas";
+import { BOARD, openBoard, wrapLines, type BoardPaintStyle, type BoardPen } from "./board-canvas";
 import type { BoardBox } from "./board-layer";
 
 const { ink: INK, dim: DIM, gold: GOLD, line: LINE, hope: HOPE, fear: FEAR } = BOARD;
-const TITLES: Record<WallTextPanelId, string> = { market: "시장 지수", room: "곡소리방", index: "곡소리 지수", feed: "곡소리 피드" };
+const TITLES: Record<WallTextPanelId, string> = { market: "시장 지수", room: "곡소리방", index: "곡소리 지수", feed: "곡소리 피드", communities: "커뮤니티 현황" };
+/** Community board text: header (2.4 body) + name, index, gauge labels, gauge, status (about 5.2) must fit the board's height. */
+const COMMUNITY_ROWS = 7.6;
 
 export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, model: WallModel, box: BoardBox, style: BoardPaintStyle): void {
   const loading = wallPanelLoading(model, id);
-  const hint = loading ? "불러오는 중…" : id === "index" ? model.index.time ?? "" : id === "feed" && model.feed.scope ? model.feed.scope : "눌러서 열기";
+  const hint = loading ? "불러오는 중…" : id === "index" ? model.index.time ?? "" : id === "feed" && model.feed.scope ? model.feed.scope
+    : id === "communities" ? "커뮤니티를 눌러 근거 보기" : "눌러서 열기";
   // Short panels (phone landscape) shrink their text instead of clipping it.
-  const pen = openBoard(canvas, box, style, { title: TITLES[id], hint, body: id === "index" ? Math.min(box.body, box.height / 5.6) : box.body });
+  const textBody = id === "index" ? Math.min(box.body, box.height / 5.6) : id === "communities" ? Math.min(box.body, box.height / COMMUNITY_ROWS) : box.body;
+  const pen = openBoard(canvas, box, style, { title: TITLES[id], hint, body: textBody });
   if (!pen) return;
   const { ctx, w, h, body, small, pad, top, bottom, font, alignRight: right, clip, notice } = pen;
   // First payload pending: skeleton rows until real content replaces them (the renderer adds the shimmer).
@@ -44,6 +48,8 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
     });
     return;
   }
+
+  if (id === "communities") { paintCommunities(pen, model.communities); return; }
 
   if (id === "index") {
     const s = model.index.summary;
@@ -99,4 +105,37 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
     y += rowH + gap;
     ctx.fillStyle = LINE; ctx.fillRect(pad, y - gap / 2, w - pad * 2, 1);
   }
+}
+
+/**
+ * The community board: one column per community at an exact quarter of the board (the DOM twin's hit targets are the same
+ * quarters), each with its name, 곡소리 지수, the fear/hope gauge read left to right like the index panel's, and its collection
+ * or sample state when that needs a word.
+ */
+function paintCommunities(pen: BoardPen, { state, items }: WallModel["communities"]): void {
+  const { ctx, w, body, small, top, bottom, font, alignRight: right, clip, notice } = pen;
+  if (!items.length) { notice(state === "failed" ? "커뮤니티 현황 조회 실패" : "커뮤니티 데이터 없음"); return; }
+  const colW = w / items.length, inset = Math.max(4, Math.round(body * .45));
+  items.forEach((item, i) => {
+    const x = i * colW + inset, width = colW - inset * 2;
+    if (i) { ctx.fillStyle = LINE; ctx.fillRect(Math.round(i * colW), top, 1, bottom - top); }
+    let y = top + small;
+    font(small, 700); ctx.fillStyle = GOLD; ctx.fillText(clip(item.name, width), x, y);
+    const big = Math.round(body * 1.45);
+    y += big * 1.05;
+    font(big, 700); ctx.fillStyle = INK; ctx.fillText(item.index, x, y);
+    font(small); ctx.fillStyle = DIM; right(clip(`${item.total.toLocaleString()}건`, width * .45), x + width, y);
+    const gauge = ratioGauge(item);
+    y += small * 1.35;
+    font(small, 700);
+    ctx.fillStyle = FEAR; ctx.fillText(percent(item.fear_ratio), x, y);
+    ctx.fillStyle = HOPE; right(percent(item.hope_ratio), x + width, y);
+    const barY = y + small * .35, barH = Math.max(3, Math.round(body * .3));
+    ctx.fillStyle = "#52616b"; ctx.fillRect(x, barY, width, barH);
+    ctx.fillStyle = "#bd7864"; ctx.fillRect(x, barY, width * gauge.fear, barH);
+    ctx.fillStyle = "#b4aa73"; ctx.fillRect(x + width * (1 - gauge.hope), barY, width * gauge.hope, barH);
+    const statusY = barY + barH + small * 1.25;
+    if (item.tone === "ok" || statusY > bottom + small * .3) return;
+    font(small); ctx.fillStyle = item.tone === "problem" ? FEAR : DIM; ctx.fillText(clip(item.status, width), x, statusY);
+  });
 }
