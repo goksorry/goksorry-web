@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getScopedFeed } from "@/lib/feed-snapshot";
 import { emptyFeedPage, readFeedSelection } from "@/lib/feed-scope";
+import { INDEX_CACHE_CONTROL } from "@/lib/index-cache-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
   try {
     const payload = await getScopedFeed(readFeedSelection(url.searchParams), { hours, limit, offset, asOf });
     const response = NextResponse.json(payload);
-    response.headers.set("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
+    // The feed page carries the scoped 곡소리 지수 summary the world plaza shows.
+    response.headers.set("Cache-Control", INDEX_CACHE_CONTROL);
     return response;
   } catch (error) {
     console.error("feed api failed", error);

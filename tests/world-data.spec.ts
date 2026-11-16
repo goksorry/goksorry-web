@@ -4,6 +4,7 @@ import { buildSourceGroupSummaries, buildOverallFromSourceGroupSummaries } from 
 import { buildWorldFrame, buildWorldReplay, worldBucket, worldDate, worldDayBounds, worldHealth, worldSummary } from "../lib/world";
 import { storeWorldSnapshot } from "../lib/world-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { INDEX_CACHE_CONTROL, INDEX_MAX_AGE_SEC, INDEX_REFRESH_SEC, INDEX_WINDOW_SEC, indexCacheWindow, indexWorstCaseAgeSec } from "../lib/index-cache-policy";
 
 const now = new Date("2026-11-15T01:00:00Z");
 const post = (i: number, override: Partial<FeedRow> = {}): FeedRow => ({
@@ -80,4 +81,19 @@ test("PostgREST timestamp offsets match generated replay slots", () => {
   const frame = buildWorldFrame([post(1)], { now });
   const replay = buildWorldReplay("2026-11-15", [{ bucket_at: "2026-11-15T01:00:00+00:00", frame }]);
   expect(replay.slots[60].frame).toEqual(frame);
+});
+
+test("index data on a reload is never older than ten minutes across server and CDN caches", () => {
+  expect(INDEX_MAX_AGE_SEC).toBe(600);
+  expect(indexWorstCaseAgeSec()).toBeLessThanOrEqual(INDEX_MAX_AGE_SEC);
+  expect(INDEX_REFRESH_SEC).toBeLessThan(INDEX_WINDOW_SEC);
+  // The CDN header spends exactly the budget the server window leaves; browsers never keep a copy.
+  const directive = (name: string) => Number(INDEX_CACHE_CONTROL.match(new RegExp(`${name}=(\\d+)`))?.[1]);
+  expect(directive("max-age")).toBe(0);
+  expect(INDEX_WINDOW_SEC + directive("s-maxage") + directive("stale-while-revalidate")).toBe(INDEX_MAX_AGE_SEC);
+  // A cached value belongs to one wall-clock window; the next window cannot reuse it, however quiet the site was.
+  const start = Date.UTC(2026, 10, 17, 3, 0, 0) - (Date.UTC(2026, 10, 17, 3, 0, 0) % (INDEX_WINDOW_SEC * 1000));
+  expect(indexCacheWindow(start)).toBe(indexCacheWindow(start + INDEX_WINDOW_SEC * 1000 - 1));
+  expect(indexCacheWindow(start + INDEX_WINDOW_SEC * 1000)).toBe(indexCacheWindow(start) + 1);
+  expect(indexCacheWindow(start + 3 * 60 * 60_000)).toBeGreaterThan(indexCacheWindow(start));
 });

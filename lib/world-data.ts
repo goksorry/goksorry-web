@@ -1,5 +1,6 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { boundedCache } from "@/lib/bounded-cache";
+import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { fetchRecentFeedRows, type FeedRow } from "@/lib/feed-data";
 import { normalizePolicyPayload } from "@/lib/collection-policy-status";
 import { buildCollectionStatusFilters, getCachedMarketOverview } from "@/lib/overview-data";
@@ -7,7 +8,6 @@ import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 import { buildWorldFrame, buildWorldReplay, worldDayBounds, type WorldFrame, type WorldSlot } from "@/lib/world";
 
-export const WORLD_CACHE_TAG = "world-frame";
 export async function loadWorldFrame(service = getServiceSupabaseClient({ cache: "no-store" })): Promise<WorldFrame> {
   const now = new Date();
   const rows: FeedRow[] = [];
@@ -35,9 +35,7 @@ export async function loadWorldFrame(service = getServiceSupabaseClient({ cache:
     }
   });
 }
-export const getWorldFrame = unstable_cache(loadWorldFrame, ["world-frame-v1"], {
-  revalidate: 60, tags: [WORLD_CACHE_TAG]
-});
+export const getWorldFrame = boundedCache(() => loadWorldFrame(), ["world-frame-v2"], { tags: [COLLECTION_RUN_CACHE_TAG] });
 
 export async function loadWorldReplay(date: string) {
   const bounds = worldDayBounds(date);

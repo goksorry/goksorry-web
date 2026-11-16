@@ -1,5 +1,6 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { boundedCache } from "./bounded-cache";
+import { COLLECTION_RUN_CACHE_TAG } from "./index-cache-policy";
 import { fetchRecentFeedRows, type FeedRow } from "./feed-data";
 import { buildFeedPage, type FeedSelection, type FeedSnapshot } from "./feed-scope";
 import { getServiceSupabaseClient } from "./supabase/service";
@@ -7,7 +8,7 @@ import { normalizePolicyPayload } from "./collection-policy-status";
 import { buildCollectionStatusFilters, getCachedMarketOverview } from "./overview-data";
 import { buildMarketAdjustmentSnapshot } from "./community-market-adjustment";
 
-export const getFeedSnapshot = unstable_cache(async (hours: number, asOf: string): Promise<FeedSnapshot> => {
+export const getFeedSnapshot = boundedCache(async (hours: number, asOf: string): Promise<FeedSnapshot> => {
   const now = asOf ? new Date(asOf) : new Date();
   const service = getServiceSupabaseClient({ cache: "no-store" });
   const rows: FeedRow[] = [];
@@ -30,7 +31,7 @@ export const getFeedSnapshot = unstable_cache(async (hours: number, asOf: string
     marketAdjustmentSnapshot: buildMarketAdjustmentSnapshot(market.generated_at, market.market_indicators), collectionStatuses, excludedSourceNames: [...excludedSourceNames],
     collection: { last_run_at: status.data?.collector_last_run_at ?? null, errors: Number(status.data?.collector_errors ?? 0), degraded: Boolean(status.data?.llm_degraded), unavailable: Boolean(status.error) || !status.data }
   };
-}, ["home-feed-snapshot-v1"], { revalidate: 60 });
+}, ["home-feed-snapshot-v2"], { tags: [COLLECTION_RUN_CACHE_TAG] });
 
 export async function getScopedFeed(selection: FeedSelection, { hours = 6, limit = 80, offset = 0, asOf = "" } = {}) {
   return buildFeedPage(await getFeedSnapshot(hours, asOf), selection, { hours, limit, offset });

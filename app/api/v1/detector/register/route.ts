@@ -3,7 +3,8 @@ import { revalidateTag } from "next/cache";
 import { jsonError, logApiError, requireDetectorWriteAuth } from "@/lib/api-auth";
 import { COLLECTION_POLICY_CACHE_TAG } from "@/lib/collection-policy-status";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
-import { loadWorldFrame, WORLD_CACHE_TAG } from "@/lib/world-data";
+import { loadWorldFrame } from "@/lib/world-data";
+import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { storeWorldSnapshot } from "@/lib/world-store";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
@@ -286,7 +287,8 @@ export async function POST(request: Request) {
     } catch (error) {
       logApiError("world snapshot failed", auth.requestId, error);
     }
-    revalidateTag(WORLD_CACHE_TAG);
+    // World frame, feed snapshot and community indicators all derive from this run.
+    revalidateTag(COLLECTION_RUN_CACHE_TAG);
   }
 
   return NextResponse.json({

@@ -1,4 +1,5 @@
-import { unstable_cache } from "next/cache";
+import { boundedCache } from "@/lib/bounded-cache";
+import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { parseNaverNasdaqQuote, parseNaverUsdKrwQuote } from "@/lib/naver-market-data";
 import {
   buildMarketAdjustmentSnapshot,
@@ -82,8 +83,6 @@ type NaverIndexPriceRow = {
   closePrice?: string;
 };
 
-const MARKET_TTL_SEC = 300;
-const COMMUNITY_TTL_SEC = 60;
 const COMMUNITY_WINDOW_HOURS = 6;
 const KR_MARKET_TIME_ZONE = "Asia/Seoul";
 const US_MARKET_TIME_ZONE = "America/New_York";
@@ -97,7 +96,9 @@ const fetchText = async (url: string): Promise<string> => {
       headers: {
         "User-Agent": "goksorry-web/1.0"
       },
-      next: { revalidate: MARKET_TTL_SEC },
+      // The whole overview is cached by boundedCache; a per-URL fetch cache here would
+      // add its own unbounded stale-while-revalidate layer underneath it.
+      cache: "no-store",
       signal: controller.signal
     });
 
@@ -405,7 +406,24 @@ export const buildCollectionStatusFilters = (
   return { excludedSourceNames, collectionStatuses };
 };
 
-export const getCachedMarketOverview = buildMarketOverview;
+type MarketOverview = Pick<OverviewPayload, "generated_at" | "market_indicators">;
+const MARKET_FALLBACK: [string, string][] = [["kospi", "KOSPI"], ["kosdaq", "KOSDAQ"], ["nasdaq", "NASDAQ"], ["usdkrw", "원/달러 환율"]];
+
+// An overview with no usable indicator (upstream down) is not cached, so the next
+// request retries instead of keeping the failure for a refresh interval.
+const cachedMarketOverview = boundedCache(async (): Promise<MarketOverview> => {
+  const overview = await buildMarketOverview();
+  if (!overview.market_indicators.some(hasUsableMarketIndicator)) throw new Error("market overview unavailable");
+  return overview;
+}, ["market-overview-v2"]);
+
+export const getCachedMarketOverview = async (): Promise<MarketOverview> => {
+  try {
+    return await cachedMarketOverview();
+  } catch {
+    return { generated_at: new Date().toISOString(), market_indicators: MARKET_FALLBACK.map(([id, label]) => fallbackIndicator(id, label)) };
+  }
+};
 
 export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicatorsPayload> => {
   const service = getServiceSupabaseClient();
@@ -440,9 +458,8 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   };
 };
 
-export const getCachedCommunityIndicators = unstable_cache(buildCommunityIndicatorsData, ["community-indicators"], {
-  revalidate: COMMUNITY_TTL_SEC,
-  tags: [COLLECTION_POLICY_CACHE_TAG]
+export const getCachedCommunityIndicators = boundedCache(buildCommunityIndicatorsData, ["community-indicators-v2"], {
+  tags: [COLLECTION_POLICY_CACHE_TAG, COLLECTION_RUN_CACHE_TAG]
 });
 
 export const buildOverviewData = async (): Promise<OverviewPayload> => {

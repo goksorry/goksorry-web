@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { INDEX_CACHE_CONTROL } from "../lib/index-cache-policy";
 test("feed API discovers stock beyond 500 rows and paginates its scope", async ({ request }) => {
   const base = await (await request.get("/api/feed?limit=40")).json();
   expect(base.rows).toHaveLength(40);
@@ -41,4 +42,16 @@ test("a failed scan never returns partial scope or caches an empty success", asy
     expect(response.headers()["cache-control"]).toBe("no-store");
   } finally { await request.post("http://127.0.0.1:3101/_control", { data: {} }); }
   expect((await (await request.get(`/api/feed?symbol=LATE&asOf=${asOf}`)).json()).summary.total).toBe(120);
+});
+
+test("index endpoints share one short CDN budget instead of piling stale caches", async ({ request }) => {
+  for (const path of ["/api/feed?limit=12", "/api/overview", "/api/community-indicators"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["cache-control"], path).toBe(INDEX_CACHE_CONTROL);
+  }
+  const overview = await request.get("/api/internal/overview");
+  expect(overview.status()).toBe(200);
+  expect([INDEX_CACHE_CONTROL, "public, max-age=0, s-maxage=10"]).toContain(overview.headers()["cache-control"]);
+  expect((await request.get("/api/internal/world")).headers()["cache-control"]).toBe("no-store");
 });

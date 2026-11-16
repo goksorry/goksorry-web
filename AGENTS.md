@@ -45,6 +45,7 @@
 ## Database Workflow
 - Use Supabase CLI from the repo root with `npx supabase ... --workdir .`.
 - Linked project ref: `kfgqobuusbleqqhstllv` (Supabase region `ap-northeast-2`, Seoul).
+- Index data (market indices, 곡소리 지수, world frame, feed summary) is cached through `lib/bounded-cache.ts` with the budget in `lib/index-cache-policy.ts`: a reload never shows it older than 10 minutes. Do not add another cache layer (fetch `next.revalidate`, bare `unstable_cache`, longer `s-maxage`) on that path without updating the budget.
 - Vercel function region must stay `icn1` (Seoul), next to the database. Every server render makes sequential DB round trips, so a cross-region function adds hundreds of ms per page.
 - Use `supabase/migrations` as the primary CLI migration path.
 - Mirror durable repo-facing SQL history in `db/migrations`.
