@@ -2,6 +2,14 @@ import type { WorldScene } from "./world";
 export type Point = { x: number; z: number };
 export type Obstacle = { x: number; z: number; width: number; depth: number };
 export const WORLD_BOUNDS = { left: -10, right: 10, back: -3.5, front: 7 };
+/** Plaza doorways to the other scenes, on the floor strip every framed view keeps visible. */
+export const PLAZA_ENTRANCES: { scene: Exclude<WorldScene, "plaza">; name: string; x: number; z: number }[] = [
+  { scene: "ecosystem", name: "개미 생태계", x: -6.5, z: .2 }, { scene: "broadcast", name: "재난방송", x: -2.6, z: .2 },
+  { scene: "theater", name: "개미극장", x: 2.6, z: .2 }, { scene: "battle", name: "심리 전장", x: 6.5, z: .2 }
+];
+/** The plaza entrance the visitor stands at (within 1.4 units), if any. */
+export const entranceAt = (scene: WorldScene, at: Point) =>
+  scene === "plaza" ? PLAZA_ENTRANCES.find((e) => Math.hypot(e.x - at.x, e.z - at.z) < 1.4) ?? null : null;
 export function worldObstacles(scene: WorldScene): Obstacle[] {
   const sides = [{ x: -8.7, z: -.6, width: 2.3, depth: 4.5 }, { x: 8.7, z: -.6, width: 2.3, depth: 4.5 }];
   const crates = Array.from({ length: 8 }, (_, i) => ({ x: (i % 2 ? -1 : 1) * (8 + i % 3 * .45), z: 2.6 + i % 3 * .4, width: .7, depth: .5 }));

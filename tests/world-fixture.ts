@@ -67,3 +67,13 @@ export async function requireWebGL2(page: Page) {
   });
   test.skip(!supported, "This browser environment cannot create WebGL2; static fallback is tested separately.");
 }
+
+/** Simulates a browser without WebGL2: the only case the world is designed to show its static scene. */
+export async function withoutWebGL2(page: Page) {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      return type === "webgl2" ? null : (original as (...args: unknown[]) => unknown).call(this, type, ...rest);
+    } as typeof original;
+  });
+}

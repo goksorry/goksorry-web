@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { prepareWorld, worldRows, requireWebGL2 } from "./world-fixture";
+import { prepareWorld, worldRows, requireWebGL2, withoutWebGL2 } from "./world-fixture";
 import { readFile, writeFile } from "node:fs/promises";
 import { buildWorldFrame, worldDate } from "../lib/world";
 import type { RenderMetrics } from "../components/world/hd2d-renderer";
@@ -8,15 +8,6 @@ import antAtlas from "../components/world/ant-atlas.json";
 const stage = (page: Page) => page.locator(".hd2d-stage");
 const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "월드 장면 선택" }).getByRole("button", { name, exact: true });
-/** Simulates a browser without WebGL2: the only case the world is designed to show its static scene. */
-async function withoutWebGL2(page: Page) {
-  await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
-      return type === "webgl2" ? null : (original as (...args: unknown[]) => unknown).call(this, type, ...rest);
-    } as typeof original;
-  });
-}
 async function webgl(page: Page) { await requireWebGL2(page); await expect(stage(page)).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 }); }
 
 test("wall carries live data without a modal; panels open details with keyboard and focus restore", async ({ page }) => {
@@ -215,6 +206,18 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   await page.getByRole("button", { name: "다시 시도", exact: true }).click(); await expect(page.locator(".world-live-badge")).toContainText("갱신 지연");
 });
 
+test("walking to a plaza entrance turns its painted sign into a prompt with a pinned hit target", async ({ page }) => {
+  await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await page.locator(".hd2d-canvas").focus();
+  for (let i = 0; i < 3; i++) { await page.keyboard.press("ArrowLeft"); await page.waitForTimeout(450); }
+  const enter = page.getByRole("button", { name: "재난방송 입구 · 들어가기 ↗" });
+  await expect(enter).toBeVisible();
+  // Pinned over the painted prompt on the floor, not docked at the bottom of the stage.
+  const box = (await enter.boundingBox())!, canvas = (await page.locator(".hd2d-canvas").boundingBox())!;
+  expect(box.width).toBeGreaterThan(40); expect(box.y + box.height).toBeLessThan(canvas.y + canvas.height - 40);
+  await enter.click(); await expect(page).toHaveURL(/scene=broadcast/);
+});
+
 test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming", async ({ page }) => {
   await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);
   const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().map((a) => `${a.x.toFixed(3)},${a.z.toFixed(3)}`).join("|"));
@@ -237,6 +240,8 @@ test("WebGL wall sweeps a shimmer over panels until their first payload arrives"
 
 test("WebGL and asset failures use same static art with working screens", async ({ page }) => {
   await prepareWorld(page); await page.route("**/world/ant*.png", (route) => route.abort()); await page.goto("/");
+  // A renderer failure needs a browser that has WebGL2 to begin with; without it the view is "unsupported".
+  await requireWebGL2(page);
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
   // A failure is an error, not a mode: it says so and offers a retry.

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { PLAZA_ENTRANCES, entranceAt } from "@/lib/world-navigation";
 import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
@@ -15,14 +16,12 @@ type Props = RenderState & {
   /** The zoomed section view follows the visitor into another wall section. */
   onSection?: (section: WallSection) => void;
 };
-// Plaza entrances sit on the floor strip that every framed view keeps visible.
 /** `unsupported` (no WebGL2) is the only designed static view; `failed` is a runtime error that offers a retry. */
 type RenderMode = "loading" | "webgl" | "unsupported" | "failed";
 const NOTE: Record<RenderMode, string> = {
   loading: "화면 불러오는 중…", webgl: "바닥 클릭 / 방향키로 이동",
   unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면을 불러오지 못했습니다"
 };
-const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
   const specs = useRef<BoardSpec[]>([]);
@@ -31,7 +30,13 @@ export default function HD2DWorld(props: Props) {
   const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
   const [nearby, setNearby] = useState<WorldScene | null>(null);
-  const nearbyRef = useRef<WorldScene | null>(null);
+  const nearbyRef = useRef<WorldScene | null>(null), nearButton = useRef<HTMLButtonElement>(null);
+  // Last screen rectangles of the painted tags; the entrance button is pinned over its sign.
+  const tagRects = useRef<Record<string, { x: number; y: number; width: number; height: number }>>({});
+  const pinEntrance = () => {
+    const button = nearButton.current, r = button && tagRects.current[`entrance-${nearbyRef.current}`];
+    if (button && r) Object.assign(button.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` });
+  };
   useEffect(() => {
     if (!supportsWebGL2()) { setMode("unsupported"); return; }
     let cancelled = false; setMode("loading");
@@ -45,9 +50,10 @@ export default function HD2DWorld(props: Props) {
       },
       avatar(x, y, position) {
         if (avatar.current) { avatar.current.style.left = `${x}px`; avatar.current.style.top = `${y}px`; avatar.current.dataset.position = `${position.x.toFixed(2)},${position.z.toFixed(2)}`; }
-        const next = latest.current.scene === "plaza" ? ENTRANCES.find((e) => Math.hypot(e.x - position.x, e.z - position.z) < 1.4)?.scene ?? null : null;
+        const next = entranceAt(latest.current.scene, position)?.scene ?? null;
         if (nearbyRef.current !== next) { nearbyRef.current = next; setNearby(next); }
       },
+      labels(rects) { tagRects.current = rects; pinEntrance(); },
       step() { latest.current.onStep(); },
       section(next) { latest.current.onSection?.(next); },
       failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
@@ -73,6 +79,8 @@ export default function HD2DWorld(props: Props) {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...props, paused: props.paused || !onScreen });
   }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
+  useLayoutEffect(pinEntrance, [nearby]);
+  useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.setView(props.view);
@@ -85,7 +93,7 @@ export default function HD2DWorld(props: Props) {
       family: computed.fontFamily || "sans-serif",
       up: computed.getPropertyValue("--change-up").trim() || "#e0705f", down: computed.getPropertyValue("--change-down").trim() || "#6fa3e0"
     };
-    specs.current = boardSpecs(props.board, style);
+    specs.current = boardSpecs(props.board, style); instance.setFont(style.family);
     instance.setBoards(specs.current); instance.setBand(props.board?.kind === "plaza" ? props.board.model.pierrot.band : null);
     if (props.paused || !onScreen) instance.draw();
   }, [props.board, props.styleKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -132,7 +140,8 @@ export default function HD2DWorld(props: Props) {
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
     {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
-    {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
+    {/* With WebGL the prompt is painted over the entrance; this button is its pinned hit target (visible without WebGL). */}
+    {nearby && <button ref={nearButton} className="world-nearby" onClick={() => props.onScene(nearby)}>{PLAZA_ENTRANCES.find((e) => e.scene === nearby)?.name} 입구 · 들어가기 ↗</button>}
     <p className="world-render-note" role={mode === "loading" ? "status" : undefined}>{NOTE[mode]}</p>
     {mode === "failed" && <button className="world-render-retry" onClick={() => setAttempt((n) => n + 1)}>3D 화면 다시 시도</button>}
   </div>;

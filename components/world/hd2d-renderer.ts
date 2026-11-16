@@ -3,10 +3,11 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdView } from "@/lib/world-crowd";
-import { findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
+import { PLAZA_ENTRANCES, entranceAt, findWorldPath, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
 import { WALL_COS, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
+import { createLabelLayer, type LabelSpec } from "./label-layer";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
@@ -38,6 +39,10 @@ export type WorldRenderer = {
   /** Mood band the wall shows (for the plaza faces); null derives it from the frame. */
   setBand: (band: string | null) => void;
   wallTexture: (id: string) => HTMLCanvasElement | undefined;
+  /** Text over the visitor's head ("나" or an emote). */
+  setVisitorTag: (text: string) => void;
+  /** Page font for painted labels. */
+  setFont: (family: string) => void;
   move: (x: number, z: number) => void;
   click: (x: number, y: number) => void;
   draw: (time?: number) => void;
@@ -54,6 +59,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   /** The zoomed section view wants to show another wall section because the visitor walked into it. The owner of the view answers with setView. */
   section?: (section: WallSection) => void;
   failure?: () => void;
+  /** Screen rectangles of the text tags (visitor, plaza entrances) whenever they move, for their DOM twins. */
+  labels?: (rects: Record<string, WallRect>) => void;
 } = {}): Promise<WorldRenderer> {
   let state = initial;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "low-power" });
@@ -196,6 +203,9 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const boards = createBoardLayer({ z: WALL_PANEL_Z, anisotropy: Math.min(4, renderer.capabilities.getMaxAnisotropy()), loader, onImage: () => { if (!disposed) draw(); } });
   scene.add(boards.group);
   let band: string | null = null;
+  // Text tags over the scene: the visitor's name/emote and the plaza's entrance signs.
+  const labels = createLabelLayer(); scene.add(labels.group);
+  let visitorTag = "나", labelKey = "";
   const antGeometry = new THREE.PlaneGeometry(1, 1);
   const offsets = new Float32Array(48 * 4);
   antGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(offsets, 4));
@@ -538,8 +548,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (cueCount) { cues.instanceMatrix.needsUpdate = true; (cueGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true; }
     ants.instanceMatrix.needsUpdate = shadows.instanceMatrix.needsUpdate = true; if (ants.instanceColor) ants.instanceColor.needsUpdate = true;
     (antGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true;
-    // The name label sits just above the visitor's head.
-    const p = project(corner.set(position.x, (talls[sideList.length] ?? 1.73) * 1.04, position.z)); events.avatar?.(p.x, p.y, position);
+    // The name tag sits just above the visitor's head; entrance signs stand on the floor, the one at hand as a prompt.
+    const head = (talls[sideList.length] ?? 1.73) * 1.04, near = entranceAt(state.scene, position)?.scene;
+    const tags: LabelSpec[] = [{ id: "visitor", text: visitorTag, style: "name", at: { x: position.x, y: head, z: position.z } }];
+    if (plaza) for (const e of PLAZA_ENTRANCES) tags.push({ id: `entrance-${e.scene}`, text: near === e.scene ? `${e.name} 입구 · 들어가기 ↗` : `${e.name} 입구`, style: near === e.scene ? "prompt" : "sign", at: { x: e.x, y: .05, z: e.z } });
+    labels.set(tags);
+    const tagRects = labels.measure(camera, width, height), tagKey = Object.entries(tagRects).map(([id, r]) => `${id}:${r.x.toFixed(0)},${r.y.toFixed(0)},${r.width.toFixed(0)}`).join("|");
+    if (tagKey !== labelKey) { labelKey = tagKey; events.labels?.(tagRects); }
+    const p = project(corner.set(position.x, head, position.z)); events.avatar?.(p.x, p.y, position);
     const query = timer && queries.length < 6 ? gl.createQuery() : null;
     if (query) gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
     const start = performance.now(); renderer.render(scene, camera); const duration = performance.now() - start;
@@ -592,6 +608,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     },
     setBoards(specs) { boards.set(specs); },
     setBand(next) { band = next; },
+    setVisitorTag(text) { visitorTag = text || "나"; },
+    setFont(family) { labels.setFont(family); },
     wallTexture: (id) => boards.canvas(id),
     move(x, z) { follow = true; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },
     async capture(frame) {
@@ -602,7 +620,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       finally { exported.dispose(); }
     },
     dispose() {
-      disposed = true; canvas.removeEventListener("webglcontextlost", lost); boards.dispose();
+      disposed = true; canvas.removeEventListener("webglcontextlost", lost); boards.dispose(); labels.dispose();
       scene.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); geometry.forEach((g) => g.dispose()); materials.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); queries.forEach((q) => gl.deleteQuery(q)); queries = [];
       renderer.dispose();
     }

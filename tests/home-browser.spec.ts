@@ -1,6 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
-import { prepareWorld } from "./world-fixture";
+import { prepareWorld, withoutWebGL2 } from "./world-fixture";
+
+/** These checks read the HTML cards, which are the visible view only without WebGL2 (reduced motion keeps WebGL). */
+async function staticWorld(page: import("@playwright/test").Page) { await page.emulateMedia({ reducedMotion: "reduce" }); await withoutWebGL2(page); }
 
 // The full feed (links, filters, paging) lives in the detail dialog; the wall shows the index and latest titles.
 const panel = (page: import("@playwright/test").Page) => page.locator('[data-world-panel="detail"]');
@@ -8,7 +11,7 @@ const index = (page: import("@playwright/test").Page) => page.locator("#world-in
 
 test("original five-stage meme follows index and theme without replacement art", async ({ page }, info) => {
   const frame = await prepareWorld(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await staticWorld(page);
   const bands = [[1, "extreme-bullish"], [3, "bullish"], [5, "neutral"], [6, "bearish"], [9, "extreme-bearish"]] as const;
   for (const [index, band] of bands) {
     await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, overall: { ...frame.overall, index } } }));
@@ -23,7 +26,7 @@ test("original five-stage meme follows index and theme without replacement art",
 });
 
 test("split is default; unified retains scope, shows neutral and original URLs", async ({ page }) => {
-  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await prepareWorld(page); await staticWorld(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/?feed=1");
   const detail = panel(page);
@@ -58,7 +61,7 @@ test("split is default; unified retains scope, shows neutral and original URLs",
 // Every theme, on the world dialog and on /classic: unified rows show a painted left bar, a row tint and a coloured chip, and the title stays readable on the tint.
 for (const [place, path] of [["world dialog", "/?feed=1&"], ["classic page", "/classic?"]] as const) test(`unified rows keep bar, tint, chip and a readable title in every theme (${place})`, async ({ page }, info) => {
   test.setTimeout(150_000);
-  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await prepareWorld(page); await staticWorld(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   const report: Record<string, unknown> = {};
   for (const theme of ["light", "dark", "excel-light", "excel-dark", "docs-light", "docs-dark", "vscode-light", "vscode-dark"]) {
@@ -119,7 +122,7 @@ for (const [place, path] of [["world dialog", "/?feed=1&"], ["classic page", "/c
 });
 
 for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pierrot remain visible at ${width}px`, async ({ page }, info) => {
-  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await prepareWorld(page); await staticWorld(page);
   await page.setViewportSize({ width, height: 844 }); await page.goto("/");
   const portrait = page.locator(".world-pierrot img");
   await expect(portrait).toBeVisible();
@@ -135,7 +138,7 @@ for (const width of [320, 360, 390, 430, 768]) test(`metaverse and original Pier
 
 test("late stock is server scoped before pagination and sentiment never changes summary", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.unroute("**/api/internal/world");
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/?feed=1");
+  await staticWorld(page); await page.goto("/?feed=1");
   await expect(page.getByLabel("피드 종목").locator('option[value="LATE"]')).toHaveCount(1);
   await page.getByLabel("피드 종목").selectOption("LATE");
   await expect(page).toHaveURL(/stock=LATE/);
@@ -161,7 +164,7 @@ test("late stock is server scoped before pagination and sentiment never changes 
 
 
 test("no page scroll on desktop; 200 percent text and keyboard menu remain usable", async ({ page }) => {
-  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await prepareWorld(page); await staticWorld(page);
   await page.setViewportSize({ width: 1280, height: 720 }); await page.goto("/");
   await expect(page.locator(".world-pierrot img")).toBeVisible();
   // Header fixed, scene fills the rest: nothing to scroll and the scene nav is always on screen.
@@ -178,7 +181,7 @@ test("no page scroll on desktop; 200 percent text and keyboard menu remain usabl
 
 test("feed refresh keeps loaded pages and failure preserves values and actual time", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*");
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.clock.install(); await page.goto("/?feed=1");
+  await staticWorld(page); await page.clock.install(); await page.goto("/?feed=1");
   await panel(page).getByRole("button", { name: "통합 보기", exact: true }).click();
   await expect(panel(page).locator(".sentiment-card")).toHaveCount(20);
   await panel(page).getByRole("button", { name: "더 보기", exact: true }).click();
@@ -198,7 +201,7 @@ test("feed refresh keeps loaded pages and failure preserves values and actual ti
 
 test("theater Pierrot uses the replay index rather than current live index", async ({ page }) => {
   const frame = await prepareWorld(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await staticWorld(page);
   await page.route("**/api/internal/world/replay?*", route => route.fulfill({ json: {
     date: new URL(route.request().url()).searchParams.get("date"),
     slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date().toISOString(), frame: {
@@ -213,7 +216,7 @@ test("theater Pierrot uses the replay index rather than current live index", asy
 
 
 test("360 by 640 shows index and original Pierrot without a panel; the arrow reaches the feed section", async ({ page }) => {
-  const frame = await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  const frame = await prepareWorld(page); await staticWorld(page);
   await page.setViewportSize({ width: 360, height: 640 }); await page.goto("/");
   await expect(index(page)).toBeInViewport();
   await expect(page.locator(".world-pierrot img")).toBeInViewport();
@@ -230,7 +233,7 @@ test("360 by 640 shows index and original Pierrot without a panel; the arrow rea
 
 test("multiple sources filter wall summary and list together; empty selection stays empty", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*");
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/?feed=1");
+  await staticWorld(page); await page.goto("/?feed=1");
   await panel(page).locator(".feed-source-picker summary").click();
   await panel(page).getByRole("button", { name: "전체해제", exact: true }).click();
   await expect(index(page)).toContainText("분석 표본 0건");
