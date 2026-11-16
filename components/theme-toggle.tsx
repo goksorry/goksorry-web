@@ -83,8 +83,7 @@ export function ThemeChoiceButton({ label, ariaLabel, swatchOption, active, onSe
   );
 }
 
-/** `themes={false}` (the metaverse room, which has no theme) keeps only the change-colour choice. */
-export function ThemeToggle({ themes = true }: { themes?: boolean }) {
+export function ThemeToggle() {
   const { themeId, changeColorMode, selectTheme, selectChangeColorMode } = useTheme();
   const [open, setOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
@@ -175,7 +174,7 @@ export function ThemeToggle({ themes = true }: { themes?: boolean }) {
   }, [activeTheme.family, activeTheme.tone, changeColorMode, open, updatePopoverPosition]);
 
   const onApply = () => {
-    if (themes) selectTheme(draftTheme.id);
+    selectTheme(draftTheme.id);
     selectChangeColorMode(draftChangeColorMode);
     setOpen(false);
   };
@@ -192,8 +191,7 @@ export function ThemeToggle({ themes = true }: { themes?: boolean }) {
   const popover =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div ref={popoverRef} className="theme-menu-popover" style={popoverStyle ?? undefined} role="menu" aria-label={themes ? "테마 선택" : "등락률 색상 선택"}>
-            {themes ? <>
+          <div ref={popoverRef} className="theme-menu-popover" style={popoverStyle ?? undefined} role="menu" aria-label="테마 선택">
             <section className="theme-menu-group" aria-labelledby="theme-family-heading">
               <p id="theme-family-heading" className="theme-menu-group-label">
                 테마
@@ -234,7 +232,6 @@ export function ThemeToggle({ themes = true }: { themes?: boolean }) {
                 })}
               </div>
             </section>
-            </> : null}
             <section className="theme-menu-group" aria-labelledby="theme-change-color-heading">
               <p id="theme-change-color-heading" className="theme-menu-group-label">
                 등락률
@@ -268,12 +265,12 @@ export function ThemeToggle({ themes = true }: { themes?: boolean }) {
         type="button"
         className="theme-menu-trigger"
         onClick={onToggle}
-        aria-label={themes ? `테마 선택: 현재 ${activeTheme.label}` : `등락률 색상 선택: 현재 ${CHANGE_COLOR_LABELS[changeColorMode]}`}
+        aria-label={`테마 선택: 현재 ${activeTheme.label}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={themes ? `테마: ${activeTheme.label}` : `등락률 색상: ${CHANGE_COLOR_LABELS[changeColorMode]}`}
+        title={`테마: ${activeTheme.label}`}
       >
-        <span aria-hidden="true">{themes ? "🎨" : "↑↓"}</span>
+        <span aria-hidden="true">🎨</span>
       </button>
       {popover}
     </div>
