@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   readClientCookieValue,
@@ -121,9 +121,9 @@ export function ThemeProvider({
   // popstate back into the room and for the effect's own re-run (which would otherwise fall back to the stored theme).
   const roomTheme = useRef<ThemeId | null>(null);
 
-  // Entering or leaving the room swaps the root between the fixed world look and the chosen theme. Declared before the
-  // location sync so that, on mount, the sync's own choice is applied last.
-  useEffect(() => {
+  // Entering or leaving the room swaps the root between the fixed world look and the chosen theme, before paint so the
+  // new page never shows a frame in the other one's colours. Runs before the location sync, whose choice wins on mount.
+  useLayoutEffect(() => {
     applyThemeMode(themeId, pathname);
   }, [world]); // eslint-disable-line react-hooks/exhaustive-deps
 

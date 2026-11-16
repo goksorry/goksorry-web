@@ -111,10 +111,17 @@ test("the room has no theme: ?theme is dropped, the world keeps its palette, cla
   await expect(menu.getByRole("button", { name: /테마 선택/ })).toHaveCount(0);
   await expect(page.locator(".world-panel")).toHaveCSS("background-color", "rgb(16, 27, 34)");
   await page.keyboard.press("Escape"); await expect(menu).toHaveCount(0);
+  // Every frame across the soft navigations must root the look of the page it shows (no frame of the other one's colours).
+  await page.evaluate(() => { const w = window as unknown as { mixed: string[] }; w.mixed = []; const tick = () => { const root = document.documentElement, room = !!document.querySelector(".world-page");
+    if (room !== (root.dataset.themeShell === "default" && root.dataset.theme === "dark")) w.mixed.push(`${location.pathname} ${root.dataset.themeId}`); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
   await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
   await expect(page).toHaveURL(/\/classic\?.*theme=excel-dark/);
   await expect(html).toHaveAttribute("data-theme-id", "excel-dark"); await expect(html).toHaveAttribute("data-theme-shell", "excel");
   await expect(page.getByTestId("program-shell")).toBeVisible();
+  await page.goBack(); await expect(page.locator(".world-root")).toBeVisible(); await expect(html).toHaveAttribute("data-theme-shell", "default");
+  expect(new URL(page.url()).searchParams.get("theme")).toBeNull();
+  await page.goForward(); await expect(page.getByTestId("program-shell")).toBeVisible(); await expect(html).toHaveAttribute("data-theme-id", "excel-dark");
+  expect(await page.evaluate(() => (window as unknown as { mixed: string[] }).mixed)).toEqual([]);
 });
 
 test("portrait frames one wall section; arrows, overview, header shortcuts and 44px targets", async ({ page }) => {
