@@ -188,9 +188,16 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const currentSelection = selection ? { ...selection, summary: selection.symbol ? shown.stocks.find((s) => s.symbol === selection.symbol) ?? EMPTY.overall : selection.community ? shown.communities.find((c) => c.id === selection.community) ?? EMPTY.overall : selection.summary } : null;
   const selectStock = (symbol: string) => setUrl("stock", symbol);
   const openCommunity = (id: SourceGroupId) => { const c = shown.communities.find((value) => value.id === id); if (c) evidence({ title: c.name, summary: c, community: c.id }); };
-  // Battle detail: picking a stock re-forms the camps above the list, so bring them back into view.
-  const campsRef = useRef<HTMLDivElement>(null);
-  const pickBattleStock = (symbol: string) => { selectStock(symbol); campsRef.current?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" }); };
+  // Battle detail: picking a stock re-forms the camps above the list, so bring them back into view with the scope line
+  // naming the stock they belong to.
+  const battleScopeRef = useRef<HTMLParagraphElement>(null);
+  const pickBattleStock = (symbol: string) => { selectStock(symbol); battleScopeRef.current?.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" }); };
+  // The popup has no title: a new selection (a community, a stock, a camp) is named only by the scope line at the top of
+  // the body, so the body starts from the top instead of where the previous view was scrolled to.
+  useEffect(() => {
+    const body = document.querySelector<HTMLElement>('[data-world-panel="detail"] .world-panel-body');
+    if (body) body.scrollTop = 0;
+  }, [selection]);
   const filtered = !!stock || selectedGroupIds.length !== SOURCE_GROUP_IDS.length;
   const scopeStatus = !feedWall.loaded && filtered ? "선택 범위 조회 중" : feedWall.failed ? (wallSummary ? "조회 실패 · 마지막 정상 데이터" : "데이터 조회 실패")
     : wallSummary ? frameStatus(liveFrame, true, "", clock) : status;
@@ -261,8 +268,8 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
     </WorldPanel>}
     {sceneOpen && scene === "battle" && <WorldPanel title={info.title} name="scene" modal origin={sceneOrigin} side="center" onClose={() => setSceneOpen(false)}>
       <div className="world-battle-detail">
-        <p className="world-battle-scope">전장 종목 · <b>{item?.name ?? "전체 커뮤니티"}</b></p>
-        <div className="world-camps" ref={campsRef}>{SIDE_ORDER.map((side) => <button key={side} data-side={side} onClick={() => evidence({ title: `${item?.name ?? "전체"} ${CAMP_LABEL[side]}`, summary: activeSummary, symbol: item?.symbol, side })}><span>{CAMP_LABEL[side]}</span><strong>{side === "neutral" ? `${activeSummary.neutral}건` : percent(side === "bullish" ? activeSummary.hope_ratio : activeSummary.fear_ratio)}</strong><span>{side === "neutral" ? "비율에서 별도" : `${activeSummary[side]}건`} · 근거 보기 ↗</span></button>)}</div>
+        <p className="world-battle-scope" ref={battleScopeRef}>전장 종목 · <b>{item?.name ?? "전체 커뮤니티"}</b></p>
+        <div className="world-camps">{SIDE_ORDER.map((side) => <button key={side} data-side={side} onClick={() => evidence({ title: `${item?.name ?? "전체"} ${CAMP_LABEL[side]}`, summary: activeSummary, symbol: item?.symbol, side })}><span>{CAMP_LABEL[side]}</span><strong>{side === "neutral" ? `${activeSummary.neutral}건` : percent(side === "bullish" ? activeSummary.hope_ratio : activeSummary.fear_ratio)}</strong><span>{side === "neutral" ? "비율에서 별도" : `${activeSummary[side]}건`} · 근거 보기 ↗</span></button>)}</div>
         <section className="world-battle-stocks" aria-labelledby="world-battle-stocks-heading"><h3 id="world-battle-stocks-heading">전장 종목 · 최근 6시간 언급 순위</h3>
           <div className="world-stock-list" role="group" aria-label="전장 종목">
             <button aria-pressed={!item} onClick={() => pickBattleStock("")}><span className="world-rank" aria-hidden="true">—</span><strong>전체 커뮤니티</strong><span>{shown.overall.total}건 · 희망 {percent(shown.overall.hope_ratio)}</span></button>
