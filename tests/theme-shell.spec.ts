@@ -364,7 +364,7 @@ test.describe("program theme shells", () => {
   test("default system follows the device color scheme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await prepareThemePage(page, "system");
-    await page.goto("/");
+    await page.goto("/auth/login");
 
     await expect(page.locator("html")).toHaveAttribute("data-theme-id", "system");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -1809,7 +1809,7 @@ test.describe("program theme shells", () => {
     await prepareThemePage(page);
 
     for (const theme of ["light", "dark", "system"]) {
-      await page.goto(`/?theme=${theme}`);
+      await page.goto(`/auth/login?theme=${theme}`);
       const typography = await page.evaluate(() => {
         const rootStyle = getComputedStyle(document.documentElement);
         const bodyStyle = getComputedStyle(document.body);
@@ -2633,8 +2633,9 @@ test.describe("program theme shells", () => {
 
     await prepareThemePage(page);
 
-    for (const item of cases) {
-      await page.goto(`/?theme=${item.theme}`);
+    // The metaverse room has no theme, so it keeps the site icon whatever the URL asks for.
+    for (const item of [...cases.map((item) => ({ ...item, url: `/auth/login?theme=${item.theme}` })), { url: "/?theme=excel-light", iconPath: "/favicon.ico" }]) {
+      await page.goto(item.url);
       await expect
         .poll(async () =>
           page.evaluate(() => {

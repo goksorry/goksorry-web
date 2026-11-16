@@ -1,22 +1,14 @@
 "use client";
 
-import { useTheme } from "@/components/theme-provider";
-import { useMediaQuery } from "@/components/use-media-query";
-import { getThemeOption } from "@/lib/theme";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import type { WorldSummary } from "@/lib/world";
 
 // The existing five-stage Korean stock Pierrot meme is the character source.
-// Reuse the original files, including their full composition and theme variants.
-export function usePierrotDark(): boolean {
-  const { themeId } = useTheme();
-  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
-  const tone = getThemeOption(themeId).tone;
-  return tone === "dark" || (tone === "system" && prefersDark === true);
-}
+// Reuse the original files, including their full composition. The room has no theme and is a night scene,
+// so it always takes the dark variants.
+export const PIERROT_DARK = true;
 export function WorldPierrot({ summary, recorded = false }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean }) {
-  const dark = usePierrotDark();
-  const { band, label, src } = stockPierrotArt(summary, dark);
+  const { band, label, src } = stockPierrotArt(summary, PIERROT_DARK);
   return <figure className="world-pierrot" data-band={band}>
     {/* Original 300×200 artwork: no crop, redraw, or substitute character. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}

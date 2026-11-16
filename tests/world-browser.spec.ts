@@ -91,12 +91,30 @@ test("existing feed deep links, filters, more, theme and auth stay accessible", 
   const menu = page.locator('[data-world-panel="menu"]');
   await expect(menu.getByRole("button", { name: "구글 로그인", exact: true })).toBeVisible();
   await expect(menu.getByRole("link", { name: "이용약관", exact: true })).toBeVisible();
-  await menu.getByRole("button", { name: /테마 선택/ }).click();
-  await expect(page.getByRole("menu", { name: "테마 선택" })).toBeVisible(); await page.keyboard.press("Escape");
-  await expect(menu).toBeVisible();
-  await menu.getByRole("button", { name: /테마 선택/ }).click(); await page.getByRole("button", { name: "테마 VS Code", exact: true }).click();
-  await page.getByRole("button", { name: "색상 다크", exact: true }).click(); await page.getByRole("button", { name: "적용", exact: true }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "vscode-dark"); await expect(page.getByTestId("program-shell")).toHaveCount(0);
+  // The room has no theme: its menu keeps only the change-colour choice.
+  await expect(menu.getByRole("button", { name: /테마 선택/ })).toHaveCount(0);
+  await menu.getByRole("button", { name: /등락률 색상 선택/ }).click();
+  const colours = page.getByRole("menu", { name: "등락률 색상 선택" });
+  await expect(colours).toBeVisible(); await expect(colours.getByRole("button", { name: /^테마 / })).toHaveCount(0);
+  await colours.getByRole("button", { name: "등락률 색상 미국식", exact: true }).click(); await colours.getByRole("button", { name: "적용", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "us"); await expect(menu).toBeVisible();
+});
+
+test("the room has no theme: ?theme is dropped, the world keeps its palette, classic mode brings the theme back", async ({ page }) => {
+  await prepareWorld(page); await page.goto("/?theme=excel-dark&channels=toss");
+  await expect.poll(() => new URL(page.url()).searchParams.get("theme")).toBeNull(); await expect(page).toHaveURL(/channels=toss/);
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-theme", "dark"); await expect(html).toHaveAttribute("data-theme-shell", "default");
+  await expect(page.getByTestId("program-shell")).toHaveCount(0);
+  await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
+  const menu = page.locator('[data-world-panel="menu"]');
+  await expect(menu.getByRole("button", { name: /테마 선택/ })).toHaveCount(0);
+  await expect(page.locator(".world-panel")).toHaveCSS("background-color", "rgb(16, 27, 34)");
+  await page.keyboard.press("Escape"); await expect(menu).toHaveCount(0);
+  await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
+  await expect(page).toHaveURL(/\/classic\?.*theme=excel-dark/);
+  await expect(html).toHaveAttribute("data-theme-id", "excel-dark"); await expect(html).toHaveAttribute("data-theme-shell", "excel");
+  await expect(page.getByTestId("program-shell")).toBeVisible();
 });
 
 test("portrait frames one wall section; arrows, overview, header shortcuts and 44px targets", async ({ page }) => {
@@ -572,7 +590,8 @@ test("measure actual render throughput at 48/24 ants during movement, detail and
 test("mode switch moves between the metaverse room and the classic page, keeping the feed scope", async ({ page }) => {
   await prepareWorld(page); await page.unroute("**/api/feed?*"); await page.goto("/?channels=toss");
   await page.locator(".world-topbar .mode-switch").getByRole("link", { name: /일반/ }).click();
-  await expect(page).toHaveURL(/\/classic\?channels=toss$/);
+  // The stored theme (the room shows none) comes back with the classic page.
+  await expect(page).toHaveURL(/\/classic\?channels=toss&theme=light$/);
   await expect(page.locator(".world-root")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "최근 글", level: 1 })).toBeVisible();
   await expect(page.locator(".header .mode-switch a[aria-current=page]")).toContainText("일반");

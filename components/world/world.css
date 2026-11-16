@@ -1,6 +1,11 @@
 .world-page { --world-header-h:56px; --hud-nav-h:60px; position:fixed; inset:0; width:100%; height:100dvh; overflow:hidden; }
 /* Game shell: the header is fixed and the scene owns the rest of the viewport. No document scroll. */
 html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-page),:root[data-theme-shell]:has(.world-page) body { height:100%; min-height:0; overflow:hidden; overscroll-behavior:none; background:#0e171d; }
+/* The room has no theme: its root always carries the default dark one (WORLD_THEME_ID), retuned here to the scene's night teal
+   so dialogs, the menu and portaled popovers match the HUD. [data-theme] keeps this above :root[data-theme="dark"]. */
+:root[data-theme]:has(.world-page) { color-scheme:dark; --bg:#0e171d; --panel:#101b22; --panel-soft:#17232a; --panel-elevated:#1d2b32; --ink:#ece6d8; --ink-soft:#d4e0dc; --muted:#a2b1b9;
+  --line:#34444b; --brand:#b5c3c9; --brand-strong:#d4e0dc; --header-bg:#101b22eb; --button-bg:#3c525b; --button-line:#4c6670; --button-ink:#f3f1ea; --chip-active-line:#cbd6d9; --chip-active-ink:#0e171d;
+  --modal-backdrop:#060d12a8; --modal-line:#a6b4b22e; --overview-card-inset:#ffffff05; --fab-bg:#17232af0; --theme-toggle-bg:var(--panel-elevated); }
 .world-page-body { display:flex; height:100%; min-height:0; }
 .world-page-body > .main { flex:1; min-width:0; padding:0; margin:0; width:100%; max-width:none; display:block; height:100%; min-height:0; }
 .world-page > .policy-change-banner { position:absolute; top:calc(var(--world-header-h) + 4px); left:8px; right:8px; z-index:70; }

@@ -21,7 +21,7 @@ import { buildWallModel, WALL_PANELS, type WallPanelId, type WallSection, type W
 import { buildWorldFrame, percent, WORLD_SCENES, worldDate, worldDayBounds, type WorldFrame, type WorldScene } from "@/lib/world";
 import { frameStatus, worldHeadline, WORLD_COLORS } from "@/lib/world-presentation";
 import { WorldPanel, type PanelOrigin, type PanelSide } from "./world-panel";
-import { usePierrotDark } from "./world-pierrot";
+import { PIERROT_DARK } from "./world-pierrot";
 import { usePolled } from "./use-wall-data";
 import { WorldEvidence } from "./world-evidence";
 import { WorldWallDom, SummaryNumbers } from "./world-screens";
@@ -79,8 +79,8 @@ function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false 
   const [section, setSection] = useState<WallSection>(1), [overview, setOverview] = useState(false);
   const view = useMemo<WallView>(() => ({ layout, section, overview, hudBottom: HUD_BOTTOM }), [layout, section, overview]);
   const { cleanFilterEnabled } = useCleanFilter();
-  const { themeId } = useTheme();
-  const dark = usePierrotDark();
+  // Boards repaint when the change colours do; the font and Pierrot art are fixed (the room has no theme).
+  const { changeColorMode } = useTheme();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)") !== false;
   const { bannerVisible } = useCookieConsent();
   const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null);
@@ -176,16 +176,16 @@ function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false 
     : wallSummary ? frameStatus(liveFrame, true, "", clock) : status;
   const stockOptions = feedWall.data?.stocks ?? frame.stocks;
   const wall = useMemo(() => buildWallModel({
-    frame, loaded, failed: !!error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark,
+    frame, loaded, failed: !!error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark: PIERROT_DARK,
     scopeLabel: stock ? stockOptions.find((s) => s.symbol === stock)?.name ?? stock : filtered ? "선택 출처" : "",
     feed: feedWall, market: marketWall, room: roomWall
-  }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, dark, stock, stockOptions, feedWall, marketWall, roomWall]);
+  }).model, [frame, loaded, error, status, scopeStatus, timezone, filtered, cleanFilterEnabled, stock, stockOptions, feedWall, marketWall, roomWall]);
   const liveTime = liveFrame.data_at ? `${new Date(liveFrame.data_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })} KST` : "";
   const statusLine = liveTime ? `${status} · ${liveTime}` : status;
   const sceneBoard = useMemo(() => plaza ? null : buildSceneBoard({
     scene: scene as BoardScene, frame: shown, loaded, failed: !!error, stock: item, summary: activeSummary, fresh: reinforcement, date, replay: replayFrame, timeline,
-    status: statusLine, art: stockPierrotArt(activeSummary, dark)
-  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, timeline, statusLine, dark]);
+    status: statusLine, art: stockPierrotArt(activeSummary, PIERROT_DARK)
+  }), [plaza, scene, shown, loaded, error, item, activeSummary, reinforcement, date, replayFrame, timeline, statusLine]);
   const board = useMemo<BoardSource>(() => plaza ? { kind: "plaza", model: wall } : sceneBoard && { kind: "scene", model: sceneBoard }, [plaza, wall, sceneBoard]);
   const openScene = (from: PanelOrigin) => {
     if (scene === "theater") { if (replayFrame) evidence({ title: "극장 기록", summary: replayFrame.overall, recordedAt: replayFrame.generated_at }); return; }
@@ -208,7 +208,7 @@ function WorldShellView({ timezone, selectedGroupIds, menu, chatEnabled = false 
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className="sr-only">{info.title}</h1></div>
-      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={`${themeId}|${dark}`} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
+      <HD2DWorld frame={shown} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={changeColorMode} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>

@@ -1,5 +1,6 @@
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { MOOD_COPY, percent, type WorldFrame } from "@/lib/world";
+import { PIERROT_DARK } from "./world-pierrot";
 
 export async function saveWorldPostcard(frame: WorldFrame, date: string, color: string): Promise<void> {
   await document.fonts.ready;
@@ -19,7 +20,7 @@ export async function saveWorldPostcard(frame: WorldFrame, date: string, color: 
     const sceneImage = new Image(); sceneImage.src = "/world/static-theater.png";
     await sceneImage.decode(); ctx.drawImage(sceneImage, 0, 0, 1200, 620);
   } finally { world?.dispose(); }
-  const art = stockPierrotArt(frame.overall, document.documentElement.dataset.themeEffectiveTone === "dark");
+  const art = stockPierrotArt(frame.overall, PIERROT_DARK);
   const portrait = new Image();
   portrait.src = art.src;
   await portrait.decode();

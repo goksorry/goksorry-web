@@ -8,7 +8,8 @@ import { ModeSwitch } from "@/components/mode-switch";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function SiteHeader() {
+/** `themes={false}` for the metaverse room's menu: the room has no theme, only the change-colour choice stays. */
+export function SiteHeader({ themes = true }: { themes?: boolean }) {
   return (
     <header className="header">
       <div className="header-main">
@@ -28,7 +29,7 @@ export function SiteHeader() {
         <ModeSwitch />
       </div>
       <div className="header-controls">
-        <ThemeToggle />
+        <ThemeToggle themes={themes} />
         <CleanFilterToggle />
       </div>
       <div className="header-profile">

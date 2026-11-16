@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
-import { getThemeFamilyIcon, getThemeOption } from "@/lib/theme";
+import { WORLD_THEME_ID, getThemeFamilyIcon, getThemeOption, isWorldPath } from "@/lib/theme";
 
 export function ThemeFavicon() {
   const { themeId } = useTheme();
+  // The room has no theme, so it keeps the site's own icon.
+  const shownThemeId = isWorldPath(usePathname()) ? WORLD_THEME_ID : themeId;
 
   useEffect(() => {
-    const option = getThemeOption(themeId);
+    const option = getThemeOption(shownThemeId);
     const icon = getThemeFamilyIcon(option.family);
     let link = document.querySelector<HTMLLinkElement>('link[data-theme-favicon="true"]');
 
@@ -27,7 +30,7 @@ export function ThemeFavicon() {
     } else {
       link.removeAttribute("sizes");
     }
-  }, [themeId]);
+  }, [shownThemeId]);
 
   return null;
 }

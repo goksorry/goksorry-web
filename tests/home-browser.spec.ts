@@ -9,7 +9,7 @@ async function staticWorld(page: import("@playwright/test").Page) { await page.e
 const panel = (page: import("@playwright/test").Page) => page.locator('[data-world-panel="detail"]');
 const index = (page: import("@playwright/test").Page) => page.locator("#world-index-wall");
 
-test("original five-stage meme follows index and theme without replacement art", async ({ page }, info) => {
+test("original five-stage meme follows the index without replacement art, always in its dark variant", async ({ page }, info) => {
   const frame = await prepareWorld(page);
   await staticWorld(page);
   const bands = [[1, "extreme-bullish"], [3, "bullish"], [5, "neutral"], [6, "bearish"], [9, "extreme-bearish"]] as const;
@@ -17,10 +17,11 @@ test("original five-stage meme follows index and theme without replacement art",
     await page.route("**/api/internal/world", route => route.fulfill({ json: { ...frame, overall: { ...frame.overall, index } } }));
     await page.goto("/");
     const portrait = page.locator(".world-pierrot img");
-    await expect(portrait).toHaveAttribute("src", `/images/overview-regimes/overview-regime-${band}-light.webp`);
+    await expect(portrait).toHaveAttribute("src", `/images/overview-regimes/overview-regime-${band}-dark.webp`);
     await expect.poll(() => portrait.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(300);
   }
-  await page.goto("/?theme=dark");
+  // The room has no theme: a light one in the URL changes nothing.
+  await page.goto("/?theme=excel-light");
   await expect(page.locator(".world-pierrot img")).toHaveAttribute("src", /extreme-bearish-dark.webp$/);
   await page.screenshot({ path: info.outputPath("original-pierrot-desktop.png"), fullPage: true });
 });
@@ -209,9 +210,9 @@ test("theater Pierrot uses the replay index rather than current live index", asy
     } }))
   } }));
   await page.goto("/?scene=theater");
-  await expect(page.locator(".world-pierrot img")).toHaveAttribute("src", /extreme-bullish-light.webp$/);
+  await expect(page.locator(".world-pierrot img")).toHaveAttribute("src", /extreme-bullish-dark.webp$/);
   await page.getByLabel("극장 시간 탐색", { exact: true }).fill("30");
-  await expect(page.locator(".world-pierrot img")).toHaveAttribute("src", /extreme-bearish-light.webp$/);
+  await expect(page.locator(".world-pierrot img")).toHaveAttribute("src", /extreme-bearish-dark.webp$/);
 });
 
 

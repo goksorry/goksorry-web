@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   readClientCookieValue,
@@ -19,10 +19,10 @@ import {
 import {
   DEFAULT_THEME_ID,
   THEME_COOKIE_DEFINITION,
-  THEME_PARAM_NAME,
   THEME_STORAGE_DEFINITION,
   applyThemeMode,
   getThemeOption,
+  isWorldPath,
   normalizeThemeId,
   readThemeParamFromLocation,
   replaceCurrentUrlThemeParam,
@@ -34,6 +34,8 @@ type ThemeContextValue = {
   themeId: ThemeId;
   changeColorMode: ChangeColorMode;
   showThemePrompt: boolean;
+  /** A theme came from the URL or a stored choice, so classic pages carry it as ?theme=. */
+  themeInUrl: boolean;
   selectTheme: (themeId: ThemeId) => void;
   selectChangeColorMode: (mode: ChangeColorMode) => void;
   dismissThemePrompt: () => void;
@@ -108,16 +110,29 @@ export function ThemeProvider({
   initialChangeColorMode: ChangeColorMode;
 }) {
   const { showFirstVisitPrompt, isApplying } = useCleanFilter();
+  // The metaverse room has no theme (see WORLD_THEME_ID): no theme prompt there, and its root switches with the route.
+  const pathname = usePathname(), world = isWorldPath(pathname);
   const [themeId, setThemeId] = useState<ThemeId>(initialThemeId);
   const [changeColorMode, setChangeColorMode] = useState<ChangeColorMode>(initialChangeColorMode);
   const [promptPending, setPromptPending] = useState(false);
   const [showThemePrompt, setShowThemePrompt] = useState(false);
   const [urlSyncEnabled, setUrlSyncEnabled] = useState(false);
+  // The room drops ?theme= from its URL, so the theme it arrived with is held here: for the classic pages, for a later
+  // popstate back into the room and for the effect's own re-run (which would otherwise fall back to the stored theme).
+  const roomTheme = useRef<ThemeId | null>(null);
+
+  // Entering or leaving the room swaps the root between the fixed world look and the chosen theme. Declared before the
+  // location sync so that, on mount, the sync's own choice is applied last.
+  useEffect(() => {
+    applyThemeMode(themeId, pathname);
+  }, [world]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const syncThemeFromLocation = () => {
-      const hasThemeParam = new URLSearchParams(window.location.search).has(THEME_PARAM_NAME);
-      const paramTheme = readThemeParamFromLocation();
+      const inRoom = isWorldPath(window.location.pathname), urlTheme = readThemeParamFromLocation();
+      if (inRoom && urlTheme) roomTheme.current = urlTheme;
+      const paramTheme = urlTheme ?? (inRoom ? roomTheme.current : null);
+      const hasThemeParam = paramTheme !== null;
       const stored = readStoredThemeId();
       const nextTheme = paramTheme ?? stored.themeId ?? initialThemeId;
       const shouldSyncUrl = hasThemeParam || stored.hasStoredPreference;
@@ -169,10 +184,11 @@ export function ThemeProvider({
       return;
     }
 
-    setShowThemePrompt(!showFirstVisitPrompt && !isApplying);
-  }, [isApplying, promptPending, showFirstVisitPrompt]);
+    setShowThemePrompt(!showFirstVisitPrompt && !isApplying && !world);
+  }, [isApplying, promptPending, showFirstVisitPrompt, world]);
 
   const selectTheme = (nextThemeId: ThemeId) => {
+    roomTheme.current = null;
     setThemeId(nextThemeId);
     applyThemeMode(nextThemeId);
     persistThemePreference(nextThemeId);
@@ -198,6 +214,7 @@ export function ThemeProvider({
         themeId,
         changeColorMode,
         showThemePrompt,
+        themeInUrl: urlSyncEnabled,
         selectTheme,
         selectChangeColorMode,
         dismissThemePrompt

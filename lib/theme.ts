@@ -49,6 +49,11 @@ export const THEME_PARAM_NAME = "theme";
 export const THEME_REQUEST_HEADER = "x-goksorry-theme-id";
 export const DEFAULT_THEME_ID: ThemeId = "light";
 export const DEFAULT_FAVICON_HREF = "/favicon.ico";
+// The metaverse room ("/") has no theme: its root always carries this fixed night look and its URL never carries ?theme=,
+// while the chosen theme stays in provider state and storage for the classic pages.
+export const WORLD_THEME_ID: ThemeId = "dark";
+export const WORLD_PATHNAME = "/";
+export const isWorldPath = (pathname: string | null | undefined): boolean => pathname === WORLD_PATHNAME;
 
 const buildThemeOption = (
   id: ThemeId,
@@ -259,7 +264,10 @@ export const replaceCurrentUrlThemeParam = (themeId: ThemeId): void => {
   }
 
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const next = buildThemedPath(window.location.href, themeId);
+  const url = new URL(window.location.href);
+  if (isWorldPath(url.pathname)) url.searchParams.delete(THEME_PARAM_NAME);
+  else applyThemeParamToUrl(url, themeId);
+  const next = `${url.pathname}${url.search}${url.hash}`;
   if (next === current) {
     return;
   }
@@ -267,8 +275,8 @@ export const replaceCurrentUrlThemeParam = (themeId: ThemeId): void => {
   window.history.replaceState(window.history.state, "", next);
 };
 
-export const applyThemeMode = (mode: ThemeMode): void => {
-  applyThemeAttributes(document.documentElement, mode);
+export const applyThemeMode = (mode: ThemeMode, pathname: string = window.location.pathname): void => {
+  applyThemeAttributes(document.documentElement, isWorldPath(pathname) ? WORLD_THEME_ID : mode);
 };
 
 export const getThemeInitScript = (): string => {
@@ -329,7 +337,8 @@ export const getThemeInitScript = (): string => {
         }
       })();
       const storedTheme = storedRaw ? normalize(storedRaw) || defaultTheme : null;
-      const value = paramTheme || cookieTheme || storedTheme || defaultTheme;
+      const chosen = paramTheme || cookieTheme || storedTheme || defaultTheme;
+      const value = window.location.pathname === ${JSON.stringify(WORLD_PATHNAME)} ? ${JSON.stringify(WORLD_THEME_ID)} : chosen;
       const cookieChangeColorMode = readCookie(changeColorCookieKey);
       const storedChangeColorModeRaw = (() => {
         try {

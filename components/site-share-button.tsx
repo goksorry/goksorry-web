@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/theme-provider";
-import { buildThemedUrl } from "@/lib/theme";
+import { buildThemedUrl, isWorldPath } from "@/lib/theme";
 
 const SITE_SHARE_TITLE = "곡소리닷컴";
 const SITE_SHARE_TEXT = "외부 종목 커뮤니티 감성 피드와 게시판";
@@ -97,7 +97,9 @@ export function SiteShareButton() {
     }
 
     const currentUrl = new URL(window.location.href);
-    const shareUrl = buildThemedUrl(`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`, themeId, SITE_SHARE_URL);
+    const path = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+    // The room has no theme, so its share link carries none.
+    const shareUrl = isWorldPath(currentUrl.pathname) ? new URL(path, SITE_SHARE_URL).toString() : buildThemedUrl(path, themeId, SITE_SHARE_URL);
     const preferShareIntent =
       window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(max-width: 767px)").matches;
 

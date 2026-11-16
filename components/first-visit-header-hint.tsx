@@ -5,6 +5,7 @@ import { persistCleanFilterPreference } from "@/lib/clean-filter";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useTheme } from "@/components/theme-provider";
 import { usePathname } from "next/navigation";
+import { isWorldPath } from "@/lib/theme";
 
 type HintStyle = CSSProperties & {
   "--first-visit-hint-pointer-x"?: string;
@@ -23,7 +24,8 @@ export function FirstVisitHeaderHint({ inWorldMenu = false }: { inWorldMenu?: bo
   const { showThemePrompt, dismissThemePrompt } = useTheme();
   const hintRef = useRef<HTMLElement | null>(null);
   const [hintStyle, setHintStyle] = useState<HintStyle | undefined>(undefined);
-  const visible = (showFirstVisitPrompt || showThemePrompt) && (pathname !== "/" || inWorldMenu);
+  const world = isWorldPath(pathname);
+  const visible = (showFirstVisitPrompt || showThemePrompt) && (!world || inWorldMenu);
 
   useEffect(() => {
     if (!visible || inWorldMenu) {
@@ -84,13 +86,14 @@ export function FirstVisitHeaderHint({ inWorldMenu = false }: { inWorldMenu?: bo
   const dismiss = () => {
     persistCleanFilterPreference(cleanFilterEnabled);
     dismissFirstVisitPrompt();
-    dismissThemePrompt();
+    // The room offers no theme, so dismissing there must not record one (the classic pages still ask).
+    if (!world) dismissThemePrompt();
   };
 
   return (
     <aside ref={hintRef} className="first-visit-header-hint" role="note" aria-label="초기 설정 안내" style={hintStyle}>
       <span className="first-visit-header-hint-pointer" aria-hidden="true" />
-      <p>이쁜말필터와 테마는 여기서 바꿀 수 있어요.</p>
+      <p>{world ? "이쁜말필터는 여기서 바꿀 수 있어요." : "이쁜말필터와 테마는 여기서 바꿀 수 있어요."}</p>
       <button type="button" className="first-visit-header-hint-close" onClick={dismiss} aria-label="초기 설정 안내 닫기">
         확인
       </button>

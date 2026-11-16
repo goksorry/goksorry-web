@@ -60,7 +60,7 @@ export default async function Home({
   return (
     <Suspense fallback={<p className="world-loading">데이터 조회 중…</p>}>
       <WorldShell timezone={timezone} selectedGroupIds={selectedGroupIds} chatEnabled={getChatServerEnv().enabled}
-        menu={<><SiteHeader /><Suspense fallback={null}><SiteFooter /></Suspense></>} />
+        menu={<><SiteHeader themes={false} /><Suspense fallback={null}><SiteFooter /></Suspense></>} />
     </Suspense>
   );
 }
