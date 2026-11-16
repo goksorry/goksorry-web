@@ -10,7 +10,8 @@ import { paintWallPanel, type WallPaintStyle } from "./wall-painter";
 import { createWallShimmer } from "./wall-shimmer";
 import antAtlas from "./ant-atlas.json";
 
-export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean };
+/** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
+export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean };
 export type WallMetrics = { rects: Record<WallPanelId, WallRect>; drawn: Partial<Record<WallPanelId, string>>; /** Panels showing the loading sweep, read live. */ readonly shimmer: WallPanelId[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
   /** Zoomed section view only: whether the frame is following the visitor (see FOLLOW_KEEP), and how far it is panned off the section's centre for it (world units). */
   follow: boolean; pan: number };
@@ -445,6 +446,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     shimmer.set("pierrot", !pierrotSettled.has(pierrotSrc));
   }
   const project = (point: THREE.Vector3) => { const p = point.project(camera); return { x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }; };
+  /** Motion nobody asked for: crowd roaming and idling, camera eases, the loading sweep. */
+  const ambient = () => !state.paused && !state.reduced;
   function draw(time = performance.now()) {
     if (disposed) return;
     resize();
@@ -466,7 +469,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const aim = { cx: aimCx(), top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
     if (lens.cx !== aim.cx || lens.halfW !== fit.halfW || lens.top !== fit.top || lens.bottom !== fit.bottom) {
       // Section pan / overview zoom: ~300 ms ease, immediate when paused.
-      const k = state.paused ? 1 : 1 - Math.exp(-dt * 10);
+      const k = ambient() ? 1 - Math.exp(-dt * 10) : 1;
       for (const key of ["cx", "top", "bottom", "halfW"] as const) {
         lens[key] += (aim[key] - lens[key]) * k;
         if (Math.abs(aim[key] - lens[key]) < 1e-3) lens[key] = aim[key];
@@ -475,11 +478,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     }
     if (metrics.wall) metrics.wall.follow = follow && zoomed();
     paintWall();
-    shimmer.tick(time / 1000);
+    if (ambient()) shimmer.tick(time / 1000);
     const turn = yawTarget(), mode = zoomed() ? 1 : 0;
     if (yaw !== turn || orbit !== mode) {
-      yaw += (turn - yaw) * (state.paused ? 1 : 1 - Math.exp(-dt * 3));
-      orbit += (mode - orbit) * (state.paused ? 1 : 1 - Math.exp(-dt * 10));
+      yaw += (turn - yaw) * (ambient() ? 1 - Math.exp(-dt * 3) : 1);
+      orbit += (mode - orbit) * (ambient() ? 1 - Math.exp(-dt * 10) : 1);
       if (Math.abs(turn - yaw) < 1e-4) yaw = turn;
       if (Math.abs(mode - orbit) < 1e-3) orbit = mode;
       applyCamera();
@@ -499,7 +502,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const env = { obstacles, front: zoomed() ? Math.max(.8, front - 1.2) : front, visitor: position, restless: sum.mood === "mixed", hopeful,
         view: crowdView() };
       crowd.sync(sideList.length, env);
-      if (!state.paused) crowd.step(dt, env);
+      if (ambient()) crowd.step(dt, env);
     }
     let cueCount = 0, puffs = 0;
     const size = metrics.antSize = antSize();
@@ -515,11 +518,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
         let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
         if (state.scene === "battle") { x = side === "bullish" ? -6.4 + (i * 29 % 45) / 10 : side === "bearish" ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (side === "neutral") z = 5.8; }
         if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
-        const shift = state.paused ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
+        const shift = !ambient() ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
         let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;
         // Mixed sentiment: short steps, pauses, and turns in opposite directions.
         // Phase offsets keep the crowd from moving in unison. Counts and evidence stay unchanged.
-        if (!state.paused && sum.mood === "mixed" && side !== "neutral") {
+        if (ambient() && sum.mood === "mixed" && side !== "neutral") {
           const phase = (time / 900 + i * .73) % 4;
           const goingRight = phase < 2;
           const stepping = phase < 1 || (phase >= 2 && phase < 3);
@@ -562,7 +565,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       const scale = (visitor ? VISITOR_SCALE : (.9 + i % 3 * .06) * 1.45 / 235) * k * size;
       // Standing ants breathe; a sigh sinks and recovers over its span (t counts down from span).
       // Walkers rise as the feet pass and sink into each stride.
-      const bob = (a && a.state === "gaze" && !state.paused ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
+      const bob = (a && a.state === "gaze" && ambient() ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
       // Under a hopeful index the sigh state is drawn as the relieved pose (the bright "sigh" art): no sinking, no breath.
       const sighing = a && a.state === "sigh" && a.span > 0 && !frame.key.includes("-bright.sigh.") ? 1 - a.t / a.span : -1;
       const tall = rect[3] * scale / WALL_COS * (sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);

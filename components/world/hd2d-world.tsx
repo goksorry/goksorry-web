@@ -4,26 +4,33 @@ import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
+import { supportsWebGL2 } from "./webgl-support";
 import { WALL_PANEL_IDS, type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
 
 type Props = RenderState & {
-  reduced: boolean; emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
+  emote: string; children: ReactNode; wall: WallModel | null; view: WallView; styleKey: string;
   onScene: (scene: WorldScene) => void; onStep: () => void;
   /** The zoomed section view follows the visitor into another wall section. */
   onSection?: (section: WallSection) => void;
 };
 // Plaza entrances sit on the floor strip that every framed view keeps visible.
+/** `unsupported` (no WebGL2) is the only designed static view; `failed` is a runtime error that offers a retry. */
+type RenderMode = "loading" | "webgl" | "unsupported" | "failed";
+const NOTE: Record<RenderMode, string> = {
+  loading: "화면 불러오는 중…", webgl: "바닥 클릭 / 방향키로 이동",
+  unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면을 불러오지 못했습니다"
+};
 const ENTRANCES: { scene: WorldScene; x: number; z: number }[] = [{ scene: "ecosystem", x: -6.5, z: .2 }, { scene: "broadcast", x: -2.6, z: .2 }, { scene: "theater", x: 2.6, z: .2 }, { scene: "battle", x: 6.5, z: .2 }];
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
   latest.current = props;
   const [onScreen, setOnScreen] = useState(true);
-  const [mode, setMode] = useState("loading");
+  const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
   const [nearby, setNearby] = useState<WorldScene | null>(null);
   const nearbyRef = useRef<WorldScene | null>(null);
   useEffect(() => {
-    if (props.reduced) { setMode("reduced"); return; }
+    if (!supportsWebGL2()) { setMode("unsupported"); return; }
     let cancelled = false; setMode("loading");
     void import("./hd2d-renderer").then(({ createWorldRenderer }) => cancelled ? null : createWorldRenderer(canvas.current!, latest.current, {
       panels(rects) {
@@ -58,11 +65,11 @@ export default function HD2DWorld(props: Props) {
       // The canvas is still display:none here; the mode effect draws once it has a layout box.
     }).catch((error) => { if (!cancelled) { console.warn("HD2D renderer unavailable", error); setMode("failed"); } });
     return () => { cancelled = true; cancelAnimationFrame(animation.current); renderer.current?.dispose(); renderer.current = null; };
-  }, [props.reduced]);
+  }, [attempt]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...props, paused: props.paused || !onScreen });
-  }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, mode, onScreen]);
+  }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.setView(props.view);
@@ -104,8 +111,8 @@ export default function HD2DWorld(props: Props) {
   const summary = (props.scene === "battle" || props.scene === "ecosystem") ? props.frame.stocks.find((s) => s.symbol === props.stock) ?? props.frame.overall : props.frame.overall;
   const counts = crowdDistribution(summary, crowdCapacity(props.scene, props.mobile));
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
-  const fallback = mode !== "webgl";
-  return <div ref={host} className="hd2d-stage" data-renderer={mode} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral}>
+  const fallback = mode !== "webgl", designedStatic = mode === "unsupported" || mode === "failed";
+  return <div ref={host} className="hd2d-stage" data-renderer={mode} data-static={designedStatic || undefined} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral}>
     {fallback && <div className="world-static-scene" aria-hidden="true" style={{ backgroundImage: `url(/world/static-${props.scene === "broadcast" ? "plaza" : props.scene}.png)` }}>
       {sides.map((side, i) => <span key={i} className="world-static-ant" data-side={side} style={{ left: `${21 + i * 17 % 57}%`, top: `${56 + i * 13 % 27}%`, backgroundPosition: `${(props.scene === "plaza" && i % 5 ? 3 : i % 4) / 3 * 100}% ${side === "bearish" ? 75 : side === "bullish" ? 100 : 0}%` }} />)}
     </div>}
@@ -120,6 +127,7 @@ export default function HD2DWorld(props: Props) {
     {props.scene !== "plaza" && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}
     {nearby && <button className="world-nearby" onClick={() => props.onScene(nearby)}>{({ plaza: "광장", ecosystem: "개미 생태계", battle: "심리 전장", broadcast: "재난방송", theater: "개미극장" })[nearby]} 입구 · 들어가기 ↗</button>}
-    <p className="world-render-note">{mode === "loading" ? "화면 불러오는 중…" : mode === "reduced" ? "동작 줄이기 · 정적 장면" : mode === "failed" ? "정적 장면 · 정보 탐색 가능" : "바닥 클릭 / 방향키로 이동"}</p>
+    <p className="world-render-note" role={mode === "loading" ? "status" : undefined}>{NOTE[mode]}</p>
+    {mode === "failed" && <button className="world-render-retry" onClick={() => setAttempt((n) => n + 1)}>3D 화면 다시 시도</button>}
   </div>;
 }

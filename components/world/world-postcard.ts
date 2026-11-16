@@ -10,7 +10,7 @@ export async function saveWorldPostcard(frame: WorldFrame, date: string, color: 
   const ctx = canvas.getContext("2d"); if (!ctx) { throw new Error("이 브라우저는 PNG 저장을 지원하지 않습니다."); }
   ctx.fillStyle = "#10191e"; ctx.fillRect(0, 0, 1200, 800);
   try {
-    world = await createWorldRenderer(sceneCanvas, { frame, scene: "theater", stock: "", mobile: false, paused: true, color });
+    world = await createWorldRenderer(sceneCanvas, { frame, scene: "theater", stock: "", mobile: false, paused: true, reduced: true, color });
     world.draw(0);
     ctx.fillStyle = "#10191e"; ctx.fillRect(0, 0, 1200, 800);
     ctx.drawImage(sceneCanvas, 0, 0, 1200, 620);

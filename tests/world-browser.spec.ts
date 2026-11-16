@@ -8,6 +8,15 @@ import antAtlas from "../components/world/ant-atlas.json";
 const stage = (page: Page) => page.locator(".hd2d-stage");
 const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "월드 장면 선택" }).getByRole("button", { name, exact: true });
+/** Simulates a browser without WebGL2: the only case the world is designed to show its static scene. */
+async function withoutWebGL2(page: Page) {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      return type === "webgl2" ? null : (original as (...args: unknown[]) => unknown).call(this, type, ...rest);
+    } as typeof original;
+  });
+}
 async function webgl(page: Page) { await requireWebGL2(page); await expect(stage(page)).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 }); }
 
 test("wall carries live data without a modal; panels open details with keyboard and focus restore", async ({ page }) => {
@@ -169,8 +178,8 @@ for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test
   await prepareWorld(page); const rows = worldRows();
   const filtered = kind === "empty" ? [] : kind === "sparse" ? rows.slice(0, 1) : rows.map((r) => ({ ...r, label: kind === "fear" ? "bearish" as const : kind === "hope" ? "bullish" as const : "neutral" as const }));
   await page.route("**/api/internal/world", (route) => route.fulfill({ json: buildWorldFrame(filtered) }));
-  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/");
-  await expect(stage(page)).toHaveAttribute("data-renderer", "reduced");
+  // Reduced motion still renders the room in WebGL; only ambient motion stops.
+  await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);
   if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "20"); await expect(page.locator(".world-ratios")).toContainText("공포 100%"); }
   if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "20"); await expect(page.locator(".world-ratios")).toContainText("희망 100%"); }
   if (kind === "neutral") { await expect(stage(page)).toHaveAttribute("data-neutral", "20"); await expect(page.locator(".world-ratios")).toContainText("—"); }
@@ -180,9 +189,11 @@ for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test
 
 test("initial loading, 503 and stale refresh preserve last good values and time", async ({ page }) => {
   const frame = await prepareWorld(page); let release: () => void = () => {}; const pending = new Promise<void>((resolve) => { release = resolve; });
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await withoutWebGL2(page);
   await page.route("**/api/internal/world", async (route) => { await pending; await route.fulfill({ json: frame }); });
   await page.goto("/"); await expect(page.locator(".world-live-badge")).toContainText("최초");
+  await expect(stage(page)).toHaveAttribute("data-renderer", "unsupported");
+  await expect(page.locator(".world-render-note")).toContainText("WebGL2");
   // Static fallback: the index and portrait wait behind skeletons, never a guessed value.
   await expect(page.locator(".world-index-screen .world-skeleton")).toBeVisible();
   await expect(page.locator('[data-wall-panel="pierrot"] img')).toHaveCount(0);
@@ -201,6 +212,14 @@ test("initial loading, 503 and stale refresh preserve last good values and time"
   await page.getByRole("button", { name: "다시 시도", exact: true }).click(); await expect(page.locator(".world-live-badge")).toContainText("갱신 지연");
 });
 
+test("reduced motion keeps the WebGL room but stops the crowd's ambient roaming", async ({ page }) => {
+  await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" }); await page.goto("/"); await webgl(page);
+  const crowd = () => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().map((a) => `${a.x.toFixed(3)},${a.z.toFixed(3)}`).join("|"));
+  await expect.poll(async () => (await crowd()).length).toBeGreaterThan(0);
+  const before = await crowd(); await page.waitForTimeout(1500);
+  expect(await crowd()).toBe(before);
+});
+
 test("WebGL wall sweeps a shimmer over panels until their first payload arrives", async ({ page }) => {
   await prepareWorld(page); let release: () => void = () => {}; const pending = new Promise<void>((resolve) => { release = resolve; });
   // Hold the feed poll and the world frame: either one supplies the index and its portrait.
@@ -217,6 +236,10 @@ test("WebGL and asset failures use same static art with working screens", async 
   await prepareWorld(page); await page.route("**/world/ant*.png", (route) => route.abort()); await page.goto("/");
   await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
+  // A failure is an error, not a mode: it says so and offers a retry.
+  await expect(page.locator(".world-render-note")).toHaveText("3D 화면을 불러오지 못했습니다");
+  await page.getByRole("button", { name: "3D 화면 다시 시도" }).click();
+  await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
   await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();
 });
 

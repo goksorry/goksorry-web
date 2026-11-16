@@ -27,7 +27,7 @@ const waiting = (state: "loading" | "ready" | "failed", empty: string) => state 
  * DOM twin of the WebGL wall. With WebGL the text lives in the scene textures:
  * each section is pinned to its panel's projected rectangle, its copy is only
  * for assistive tech, and its button is the transparent hit target. Without
- * WebGL (reduced motion, failure, loading) the same sections are visible cards.
+ * WebGL2 (unsupported browser) or after a renderer failure the same sections are visible cards.
  */
 export function WorldWallDom({ model, onOpen, onFocusPanel }: { model: WallModel; onOpen: (panel: WallPanelId, origin: DOMRect) => void; onFocusPanel?: (panel: WallPanelId) => void }) {
   const section = (id: WallPanelId, label: string, action: string, body: React.ReactNode, extra: { id?: string; className?: string } = {}) =>
