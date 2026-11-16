@@ -52,9 +52,10 @@ export type BoardPen = {
   skeleton(): void;
   /**
    * Draws a 3:2 picture with its caption in a left column of the content area (a placeholder until it loads)
-   * and moves `left` past it. The picture is scaled whole, never cropped.
+   * and moves `left` past it. The picture is scaled whole, never cropped. `missing` draws that text in an empty frame
+   * instead of a picture (there is nothing to picture).
    */
-  portrait(image: HTMLImageElement | undefined, caption: string): void;
+  portrait(image: HTMLImageElement | undefined, caption: string, missing?: string): void;
 };
 
 /**
@@ -84,11 +85,14 @@ export function openBoard(canvas: HTMLCanvasElement, box: BoardBox, style: Board
     alignRight: aligned("right"), centre: aligned("center"),
     notice(text) { font(body); ctx.fillStyle = BOARD.dim; ctx.fillText(clip(text, pen.right - pen.left), pen.left, top + body * 1.4); },
     skeleton() { paintWallSkeleton(ctx, { x: pen.left, y: top, width: pen.right - pen.left, height: bottom - top }, body); },
-    portrait(image, caption) {
+    portrait(image, caption, missing) {
       const captionH = small * 1.6, artH = Math.min(bottom - top - captionH, (w - pad * 2) * .3 / 1.5), artW = artH * 1.5;
       // Narrow boards (portrait phones) or tiny art: leave the whole width to the content.
       if (artH < body * 2 || w - pad * 2 < body * 36) return;
-      if (image) ctx.drawImage(image, pen.left, top, artW, artH);
+      if (missing) {
+        ctx.strokeStyle = BOARD.line; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.strokeRect(pen.left + .5, top + .5, artW - 1, artH - 1); ctx.setLineDash([]);
+        font(Math.round(Math.min(body * 1.2, artH / 4)), 700); ctx.fillStyle = BOARD.dim; pen.centre(clip(missing, artW - pad), pen.left + artW / 2, top + artH / 2 + body * .4);
+      } else if (image) ctx.drawImage(image, pen.left, top, artW, artH);
       else { ctx.fillStyle = WALL_SKELETON_COLOR; ctx.fillRect(pen.left, top, artW, artH); }
       font(small); ctx.fillStyle = BOARD.gold; pen.centre(clip(caption, artW), pen.left + artW / 2, top + artH + small * 1.25);
       pen.left += artW + pad;

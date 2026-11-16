@@ -16,7 +16,7 @@ export function paintSceneBoard(model: SceneBoardModel, canvas: HTMLCanvasElemen
   const hint = loading ? "불러오는 중…" : model.state === "failed" ? "조회 실패 · 눌러서 열기" : model.scene === "theater" ? model.date : model.status;
   const pen = openBoard(canvas, box, style, { title: model.title, hint });
   if (!pen) return;
-  pen.portrait(loading ? undefined : images.get(model.portrait.src), loading ? "" : model.portrait.caption);
+  pen.portrait(loading ? undefined : images.get(model.portrait.src), loading ? "" : model.portrait.caption, loading ? undefined : model.portrait.missing);
   if (loading) { pen.skeleton(); return; }
   const { ctx, body, small, top, bottom, left, right } = pen, width = right - left, mid = left + width / 2;
 
@@ -71,7 +71,10 @@ function ranking(pen: BoardPen, items: Extract<SceneBoardModel, { scene: "battle
   });
 }
 
-/** The day's 곡소리 지수 trace (0..10, gaps left open) with grid lines and the playback cursor. */
+/**
+ * The day's 곡소리 지수 trace (0..10) with grid lines and the playback cursor: recorded runs solid, gap corrections thinner,
+ * dashed and lighter, slots with nothing to show left open.
+ */
 function trace(pen: BoardPen, t: NonNullable<Extract<SceneBoardModel, { scene: "theater" }>["timeline"]>, area: { x: number; y: number; w: number; h: number }) {
   const { ctx, small } = pen;
   if (area.h < small * 2) return;
@@ -83,11 +86,16 @@ function trace(pen: BoardPen, t: NonNullable<Extract<SceneBoardModel, { scene: "
     ctx.fillStyle = BOARD.line; ctx.fillRect(x0, Math.round(gy), w, 1);
     ctx.fillStyle = BOARD.dim; ctx.fillText(String(v), area.x, gy + small * .35);
   }
-  ctx.strokeStyle = ctx.fillStyle = TRACE; ctx.lineWidth = Math.max(2, pen.body * .18); ctx.lineCap = ctx.lineJoin = "round";
-  for (const run of t.runs) {
-    if (run.length === 1) { const [px, py] = at(run[0].x, run[0].index); ctx.beginPath(); ctx.arc(px, py, ctx.lineWidth, 0, Math.PI * 2); ctx.fill(); continue; }
+  const width = Math.max(2, pen.body * .18);
+  ctx.strokeStyle = ctx.fillStyle = TRACE; ctx.lineCap = ctx.lineJoin = "round";
+  for (const line of t.lines) {
+    const run = line.points;
+    if (run.length === 1) { const [px, py] = at(run[0].x, run[0].index); ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(px, py, width, 0, Math.PI * 2); ctx.fill(); continue; }
+    ctx.globalAlpha = line.corrected ? .6 : 1; ctx.lineWidth = line.corrected ? Math.max(1.5, width * .7) : width;
+    ctx.setLineDash(line.corrected ? [width * 2, width * 2] : []);
     ctx.beginPath(); run.forEach((p, i) => { const [px, py] = at(p.x, p.index); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.stroke();
   }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
   const [cx] = at(Math.max(0, Math.min(1, t.cursor)), 0);
   ctx.fillStyle = BOARD.ink; ctx.fillRect(Math.round(cx) - 1, area.y, 2, area.h);
 }

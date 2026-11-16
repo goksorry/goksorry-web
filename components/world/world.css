@@ -111,6 +111,7 @@ body:has(.world-page .world-modal-backdrop) .cookie-consent-banner { visibility:
 /* Original five-stage Pierrot remains the lead character in every scene. */
 .world-pierrot img { display:block; width:100%; height:auto; object-fit:contain; }
 .world-pierrot figcaption { padding:7px 10px; color:#e5d6b7; text-align:center; font-size:14px; }
+.world-pierrot-missing { display:grid; place-items:center; aspect-ratio:3/2; margin:0; color:#a9b7bd; font-weight:700; border-bottom:1px dashed #34464d; }
 
 /* Only the visible feed tab widens the dialog; the hidden one must not stretch the index or room tabs. */
 @media(min-width:960px) { .world-panel:has(#world-tabpanel-feed:not([hidden]) .feed-lanes-panel) { width:min(1160px,calc(100vw - 60px)); } }

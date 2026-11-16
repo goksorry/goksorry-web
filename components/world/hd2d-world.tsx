@@ -98,7 +98,7 @@ export default function HD2DWorld(props: Props) {
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...props, paused: props.paused || !onScreen });
-  }, [props.frame, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
+  }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
   useLayoutEffect(pinEntrance, [nearby]);
   useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => setAttempt((n) => n + 1) } } : null);
   useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);
@@ -173,7 +173,7 @@ export default function HD2DWorld(props: Props) {
     {!fallback && props.scene === "plaza" && <WorldPeerBubbles ref={peerBubbles} bubbles={presence.bubbles} />}
     {!fallback && props.scene === "plaza" && <WorldRoomBadge room={presence.room} peers={presence.peers} error={presence.error} onSwitch={presence.switchRoom} />}
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
-    {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
+    {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} missing={props.scene === "theater" && !!props.absent} />}
     {props.children}
     {/* With WebGL the prompt is painted over the entrance; this button is its pinned hit target (visible without WebGL). */}
     {nearby && <button ref={nearButton} className="world-nearby" onClick={() => props.onScene(nearby)}>{PLAZA_ENTRANCES.find((e) => e.scene === nearby)?.name} 입구 · 들어가기 ↗</button>}

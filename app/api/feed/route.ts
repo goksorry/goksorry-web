@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getScopedFeed } from "@/lib/feed-snapshot";
 import { emptyFeedPage, readFeedSelection } from "@/lib/feed-scope";
 import { INDEX_CACHE_CONTROL } from "@/lib/index-cache-policy";
+import { WORLD_RETENTION_MS } from "@/lib/world";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
   const limit = clamp(parseIntegerParam(url.searchParams.get("limit"), DEFAULT_LIMIT), 1, MAX_LIMIT);
   const offset = Math.max(0, parseIntegerParam(url.searchParams.get("offset"), 0));
   const anchor = Date.parse(url.searchParams.get("asOf") ?? "");
-  const asOf = Number.isFinite(anchor) && anchor <= Date.now() && anchor >= Date.now() - 24 * 60 * 60_000 ? new Date(anchor).toISOString() : "";
+  // A past anchor reaches back as far as the theater keeps records: its evidence is the feed as of a recorded time.
+  const asOf = Number.isFinite(anchor) && anchor <= Date.now() && anchor >= Date.now() - WORLD_RETENTION_MS ? new Date(anchor).toISOString() : "";
 
   try {
     const payload = await getScopedFeed(readFeedSelection(url.searchParams), { hours, limit, offset, asOf });

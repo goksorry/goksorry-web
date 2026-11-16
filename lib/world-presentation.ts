@@ -1,5 +1,5 @@
 import type { FeedRow } from "./feed-data";
-import type { WorldCommunity, WorldFrame, WorldScene, WorldSide, WorldSlot, WorldSummary } from "./world";
+import type { WorldCommunity, WorldFrame, WorldScene, WorldSide, WorldSummary } from "./world";
 
 export const WORLD_COLORS = ["#d9bc79", "#91b4ae", "#efa5ac", "#aaa0c4"];
 // NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd.
@@ -48,16 +48,6 @@ export function worldHeadline(summary: WorldSummary): string {
 }
 
 export const timelineY = (index: number) => 60 - Math.max(0, Math.min(10, index)) / 10 * 52;
-export function timelineSegments(slots: WorldSlot[]): string[] {
-  const segments: string[] = [];
-  let points: string[] = [];
-  for (let i = 0; i < slots.length; i++) {
-    if (slots[i].frame) points.push(`${i / Math.max(1, slots.length - 1) * 600},${timelineY(slots[i].frame!.overall.index)}`);
-    else if (points.length) { segments.push(points.join(" ")); points = []; }
-  }
-  if (points.length) segments.push(points.join(" "));
-  return segments;
-}
 
 /**
  * A community's collection and sample state as one line (the plaza's community board and the index tab's list): a collection

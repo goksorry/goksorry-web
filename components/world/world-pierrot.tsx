@@ -7,7 +7,9 @@ import type { WorldSummary } from "@/lib/world";
 // Reuse the original files, including their full composition. The room has no theme and is a night scene,
 // so it always takes the dark variants.
 export const PIERROT_DARK = true;
-export function WorldPierrot({ summary, recorded = false }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean }) {
+// `missing`: the theater where no record can be shown has no mood to picture, so the frame says so instead.
+export function WorldPierrot({ summary, recorded = false, missing = false }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean; missing?: boolean }) {
+  if (missing) return <figure className="world-pierrot" data-band="missing"><p className="world-pierrot-missing">기록 없음</p><figcaption>기록 시점</figcaption></figure>;
   const { band, label, src } = stockPierrotArt(summary, PIERROT_DARK);
   return <figure className="world-pierrot" data-band={band}>
     {/* Original 300×200 artwork: no crop, redraw, or substitute character. */}

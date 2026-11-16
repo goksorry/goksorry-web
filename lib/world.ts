@@ -56,6 +56,13 @@ export type WorldFrame = {
 export type WorldSlot = { bucket_at: string; frame: WorldFrame | null };
 export type WorldReplay = { date: string; timezone: "Asia/Seoul"; slots: WorldSlot[]; error?: string };
 
+/** The mood a sample reads as: too small to call, only neutral posts, or the side holding 65% of the directional ones. */
+export function moodOf(total: number, directional: number, hope: number | null, fear: number | null): WorldMood {
+  if (total < 3) return "watching";
+  if (!directional) return "neutral";
+  return (hope ?? 0) >= 0.65 ? "hope" : (fear ?? 0) >= 0.65 ? "fear" : "mixed";
+}
+
 export function worldSummary(rows: FeedRow[]): WorldSummary {
   const bullish = rows.filter((row) => row.label === "bullish").length;
   const bearish = rows.filter((row) => row.label === "bearish").length;
@@ -63,8 +70,7 @@ export function worldSummary(rows: FeedRow[]): WorldSummary {
   const directional = bullish + bearish;
   const hope = directional ? bullish / directional : null;
   const fear = directional ? bearish / directional : null;
-  const mood: WorldMood = rows.length < 3 ? "watching" : !directional ? "neutral"
-    : hope! >= 0.65 ? "hope" : fear! >= 0.65 ? "fear" : "mixed";
+  const mood = moodOf(rows.length, directional, hope, fear);
   return {
     total: rows.length, bullish, bearish, neutral, hope_ratio: hope, fear_ratio: fear, mood,
     index: buildFeedScoreOverview(rows).goksorry_index,

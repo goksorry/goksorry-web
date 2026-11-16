@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { MOVE_MARKER, markerLook } from "../lib/world-move-marker";
-import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, timelineSegments, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
+import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { WORLD_SCENES, buildWorldFrame, buildWorldReplay, worldSceneOf, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
 import { WALL_PANELS } from "../lib/world-wall";
@@ -41,13 +41,8 @@ test("latest evidence sorted across all three sides; no repeated or fabricated e
   expect(new Set(recent.map((r) => r.post_key)).size).toBe(3);
   expect(recent.every((row, i) => i === 0 || recent[i - 1].analyzed_at >= row.analyzed_at)).toBeTruthy();
 });
-test("index 0, 5, 10 spans full graph and missing slots split segments", () => {
+test("index 0, 5, 10 spans the full graph", () => {
   expect([0, 5, 10].map(timelineY)).toEqual([60, 34, 8]);
-  const frame = buildWorldFrame(worldRows());
-  const replay = buildWorldReplay("2026-11-15", []);
-  [0, 1, 3].forEach((slot, i) => { replay.slots[slot].frame = { ...frame, overall: { ...frame.overall, index: i * 5 } }; });
-  const lines = timelineSegments(replay.slots);
-  expect(lines).toHaveLength(2); expect(lines[0]).toContain(",60 "); expect(lines[0]).toContain(",34"); expect(lines[1]).toContain(",8");
 });
 test("headlines distinguish empty, neutral-only and sparse data from calm", () => {
   const rows = worldRows().slice(0, 4);

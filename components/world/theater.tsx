@@ -1,17 +1,20 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { buildWorldReplay, worldDate, type WorldFrame, type WorldReplay } from "@/lib/world";
-import { timelineSegments } from "@/lib/world-presentation";
-import { theaterSlotIndex, theaterTimeline, type TheaterTimeline } from "@/lib/world-theater";
+import { timelineY } from "@/lib/world-presentation";
+import { correctReplay, theaterSlotIndex, theaterTimeline, type TheaterTimeline, type TracePoint } from "@/lib/world-theater";
 import { saveWorldPostcard } from "./world-postcard";
 import { useWorldSnack } from "./world-snackbar";
 
 /**
- * Replay controls of the theater. Owns loading and playback; reports the shown frame (`onFrame`) and what the wall
- * board paints about the replay (`onTimeline`). The chart and record lines here are the HTML copy of that board.
+ * Replay controls of the theater. Owns loading, gap correction and playback; reports the shown frame (`onFrame`: null
+ * where no record can be shown, `corrected` for a slot filled between two records) and what the wall board paints about
+ * the replay (`onTimeline`). The chart and record lines here are the HTML copy of that board.
  */
+const svgPoint = (p: TracePoint) => `${p.x * 600},${timelineY(p.index)}`;
+
 export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, reduced, color }: {
-  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
+  date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null, corrected: boolean) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
   paused: boolean; reduced: boolean; color: string;
 }) {
   const [replay, setReplay] = useState<WorldReplay>(() => buildWorldReplay(date, []));
@@ -54,14 +57,14 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
     return () => clearInterval(timer);
   }, [playing, paused, reduced]);
   useEffect(() => { if (position >= 30) setPlaying(false); }, [position]);
-  const slot = replay.slots[theaterSlotIndex(replay, position)];
-  useEffect(() => { onFrame(slot?.frame ?? null); }, [slot, onFrame]);
-  const timeline = useMemo(() => theaterTimeline(replay, position, loading), [replay, position, loading]);
+  const corrected = useMemo(() => correctReplay(replay), [replay]);
+  const slot = corrected.slots[theaterSlotIndex(corrected, position)];
+  useEffect(() => { onFrame(slot?.frame ?? null, !!slot?.corrected); }, [slot, onFrame]);
+  const timeline = useMemo(() => theaterTimeline(corrected, position, loading), [corrected, position, loading]);
   useEffect(() => { onTimeline(timeline); }, [timeline, onTimeline]);
   useEffect(() => () => onTimeline(null), [onTimeline]);
   const recorded = replay.slots.filter((item) => item.frame);
   const lastFrame = recorded[recorded.length - 1]?.frame;
-  const segments = useMemo(() => timelineSegments(replay.slots), [replay]);
   useWorldSnack("theater-replay", error ? { text: error, tone: "error", action: { label: "다시 시도", run: () => setRetry((v) => v + 1) } } : null);
   const share = async () => {
     const url = new URL(window.location.href); url.searchParams.set("scene", "theater"); url.searchParams.set("date", date);
@@ -74,16 +77,18 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
   };
   return <section className="world-theater-controls" aria-label="개미극장 재생 제어">
     <div className="world-theater-top"><label>기록 날짜 <input type="date" min={earliest} max={today} value={date} onChange={(e) => { if (e.target.value >= earliest && e.target.value <= today) onDate(e.target.value); }} /></label><span className="world-theater-info">{timeline.recorded}</span></div>
-    <svg viewBox="0 0 600 66" className="world-timeline world-theater-info" role="img" aria-label="커뮤니티 심리 추이. 빈 구간은 기록 누락. 높을수록 공포.">
+    <svg viewBox="0 0 600 66" className="world-timeline world-theater-info" role="img" aria-label="커뮤니티 심리 추이. 점선은 앞뒤 기록을 이은 보정 구간, 빈 곳은 기록 없음. 높을수록 공포.">
       <path d="M0 8H600M0 34H600M0 60H600" stroke="currentColor" opacity=".16" /><text x="1" y="9">10</text><text x="1" y="35">5</text><text x="1" y="61">0</text>
-      {segments.map((line, i) => line.includes(" ") ? <polyline key={i} points={line} fill="none" stroke="#ae747f" strokeWidth="3" strokeLinecap="round" /> : <circle key={i} cx={Number(line.split(",")[0])} cy={Number(line.split(",")[1])} r="2.5" fill="#ae747f" />)}
+      {timeline.lines.map((line, i) => line.points.length > 1
+        ? <polyline key={i} points={line.points.map(svgPoint).join(" ")} fill="none" stroke="#ae747f" strokeWidth={line.corrected ? 2 : 3} strokeLinecap="round" strokeDasharray={line.corrected ? "5 5" : undefined} opacity={line.corrected ? .6 : 1} data-corrected={line.corrected || undefined} />
+        : <circle key={i} cx={line.points[0].x * 600} cy={timelineY(line.points[0].index)} r="2.5" fill="#ae747f" />)}
       <path d={`M${position / 30 * 600} 0v66`} stroke="currentColor" strokeWidth="2" />
     </svg>
     <label className="world-sr-only" htmlFor="world-seek">극장 시간 탐색</label><input id="world-seek" type="range" min="0" max="30" step="0.1" value={position} onChange={(e) => { setPosition(Number(e.target.value)); setPlaying(false); }} aria-valuetext={`${position.toFixed(1)}초 / 30초`} />
     <div className="world-theater-actions"><button disabled={loading || !recorded.length || reduced} onClick={() => { if (position >= 30) setPosition(0); setPlaying((v) => !v); }}>{playing ? "일시정지" : "재생"}</button>
       <span className="world-theater-info">{timeline.clock}</span>
       <span className="world-record-state world-theater-info">{timeline.state}</span></div>
-    <p className="world-note world-theater-info">{reduced ? "동작 줄이기: 시간 막대로 정적 장면을 탐색하세요. " : ""}심리 추이입니다. 정상 수집 뒤 10분 버킷으로 기록합니다. 기록이 없으면 수집·기록 저장 상태를 확인해야 합니다. 빈 구간은 보간하지 않습니다.</p>
+    <p className="world-note world-theater-info">{reduced ? "동작 줄이기: 시간 막대로 정적 장면을 탐색하세요. " : ""}심리 추이입니다. 정상 수집 뒤 10분마다 지수만 기록합니다(글은 저장하지 않음). 기록 사이 빈 구간은 앞뒤 기록을 직선으로 이어 보정하고 점선으로 표시합니다. 첫 기록 전·마지막 기록 뒤는 기록 없음입니다.</p>
     {position >= 30 && lastFrame && <div className="world-postcard-actions"><strong>오늘의 곡소리 한 컷 · 마지막 기록 기준</strong><button onClick={() => void saveWorldPostcard(lastFrame, date, color).then(() => setMessage("PNG 저장 완료")).catch((e) => setMessage(String(e.message)))}>PNG 저장</button><button onClick={() => void share()}>링크 공유</button></div>}
     {shareLink && <input aria-label="극장 공유 링크" readOnly value={shareLink} onFocus={(e) => e.target.select()} />}
     <span role="status">{message}</span>

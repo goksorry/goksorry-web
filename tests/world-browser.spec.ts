@@ -223,16 +223,65 @@ test("replay gaps, date changes, 0-10 axis, share and rendered PNG", async ({ pa
   const yesterday = worldDate(new Date(Date.now() - 86_400_000)); await page.getByLabel("기록 날짜").fill(yesterday);
   await expect(page).toHaveURL(new RegExp(`date=${yesterday}`));
   await expect(page.getByRole("button", { name: "재생", exact: true })).toBeEnabled();
-  await page.getByLabel("극장 시간 탐색", { exact: true }).fill("0.3"); await expect(page.getByText("이 구간은 기록이 없습니다", { exact: true })).toBeVisible();
+  // Slot 1 has no record but lies between two: it is filled between them and marked as a correction, drawn dashed.
+  await page.getByLabel("극장 시간 탐색", { exact: true }).fill("0.3"); await expect(page.locator(".world-record-state")).toHaveText(/건 · 보정 구간$/);
+  await expect(page.locator(".world-scene-dom")).toContainText("보정 구간 · 분석 표본");
+  await expect(page.locator(".world-timeline polyline[data-corrected]").first()).toHaveAttribute("stroke-dasharray", "5 5");
+  await expect(page.locator(".world-theater-controls")).not.toContainText("보간하지 않습니다");
   await page.getByRole("button", { name: "재생", exact: true }).click(); await expect(page.getByRole("button", { name: "일시정지", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "일시정지", exact: true }).click(); await page.getByLabel("극장 시간 탐색", { exact: true }).fill("30");
+  // Records keep no posts: the evidence is the feed as of the recorded time.
+  const evidence = page.waitForRequest((request) => /\/api\/feed\?/.test(request.url()) && !!new URL(request.url()).searchParams.get("asOf"));
   await page.getByRole("button", { name: "극장 기록 근거 보기" }).click();
-  await expect(dialog(page)).toContainText("저장 시점"); await page.keyboard.press("Escape");
+  const asked = new URL((await evidence).url()).searchParams;
+  expect([asked.get("limit"), asked.get("hours"), Date.parse(asked.get("asOf")!) > 0]).toEqual(["3", "6", true]);
+  await expect(dialog(page)).toContainText("저장 시점"); await expect(dialog(page).locator(".world-evidence-list li").first()).toBeVisible();
+  await page.keyboard.press("Escape");
   const downloadPromise = page.waitForEvent("download"); await page.getByRole("button", { name: "PNG 저장", exact: true }).click();
   const download = await downloadPromise; expect(download.suggestedFilename()).toBe(`goksorry-${yesterday}.png`);
   const png = await readFile((await download.path())!); expect(png.subarray(1, 4).toString()).toBe("PNG");
   expect(png.readUInt32BE(16)).toBe(1200); expect(png.readUInt32BE(20)).toBe(800); expect(png.length).toBeGreaterThan(100_000);
   await page.getByRole("button", { name: "링크 공유", exact: true }).click(); await expect(page.getByLabel("극장 공유 링크")).toHaveValue(/scene=theater.*date=/);
+});
+
+test("theater shows 기록 없음 outside the records and fades its ants out and back in", async ({ page }) => {
+  test.setTimeout(60_000); const frame = await prepareWorld(page);
+  // Records from slot 10 to 129 only: nothing to join before or after.
+  await page.route("**/api/internal/world/replay?*", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") ?? worldDate();
+    const start = Date.parse(`${date}T00:00:00+09:00`);
+    return route.fulfill({ json: { date, timezone: "Asia/Seoul", slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(start + i * 600_000).toISOString(), frame: i >= 10 && i < 130 ? { ...frame, generated_at: new Date(start + i * 600_000).toISOString() } : null })) } });
+  });
+  await page.goto("/?scene=theater"); await webgl(page);
+  type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
+  const cast = () => page.locator("canvas").evaluate((node) => { const m = (node as Metered).worldMetrics; return { cast: m.cast, population: m.population }; });
+  const seek = (value: string) => page.getByLabel("극장 시간 탐색", { exact: true }).fill(value);
+  await expect(page.locator(".world-record-state")).toHaveText("기록 없음");
+  await expect(page.locator(".world-scene-dom")).toContainText("이 구간은 기록이 없습니다");
+  await expect.poll(async () => (await cast()).cast).toBe(0);
+  await seek("10"); await expect(page.locator(".world-record-state")).toHaveText(/저장된 심리$/);
+  await expect.poll(async () => (await cast()).cast).toBe(1);
+  const crowd = (await cast()).population; expect(crowd).toBeGreaterThan(1);
+  // Past the last record the same ants stay and fade: some frame shows them part way, then they are gone.
+  await seek("29");
+  await expect.poll(async () => { const now = await cast(); return now.cast > 0 && now.cast < 1 && now.population === crowd; }, { intervals: [16] }).toBe(true);
+  await expect.poll(async () => (await cast()).cast).toBe(0);
+  await page.locator(".hd2d-stage").screenshot({ path: test.info().outputPath("theater-no-record.png") });
+});
+
+test("theater without motion swaps its ants at once where records stop", async ({ page }) => {
+  const frame = await prepareWorld(page); await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route("**/api/internal/world/replay?*", (route) => {
+    const date = new URL(route.request().url()).searchParams.get("date") ?? worldDate();
+    const start = Date.parse(`${date}T00:00:00+09:00`);
+    return route.fulfill({ json: { date, timezone: "Asia/Seoul", slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(start + i * 600_000).toISOString(), frame: i < 72 ? frame : null })) } });
+  });
+  await page.goto("/?scene=theater"); await webgl(page);
+  type Metered = HTMLCanvasElement & { worldMetrics: RenderMetrics };
+  const cast = () => page.locator("canvas").evaluate((node) => (node as Metered).worldMetrics.cast);
+  await expect.poll(cast).toBe(1);
+  await page.getByLabel("극장 시간 탐색", { exact: true }).fill("20"); await expect(page.locator(".world-record-state")).toHaveText("기록 없음");
+  await expect.poll(cast).toBe(0);
 });
 
 for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test(`${kind} sample matches crowd and screen`, async ({ page }) => {

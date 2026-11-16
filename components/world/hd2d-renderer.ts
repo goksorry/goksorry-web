@@ -11,10 +11,13 @@ import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
 import { createMoveMarker, type MoveMarkerState } from "./move-marker";
+import { castFade } from "@/lib/world-theater";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
-export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean };
+export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean;
+  /** Theater: no record can be shown for this slot. The ants of the last shown record fade out (instead of vanishing) and the next record's fade in. */
+  absent?: boolean };
 export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
   /** Zoomed section view only: whether the frame is following the visitor (false while it walks to a section chosen by hand), and how far it is panned off the section's centre for it (world units). */
   follow: boolean; pan: number;
@@ -27,6 +30,8 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   puffs: number;
   /** Sprite scale of this frame (see ANT_VIEW): 1 on wide views, down to ANT_SMALL on a zoomed phone view. */
   antSize: number;
+  /** Opacity the battle and theater ants (not the visitor) were drawn at last frame, 0..1: the theater fades them out where no record can be shown. */
+  cast: number;
   /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
   band: string; bright: boolean;
   /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body;
@@ -287,12 +292,26 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const antGeometry = new THREE.PlaneGeometry(1, 1);
   const offsets = new Float32Array(MAX_ANTS * 4);
   antGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(offsets, 4));
+  // Per-instance opacity of the ants (1 = solid). The sprites are alpha-tested and opaque, so a fade is an ordered 4x4
+  // dither: pixels drop out evenly as it falls, and the crowd never needs depth sorting.
+  const fades = new Float32Array(MAX_ANTS).fill(1);
+  antGeometry.setAttribute("antFade", new THREE.InstancedBufferAttribute(fades, 1));
   const antMaterial = new THREE.MeshBasicMaterial({ map: atlas, alphaTest: .35, side: THREE.DoubleSide });
-  antMaterial.onBeforeCompile = (shader) => {
+  const atlasShader = (shader: THREE.WebGLProgramParametersWithUniforms) => {
     shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nattribute vec4 atlasRect;")
       .replace("#include <uv_vertex>", "#include <uv_vertex>\nvMapUv = uv * atlasRect.zw + atlasRect.xy;");
   };
-  antMaterial.customProgramCacheKey = () => "world-ant-atlas-v1"; materials.push(antMaterial); geometry.push(antGeometry);
+  antMaterial.onBeforeCompile = (shader) => {
+    atlasShader(shader);
+    shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nattribute float antFade;\nvarying float vAntFade;")
+      .replace("#include <uv_vertex>", "#include <uv_vertex>\nvAntFade = antFade;");
+    shader.fragmentShader = shader.fragmentShader.replace("#include <common>", `#include <common>
+varying float vAntFade;
+const float ANT_BAYER[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);`)
+      .replace("#include <alphatest_fragment>", `#include <alphatest_fragment>
+if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BAYER[cell.y * 4 + cell.x] + .5) / 16. > vAntFade) discard; }`);
+  };
+  antMaterial.customProgramCacheKey = () => "world-ant-atlas-v2"; materials.push(antMaterial); geometry.push(antGeometry);
   const ants = new THREE.InstancedMesh(antGeometry, antMaterial, MAX_ANTS); ants.instanceMatrix.setUsage(THREE.DynamicDrawUsage); ants.frustumCulled = false; scene.add(ants);
   const shadowGeometry = new THREE.CircleGeometry(.46, 12); geometry.push(shadowGeometry);
   const shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x04090d, transparent: true, opacity: .36, depthWrite: false }); materials.push(shadowMaterial);
@@ -309,7 +328,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const cueGeometry = new THREE.PlaneGeometry(1, 1), cueRects = new Float32Array(MAX_ANTS * 4);
   cueGeometry.setAttribute("atlasRect", new THREE.InstancedBufferAttribute(cueRects, 4));
   const cueMaterial = new THREE.MeshBasicMaterial({ map: cueTexture, alphaTest: .35, side: THREE.DoubleSide });
-  cueMaterial.onBeforeCompile = antMaterial.onBeforeCompile;
+  cueMaterial.onBeforeCompile = atlasShader;
   cueMaterial.customProgramCacheKey = () => "world-ant-cue-v1"; materials.push(cueMaterial); geometry.push(cueGeometry);
   const cues = new THREE.InstancedMesh(cueGeometry, cueMaterial, MAX_ANTS); cues.instanceMatrix.setUsage(THREE.DynamicDrawUsage); cues.frustumCulled = false;
   cues.count = 0; cues.visible = false; scene.add(cues);
@@ -337,6 +356,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const DOOR_DARK = new THREE.Color(0x121b20);
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
   const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
+  // `cast`: opacity of the non-plaza ants (see RenderState.absent).
+  let cast = initial.absent ? 0 : 1;
   let path: Point[] = [], sideList: WorldSide[] = [], roster: CrowdMember[] = [], peers: PlazaPeer[] = [], lastTime = 0, lastRender = 0, disposed = false;
   let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1, visitorStride = 0;
   // The visitor is drawn a little larger than the crowd. Its walk is tied to that drawing: one step (a stride frame and the
@@ -391,7 +412,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const next = (position.x < -SECTION_HALF ? 0 : position.x > SECTION_HALF ? 2 : 1) as WallSection;
     if (next !== current) { asked = next; events.section?.(next); }
   }
-  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, band: "neutral", bright: false,
+  const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, cast: 1, band: "neutral", bright: false,
     crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
     visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8),
     marker: () => { const m = marker.state; if (!m) return null; const p = project(corner.set(m.x, 0, m.z)); return { ...m, sx: p.x, sy: p.y }; } };
@@ -412,6 +433,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   const VARIANT: Record<WorldSide, AntVariant> = { bullish: "hope", bearish: "fear", neutral: "neutral" };
   function population() {
     const plaza = state.scene === "plaza", base = crowdCapacity(state.scene, state.mobile);
+    // No record to show: the theater keeps the ants it has (they fade out in draw) rather than taking the empty frame's none.
+    if (!plaza && state.absent) { roster = []; ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count; return; }
     // On the plaza, every two other viewers take the place of one NPC.
     const counts = crowdDistribution(summary(), plaza ? fakeCapacity(base, peers.length) : base);
     sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
@@ -552,6 +575,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
     const obstacles = worldObstacles(state.scene), plaza = state.scene === "plaza";
+    cast = metrics.cast = plaza ? 1 : castFade(cast, !!state.absent, dt, ambient());
     // When the 곡소리 지수 reads 희망 the plaza faces brighten. The band is the one the wall's index panel and portrait
     // show (the same scope), read every draw: a data refresh that moves the index changes the faces in place.
     const shownBand = metrics.band = band ?? stockPierrotArt(sum).band;
@@ -582,6 +606,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
         // Battle camps read like the gauge: fear on the left half, hope on the right, neutral in the front row.
         if (state.scene === "battle") { const camp = CAMP_X[side]; x = camp < 0 ? -6.4 + (i * 29 % 45) / 10 : camp > 0 ? 2 + (i * 31 % 45) / 10 : -3 + (i * 17 % 60) / 10; if (!camp) z = 5.8; }
         if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
+        fades[i] = cast;
+        if (cast <= 0) { shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix); continue; }
         const shift = !ambient() ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
         let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;
         // Mixed sentiment: short steps, pauses, and turns in opposite directions.
@@ -606,9 +632,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
         shown[i] = ""; talls[i] = tall; units[i] = scale;
         dummy.position.set(x, shift * size + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
         ants.setColorAt(i, color.set("#ffffff"));
-        dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size, .55 * size, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+        dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * cast, .55 * size * cast, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
         continue;
       }
+      fades[i] = 1;
       // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
       const a = visitor ? null : crowd.ants[i], fade = a ? a.fade : 1;
       if (fade <= 0) { // away on a trip: nothing drawn, no tag, no cue
@@ -665,6 +692,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     if (cueCount) { cues.instanceMatrix.needsUpdate = true; (cueGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true; }
     ants.instanceMatrix.needsUpdate = shadows.instanceMatrix.needsUpdate = true; if (ants.instanceColor) ants.instanceColor.needsUpdate = true;
     (antGeometry.getAttribute("atlasRect") as THREE.InstancedBufferAttribute).needsUpdate = true;
+    (antGeometry.getAttribute("antFade") as THREE.InstancedBufferAttribute).needsUpdate = true;
     // The name tag sits just above the visitor's head. Each door carries its name plate; at a door the visitor stands in front of
     // that plate (a low door is about head high on screen), so the prompt lies on the floor just past its feet instead.
     const head = (talls[you] ?? 1.73) * 1.04, near = entranceAt(state.scene, position)?.scene;
@@ -729,6 +757,8 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const changed = state.scene !== next.scene, density = state.mobile !== next.mobile; state = next;
     if (changed) {
       path = []; snap = true; visiting = null; marker.hide();
+      // A new room starts with its own ants: none yet where the theater has no record to show (they fade in with one).
+      cast = state.absent ? 0 : 1; if (state.absent) sideList = [];
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
       else if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; }
       buildRoom();
@@ -762,7 +792,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     async capture(frame) {
       const target = document.createElement("canvas"); target.width = 1200; target.height = 620; target.style.width = "1200px"; target.style.height = "620px";
       // Export uses the exact scene builder, atlas, lighting and population mapping.
-      const exported = await createWorldRenderer(target, { ...state, frame, scene: "theater", mobile: false, paused: true });
+      const exported = await createWorldRenderer(target, { ...state, frame, scene: "theater", mobile: false, paused: true, absent: false });
       try { exported.draw(0); const copy = document.createElement("canvas"); copy.width = target.width; copy.height = target.height; copy.getContext("2d")!.drawImage(target, 0, 0); return copy; }
       finally { exported.dispose(); }
     },

@@ -25,7 +25,7 @@ export function sceneBoardSpecs(model: SceneBoardModel, style: BoardPaintStyle):
   const rect = (SCENE_BOARDS[model.scene] as Record<string, BoardSpec["rect"]>)[model.id];
   return [{
     id: model.id, rect, loading: model.state === "loading",
-    content: { kind: "paint", key: JSON.stringify([model, style]), images: [model.portrait.src], paint: (canvas, box, images) => paintSceneBoard(model, canvas, box, style, images) }
+    content: { kind: "paint", key: JSON.stringify([model, style]), images: model.portrait.src ? [model.portrait.src] : [], paint: (canvas, box, images) => paintSceneBoard(model, canvas, box, style, images) }
   }];
 }
 
