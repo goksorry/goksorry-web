@@ -28,7 +28,7 @@ export async function saveWorldPostcard(frame: WorldFrame, date: string, color: 
   ctx.drawImage(portrait, 450, 250, 300, 200);
   ctx.fillStyle = "#e8dec9"; ctx.font = "bold 30px sans-serif"; ctx.fillText(`${date} · 오늘의 곡소리 한 컷`, 48, 54);
   ctx.font = "bold 25px sans-serif"; ctx.fillText(`${MOOD_COPY[frame.overall.mood]} · 곡소리 지수 ${frame.overall.total ? frame.overall.index.toFixed(1) : "—"}/10`, 48, 650);
-  ctx.font = "22px sans-serif"; ctx.fillText(`분석 표본 ${frame.overall.total}건 · 희망 ${percent(frame.overall.hope_ratio)} · 공포 ${percent(frame.overall.fear_ratio)} · 중립 ${frame.overall.neutral}건`, 48, 690);
+  ctx.font = "22px sans-serif"; ctx.fillText(`분석 표본 ${frame.overall.total}건 · 공포 ${percent(frame.overall.fear_ratio)} · 희망 ${percent(frame.overall.hope_ratio)} · 중립 ${frame.overall.neutral}건`, 48, 690);
   ctx.fillStyle = "#bac6c9"; ctx.font = "16px sans-serif";
   ctx.fillText(`저장 ${new Date(frame.generated_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST · 데이터 ${frame.data_at ? new Date(frame.data_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + " KST" : "없음"}`, 48, 731);
   ctx.fillText("최근 6시간 분석 표본 · 비율은 중립 제외 · 지수는 기존 보정 산식 · 커뮤니티 심리이며 투자 권유가 아닙니다", 48, 765);

@@ -45,7 +45,7 @@ export function worldHeadline(summary: WorldSummary): string {
   if (!summary.total) return "분석 표본 없음";
   if (summary.total < 3) return "표본 부족";
   if (!summary.bullish && !summary.bearish) return "중립만 집계됨";
-  return `희망 ${Math.round((summary.hope_ratio ?? 0) * 100)}% · 공포 ${Math.round((summary.fear_ratio ?? 0) * 100)}%`;
+  return `공포 ${Math.round((summary.fear_ratio ?? 0) * 100)}% · 희망 ${Math.round((summary.hope_ratio ?? 0) * 100)}%`;
 }
 
 export const timelineY = (index: number) => 60 - Math.max(0, Math.min(10, index)) / 10 * 52;

@@ -74,6 +74,6 @@ export function buildSceneBoard(input: {
     ...common, scene: "theater", id: "replay", title: "오늘의 개미극장", date: `기록 · ${input.date}`,
     headline: r ? worldHeadline(r.overall) : "이 구간은 기록이 없습니다",
     timeline: input.timeline ?? null,
-    line: r ? `${input.corrected ? "보정 구간 · " : ""}분석 표본 ${r.overall.total}건 · 희망 ${percent(r.overall.hope_ratio)} / 공포 ${percent(r.overall.fear_ratio)}` : ""
+    line: r ? `${input.corrected ? "보정 구간 · " : ""}분석 표본 ${r.overall.total}건 · 공포 ${percent(r.overall.fear_ratio)} / 희망 ${percent(r.overall.hope_ratio)}` : ""
   };
 }
