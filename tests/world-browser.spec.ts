@@ -519,3 +519,19 @@ test("mode switch moves between the metaverse room and the classic page, keeping
   await expect(page.locator(".world-root")).toBeVisible();
   await expect(page.locator(".world-topbar .mode-switch a[aria-current=page]")).toContainText("메타버스");
 });
+
+test("own chat line pops over the visitor ant, follows it and fades after a length-based time", async ({ page }) => {
+  await prepareWorld(page); await page.goto("/"); await webgl(page);
+  const bubble = page.locator(".world-speech-bubble");
+  await expect(bubble).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("goksorry:chat-own-message", { detail: "존버 간다" })));
+  await expect(bubble).toBeVisible(); await expect(bubble).toHaveText("존버 간다");
+  // Pinned to the avatar's head point, like the name tag.
+  const at = (selector: string) => page.locator(selector).evaluate((el: HTMLElement) => `${el.style.left}|${el.style.top}`);
+  expect(await at(".world-speech-bubble")).toBe(await at('[data-testid="world-avatar"]'));
+  await expect(bubble.locator("p")).toHaveAttribute("style", /--bubble-ms: 3\d{3}ms/);
+  // Short lines live the 3s minimum.
+  await expect(bubble).toBeHidden({ timeout: 5_000 });
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("goksorry:chat-own-message", { detail: "가".repeat(100) })));
+  await expect(bubble.locator("p")).toHaveAttribute("style", /--bubble-ms: 10000ms/);
+});

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { PLAZA_ENTRANCES, entranceAt } from "@/lib/world-navigation";
 import type { WorldScene } from "@/lib/world";
 import { WorldPierrot } from "./world-pierrot";
+import { WorldSpeechBubble } from "./world-speech-bubble";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
@@ -24,7 +25,7 @@ const NOTE: Record<RenderMode, string> = {
   unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면 오류 · 간단한 화면"
 };
 export default function HD2DWorld(props: Props) {
-  const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null);
+  const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null), bubble = useRef<HTMLDivElement>(null);
   const specs = useRef<BoardSpec[]>([]);
   const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
   latest.current = props;
@@ -51,6 +52,7 @@ export default function HD2DWorld(props: Props) {
       },
       avatar(x, y, position) {
         if (avatar.current) { avatar.current.style.left = `${x}px`; avatar.current.style.top = `${y}px`; avatar.current.dataset.position = `${position.x.toFixed(2)},${position.z.toFixed(2)}`; }
+        if (bubble.current) { bubble.current.style.left = `${x}px`; bubble.current.style.top = `${y}px`; }
         const next = entranceAt(latest.current.scene, position)?.scene ?? null;
         if (nearbyRef.current !== next) { nearbyRef.current = next; setNearby(next); }
       },
@@ -139,6 +141,7 @@ export default function HD2DWorld(props: Props) {
     }} />
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
+    {!fallback && <WorldSpeechBubble ref={bubble} />}
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
     {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} />}
     {props.children}

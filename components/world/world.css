@@ -1,7 +1,8 @@
 .world-page { --world-header-h:56px; --hud-nav-h:60px; position:fixed; inset:0; width:100%; height:100dvh; overflow:hidden; }
 /* Game shell: the header is fixed and the scene owns the rest of the viewport. No document scroll. */
 html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-page),:root[data-theme-shell]:has(.world-page) body { height:100%; min-height:0; overflow:hidden; overscroll-behavior:none; background:#0e171d; }
-.world-page > .main { padding:0; margin:0; width:100%; max-width:none; display:block; height:100%; min-height:0; }
+.world-page-body { display:flex; height:100%; min-height:0; }
+.world-page-body > .main { flex:1; min-width:0; padding:0; margin:0; width:100%; max-width:none; display:block; height:100%; min-height:0; }
 .world-page > .policy-change-banner { position:absolute; top:calc(var(--world-header-h) + 4px); left:8px; right:8px; z-index:70; }
 @media(max-width:959px),(max-height:480px) { .world-page { --world-header-h:48px; } }
 .world-loading { margin:0; min-height:400px; display:grid; place-items:center; background:#0e171d; color:#b5c3c9; }
@@ -264,3 +265,15 @@ body:has(.world-page .world-modal-backdrop) .world-page > .policy-change-banner 
 .world-snackbar .world-snackbar-close { border-color:transparent; padding:4px 8px; }
 @keyframes world-snack-in { from { opacity:0; transform:translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .world-snackbar { animation:none; } }
+
+/* Chat beside the world (same sidebar/dock as classic mode). The dock floats above the scene nav and hides under dialogs. */
+.world-page .chat-dock-shell { bottom:calc(var(--hud-nav-h) + 8px + env(safe-area-inset-bottom)); }
+body:has(.world-page .world-modal-backdrop) .chat-dock-shell { visibility:hidden; }
+/* The visitor's sent chat line above their name tag (world-speech-bubble.tsx): springs out from its tail, then fades. */
+.world-speech-bubble { position:absolute; z-index:3; transform:translate(-50%, calc(-100% - 30px)); pointer-events:none; }
+.world-speech-bubble[hidden] { display:none; }
+.world-speech-bubble p { position:relative; margin:0; width:max-content; max-width:min(240px, 60vw); padding:7px 11px; background:#13242af2; color:#f0dcae; border:1px solid #a28551; border-radius:12px; box-shadow:0 6px 18px #0007; font-size:14px; line-height:1.4; white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; transform-origin:50% 100%;
+  animation:world-bubble-boing .55s cubic-bezier(.3,1.6,.5,1) both, world-bubble-fade .4s ease-in calc(var(--bubble-ms, 3000ms) - 400ms) forwards; }
+.world-speech-bubble p::after { content:""; position:absolute; left:50%; bottom:-7px; width:12px; height:12px; background:inherit; border:inherit; border-width:0 1px 1px 0; border-radius:0 0 2px 0; transform:translateX(-50%) rotate(45deg); }
+@keyframes world-bubble-boing { 0% { opacity:0; transform:scale(.2); } 35% { opacity:1; transform:scale(1.18,.86); } 55% { transform:scale(.9,1.1); } 72% { transform:scale(1.05,.97); } 100% { transform:scale(1); } }
+@keyframes world-bubble-fade { to { opacity:0; transform:translateY(-6px); } }

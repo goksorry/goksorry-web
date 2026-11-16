@@ -1,5 +1,6 @@
 "use client";
 
+import { emitOwnChatMessage } from "@/lib/chat-own-message";
 import {
   startTransition,
   type CSSProperties,
@@ -356,6 +357,7 @@ export function LiveChat({ enabled, className, title = "전체 채팅", headerAc
     }
 
     socket.send(JSON.stringify(nextEvent));
+    emitOwnChatMessage(normalizedDraft);
     setDraft("");
     setCooldownRemainingMs(SEND_COOLDOWN_MS);
   };

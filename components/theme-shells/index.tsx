@@ -30,7 +30,16 @@ export function ThemeChrome({
   const option = getThemeOption(themeId);
 
   if (pathname === "/") {
-    return <div id="page-top" className="world-page">{policyBanner}{children}</div>;
+    return (
+      <div id="page-top" className="world-page">
+        {policyBanner}
+        <div className="world-page-body">
+          {children}
+          {desktopChatSidebar}
+        </div>
+        {mobileChatDock}
+      </div>
+    );
   }
 
   if (option.shellType === "default") {
