@@ -66,7 +66,7 @@ test("every ant atlas rect lies inside the image and carries a usable scale and 
   const entries = Object.entries(frames);
   expect(entries.length).toBeGreaterThanOrEqual(20);
   for (const [key, frame] of entries) {
-    expect(key).toMatch(/^(neutral|fear|hope|neutral-bright|hope-bright)\.(idle|walk-a|walk-b|walk-p|phone|sigh|look|tilt)\.(f|fl|l|bl|b|br|r|fr)$/);
+    expect(key).toMatch(/^(neutral|fear|hope|neutral-bright|hope-bright)\.(idle|walk-a|walk-b|walk-p|phone|sigh|look|tilt|(howl|kneel|dance|smug)-[1-6])\.(f|fl|l|bl|b|br|r|fr)$/);
     expect(frame, key).toHaveLength(6);
     const [x, y, w, h, k, ax] = frame!;
     expect([x, y, w, h, ax].every(Number.isInteger), `${key} integers`).toBe(true);
@@ -169,5 +169,21 @@ test("passing steps and bright phone frames exist wherever the crowd draws them"
     const tall = (key: string) => frames[key]![3] * frames[key]![4];
     expect(Math.abs(tall(`${variant}-bright.phone.${dir}`) / tall(`${variant}.phone.${dir}`) - 1), `${variant}-bright.phone.${dir}`).toBeLessThan(.08);
     expect(Math.abs(tall(`${variant}-bright.sigh.${dir}`) / tall(`${variant}-bright.phone.${dir}`) - 1), `${variant}-bright.sigh.${dir}`).toBeLessThan(.05);
+  }
+});
+test("emotion loops: fear howls and kneels, hope dances and gloats, 3 to 6 numbered frames each, played on the spot", () => {
+  if (!composed) return;
+  const LOOPS = { howl: "fear", kneel: "fear", dance: "hope", smug: "hope" } as const;
+  for (const [pose, variant] of Object.entries(LOOPS)) {
+    // Numbered from 1 without gaps, camera side only, and only for the ant whose mood the loop shows.
+    const keys = Object.keys(frames).filter((key) => key.split(".")[1].replace(/-\d+$/, "") === pose);
+    const count = keys.length;
+    expect(count, pose).toBeGreaterThanOrEqual(3); expect(count, pose).toBeLessThanOrEqual(6);
+    expect(keys.sort()).toEqual(Array.from({ length: count }, (_, i) => `${variant}.${pose}-${i + 1}.f`).sort());
+    // The same ant as the standing frame: body size (square root of the opaque area, as drawn) within a fifth of it.
+    const size = (key: string) => Math.sqrt(body(atlasImage(), frames[key]!).area) * frames[key]![4];
+    for (const key of keys) expect(Math.abs(size(key) / size(`${variant}.idle.f`) - 1), `${key} ${size(key).toFixed(1)}`).toBeLessThan(.2);
+    // One scale for the whole loop, so the ant does not grow or shrink while it plays.
+    expect(new Set(keys.map((key) => frames[key]![4])).size, `${pose} k`).toBe(1);
   }
 });

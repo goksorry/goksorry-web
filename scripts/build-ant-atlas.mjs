@@ -28,9 +28,12 @@ const BASE = { cols: ["f", "l", "r", "b"], rows: [["neutral", "idle"], ["neutral
 // Frame keys are "variant.pose.dir". Variants: neutral | fear | hope, plus neutral-bright | hope-bright: the same two ants
 // with the open-eyed face they wear while the index is in the hope state (fear has no bright form). Poses: idle | walk-a |
 // walk-b | walk-p | phone | sigh | look (standing, head tipped back to look up at the wall; drawn from behind only) |
-// tilt (the in-between of idle and look, straight back view only).
+// tilt (the in-between of idle and look, straight back view only) | howl-N, kneel-N (fear) and dance-N, smug-N (hope):
+// the numbered frames of a looping emotion animation played in place, camera side (f) only, N counting from 1.
 // A column may be "pose@dir" to file that column under another pose; rowCols replaces the columns for single rows;
+// loop: "<dir>" files the columns of every posed row as the numbered frames "<pose>-1".."<pose>-<cols>" in that direction;
 // skip lists frame keys that are segmented but left out of the atlas; rowScale multiplies k for rows drawn smaller than the rest.
+// norm.always measures the norm row even when it is a reference-only (null) row; without it such a sheet keeps k = 1.
 // tone: [sheet row, base row, sheet col?, base col?] showing the same character (the whole rows, or one cell of each). The generated sheets came out paler than ants.png, so each is
 // multiplied per channel until that row's mean colour equals the base row's; otherwise an ant changes shade between frames.
 const SHEETS = [
@@ -70,6 +73,19 @@ const SHEETS = [
   // light cone, and softenGlow would grey the open eyes, so it is off. Row 4 was drawn about 5% smaller than row 3.
   { file: "art/world/source/ants-phone-bright.png", cols: ["f", "l", "r", "b"], glow: false, rowScale: { 3: 1.05 },
     rows: [["neutral-bright", "phone"], ["neutral-bright", "sigh"], ["hope-bright", "phone"], ["hope-bright", "sigh"], null], norm: { row: 0, ref: 237 }, tone: [4, 0] },
+  // Emotion loops, camera side only (loop: "f"): each posed row is one animation and its columns are frames 1-4
+  // (poses "howl-1".."howl-4" and so on). Row 3 repeats the plain standing ant of ants.png in f/l/r/b, for the tone and,
+  // since these sheets came out 9-18% larger than ants.png, for the size (norm.always). Frames 2-4 are anchored by
+  // register() so the ant does not shuffle sideways while the loop plays.
+  // Fear: howling at the sky (breath, wail starts, loudest wail, trailing off) and kneeling (head hung, sob, fist raised,
+  // fist on the ground), the suitcase kept in hand or lying beside the knees.
+  { file: "art/world/source/ants-despair.png", cols: ["f", "l", "r", "b"], loop: "f",
+    rows: [["fear", "howl"], ["fear", "kneel"], null], norm: { row: 2, ref: 204, always: true }, tone: [2, 3] },
+  // Hope: dancing a jig (knee up, point down-left, other knee up, point down-right) and the smug "told you it would go up"
+  // pose, hands on hips (smirk, cackle, head back cackling, finger wag). The smug row was drawn with a head about 9% wider
+  // than the standing row, so it is scaled down a little (head 5% wider, as tall as the standing scarf ant).
+  { file: "art/world/source/ants-cheer.png", cols: ["f", "l", "r", "b"], loop: "f", rowScale: { 1: .95 },
+    rows: [["hope", "dance"], ["hope", "smug"], null], norm: { row: 2, ref: 239, always: true }, tone: [2, 4] },
 ];
 // Cells mirrored left-right while composing (the source sheet is untouched): the scarf tail was drawn on the other side
 // from the ant's standing back view, so it would jump across its back when the pose changes.
@@ -185,6 +201,28 @@ export function stance(png, [x, y, w, h]) {
   let low = w, high = -1;
   for (let py = y + h - PAD - Math.round(h * .05); py < y + h; py++) for (let px = x; px < x + w; px++) if (png.data[(py * png.width + px) * 4 + 3] > ALPHA) { low = Math.min(low, px - x); high = Math.max(high, px - x + 1); }
   return high < 0 ? w / 2 : (low + high) / 2;
+}
+
+// How far right (px) the ant in cell b is drawn compared with the ant in cell a: the x shift that makes their bottom-aligned
+// silhouettes overlap best (intersection over union). The frames of an in-place loop get frame 1's anchor plus this shift.
+// The centre of mass is no use there: a fist going up or an arm swung out moves it by up to 8 px while the boots stay put.
+export function register(png, a, b, reach = 80) {
+  const mask = ([x, y, w, h]) => { const m = new Uint8Array(w * h); for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) m[py * w + px] = png.data[((y + py) * png.width + x + px) * 4 + 3] > ALPHA ? 1 : 0; return m; };
+  const ma = mask(a), mb = mask(b), rows = Math.min(a[3], b[3]);
+  let best = 0, score = -1;
+  for (let s = -reach; s <= reach; s++) {
+    let both = 0, either = 0;
+    for (let dy = 1; dy <= rows; dy++) {
+      const ra = (a[3] - dy) * a[2], rb = (b[3] - dy) * b[2];
+      for (let x = Math.min(0, -s); x < Math.max(a[2], b[2] - s); x++) {
+        const pa = x >= 0 && x < a[2] && ma[ra + x], xb = x + s, pb = xb >= 0 && xb < b[2] && mb[rb + xb];
+        if (pa && pb) both++;
+        if (pa || pb) either++;
+      }
+    }
+    if (either && both / either > score) { score = both / either; best = s; }
+  }
+  return best;
 }
 
 // Mean colour of the opaque pixels of some cells, and a per-channel gain applied to a whole sheet (in memory only).
@@ -329,15 +367,18 @@ function build(sourceDir, outDir) {
       console.log(`  tone gain ${gain.map((value) => value.toFixed(3)).join(" ")}`);
     }
     if (sheet.glow !== false) sheet.rows.forEach((row, r) => { if (row && row[1] === "phone") result.cells[r].forEach((cell) => softenGlow(png, cell)); });
-    const raw = sheet.rows[sheet.norm.row] ? sheet.norm.ref / median(result.cells[sheet.norm.row].map((cell) => cell[3])) : 1;
+    const raw = sheet.rows[sheet.norm.row] || sheet.norm.always ? sheet.norm.ref / median(result.cells[sheet.norm.row].map((cell) => cell[3])) : 1;
     const k = raw >= .97 && raw <= 1.03 ? 1 : Math.round(raw * 1000) / 1000;
     let count = 0;
-    sheet.rows.forEach((row, r) => row && (sheet.rowCols?.[r] ?? sheet.cols).forEach((col, c) => {
+    const loopCols = (row) => sheet.cols.map((_, c) => `${row[1]}-${c + 1}@${sheet.loop}`);
+    sheet.rows.forEach((row, r) => row && (sheet.rowCols?.[r] ?? (sheet.loop ? loopCols(row) : sheet.cols)).forEach((col, c) => {
       if (!col) return;
       const [dir, pose = row[1]] = col.split("@").reverse(), key = `${row[0]}.${pose}.${dir}`;
       if (sheet.skip?.includes(key)) return;
       if (FLIP.has(key)) flipCell(png, result.cells[r][c]);
       add(key, png, result.cells[r][c], Math.round(k * (sheet.rowScale?.[r] ?? 1) * 1000) / 1000, row[2]); count++;
+      // A loop is played on the spot: every later frame keeps the body where frame 1 has it.
+      if (sheet.loop && c > 0 && AX[key] === undefined) frames[key].ax = frames[`${row[0]}.${row[1]}-1.${sheet.loop}`].ax + register(png, result.cells[r][0], result.cells[r][c]);
     }));
     extras.push(sheet.file);
     console.log(`  ${count} frames, k ${k}`);
