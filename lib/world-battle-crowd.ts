@@ -170,11 +170,18 @@ export type BattleCrowd = {
   reset(): void;
 };
 
-/** The pose an ant is drawn in: its walk cycle (`phase` is floor per walk frame), its loop's frame, or standing. */
-export function battlePose(a: Pick<BattleAnt, "path" | "stride" | "emote">, frames: Partial<Record<EmoteLoop, number>>, phase?: number): AntPose {
+/**
+ * The pose a camp ant stands in between loops. Hope ants rest in the grin that opens their smug loop (hands on hips, a
+ * plain smile), so the hope camp visibly smiles at any moment, also without motion; the others stand idle.
+ */
+export const restPose = (side: WorldSide, frames: Partial<Record<EmoteLoop, number>>): AntPose =>
+  side === "bullish" && frames.smug ? "smug-1" : "idle";
+
+/** The pose an ant is drawn in: its walk cycle (`phase` is floor per walk frame), its loop's frame, or standing (restPose). */
+export function battlePose(a: Pick<BattleAnt, "path" | "stride" | "emote" | "side">, frames: Partial<Record<EmoteLoop, number>>, phase?: number): AntPose {
   if (a.path.length) return walkPose(a.stride, phase);
   const e = a.emote, n = e ? frames[e.loop] ?? 0 : 0;
-  return e && n ? `${e.loop}-${emoteFrame(e.loop, e.t, n)}` : "idle";
+  return e && n ? `${e.loop}-${emoteFrame(e.loop, e.t, n)}` : restPose(a.side, frames);
 }
 
 export function createBattleCrowd(options: { seed?: number; frames?: Partial<Record<EmoteLoop, number>> } = {}): BattleCrowd {

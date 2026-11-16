@@ -185,7 +185,7 @@ test("poses resolve to the atlas's loop frames, hope smiling and each camp turne
     const shown = Array.from({ length: Math.round(emoteSpan(loop, n) / .01) }, (_, i) => emoteFrame(loop, i * .01, n));
     expect(new Set(shown)).toEqual(new Set(Array.from({ length: n }, (_, i) => i + 1)));
     expect(shown[0]).toBe(1); expect(shown.filter((f, i) => i && f === 1 && shown[i - 1] === n).length).toBe(EMOTES[loop].cycles - 1);
-    const pose = battlePose({ path: [], stride: 0, emote: { loop, t: EMOTES[loop].frame * 1.5, span: 9 } }, FRAMES);
+    const pose = battlePose({ path: [], stride: 0, side: "neutral", emote: { loop, t: EMOTES[loop].frame * 1.5, span: 9 } }, FRAMES);
     expect(pose).toBe(`${loop}-2`);
     const variant = EMOTES[loop].variant, side = variant === "fear" ? "bearish" : "bullish";
     expect(SIDE_VARIANT[side]).toBe(variant);
@@ -194,8 +194,14 @@ test("poses resolve to the atlas's loop frames, hope smiling and each camp turne
   }
   // Standing hope ants wear the bright (smiling) face; walking ants walk; without a loop's frames an ant stands.
   expect(antFrameCandidates("hope", "idle", 0, 0, -1, true).find((c) => has(c.key))!.key).toBe("hope-bright.idle.f");
-  expect(battlePose({ path: [{ x: 0, z: 0 }], stride: .45, emote: null }, FRAMES, .2)).toBe("walk-b");
-  expect(battlePose({ path: [], stride: 0, emote: { loop: "howl", t: 0, span: 1 } }, {})).toBe("idle");
+  expect(battlePose({ path: [{ x: 0, z: 0 }], stride: .45, side: "bullish", emote: null }, FRAMES, .2)).toBe("walk-b");
+  expect(battlePose({ path: [], stride: 0, side: "bearish", emote: { loop: "howl", t: 0, span: 1 } }, {})).toBe("idle");
+  // Standing between loops (or without motion), hope ants keep the grin that opens the smug loop; the others stand idle.
+  expect(battlePose({ path: [], stride: 0, side: "bullish", emote: null }, FRAMES)).toBe("smug-1");
+  expect(antFrameCandidates("hope", "smug-1", 0, 0, -1, true).find((c) => has(c.key))!.key).toBe("hope.smug-1.f");
+  expect(battlePose({ path: [], stride: 0, side: "bearish", emote: null }, FRAMES)).toBe("idle");
+  expect(battlePose({ path: [], stride: 0, side: "neutral", emote: null }, FRAMES)).toBe("idle");
+  expect(battlePose({ path: [], stride: 0, side: "bullish", emote: null }, {})).toBe("idle");
   // The kneel is drawn facing left and the others right: turned toward the other camp, fear's kneel and hope's loops are mirrored.
   const mirror = (variant: "fear" | "hope", pose: `${EmoteLoop}-1`, lean: number) => antFrameCandidates(variant, pose, 0, 0, lean).find((c) => has(c.key))!.mirror;
   expect([mirror("fear", "howl-1", 1), mirror("fear", "kneel-1", 1), mirror("hope", "dance-1", -1), mirror("hope", "smug-1", -1)]).toEqual([false, true, true, true]);
