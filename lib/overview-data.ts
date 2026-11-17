@@ -388,11 +388,12 @@ const MARKET_FALLBACK: [string, string][] = [["kospi", "KOSPI"], ["kosdaq", "KOS
 
 // An overview with no usable indicator (upstream down) is not cached, so the next
 // request retries instead of keeping the failure for a refresh interval.
+// Versioned key excludes quotes cached before the source access review.
 const cachedMarketOverview = boundedCache(async (): Promise<MarketOverview> => {
   const overview = await buildMarketOverview();
   if (!overview.market_indicators.some(hasUsableMarketIndicator)) throw new Error("market overview unavailable");
   return overview;
-}, ["market-overview-v2"]);
+}, ["market-overview-reviewed-v3"]);
 
 export const getCachedMarketOverview = async (): Promise<MarketOverview> => {
   try {
