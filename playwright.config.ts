@@ -6,7 +6,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 export default defineConfig({
   testDir: "./tests",
   // Server integration tests require the isolated backend in playwright.world.config.ts.
-  testIgnore: ["**/world-api.spec.ts", "**/home-api.spec.ts", "**/home-browser.spec.ts"],
+  testIgnore: ["**/world-api.spec.ts", "**/home-api.spec.ts", "**/home-browser.spec.ts", "**/policies.spec.ts"],
   timeout: 30_000,
   expect: {
     timeout: 8_000

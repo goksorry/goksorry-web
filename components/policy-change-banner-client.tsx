@@ -2,28 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { formatKstDateTime } from "@/lib/date-time";
 import type { ActivePolicyChange } from "@/lib/policy-changes";
 
 type PolicyChangeBannerClientProps = {
   change: ActivePolicyChange;
 };
 
-const formatEffectiveDate = (value: string): string => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(date);
-};
-
 export function PolicyChangeBannerClient({ change }: PolicyChangeBannerClientProps) {
   const storageKey = useMemo(() => `policy-change-banner:${change.id}`, [change.id]);
-  const [isMounted, setIsMounted] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
@@ -31,19 +18,18 @@ export function PolicyChangeBannerClient({ change }: PolicyChangeBannerClientPro
       return;
     }
 
-    setIsDismissed(window.sessionStorage.getItem(storageKey) === "dismissed");
-    setIsMounted(true);
+    try { setIsDismissed(window.sessionStorage.getItem(storageKey) === "dismissed"); } catch { /* Storage may be disabled. */ }
   }, [storageKey]);
 
   const handleDismiss = () => {
     if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(storageKey, "dismissed");
+      try { window.sessionStorage.setItem(storageKey, "dismissed"); } catch { /* Dismiss for this render. */ }
     }
 
     setIsDismissed(true);
   };
 
-  if (!isMounted || isDismissed) {
+  if (isDismissed) {
     return null;
   }
 
@@ -51,13 +37,13 @@ export function PolicyChangeBannerClient({ change }: PolicyChangeBannerClientPro
     <div className="policy-change-banner" role="status" aria-live="polite">
       <div className="policy-change-banner-inner">
         <p className="policy-change-banner-copy">
-          {change.label}이 변경됩니다. {change.summary}. {formatEffectiveDate(change.effectiveAt)}부터 적용됩니다.{" "}
+          {change.label} 개정 안내. {change.summary}. {formatKstDateTime(change.effectiveAt)} (한국 시간)부터 적용됩니다.{" "}
           <Link href={change.href}>자세히 보기</Link>
         </p>
         <button
           type="button"
           className="policy-change-banner-close"
-          aria-label="약관 변경 배너 닫기"
+          aria-label={`${change.label} 변경 배너 닫기`}
           onClick={handleDismiss}
         >
           닫기

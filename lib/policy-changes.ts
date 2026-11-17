@@ -44,7 +44,7 @@ const isTransientPolicyFetchError = (message: string): boolean => {
 
 export const POLICY_CHANGE_CACHE_TAG = "policy-change-active";
 
-const loadActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
+const loadActivePolicyChanges = async (): Promise<ActivePolicyChange[]> => {
   const supabase = getServiceSupabaseClient();
   const now = new Date().toISOString();
   const { data: documentChange, error: documentError } = await supabase
@@ -54,27 +54,25 @@ const loadActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
     .lte("published_at", now)
     .gt("effective_at", now)
     .order("effective_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<PolicyChangeRow>();
+    .limit(50);
 
   if (documentError && !isMissingPolicyDocumentVersionsTableError(documentError.code, documentError.message)) {
     if (isTransientPolicyFetchError(documentError.message)) {
-      return null;
+      return [];
     }
 
     throw new Error(`Failed to load active policy document change: ${documentError.message}`);
   }
 
-  if (documentChange) {
-    const policy = POLICY_DOCUMENT_META[documentChange.type];
-    return {
-      id: documentChange.id,
-      type: documentChange.type,
-      summary: documentChange.summary,
-      effectiveAt: documentChange.effective_at,
-      href: policy.href,
-      label: policy.title
-    };
+  if (documentChange?.length) {
+    return documentChange.map((change: PolicyChangeRow) => ({
+      id: change.id,
+      type: change.type,
+      summary: change.summary,
+      effectiveAt: change.effective_at,
+      href: `${POLICY_DOCUMENT_META[change.type].href}?version=${change.id}`,
+      label: POLICY_DOCUMENT_META[change.type].title
+    }));
   }
 
   const { data, error } = await supabase
@@ -83,37 +81,31 @@ const loadActivePolicyChange = async (): Promise<ActivePolicyChange | null> => {
     .lte("published_at", now)
     .gt("effective_at", now)
     .order("published_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<PolicyChangeRow>();
+    .limit(50);
 
   if (error) {
     if (isMissingPolicyChangesTableError(error.code, error.message)) {
-      return null;
+      return [];
     }
 
     if (isTransientPolicyFetchError(error.message)) {
-      return null;
+      return [];
     }
 
     throw new Error(`Failed to load active policy change: ${error.message}`);
   }
 
-  if (!data) {
-    return null;
-  }
-
-  const policy = POLICY_DOCUMENT_META[data.type];
-  return {
-    id: data.id,
-    type: data.type,
-    summary: data.summary,
-    effectiveAt: data.effective_at,
-    href: policy.href,
-    label: policy.title
-  };
+  return (data ?? []).map((change: PolicyChangeRow) => ({
+    id: change.id,
+    type: change.type,
+    summary: change.summary,
+    effectiveAt: change.effective_at,
+    href: POLICY_DOCUMENT_META[change.type].href,
+    label: POLICY_DOCUMENT_META[change.type].title
+  }));
 };
 
-export const getActivePolicyChange = unstable_cache(loadActivePolicyChange, ["policy-change-active"], {
+export const getActivePolicyChanges = unstable_cache(loadActivePolicyChanges, ["policy-changes-active-v2"], {
   revalidate: 60,
   tags: [POLICY_CHANGE_CACHE_TAG]
 });

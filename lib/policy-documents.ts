@@ -70,6 +70,7 @@ export const getCurrentPolicyDocument = async (type: PolicyDocumentType): Promis
     .select("id,type,summary,body,is_adverse,published_at,effective_at,updated_at,superseded_at,created_at")
     .eq("type", type)
     .is("superseded_at", null)
+    .lte("published_at", nowIso)
     .lte("effective_at", nowIso)
     .order("effective_at", { ascending: false })
     .order("published_at", { ascending: false })
@@ -99,6 +100,7 @@ export const listPolicyDocumentVersions = async (type: PolicyDocumentType): Prom
     .from("policy_document_versions")
     .select("id,type,summary,body,is_adverse,published_at,effective_at,updated_at,superseded_at,created_at")
     .eq("type", type)
+    .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })
     .limit(50);
 
