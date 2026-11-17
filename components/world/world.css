@@ -330,3 +330,7 @@ body:has(.world-page .world-modal-backdrop) .chat-dock-shell { visibility:hidden
 .world-room-badge input[aria-invalid=true] { border-color:#de9d87; }
 .world-room-badge button { min-height:32px; padding:2px 10px; background:#17232a; color:#e5e1d7; border:1px solid #4c5960; }
 .world-room-badge p { flex-basis:100%; margin:0; color:#de9d87; font-size:12px; }
+/* 등락률 색상 (menu): the site's three conventions, applied at once. */
+.world-change-color > div { display:flex; gap:10px; margin:12px 0 0; }
+.world-change-color button { min-width:64px; min-height:44px; padding:8px 14px; background:var(--panel-soft); color:var(--ink); border:1px solid var(--line); }
+.world-change-color button[aria-pressed=true] { box-shadow:0 0 0 2px var(--ink); }

@@ -215,6 +215,9 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   await page.getByRole("button", { name: "내 개미 색상 3" }).click();
   expect(await page.evaluate(() => localStorage.getItem("goksorry-world-avatar-color"))).toBe("#efa5ac");
+  await page.getByRole("button", { name: "등락률 색상 미국식" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-change-color-mode", "us");
+  await expect(page.getByRole("button", { name: "등락률 색상 미국식" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "♡ 감정 표현" }).click(); await page.keyboard.press("Escape"); await expect(avatar).toContainText("♡");
 });
 

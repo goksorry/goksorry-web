@@ -13,6 +13,8 @@ import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib
 import { CLIENT_PERSISTENCE_DEFINITIONS as STORAGE } from "@/lib/persistence-registry";
 import { useCleanFilter } from "@/components/clean-filter-provider";
 import { useTheme } from "@/components/theme-provider";
+import { CHANGE_COLOR_LABELS, renderChangeColorLabel } from "@/components/change-color-label";
+import { CHANGE_COLOR_MODES } from "@/lib/change-color-mode";
 import { ModeSwitch } from "@/components/mode-switch";
 import type { FeedPage, ScopeSummary } from "@/lib/feed-scope";
 import type { FeedRow } from "@/lib/feed-data";
@@ -85,7 +87,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const view = useMemo<WallView>(() => ({ layout, section, overview, hudBottom: HUD_BOTTOM }), [layout, section, overview]);
   const { cleanFilterEnabled } = useCleanFilter();
   // Boards repaint when the change colours do; the font and Pierrot art are fixed (the room has no theme).
-  const { changeColorMode } = useTheme();
+  const { changeColorMode, selectChangeColorMode } = useTheme();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)") !== false;
   const { bannerVisible } = useCookieConsent();
   const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null), [replayCorrected, setReplayCorrected] = useState(false), [replayPending, setReplayPending] = useState(true);
@@ -281,7 +283,8 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       </div>
     </WorldPanel>}
     {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}>{menuHeader}<FirstVisitHeaderHint inWorldMenu />
-      <section className="world-settings"><h3>내 개미와 소리</h3><fieldset><legend className="sr-only">내 개미 색상</legend>{WORLD_COLORS.map((value, i) => <button key={value} aria-label={`내 개미 색상 ${i + 1}`} aria-pressed={color === value} style={{ background: value }} onClick={() => { setColor(value); writeClientLocalStorageValue(STORAGE.worldAvatarColor, value); }} />)}</fieldset><div className="world-emotes">{["♡", "ㅠㅠ", "존버"].map((value) => <button key={value} aria-label={`${value} 감정 표현`} onClick={() => { setEmote(value); clearTimeout(emoteTimer.current); emoteTimer.current = setTimeout(() => setEmote(""), 2400); }}>{value}</button>)}</div><button aria-label={muted ? "효과음 켜기" : "효과음 끄기"} aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); writeClientLocalStorageValue(STORAGE.worldMuted, next ? "on" : "off"); }}>{muted ? "효과음 켜기" : "효과음 끄기"}</button></section>{menu}
+      <section className="world-settings"><h3>내 개미와 소리</h3><fieldset><legend className="sr-only">내 개미 색상</legend>{WORLD_COLORS.map((value, i) => <button key={value} aria-label={`내 개미 색상 ${i + 1}`} aria-pressed={color === value} style={{ background: value }} onClick={() => { setColor(value); writeClientLocalStorageValue(STORAGE.worldAvatarColor, value); }} />)}</fieldset><div className="world-emotes">{["♡", "ㅠㅠ", "존버"].map((value) => <button key={value} aria-label={`${value} 감정 표현`} onClick={() => { setEmote(value); clearTimeout(emoteTimer.current); emoteTimer.current = setTimeout(() => setEmote(""), 2400); }}>{value}</button>)}</div><button aria-label={muted ? "효과음 켜기" : "효과음 끄기"} aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); writeClientLocalStorageValue(STORAGE.worldMuted, next ? "on" : "off"); }}>{muted ? "효과음 켜기" : "효과음 끄기"}</button></section>
+      <section className="world-settings world-change-color" aria-labelledby="world-change-color-heading"><h3 id="world-change-color-heading">등락률 색상</h3><div role="group" aria-labelledby="world-change-color-heading">{CHANGE_COLOR_MODES.map((mode) => <button key={mode} aria-label={`등락률 색상 ${CHANGE_COLOR_LABELS[mode]}`} aria-pressed={changeColorMode === mode} onClick={() => selectChangeColorMode(mode)}>{renderChangeColorLabel(mode)}</button>)}</div></section>{menu}
     </WorldPanel>}
   </div>;
 }

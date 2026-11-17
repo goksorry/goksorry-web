@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CHANGE_COLOR_MODES, type ChangeColorMode } from "@/lib/change-color-mode";
 import { THEME_OPTIONS, getThemeOption, type ThemeFamily, type ThemeOption, type ThemeTone } from "@/lib/theme";
 import { useTheme } from "@/components/theme-provider";
+import { CHANGE_COLOR_LABELS, renderChangeColorLabel } from "@/components/change-color-label";
 
 type ThemeChoiceButtonProps = {
   label: ReactNode;
@@ -41,26 +42,6 @@ export const getThemeFamilyChoices = (): Array<{ family: ThemeFamily; label: str
     seen.add(option.family);
     return [...acc, { family: option.family, label: option.familyLabel }];
   }, []);
-};
-
-const CHANGE_COLOR_LABELS: Record<ChangeColorMode, string> = {
-  kr: "한국식",
-  us: "미국식",
-  hybrid: "하이브리드"
-};
-
-const renderChangeColorLabel = (mode: ChangeColorMode): ReactNode => {
-  if (mode === "hybrid") {
-    return <span className="theme-menu-change-label theme-menu-change-label-hybrid">🔀</span>;
-  }
-
-  return (
-    <span className={`theme-menu-change-label theme-menu-change-label-${mode}`}>
-      <span className="theme-menu-change-flag">{mode === "kr" ? "🇰🇷" : "🇺🇸"}</span>
-      <span className="theme-menu-change-arrow theme-menu-change-up">↑</span>
-      <span className="theme-menu-change-arrow theme-menu-change-down">↓</span>
-    </span>
-  );
 };
 
 export function ThemeChoiceButton({ label, ariaLabel, swatchOption, active, onSelect }: ThemeChoiceButtonProps) {
