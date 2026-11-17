@@ -77,6 +77,14 @@ const createSignedToken = async <T extends SignedPayload>(payload: T, secret: st
   return `${encodedHeader}.${encodedPayload}.${signature}`;
 };
 
+// Server-to-server token, never issued by the public chat session endpoint.
+export const createChatModerationToken = async (
+  subject: string, action: "list" | "delete", messageId: string, secret: string
+): Promise<string> => {
+  const iat = Math.floor(Date.now() / 1000);
+  return createSignedToken({ sub: subject, kind: "chat_moderation", action, message_id: messageId, iat, exp: iat + 60 }, secret);
+};
+
 const verifySignedToken = async <T extends SignedPayload>(token: string, secret: string): Promise<T | null> => {
   const parts = token.split(".");
   if (parts.length !== 3) {

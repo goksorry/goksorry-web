@@ -99,7 +99,8 @@ export async function POST(request: Request) {
         title,
         clean_title: cleanTitle,
         url,
-        preview: sanitizeOptionalPlainText(item.preview, "preview", 4000),
+        // Store only title/link metadata; never retain source bodies from retries.
+        preview: null,
         fetched_at: fetchedAt,
         created_at_from_source: createdAtFromSource
       });

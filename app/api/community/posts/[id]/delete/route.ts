@@ -54,11 +54,7 @@ export async function POST(
 
   const { error } = await service
     .from("community_posts")
-    .update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-      content: "[deleted]"
-    })
+    .delete()
     .eq("id", postId);
 
   if (error) {

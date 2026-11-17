@@ -72,11 +72,15 @@ const scheduleReconnect = (delayMs: number) => {
 
 const handleServerEvent = (event: ChatServerEvent) => {
   if (event.type === "session.ready") {
-    update({ viewer: event.viewer, connections: event.connections, messages: mergeChatMessages(snapshot.messages, event.recent) });
+    // Reconnect must not resurrect messages removed while the client was offline.
+    update({ viewer: event.viewer, connections: event.connections, messages: mergeChatMessages([], event.recent) });
   } else if (event.type === "presence.count") {
     update({ connections: event.connections });
   } else if (event.type === "chat.message") {
     update({ messages: mergeChatMessages(snapshot.messages, [event.message]) });
+  } else if (event.type === "chat.removed") {
+    const removed = new Set(event.ids);
+    update({ messages: snapshot.messages.filter((message) => !removed.has(message.id)) });
   } else if (event.type === "system.error") {
     update({ notice: event.message });
   }

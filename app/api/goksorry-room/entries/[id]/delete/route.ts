@@ -40,11 +40,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const { error } = await service
     .from("goksorry_room_entries")
-    .update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-      content: "[deleted]"
-    })
+    .delete()
     .eq("id", entryId);
 
   if (error) {

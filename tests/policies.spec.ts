@@ -31,8 +31,15 @@ test("pending terms and privacy have full previews and navigable history", async
   await expect(page.locator(".legal-page")).toContainText("이전 내용");
   await page.goto("/privacy?version=privacy-pending");
   await expect(page.locator(".legal-page")).toContainText("최근 30건");
+  await expect(page.locator(".legal-page")).toContainText("전송 후 24시간");
+  await expect(page.locator(".legal-page")).toContainText("10분 주기로 만료 기록을 정리");
   await expect(page.locator(".legal-page")).toContainText("대한민국 서울");
   await expect(page.locator(".legal-page")).toContainText("추가 확인이 필요한 상태");
+});
+
+test("chat moderation rejects visitors and cross-origin deletion", async ({ request }) => {
+  expect((await request.get("/api/admin/chat/messages")).status()).toBe(401);
+  expect((await request.delete("/api/admin/chat/messages", { headers: { Origin: "https://untrusted.invalid" }, data: { id: "fixture" } })).status()).toBe(403);
 });
 
 test("unpublished or unknown versions cannot be read", async ({ request }) => {

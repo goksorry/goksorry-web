@@ -107,6 +107,7 @@ export type AntErrorEvent = { type: "ant.error"; code: string; message: string }
 export type AntServerEvent = AntRoomEvent | AntJoinEvent | AntMovedEvent | AntLeftEvent | AntErrorEvent;
 
 export type ChatServerEvent =
+  | { type: "chat.removed"; ids: string[] }
   | AntServerEvent
   | ChatSessionReadyEvent
   | ChatMessageEvent

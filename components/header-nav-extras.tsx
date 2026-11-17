@@ -13,6 +13,7 @@ export function HeaderNavExtras() {
   return (
     <>
       <Link href="/admin/reports">신고 관리</Link>
+      <Link href="/admin/chat">채팅 관리</Link>
       <Link href="/admin/members">회원 관리</Link>
       <Link href="/admin/policies">정책 문서</Link>
     </>
