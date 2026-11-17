@@ -1,5 +1,6 @@
 import type { FeedRow } from "./feed-data";
 import type { WorldCommunity, WorldFrame, WorldScene, WorldSide, WorldSummary } from "./world";
+import { groupsSampleLimited, sampleQuality } from "./sample-quality";
 
 export const WORLD_COLORS = ["#d9bc79", "#91b4ae", "#efa5ac", "#aaa0c4"];
 // NPC places per scene (the visitor is one more). The plaza is a sparse wall-gazing crowd; the battle's camps hold at most
@@ -43,7 +44,7 @@ export function recentEvidence(summary: WorldSummary, limit = 3): FeedRow[] {
 
 export function worldHeadline(summary: WorldSummary): string {
   if (!summary.total) return "분석 표본 없음";
-  if (summary.total < 3) return "표본 부족";
+  if (sampleQuality(summary).limited) return "표본 부족";
   if (!summary.bullish && !summary.bearish) return "중립만 집계됨";
   return `공포 ${Math.round((summary.fear_ratio ?? 0) * 100)}% · 희망 ${Math.round((summary.hope_ratio ?? 0) * 100)}%`;
 }
@@ -54,10 +55,10 @@ export const timelineY = (index: number) => 60 - Math.max(0, Math.min(10, index)
  * A community's collection and sample state as one line (the plaza's community board and the index tab's list): a collection
  * problem outranks a thin sample, which outranks the stock it talks about most.
  */
-export function communityStatus(c: Pick<WorldCommunity, "total" | "collection_disabled" | "collection_problem" | "top_stock">): { text: string; tone: "problem" | "thin" | "ok" } {
+export function communityStatus(c: Pick<WorldCommunity, "total" | "bullish" | "bearish" | "neutral" | "collection_disabled" | "collection_problem" | "top_stock">): { text: string; tone: "problem" | "thin" | "ok" } {
   if (c.collection_disabled) return { text: "수집 보류", tone: "problem" };
   if (c.collection_problem) return { text: "수집 확인 필요", tone: "problem" };
-  if (c.total < 3) return { text: "소표본 · 관찰 중", tone: "thin" };
+  if (sampleQuality(c).limited) return { text: "표본 부족 · 관찰 중", tone: "thin" };
   return { text: `관심: ${c.top_stock ?? "종목 미지정"}`, tone: "ok" };
 }
 
@@ -66,5 +67,5 @@ export function frameStatus(frame: WorldFrame, loaded: boolean, error: string, n
   if (!loaded) return "최초 분석 조회 중";
   if (!frame.overall.total) return "최근 6시간 분석 표본 없음";
   if (frame.data_at && now - Date.parse(frame.data_at) >= 30 * 60_000) return "갱신 지연 · 마지막 정상 데이터";
-  return frame.overall.total < 3 ? "소표본 · 해석 대기" : "관측 중";
+  return groupsSampleLimited(frame.communities) ? "표본 부족 · 해석 대기" : "관측 중";
 }

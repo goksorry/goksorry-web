@@ -1,4 +1,5 @@
 import { percent } from "@/lib/world";
+import { sampleQuality } from "@/lib/sample-quality";
 import { ratioGauge } from "@/lib/world-presentation";
 import { wallPanelLoading, type WallModel, type WallTextPanelId } from "@/lib/world-wall";
 import { BOARD, openBoard, wrapLines, type BoardPaintStyle, type BoardPen } from "./board-canvas";
@@ -53,17 +54,19 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
 
   if (id === "index") {
     const s = model.index.summary;
+    const sample = sampleQuality(s);
+    const limited = model.index.sampleLimited || sample.limited;
     const big = Math.max(body * 2, Math.min(body * 3, (bottom - top) * .62));
     const base = top + big * .92;
     font(Math.round(big), 700); ctx.fillStyle = INK;
-    const value = s.total ? s.index.toFixed(1) : "—";
+    const value = limited ? "—" : s.index.toFixed(1);
     ctx.fillText(value, pad, base);
     const valueWidth = ctx.measureText(value).width;
     font(body); ctx.fillStyle = DIM; ctx.fillText("/ 10", pad + valueWidth + body * .4, base);
     font(small, 700); ctx.fillStyle = GOLD; ctx.fillText(clip(model.index.label, w * .42), pad, Math.min(bottom, base + small * 1.5));
     // Right block: fear/hope gauge, read left to right like the index (fear fills from the left), and sample counts.
-    const x = Math.round(w * .46), blockW = w - pad - x, gauge = ratioGauge(s);
-    const fear = `공포 ${percent(s.fear_ratio)}`, hope = `희망 ${percent(s.hope_ratio)}`;
+    const x = Math.round(w * .46), blockW = w - pad - x, gauge = limited ? { fear: 0, hope: 0 } : ratioGauge(s);
+    const fear = `공포 ${limited ? "—" : percent(s.fear_ratio)}`, hope = `희망 ${limited ? "—" : percent(s.hope_ratio)}`;
     font(body, 700);
     if (ctx.measureText(fear).width + ctx.measureText(hope).width + body * .6 > blockW) font(small, 700);
     ctx.fillStyle = FEAR; ctx.fillText(fear, x, top + body * 1.2);
@@ -78,7 +81,7 @@ export function paintWallPanel(id: WallTextPanelId, canvas: HTMLCanvasElement, m
     // One spare line: a problem status outranks the sample count.
     if (problem && statusY > h - 2) { ctx.fillStyle = FEAR; if (sampleY <= h - 2) ctx.fillText(clip(model.index.status, blockW), x, sampleY); return; }
     ctx.fillStyle = DIM;
-    if (sampleY <= h - 2) ctx.fillText(clip(`표본 ${s.total.toLocaleString()}건 · 중립 ${s.neutral.toLocaleString()}건`, blockW), x, sampleY);
+    if (sampleY <= h - 2) ctx.fillText(clip(`표본 ${s.total.toLocaleString()}건 · 희망·공포 ${sample.directional.toLocaleString()}건`, blockW), x, sampleY);
     if (problem) { ctx.fillStyle = FEAR; ctx.fillText(clip(model.index.status, blockW), x, statusY); }
     return;
   }

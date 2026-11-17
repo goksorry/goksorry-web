@@ -1,5 +1,6 @@
 "use client";
 import { CommunitySourceLinks } from "@/components/community-source-links";
+import { groupsSampleLimited, sampleQuality, SAMPLE_DISPLAY_NOTE } from "@/lib/sample-quality";
 
 import { startTransition, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -46,7 +47,9 @@ const GOKSORRY_INDEX_HELP_LINES = [
   GOKSORRY_INDEX_SHORT_DESCRIPTION,
   `산식: ${GOKSORRY_INDEX_FORMULA_TEXT}`,
   GOKSORRY_INDEX_EXTREME_RANGE_TEXT,
-  "높을수록 공포, 낮을수록 희망입니다."
+  "높을수록 공포, 낮을수록 희망입니다.",
+  SAMPLE_DISPLAY_NOTE,
+  "전체 평균은 집계에 참여한 커뮤니티 모두 표시 기준을 충족할 때 표시합니다."
 ];
 const GOKSORRY_INDEX_HELP_TITLE = GOKSORRY_INDEX_HELP_LINES.join("\n");
 
@@ -305,13 +308,18 @@ export function MarketOverview({
   const actionableActiveRows = activeGroup?.rows.filter((row) => row.label !== "neutral") ?? [];
   const overallCommunityScore = payload?.overall_sentiment_score ?? 5;
   const overallGoksorryIndex = payload?.overall_goksorry_index ?? goksorryIndexFromScore(overallCommunityScore);
-  const overallCommunityBand = payload?.overall_sentiment_band ?? "neutral";
+  const overallSampleLimited = groupsSampleLimited(communityGroups);
+  const overallSample = communityGroups.reduce((sum, group) => {
+    const sample = sampleQuality(group);
+    return { total: sum.total + sample.total, directional: sum.directional + sample.directional };
+  }, { total: 0, directional: 0 });
+  const overallCommunityBand = overallSampleLimited ? "neutral" : payload?.overall_sentiment_band ?? "neutral";
   const overallCommunityLabel = communityLoading
     ? "계산 중"
-    : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
+    : overallSampleLimited ? "표본 부족 · 관찰 중" : SENTIMENT_BAND_DISPLAY[overallCommunityBand].label;
   const overviewArtStyle: OverviewPanelStyle = {
     ...buildOverviewArtStyle(overallCommunityBand),
-    "--overview-gauge-progress": `${Math.max(0, Math.min(100, overallGoksorryIndex * 10))}%`
+    "--overview-gauge-progress": `${overallSampleLimited ? 0 : Math.max(0, Math.min(100, overallGoksorryIndex * 10))}%`
   };
   const overviewCommunityRowStyle: OverviewCommunityRowStyle = {
     "--overview-community-columns": String(communityGroups.length || SOURCE_GROUPS.length)
@@ -382,11 +390,12 @@ export function MarketOverview({
               <p className="overview-overall-label">최근 6시간 커뮤니티 평균 · 높을수록 곡소리</p>
               <div className="overview-overall-value-row">
                 <strong className="overview-overall-value">
-                  {communityLoading ? "--" : overallGoksorryIndex.toFixed(1)}
+                  {communityLoading ? "--" : overallSampleLimited ? "—" : overallGoksorryIndex.toFixed(1)}
                   <span>/10</span>
                 </strong>
               </div>
               <p className="overview-overall-band">{overallCommunityLabel}</p>
+              <p className="overview-note">분석 {overallSample.total.toLocaleString()}건 · 희망·공포 {overallSample.directional.toLocaleString()}건</p>
             </div>
           </div>
 
@@ -400,12 +409,13 @@ export function MarketOverview({
                 ? `수집 문제: ${group.collection_reason}`
                 : "수집 문제";
               const disabled = communityLoading || group.collection_disabled;
+              const sample = sampleQuality(group);
 
               return (
                 <button
                   key={group.id}
                   type="button"
-                  className={`overview-card overview-card-community overview-tone-${group.tone}${
+                  className={`overview-card overview-card-community overview-tone-${sample.limited ? "mixed" : group.tone}${
                     selectedFeedGroupId === group.id ? " overview-card-active" : ""
                   }${group.collection_disabled ? " overview-card-disabled" : ""}`}
                   onClick={() => onCommunityIndicatorClick(group.id)}
@@ -428,6 +438,8 @@ export function MarketOverview({
                         <span>로딩중</span>
                       ) : group.collection_disabled ? (
                         <span>제외</span>
+                      ) : sample.limited ? (
+                        <span>표본 부족</span>
                       ) : (
                         <>
                           <span>{SENTIMENT_BAND_DISPLAY[group.sentiment_band].emoji ?? TONE_EMOJI[group.tone]}</span>
@@ -436,6 +448,7 @@ export function MarketOverview({
                       )}
                     </span>
                   </div>
+                  <p className="overview-note">분석 {sample.total.toLocaleString()}건 · 희망·공포 {sample.directional.toLocaleString()}건</p>
                 </button>
               );
             })}

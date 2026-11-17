@@ -1,4 +1,5 @@
 "use client";
+import { sampleQuality, SAMPLE_DISPLAY_NOTE } from "@/lib/sample-quality";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -257,8 +258,8 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       <div id="world-tabpanel-index" role="tabpanel" aria-labelledby="world-tab-index" hidden={tab !== "index"}>
         {!currentSelection && <WorldIndex selectedGroupIds={selectedGroupIds} />}
         <section className="world-detail-communities" aria-labelledby="world-communities-heading"><h3 id="world-communities-heading">커뮤니티 현황</h3>
-          <div className="world-community-list">{shown.communities.map((c) => { const status = communityStatus(c); return <button key={c.id} data-tone={status.tone} onClick={() => openCommunity(c.id)}><strong>{c.name}</strong><span>{c.total ? `${c.index.toFixed(1)} / 10` : "— / 10"} · 표본 {c.total}건</span><span>공포 {percent(c.fear_ratio)} · 희망 {percent(c.hope_ratio)}</span><span>{status.text}</span></button>; })}</div></section>
-        <p className="world-footnote">희망·공포 비율은 중립을 제외한 글 건수 비율입니다. 곡소리 지수는 기존 감성 점수·커뮤니티 보정 산식으로 계산하며 비율과 다릅니다. 표본 부족·빈 결과는 안정이나 시장 전체를 뜻하지 않습니다.</p>
+          <div className="world-community-list">{shown.communities.map((c) => { const status = communityStatus(c); const sample = sampleQuality(c); return <button key={c.id} data-tone={status.tone} onClick={() => openCommunity(c.id)}><strong>{c.name}</strong><span>{!sample.limited ? `${c.index.toFixed(1)} / 10` : "— / 10"} · 표본 {c.total}건 · 희망·공포 {sample.directional}건</span><span>공포 {sample.limited ? "—" : percent(c.fear_ratio)} · 희망 {sample.limited ? "—" : percent(c.hope_ratio)}</span><span>{status.text}</span></button>; })}</div></section>
+        <p className="world-footnote">희망·공포 비율은 중립을 제외한 글 건수 비율입니다. 곡소리 지수는 기존 감성 점수·커뮤니티 보정 산식으로 계산하며 비율과 다릅니다. 표본 부족·빈 결과는 안정이나 시장 전체를 뜻하지 않습니다. {SAMPLE_DISPLAY_NOTE}</p>
       </div>
       <div id="world-tabpanel-feed" role="tabpanel" aria-labelledby="world-tab-feed" hidden={tab !== "feed"}>
         {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}-${currentSelection.recordedAt ?? ""}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} />

@@ -7,6 +7,7 @@ import { pickDisplayTitle } from "./clean-filter";
 import { stockPierrotArt } from "./stock-pierrot";
 import { SCENE_BOARDS } from "./world-scene-boards";
 import { communityStatus } from "./world-presentation";
+import { groupsSampleLimited, sampleQuality } from "./sample-quality";
 import { worldSummary, type WorldFrame, type WorldScene, type WorldSummary } from "./world";
 import type { SourceGroupId } from "./feed-source-groups";
 
@@ -96,7 +97,7 @@ export type Loadable = "loading" | "ready" | "failed";
 /** One column of the community board: its 곡소리 지수, the fear/hope split of its sample, and its collection state. */
 export type WallCommunity = { id: SourceGroupId; name: string; index: string; total: number; fear_ratio: number | null; hope_ratio: number | null; status: string; tone: "problem" | "thin" | "ok" };
 export type WallModel = {
-  index: { state: Loadable; summary: Omit<WorldSummary, "evidence">; dataAt: string | null; time: string | null; status: string; label: string };
+  index: { state: Loadable; summary: Omit<WorldSummary, "evidence">; dataAt: string | null; time: string | null; status: string; label: string; sampleLimited?: boolean };
   pierrot: { src: string; band: string; label: string };
   market: { state: Loadable; items: { id: string; label: string; value: string; delta: string; tone: string }[] };
   room: { state: Loadable; items: { id: string; text: string; author: string; guest: boolean; time: string; replies: number }[] };
@@ -131,7 +132,8 @@ export function buildWallModel(input: {
   const summary = scope ?? (input.filtered ? worldSummary([]) : input.frame.overall);
   const dataAt = scope ? scope.data_at : input.filtered ? null : input.frame.data_at;
   const time = clock(dataAt);
-  const art = stockPierrotArt(summary, input.dark);
+  const sampleLimited = sampleQuality(summary).limited || (!input.filtered && groupsSampleLimited(input.frame.communities));
+  const art = stockPierrotArt(summary, input.dark, sampleLimited);
   return {
     summary, dataAt,
     model: {
@@ -140,7 +142,7 @@ export function buildWallModel(input: {
         state: scope ? "ready" : input.filtered ? loadable(input.feed) : input.loaded ? "ready" : input.failed ? "failed" : "loading",
         summary: { total: summary.total, bullish: summary.bullish, bearish: summary.bearish, neutral: summary.neutral, hope_ratio: summary.hope_ratio, fear_ratio: summary.fear_ratio, mood: summary.mood, index: summary.index },
         time: time ? `${time} 기준` : input.failed ? "데이터 조회 실패" : input.loaded ? "기준 시각 없음" : "데이터 조회 중",
-        dataAt, status: input.scopeStatus ?? input.status, label: art.label
+        dataAt, status: input.scopeStatus ?? input.status, label: art.label, sampleLimited
       },
       pierrot: art,
       market: {
@@ -167,7 +169,8 @@ export function buildWallModel(input: {
         state: input.loaded ? "ready" : input.failed ? "failed" : "loading",
         items: input.frame.communities.map((c) => {
           const status = communityStatus(c);
-          return { id: c.id, name: c.name, index: c.total ? c.index.toFixed(1) : "—", total: c.total, fear_ratio: c.fear_ratio, hope_ratio: c.hope_ratio, status: status.text, tone: status.tone };
+          const limited = sampleQuality(c).limited;
+          return { id: c.id, name: c.name, index: limited ? "—" : c.index.toFixed(1), total: c.total, fear_ratio: limited ? null : c.fear_ratio, hope_ratio: limited ? null : c.hope_ratio, status: status.text, tone: status.tone };
         })
       }
     }

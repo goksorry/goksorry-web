@@ -1,4 +1,5 @@
 "use client";
+import { sampleQuality } from "@/lib/sample-quality";
 import { CommunitySourceLinks } from "@/components/community-source-links";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -234,7 +235,7 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
         {embedded ? <div className="feed-scope-controls">{scopeControl}<FeedFilterControls selectedGroupIds={selectedGroupIds} variant="grid" /></div>
           : !scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
       </section>
-      {!embedded && summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
+      {!embedded && summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{sampleQuality(summary).limited && " · 표본 부족"}{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
       {rows.length > 0 && <SentimentFeed compact={embedded} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />}
       <CommunitySourceLinks groups={activeGroupIds} />
 

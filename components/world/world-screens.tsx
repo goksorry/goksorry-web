@@ -5,15 +5,18 @@ import type { CSSProperties } from "react";
 import { WALL_PANELS, wallPanelLoading, type WallModel, type WallPanelId } from "@/lib/world-wall";
 import type { SourceGroupId } from "@/lib/feed-source-groups";
 import { WALL_SKELETON_COLOR, WALL_SKELETON_WIDTHS } from "./wall-skeleton";
+import { sampleQuality, SAMPLE_DISPLAY_NOTE } from "@/lib/sample-quality";
 
-export function SummaryNumbers({ summary }: { summary: Omit<WorldSummary, "evidence"> }) {
-  const gauge = ratioGauge(summary);
+export function SummaryNumbers({ summary, sampleLimited = false }: { summary: Omit<WorldSummary, "evidence">; sampleLimited?: boolean }) {
+  const sample = sampleQuality(summary);
+  const limited = sampleLimited || sample.limited;
+  const gauge = limited ? { fear: 0, hope: 0 } : ratioGauge(summary);
   return <div className="world-numbers">
-    <div className="world-index-number"><strong>{summary.total ? summary.index.toFixed(1) : "—"}</strong><span>/ 10</span></div>
+    <div className="world-index-number"><strong>{limited ? "—" : summary.index.toFixed(1)}</strong><span>/ 10</span></div>
     {/* Same left-to-right gauge as the wall: fear fills from the left, hope from the right. */}
-    <div className="world-ratios"><span className="world-fear">공포 <b>{percent(summary.fear_ratio)}</b></span><span className="world-hope">희망 <b>{percent(summary.hope_ratio)}</b></span></div>
+    <div className="world-ratios"><span className="world-fear">공포 <b>{limited ? "—" : percent(summary.fear_ratio)}</b></span><span className="world-hope">희망 <b>{limited ? "—" : percent(summary.hope_ratio)}</b></span></div>
     <div className="world-ratio-track" aria-hidden="true"><i className="world-ratio-fear" style={{ width: `${gauge.fear * 100}%` }} /><i className="world-ratio-hope" style={{ width: `${gauge.hope * 100}%` }} /></div>
-    <span className="world-sample">분석 표본 {summary.total.toLocaleString()}건 <span>· 중립 {summary.neutral.toLocaleString()}건</span></span>
+    <span className="world-sample" title={SAMPLE_DISPLAY_NOTE}>분석 표본 {summary.total.toLocaleString()}건 <span>· 희망·공포 {sample.directional.toLocaleString()}건</span>{limited && <span> · 표본 부족</span>}</span>
   </div>;
 }
 
@@ -58,7 +61,7 @@ export function WorldWallDom({ model, onOpen, onCommunity, onFocusPanel }: {
       <figcaption>현재 분위기 · {model.pierrot.label}</figcaption>
     </figure>)}
     {section("index", "곡소리 지수", "산식·시장 지표", wallPanelLoading(model, "index") ? <WallSkeleton rows={3} /> : <>
-      <SummaryNumbers summary={model.index.summary} />
+      <SummaryNumbers summary={model.index.summary} sampleLimited={model.index.sampleLimited} />
       <p className="world-screen-meta">최근 6시간 · <time dateTime={model.index.dataAt ?? undefined}>{model.index.time}</time></p>
       <p className="world-screen-status" role="status" hidden={model.index.status === "관측 중"}>{model.index.status}</p>
     </>, { id: "world-index-wall", className: "world-index-screen" })}

@@ -9,6 +9,9 @@ test("classic shows indices and board links with limited title links and no pret
   await expect(page.getByRole("heading", { name: "곡소리 지수", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /예쁜말|이쁜말/ })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "출처 게시판" })).toBeVisible();
+  await expect(page.locator(".overview-overall-value")).toHaveText("—/10");
+  await expect(page.locator(".overview-score-badge").filter({ hasText: "표본 부족" })).toHaveCount(4);
+  await expect(page.locator(".overview-card-community").first()).toContainText("분석 6건 · 희망·공포 4건");
   await expect(page.locator("body")).toContainText("테스트 수집 제목");
 });
 test("ingest rejects bodies and unapproved hosts behind authentication and aggregate registration strips arbitrary text", async ({ request }) => {
@@ -42,7 +45,10 @@ test("mobile world opens restored source titles without a pretty-title control",
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "출처", exact: true }).click();
+  await page.getByRole("button", { name: "지수", exact: true }).click();
+  await expect(page.getByRole("dialog").locator(".overview-overall-value")).toHaveText("—/10");
+  await expect(page.getByRole("dialog").locator(".world-community-list")).toContainText("표본 부족");
+  await page.getByRole("tab", { name: "출처", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("테스트 수집 제목").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /예쁜말|이쁜말/ })).toHaveCount(0);
   expect(errors).toEqual([]);

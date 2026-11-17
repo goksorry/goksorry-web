@@ -9,7 +9,7 @@ import type { WorldSummary } from "@/lib/world";
 export const PIERROT_DARK = true;
 // `missing`: the theater where no record can be shown (or none is known yet) has no mood to picture, so the frame says
 // so instead, with this text ("기록 없음", "기록 확인 중…").
-export function WorldPierrot({ summary, recorded = false, missing = "" }: { summary: Pick<WorldSummary, "total" | "index">; recorded?: boolean; missing?: string }) {
+export function WorldPierrot({ summary, recorded = false, missing = "" }: { summary: Pick<WorldSummary, "total" | "index" | "bullish" | "bearish" | "neutral">; recorded?: boolean; missing?: string }) {
   if (missing) return <figure className="world-pierrot" data-band="missing"><p className="world-pierrot-missing">{missing}</p><figcaption>기록 시점</figcaption></figure>;
   const { band, label, src } = stockPierrotArt(summary, PIERROT_DARK);
   return <figure className="world-pierrot" data-band={band}>
