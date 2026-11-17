@@ -1,19 +1,15 @@
-// Reviewed 2026-11-17. Re-enable only after documenting an applicable grant or
-// replacing the provider. A working endpoint is not a reuse permission.
-const reviews: Record<string, { allowed: boolean; reason: string; robotsUrl: string }> = {
-  "stock.naver.com": { allowed: false, reason: "robots_disallow", robotsUrl: "https://stock.naver.com/robots.txt" },
-  "m.stock.naver.com": { allowed: false, reason: "robots_disallow", robotsUrl: "https://m.stock.naver.com/robots.txt" }
-};
-
-export const MARKET_SOURCE_HOLD_MESSAGE = "출처 이용 범위 확인 중";
+// Public quote collection resumed at the operator's request on 2026-11-17.
+// This list controls request destinations; it does not represent a license.
+const marketHosts = new Set(["stock.naver.com", "m.stock.naver.com"]);
 
 export function getMarketDataAccess(url: string) {
-  return reviews[new URL(url).hostname] ?? { allowed: false, reason: "source_review_required", robotsUrl: null };
+  const allowed = marketHosts.has(new URL(url).hostname);
+  return { allowed, reason: allowed ? "configured_market_source" : "unconfigured_market_source" };
 }
 
 export async function fetchMarketDataText(url: string): Promise<string> {
-  const review = getMarketDataAccess(url);
-  if (!review.allowed) throw new Error(`collection_policy:${review.reason}`);
+  const access = getMarketDataAccess(url);
+  if (!access.allowed) throw new Error(`market_data:${access.reason}`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3500);
   try {

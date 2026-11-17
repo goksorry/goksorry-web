@@ -1,4 +1,4 @@
-import { fetchMarketDataText as fetchText, MARKET_SOURCE_HOLD_MESSAGE } from "@/lib/market-data-access";
+import { fetchMarketDataText as fetchText } from "@/lib/market-data-access";
 import { boundedCache } from "@/lib/bounded-cache";
 import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { parseNaverNasdaqQuote, parseNaverUsdKrwQuote } from "@/lib/naver-market-data";
@@ -182,7 +182,7 @@ const fallbackIndicator = (id: string, label: string): MarketIndicator => ({
   change_value: null,
   change_percent: null,
   tone: "flat",
-  note: MARKET_SOURCE_HOLD_MESSAGE,
+  note: "기준값 없음",
   market_adjustment_basis_at: null,
   market_adjustment_weight: 0,
   market_adjustment_status: "unavailable"
@@ -388,12 +388,12 @@ const MARKET_FALLBACK: [string, string][] = [["kospi", "KOSPI"], ["kosdaq", "KOS
 
 // An overview with no usable indicator (upstream down) is not cached, so the next
 // request retries instead of keeping the failure for a refresh interval.
-// Versioned key excludes quotes cached before the source access review.
+// Versioned key starts a fresh cache when public quote collection resumes.
 const cachedMarketOverview = boundedCache(async (): Promise<MarketOverview> => {
   const overview = await buildMarketOverview();
   if (!overview.market_indicators.some(hasUsableMarketIndicator)) throw new Error("market overview unavailable");
   return overview;
-}, ["market-overview-reviewed-v3"]);
+}, ["market-overview-public-v4"]);
 
 export const getCachedMarketOverview = async (): Promise<MarketOverview> => {
   try {

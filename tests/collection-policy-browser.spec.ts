@@ -27,11 +27,10 @@ test("a failed policy lookup never exposes feed titles", async ({ request }) => 
   }
 });
 
-test("market placeholders and source links explain policy holds", async ({ page, request }) => {
+test("market collection is separate from community policy holds", async ({ page, request }) => {
   const overview = await (await request.get("/api/internal/overview")).json();
   for (const indicator of overview.market_indicators.slice(0, 4)) {
-    expect(indicator.value_text).toBe("--");
-    expect(indicator.note).toBe("출처 이용 범위 확인 중");
+    expect(indicator.note).not.toBe("출처 이용 범위 확인 중");
   }
   await page.goto("/classic");
   const source = page.locator('.site-footer-source-link[href="https://www.tossinvest.com/"]');
