@@ -32,7 +32,7 @@ test("pending terms and privacy have full previews and navigable history", async
   await page.goto("/privacy?version=privacy-pending");
   await expect(page.locator(".legal-page")).toContainText("최근 30건");
   await expect(page.locator(".legal-page")).toContainText("전송 후 24시간");
-  await expect(page.locator(".legal-page")).toContainText("10분 주기로 만료 기록을 정리");
+  await expect(page.locator(".legal-page")).toContainText("하루 2회(한국시간 03시·15시) 만료 기록을 정리");
   await expect(page.locator(".legal-page")).toContainText("대한민국 서울");
   await expect(page.locator(".legal-page")).toContainText("추가 확인이 필요한 상태");
 });

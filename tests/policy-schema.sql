@@ -4,10 +4,10 @@ begin;
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid language sql as $$ select null::uuid $$;
 \ir ../db/schema.sql
-\ir ../db/migrations/030_publish_retention_policy.sql
+\ir ../db/migrations/031_reduce_retention_cadence.sql
 
 do $$ begin
-  assert (select count(*) = 3 from public.policy_document_versions), 'three historical revision rows, no duplicate on replay';
+  assert (select count(*) = 4 from public.policy_document_versions), 'four historical revision rows, no duplicate on replay';
   assert (select bool_and(effective_at - published_at >= interval '7 days') from public.policy_document_versions), 'at least seven full days notice';
   assert (select bool_and(is_adverse) from public.policy_document_versions), 'both revisions require advance notice';
   assert (select bool_and(extract(hour from effective_at at time zone 'Asia/Seoul') = 0) from public.policy_document_versions), 'effective time must be Korea midnight';

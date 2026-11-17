@@ -6,7 +6,6 @@ import { extractSymbolFromSource, syncSymbolMetadata } from "@/lib/symbol-metada
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
 const LABELS = new Set(["bullish", "bearish", "neutral"]);
-const POST_RETENTION_DAYS = 7;
 
 type IngestPayloadItem = {
   source: unknown;
@@ -146,12 +145,6 @@ export async function POST(request: Request) {
     } catch (error) {
       logApiError("symbol metadata sync failed", auth.requestId, error);
     }
-  }
-
-  const retentionCutoff = new Date(Date.now() - POST_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const { error: cleanupError } = await service.from("external_posts").delete().lt("fetched_at", retentionCutoff);
-  if (cleanupError) {
-    logApiError("external post retention cleanup failed", auth.requestId, cleanupError);
   }
 
   return NextResponse.json({ upserted: sentimentRows.length, skipped });

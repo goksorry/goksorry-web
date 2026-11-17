@@ -9,7 +9,7 @@ const makeRows = () => ["terms", "privacy"].flatMap((type) => {
     effective_at: new Date(now + days * 864e5).toISOString(),
     updated_at: new Date(now - 9 * 864e5).toISOString(), created_at: new Date(now - 9 * 864e5).toISOString(), superseded_at: null });
   return [row("old", -30, "## 이전 문서\n\n이전 내용"), row("current", -10, "## 현행 문서\n\n현행 내용"),
-    row("pending", activated ? -1 : 8, readFileSync(`docs/legal/${type}-2026-11-17${type === "privacy" ? "-retention" : ""}.md`, "utf8")),
+    row("pending", activated ? -1 : 8, readFileSync(`docs/legal/${type}-2026-11-17${type === "privacy" ? "-retention-twice-daily" : ""}.md`, "utf8")),
     { ...row("unpublished", -2, "비공개 초안"), published_at: new Date(now + 864e5).toISOString() }];
 });
 createServer(async (req, res) => {

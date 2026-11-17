@@ -54,7 +54,7 @@ test("KST day boundaries, invalid dates and missing replay slots", () => {
   expect(replay.slots[1].frame).toBeNull();
   expect(replay.slots[143].bucket_at).toBe("2026-11-15T14:50:00.000Z");
 });
-test("snapshot writer upserts same bucket, prunes seven days and surfaces failure", async () => {
+test("snapshot writer upserts without running retention and surfaces failure", async () => {
   const snapshots = new Map<string, unknown>();
   const cutoffs: string[] = [];
   let fail = false;
@@ -79,7 +79,7 @@ test("snapshot writer upserts same bucket, prunes seven days and surfaces failur
   expect("evidence" in stored.overall).toBe(false);
   expect([...stored.communities, ...stored.stocks].some((s) => "evidence" in s)).toBe(false);
   expect(JSON.stringify(stored)).not.toMatch(/실제 수집 제목|정제 제목|example\.com|post_key/);
-  expect(cutoffs[0]).toBe("2026-11-08T01:01:00.000Z");
+  expect(cutoffs).toEqual([]);
   fail = true;
   await expect(storeWorldSnapshot(service, frame, now)).rejects.toThrow("write failed");
 });

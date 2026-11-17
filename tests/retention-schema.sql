@@ -47,6 +47,6 @@ select goksorry_private.run_data_retention();
 do $$begin
  assert (select (deleted_counts->>'external_posts')::int=0 from goksorry_private.retention_status), 'repeated cleanup is idempotent';
  assert (select count(*)=2 from policy_document_versions where superseded_at is null), 'one pending revision per policy';
- assert (select effective_at-published_at>=interval '7 days' from policy_document_versions where id='59c66f82-6df5-4f93-910b-52ff364bd4a5'), 'notice retained';
+ assert (select effective_at-published_at>=interval '7 days' from policy_document_versions where id='b782af64-6e13-4a1a-a38d-60ba8f48a9a2'), 'notice retained';
 end$$;
 rollback;
