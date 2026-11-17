@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { applyPresenceEvent, emptyPresence, fakeCapacity, parseRoomInput } from "../lib/world-presence";
+import { applyPresenceEvent, emptyPresence, fakeCapacity, parseRoomInput, presenceScene } from "../lib/world-presence";
 
 test("every two other viewers take the place of one NPC, down to half the crowd", () => {
   expect([0, 1, 2, 3, 4, 19, 40].map((peers) => fakeCapacity(20, peers))).toEqual([20, 20, 19, 19, 18, 11, 10]);
@@ -28,4 +28,10 @@ test("presence follows the room snapshot, joins, moves, leaves and guest renames
   expect(state.peers.get("p2")?.name).toBe("새이름");
   applyPresenceEvent(state, { type: "ant.leave", id: "p1" });
   expect([...state.peers.keys()]).toEqual(["p2"]);
+});
+
+test("the plaza and the battle share ants; the theater replays the past alone", () => {
+  expect(presenceScene("plaza")).toBe("plaza");
+  expect(presenceScene("battle")).toBe("battle");
+  expect(presenceScene("theater")).toBeNull();
 });

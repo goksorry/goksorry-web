@@ -9,6 +9,7 @@ import { WorldRoomBadge } from "./world-room-badge";
 import { usePlazaPresence } from "./use-plaza-presence";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
 import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
+import { presenceScene } from "@/lib/world-presence";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
 import { useWorldSnack } from "./world-snackbar";
@@ -40,9 +41,10 @@ export default function HD2DWorld(props: Props) {
   const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
   const [nearby, setNearby] = useState<WorldScene | null>(null);
-  // Other viewers on the plaza: shared through the chat hub while the 3D plaza is shown.
+  // Other viewers on the plaza and in the battle: shared through the chat hub while the 3D scene is shown.
   const { user } = useSessionSnapshot();
-  const presence = usePlazaPresence(renderer, !!props.shared && !user?.profile_setup_required && mode === "webgl" && props.scene === "plaza");
+  const shared = props.shared && !user?.profile_setup_required && mode === "webgl" ? presenceScene(props.scene) : null;
+  const presence = usePlazaPresence(renderer, shared);
   const peerBubbles = useRef<PeerBubblesHandle>(null), walked = useRef(presence.walked);
   walked.current = presence.walked;
   const nearbyRef = useRef<WorldScene | null>(null), nearButton = useRef<HTMLButtonElement>(null);
@@ -172,8 +174,8 @@ export default function HD2DWorld(props: Props) {
     <div className="world-atmosphere" aria-hidden="true" data-mood={summary.total < 3 ? "watching" : summary.mood} />
     <div ref={avatar} className="world-avatar-label" data-testid="world-avatar" hidden={fallback}><span>{props.emote || "나"}</span></div>
     {!fallback && <WorldSpeechBubble ref={bubble} />}
-    {!fallback && props.scene === "plaza" && <WorldPeerBubbles ref={peerBubbles} bubbles={presence.bubbles} />}
-    {!fallback && props.scene === "plaza" && <WorldRoomBadge room={presence.room} peers={presence.peers} error={presence.error} onSwitch={presence.switchRoom} />}
+    {!fallback && presenceScene(props.scene) && <WorldPeerBubbles ref={peerBubbles} bubbles={presence.bubbles} />}
+    {!fallback && presenceScene(props.scene) && <WorldRoomBadge room={presence.room} peers={presence.peers} error={presence.error} onSwitch={presence.switchRoom} />}
     {/* With WebGL the portrait is painted on the scene board; the card is for the no-WebGL2 view. */}
     {props.scene !== "plaza" && designedStatic && <WorldPierrot summary={summary} recorded={props.scene === "theater"} missing={props.scene !== "theater" ? "" : props.pending ? "기록 확인 중…" : props.absent ? "기록 없음" : ""} />}
     {props.children}

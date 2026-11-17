@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { chatConnection } from "@/lib/chat-connection";
+import type { PresenceScene } from "@/lib/chat-types";
 import type { Point } from "@/lib/world-navigation";
 import { applyPresenceEvent, emptyPresence } from "@/lib/world-presence";
 import { bubbleDuration } from "./world-speech-bubble";
@@ -22,11 +23,12 @@ export type PlazaPresenceView = {
   walked: (target: Point) => void;
 };
 
-// The room survives reconnects and scene trips within this tab (the hub keeps it when it still has a place).
-let lastRoom: number | null = null;
+// Each scene's room survives reconnects and scene trips within this tab (the hub keeps it when it still has a place).
+const lastRoom: Partial<Record<PresenceScene, number>> = {};
 
-/** Shares the visitor's plaza ant through the chat hub while `active`, and shows the other viewers of its room. */
-export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, active: boolean): PlazaPresenceView {
+/** Shares the visitor's ant in `scene` (none: not shared) through the chat hub, and shows the other viewers of its room. */
+export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, scene: PresenceScene | null): PlazaPresenceView {
+  const active = scene !== null;
   const [room, setRoom] = useState<number | null>(null);
   const [peers, setPeers] = useState(0);
   const [bubbles, setBubbles] = useState<PeerBubble[]>([]);
@@ -35,7 +37,7 @@ export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, acti
   const bubbleKey = useRef(0);
 
   useEffect(() => {
-    if (!active) return;
+    if (!scene) return;
     const release = chatConnection.acquire();
     let presence = emptyPresence(), inside = false;
 
@@ -52,7 +54,8 @@ export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, acti
     const enter = () => {
       if (document.hidden) return;
       const at = renderer.current?.position ?? { x: 0, z: .4 };
-      inside = chatConnection.send({ type: "ant.enter", x: at.x, z: at.z, ...(lastRoom !== null ? { room: lastRoom } : {}) });
+      const room = lastRoom[scene];
+      inside = chatConnection.send({ type: "ant.enter", x: at.x, z: at.z, scene, ...(room !== undefined ? { room } : {}) });
     };
     const leave = () => {
       if (inside) chatConnection.send({ type: "ant.leave" });
@@ -66,7 +69,10 @@ export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, acti
     });
     const offEvent = chatConnection.onEvent((event) => {
       if (event.type === "ant.error") { setError(event.message); return; }
-      if (event.type === "ant.room") { lastRoom = event.room; setError(null); }
+      if (event.type === "ant.room") {
+        if ((event.scene ?? "plaza") !== scene) return; // a late snapshot of the scene this tab just left
+        lastRoom[scene] = event.room; setError(null);
+      }
       if (!event.type.startsWith("ant.") && event.type !== "chat.message") return;
       if (applyPresenceEvent(presence, event as Parameters<typeof applyPresenceEvent>[1])) push();
       if (event.type === "chat.message" && event.ant_id && presence.peers.has(event.ant_id)) {
@@ -90,7 +96,7 @@ export function usePlazaPresence(renderer: RefObject<WorldRenderer | null>, acti
       leave();
       release();
     };
-  }, [active, renderer]);
+  }, [scene, renderer]);
 
   const walked = useCallback((target: Point) => {
     if (!active) return;

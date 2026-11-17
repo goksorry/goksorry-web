@@ -74,8 +74,8 @@ export type WorldRenderer = {
 };
 
 /** Ant instances: the plaza holds at most about 20 NPCs, 19 peers, a few ants walking off and the visitor; the battle 20 camp
- * ants and at most 20 walking off; the theater 47. */
-const MAX_ANTS = 48;
+ * ants, at most 20 walking off, 19 peers and the visitor; the theater 47. */
+const MAX_ANTS = 64;
 
 export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: RenderState, events: {
   panels?: (rects: Record<string, WallRect> | null) => void;
@@ -88,7 +88,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   labels?: (rects: Record<string, WallRect>) => void;
   /** The visitor set off for a new floor point (a click or an arrow key), for presence. */
   walk?: (target: Point) => void;
-  /** Every plaza frame: the screen point over each peer ant's name tag, for its speech bubble. */
+  /** Every plaza and battle frame: the screen point over each peer ant's name tag, for its speech bubble. */
   peers?: (heads: Record<string, { x: number; y: number }>) => void;
   /** The visitor clicked the plaza door it stands at. */
   enter?: (scene: WorldScene) => void;
@@ -357,6 +357,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   const crowd = createCrowd();
   // 심리 전장: ants standing in their camps (lib/world-battle-crowd.ts), playing the atlas's emotion loops.
   const battleLoops = emoteFrames(hasFrame), battle = createBattleCrowd({ frames: battleLoops });
+  // The other viewers in the battle room walk to the points they chose, like plaza peers (a crowd of peers only: no NPC roams).
+  const battlePeers = createCrowd(7);
+  /** The crowd that walks the other viewers' ants in the shown scene (none in the theater). */
+  const peerCrowd = () => state.scene === "plaza" ? crowd : state.scene === "battle" ? battlePeers : null;
   // NPCs come and go through the back-wall doors, each hiding behind the pier on its outer side; a darkening ant is tinted
   // toward the doorway's dark (darkMat), and a hidden one is drawn at zero size.
   const crowdDoors: CrowdDoor[] = PLAZA_ENTRANCES.map((e) => ({ x: e.x, z: e.z, legs: plazaDoorWay(e, e.x < 0 ? -1 : 1) }));
@@ -425,8 +429,8 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8),
     marker: () => { const m = marker.state; if (!m) return null; const p = project(corner.set(m.x, 0, m.z)); return { ...m, sx: p.x, sy: p.y }; } };
   // Plaza instances are the crowd (including ants walking off) then the visitor, the battle its camp ants (with those walking
-  // off) then the visitor; the theater draws sideList then the visitor.
-  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : state.scene === "battle" ? Math.min(MAX_ANTS - 1, battle.ants.length) : sideList.length;
+  // off), the other viewers' ants, then the visitor; the theater draws sideList then the visitor.
+  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : state.scene === "battle" ? Math.min(MAX_ANTS - 1, battle.ants.length + battlePeers.ants.length) : sideList.length;
   // What was drawn last for each instance: atlas frame, sprite height in world units, and world units per atlas pixel.
   const shown: string[] = [], talls: number[] = [], units: number[] = [];
   const antMetric = (i: number, x: number, z: number, state: string, dir: number): AntMetric => {
@@ -441,10 +445,12 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   function summary(): WorldSummary { return state.scene === "battle" ? state.frame.stocks.find((s) => s.symbol === state.stock) ?? state.frame.overall : state.frame.overall; }
   function population() {
     const plaza = state.scene === "plaza", base = crowdCapacity(state.scene, state.mobile);
-    // The battle's camps: only the ants that change camp walk; reduced motion places them at once.
+    // The battle's camps: only the ants that change camp walk; reduced motion places them at once. As on the plaza, every two
+    // other viewers take the place of one camp ant.
     if (state.scene === "battle") {
-      battle.sync(crowdDistribution(summary(), base), { instant: state.reduced });
-      roster = []; sideList = []; ants.count = shadows.count = visitorIndex() + 1; metrics.population = battle.ants.filter((a) => !a.leaving).length + 1; return;
+      battle.sync(crowdDistribution(summary(), fakeCapacity(base, peers.length)), { instant: state.reduced });
+      roster = peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } })); sideList = [];
+      ants.count = shadows.count = visitorIndex() + 1; metrics.population = battle.ants.filter((a) => !a.leaving).length + peers.length + 1; return;
     }
     // No record to show: the theater keeps the ants it has (they fade out in draw) rather than taking the empty frame's none.
     if (!plaza && state.absent) { roster = []; ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count; return; }
@@ -606,6 +612,9 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       // The camps keep to the floor the frame shows (a portrait phone frames only the middle of the field).
       battle.frame(crowdView(), { instant: state.reduced });
       if (!state.paused) battle.step(dt, { still: state.reduced });
+      const env = { obstacles, front, visitor: position, view: crowdView() };
+      battlePeers.sync(roster, env);
+      if (ambient()) battlePeers.step(dt, env);
       ants.count = shadows.count = visitorIndex() + 1;
     }
     let cueCount = 0, puffs = 0;
@@ -632,9 +641,11 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     };
     const placeShadow = (i: number, x: number, z: number, k: number) => { dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * k, .55 * size * k, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix); };
     const you = visitorIndex(), heads: Record<string, { x: number; y: number }> = {}, peerTags: LabelSpec[] = [];
+    // In the battle the peers' instances follow the camp ants'.
+    const walkers = peerCrowd(), firstPeer = state.scene === "battle" ? battle.ants.length : 0;
     for (let i = 0; i < ants.count; i++) {
       const visitor = i === you, side = sideList[i];
-      if (state.scene === "battle" && !visitor) {
+      if (state.scene === "battle" && !visitor && i < firstPeer) {
         // A camp ant: standing at its spot (hope smiling), walking to a new camp, or playing an emotion loop. Without ambient
         // motion it stands still in its plain pose.
         const b = battle.ants[i], variant = SIDE_VARIANT[b.side], walking = b.path.length > 0, still = !ambient();
@@ -649,7 +660,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         placeShadow(i, b.x, b.z, b.fade);
         continue;
       }
-      if (!plaza && !visitor) {
+      if (!walkers && !visitor) {
         let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
         if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
         fades[i] = cast;
@@ -682,8 +693,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         continue;
       }
       fades[i] = 1;
-      // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone, sigh).
-      const a = visitor ? null : crowd.ants[i], fade = a ? a.fade : 1;
+      // The visitor (in every scene) keeps its own walk; plaza NPCs follow the crowd simulation (roam, gaze at the wall, phone,
+      // sigh), and other viewers' ants (plaza and battle) walk where those viewers chose.
+      const a = visitor ? null : walkers?.ants[i - firstPeer] ?? null, fade = a ? a.fade : 1;
+      if (!visitor && !a) { hide(i); continue; }
       if (fade <= 0) { hide(i); continue; } // away on a trip: nothing drawn, no tag, no cue
       const x = a ? a.x : position.x, z = a ? a.z : position.z;
       const dir4 = a ? a.dir4 : [0, 2, 6, 4][direction];
@@ -742,7 +755,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     const tagRects = labels.measure(camera, width, height), tagKey = Object.entries(tagRects).map(([id, r]) => `${id}:${r.x.toFixed(0)},${r.y.toFixed(0)},${r.width.toFixed(0)}`).join("|");
     if (tagKey !== labelKey) { labelKey = tagKey; events.labels?.(tagRects); }
     const p = project(corner.set(position.x, head, position.z)); events.avatar?.(p.x, p.y, position);
-    if (plaza) events.peers?.(heads);
+    if (walkers) events.peers?.(heads);
     const query = timer && queries.length < 6 ? gl.createQuery() : null;
     if (query) gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
     const start = performance.now(); renderer.render(scene, camera); const duration = performance.now() - start;
@@ -823,7 +836,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     setBand(next) { band = next; },
     setVisitorTag(text) { visitorTag = text === null ? null : text || "나"; },
     setPeers(next) { peers = next; population(); },
-    say(id, seconds) { crowd.say(`peer:${id}`, seconds); },
+    say(id, seconds) { peerCrowd()?.say(`peer:${id}`, seconds); },
     setFont(family) { labels.setFont(family); },
     wallTexture: (id) => boards.canvas(id),
     move(x, z) { visiting = null; const target = { x: position.x + x, z: limitZ(position.z + z) }; if (walkable(target, worldObstacles(state.scene))) walkTo(target); },

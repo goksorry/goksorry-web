@@ -1,12 +1,19 @@
-// Plaza presence, framework-free: who else stands in this viewer's plaza room, and how many NPC ants make way for them.
-import type { AntServerEvent, ChatMessageEvent, PlazaPeer } from "./chat-types";
+// Scene presence, framework-free: who else stands in this viewer's room of a shared scene, and how many NPC ants make way
+// for them.
+import type { AntServerEvent, ChatMessageEvent, PlazaPeer, PresenceScene } from "./chat-types";
+import type { WorldScene } from "./world";
+
+/** Scenes where viewers see each other's ants; each has its own rooms (the theater replays the past, so it has none). */
+export const PRESENCE_SCENES = ["plaza", "battle"] as const satisfies readonly PresenceScene[];
+export const presenceScene = (scene: WorldScene): PresenceScene | null =>
+  (PRESENCE_SCENES as readonly string[]).includes(scene) ? scene as PresenceScene : null;
 
 /** Real ants per room, as the chat hub caps it (chat-edge/src/plaza-rooms.ts PLAZA_ROOM_SIZE). */
 export const PLAZA_ROOM_SIZE = 20;
 /** Rooms a viewer may type in: shown 1..PLAZA_ROOM_LIMIT, 0-based on the wire. */
 export const PLAZA_ROOM_LIMIT = 999;
 
-/** NPC ants kept beside `peers` other viewers: one fewer for every two peers, never below half the base crowd. */
+/** NPC ants kept beside `peers` other viewers (plaza crowd and battle camps alike): one fewer for every two peers, never below half the base crowd. */
 export const fakeCapacity = (base: number, peers: number): number =>
   Math.max(Math.ceil(base / 2), base - Math.floor(Math.max(0, peers) / 2));
 

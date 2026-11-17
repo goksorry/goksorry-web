@@ -49,8 +49,10 @@ export type ChatPingEvent = {
   ts: number;
 };
 
-/** Plaza presence: the viewer's ant appears where it stands, and each later floor click sends the new destination. */
-export type AntEnterEvent = { type: "ant.enter"; x: number; z: number; room?: number };
+/** Shared scenes (lib/world-presence.ts PRESENCE_SCENES): each has its own rooms on the hub. */
+export type PresenceScene = "plaza" | "battle";
+/** Scene presence: the viewer's ant appears where it stands, and each later floor click sends the new destination. */
+export type AntEnterEvent = { type: "ant.enter"; x: number; z: number; scene: PresenceScene; room?: number };
 export type AntMoveEvent = { type: "ant.move"; x: number; z: number };
 export type AntLeaveEvent = { type: "ant.leave" };
 /** Rooms are 0-based on the wire and shown from 1. */
@@ -95,8 +97,8 @@ export type ChatSystemErrorEvent = {
 
 export type PlazaPeer = { id: string; name: string; x: number; z: number };
 
-/** Sent to the viewer that entered the plaza: its room and the others already in it. */
-export type AntRoomEvent = { type: "ant.room"; room: number; self: string; peers: PlazaPeer[] };
+/** Sent to the viewer that entered a scene: its room and the others already in it. */
+export type AntRoomEvent = { type: "ant.room"; scene?: PresenceScene; room: number; self: string; peers: PlazaPeer[] };
 export type AntJoinEvent = { type: "ant.join"; ant: PlazaPeer };
 export type AntMovedEvent = { type: "ant.move"; id: string; x: number; z: number };
 export type AntLeftEvent = { type: "ant.leave"; id: string };
