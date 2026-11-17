@@ -8,4 +8,4 @@ The web computes community/world/scoped indices from numeric aggregates. Title l
 
 Title/link records and linked per-post results expire after 24 hours, with cleanup at 03:00 and 15:00 KST (up to about 12 hours after expiry). Numeric replay and analysis reports retain the previous seven-day policy. Existing historical replay evidence is removed while numeric frames remain. Accounts, chat and public market/KIS paths are unchanged.
 
-Pending terms/privacy versions are replaced with new published versions while preserving history and at least seven days' notice. Effective date remains 2026-11-25 KST when published on November 17. Provider-side AI logs/backups are not claimed to be immediately deleted.
+The operator confirmed on November 17 that the service has no existing users and requested immediate initial publication. The versions previously scheduled for November 25 remain in history as superseded; identical terms/privacy text is published as new versions effective at publication. This one-time release does not change the future adverse-change notice workflow. Provider-side AI logs/backups are not claimed to be immediately deleted.
