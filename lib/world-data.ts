@@ -29,6 +29,7 @@ export async function loadWorldFrame(service = getServiceSupabaseClient({ cache:
   if (error) throw new Error("collection policy unavailable");
   return buildWorldFrame(filterReviewedSourceRows(rows, policy), {
     now,
+    aggregateBuckets: policy?.aggregateBuckets ?? [],
     ...buildCollectionStatusFilters(policy),
     marketAdjustmentSnapshot: buildMarketAdjustmentSnapshot(market.generated_at, market.market_indicators),
     collection: {

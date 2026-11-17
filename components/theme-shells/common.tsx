@@ -4,7 +4,6 @@ import { Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNo
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthControls, HeaderAuthSkeleton } from "@/components/auth-controls";
-import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { SiteShareButton } from "@/components/site-share-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -295,7 +294,7 @@ export function ShellHeaderActions() {
   return (
     <div className="theme-shell-actions" data-testid="concept-header-actions">
       <ThemeToggle />
-      <CleanFilterToggle />
+
       <SiteShareButton />
       <span className="theme-shell-auth-slot">
         <Suspense fallback={<HeaderAuthSkeleton />}>
@@ -449,7 +448,7 @@ export function ShellLineNumbers({
 }
 
 export function ShellStatusBar({ option, shellType, currentRoute }: { option: ThemeOption; shellType: ThemeShellType; currentRoute: ShellRoute }) {
-  const { cleanFilterEnabled } = useCleanFilter();
+  const cleanFilterEnabled = false;
   const { authenticated, user } = useSessionSnapshot();
   const loginLabel = authenticated ? user?.nickname ?? user?.email ?? "member" : "guest";
 
@@ -458,7 +457,7 @@ export function ShellStatusBar({ option, shellType, currentRoute }: { option: Th
       <span>{shellType}</span>
       <span>{currentRoute.label}</span>
       <span>{option.label}</span>
-      <span>예쁜말 {cleanFilterEnabled ? "ON" : "OFF"}</span>
+      <span>분위기 지수</span>
       <span>{loginLabel}</span>
     </div>
   );

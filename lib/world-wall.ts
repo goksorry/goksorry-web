@@ -156,10 +156,10 @@ export function buildWallModel(input: {
       },
       feed: {
         state: loadable(input.feed), scope: input.scopeLabel,
-        items: (input.feed.data?.rows ?? []).slice(0, 12).map((row) => ({
-          key: row.post_key, label: row.label, source: getSourceGroupShortLabel(row.source), symbol: row.symbol_name || row.symbol || "",
-          title: pickDisplayTitle({ title: row.title, cleanTitle: row.clean_title, cleanFilterEnabled: input.cleanFilterEnabled }).replace(/\s+/g, " ").trim(),
-          time: clock(row.analyzed_at) ?? ""
+        items: input.frame.communities.filter(c => c.total > 0).map(c => ({
+          key: c.id, label: c.bullish > c.bearish ? "bullish" : c.bearish > c.bullish ? "bearish" : "neutral",
+          source: c.name, symbol: `${c.total}건 분석`, time: clock(input.frame.data_at) ?? "",
+          title: `희망 ${c.bullish} · 공포 ${c.bearish} · 중립 ${c.neutral}`
         }))
       },
       // Every community of the live frame, whatever sources the feed is filtered to: the board compares them.

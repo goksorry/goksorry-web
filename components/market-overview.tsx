@@ -1,4 +1,5 @@
 "use client";
+import { CommunitySourceLinks } from "@/components/community-source-links";
 
 import { startTransition, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -128,7 +129,7 @@ export function MarketOverview({
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
-  const { cleanFilterEnabled } = useCleanFilter();
+  const cleanFilterEnabled = false;
   const [marketPayload, setMarketPayload] = useState(marketOverview);
   const [payload, setPayload] = useState<CommunityIndicatorsPayload | null>(initialCommunityIndicators);
   const [error, setError] = useState("");
@@ -447,7 +448,7 @@ export function MarketOverview({
           <div className="overview-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="overview-modal-head">
               <div>
-                <p className="overview-kicker">커뮤니티 피드 미리보기</p>
+                <p className="overview-kicker">커뮤니티 분위기</p>
                 <h3>{activeGroup.label}</h3>
               </div>
               <button type="button" className="btn btn-secondary" onClick={() => setActiveGroupId(null)}>
@@ -455,51 +456,9 @@ export function MarketOverview({
               </button>
             </div>
 
-            <div className="overview-modal-list">
-              {actionableActiveRows.map((row) => {
-                const displayTitle = resolveDisplayTitle({
-                  title: row.title,
-                  cleanTitle: row.clean_title,
-                  cleanFilterEnabled
-                });
-
-                return (
-                  <article key={row.post_key} className="overview-modal-item">
-                    <div className="overview-modal-meta">
-                      <span className="tag">{row.source}</span>
-                      <span className={`overview-inline-tone overview-inline-tone-${row.label}`}>
-                        {SENTIMENT_DISPLAY[row.label].emoji} {SENTIMENT_DISPLAY[row.label].label}
-                      </span>
-                      <span className="muted">확신도 {row.confidence.toFixed(2)}</span>
-                      <span className="muted">{toLocalTime(row.analyzed_at)}</span>
-                    </div>
-                    <a
-                      className={displayTitle.usedFallbackFilter ? "fallback-clean-title" : ""}
-                      href={row.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {displayTitle.text}
-                    </a>
-                  </article>
-                );
-              })}
-
-              {actionableActiveRows.length === 0 ? <p className="muted">최근 24시간 기준 공포/희망 감지 글이 없습니다.</p> : null}
-            </div>
-
-            <div className="overview-modal-actions">
-              <Link
-                className="btn"
-                href={`/?channels=${activeGroup.id}`}
-                onClick={() => {
-                  setActiveGroupId(null);
-                  setOptimisticGroupIds([activeGroup.id]);
-                }}
-              >
-                피드에서 열기
-              </Link>
-            </div>
+            <p>희망 {activeGroup.bullish}건 · 공포 {activeGroup.bearish}건 · 중립 {activeGroup.neutral}건</p>
+            <div className="overview-modal-list">{actionableActiveRows.map(row => <article key={row.post_key} className="overview-modal-item"><a href={row.url} target="_blank" rel="noreferrer">{row.title} ↗</a></article>)}</div>
+            <CommunitySourceLinks groups={[activeGroup.id]} />
           </div>
         </div>
       ) : null}

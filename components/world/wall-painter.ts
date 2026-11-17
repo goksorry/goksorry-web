@@ -5,7 +5,7 @@ import { BOARD, openBoard, wrapLines, type BoardPaintStyle, type BoardPen } from
 import type { BoardBox } from "./board-layer";
 
 const { ink: INK, dim: DIM, gold: GOLD, line: LINE, hope: HOPE, fear: FEAR } = BOARD;
-const TITLES: Record<WallTextPanelId, string> = { market: "시장 지수", room: "곡소리방", index: "곡소리 지수", feed: "곡소리 피드", communities: "커뮤니티 현황" };
+const TITLES: Record<WallTextPanelId, string> = { market: "시장 지수", room: "곡소리방", index: "곡소리 지수", feed: "커뮤니티 분위기", communities: "커뮤니티 현황" };
 /** Community board text: header (2.4 body) + name, index, gauge labels, gauge, status (about 5.2) must fit the board's height. */
 const COMMUNITY_ROWS = 7.6;
 

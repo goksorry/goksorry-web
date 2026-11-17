@@ -1,4 +1,5 @@
 "use client";
+import { CommunitySourceLinks } from "@/components/community-source-links";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { SourceGroupId } from "@/lib/feed-source-groups";
@@ -229,12 +230,13 @@ function ScopedFeed({ timezone, selectedGroupIds, windowHours, initialLimit, sco
   return (
     <>
       <section id="feed-top" aria-busy={refreshing} className={`panel feed-filter-panel scroll-anchor${embedded ? " feed-embedded-controls" : ""}`}>
-        {!embedded && <><h1>최근 글</h1><p className="muted">최근 {windowHours}시간 분석 글. AI 분류에는 오류가 있을 수 있습니다.</p></>}
+        {!embedded && <><h1>커뮤니티 분위기</h1><p className="muted">최근 {windowHours}시간 분위기 집계. AI 분류에는 오류가 있을 수 있습니다.</p></>}
         {embedded ? <div className="feed-scope-controls">{scopeControl}<FeedFilterControls selectedGroupIds={selectedGroupIds} variant="grid" /></div>
           : !scope && <FeedFilterControls selectedGroupIds={selectedGroupIds} />}
       </section>
       {!embedded && summary && <p className="feed-scope-summary">최근 {windowHours}시간 · 표본 {summary.total}건 · 희망 {summary.bullish}건 · 공포 {summary.bearish}건 · 중립 {summary.neutral}건{summary.data_at && <> · <time dateTime={summary.data_at}>{new Date(summary.data_at).toLocaleString("ko-KR", { timeZone: timezone })} 기준</time></>}</p>}
-      <SentimentFeed compact={embedded} viewControlsEnd={viewControlsEnd} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />
+      {rows.length > 0 && <SentimentFeed compact={embedded} sentiment={sentiment} onSentimentChange={setSentiment} summary={summary} rows={rows} errorMessage={errorMessage} timezone={timezone} loading={loadingInitial} />}
+      <CommunitySourceLinks groups={activeGroupIds} />
 
       <div className="feed-pagination" aria-live="polite">
         {loadMoreError ? <p className="error">추가 피드를 불러오지 못했습니다: {loadMoreError}</p> : null}

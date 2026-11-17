@@ -15,3 +15,8 @@ GA retention and provider backups/logs remain unverified. Application deletion i
 Validation: disposable PostgreSQL retention/cascade/permission tests, Python unit tests, workerd alarm/restart/auth tests, Next.js build and policy browser tests. Never run fixtures against production.
 
 Ingest, snapshot writes and login no longer scan/delete expired records in bulk. A returning user can still clear their own expired withdrawal hold; pending/retry queue freshness checks remain part of collection. Expired records are physically removed on the next scheduled pass (up to about 12 hours later under normal operation).
+
+
+## Public-title scope update (2026-11-17)
+
+External title/URL records and their per-post results now use a 24-hour threshold with the same twice-daily cleanup. Bodies, author profiles and rewritten titles are not stored. Local raw analysis queues are retired; only a six-hour title/link delivery queue is retained. Numeric six-hour aggregates drive community indices independently of title display. See [community content scope](community-content-scope.md).

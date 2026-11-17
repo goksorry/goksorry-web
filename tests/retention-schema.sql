@@ -3,6 +3,8 @@ begin;
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid language sql as $$select null::uuid$$;
 \ir ../db/schema.sql
+-- Historical retention behavior, isolated from the separately tested retirement guard.
+alter table public.external_posts drop constraint external_posts_scoped_titles_only;
 
 insert into public.external_posts(source,post_key,title,url,fetched_at) values
  ('fixture','expired','old','https://example.invalid/old',now()-interval '8 days'),

@@ -1,11 +1,13 @@
+import type { CommunityAggregate } from "./community-aggregates";
 import { buildFeedScoreOverview, buildOverallFromSourceGroupSummaries, buildSourceGroupSummaries, type FeedRow, type SourceGroupCollectionStatus } from "./feed-data";
 import { SOURCE_GROUP_IDS, getSourceGroupId, matchesSourceName, parseSourceGroupSelection, type SourceGroupId } from "./feed-source-groups";
-import { worldSummary, type WorldFrame, type WorldSummary } from "./world";
+import { buildWorldFrame, worldSummary, type WorldFrame, type WorldSummary } from "./world";
 import type { MarketAdjustmentSnapshot } from "./community-market-adjustment";
 import type { MarketIndicator } from "./overview-data";
 
 export type FeedSelection = { symbol: string; channels: SourceGroupId[]; sentiment: "all" | FeedRow["label"] };
 export type FeedSnapshot = {
+  aggregateBuckets?: CommunityAggregate[];
   rows: FeedRow[]; generated_at: string; market_indicators: MarketIndicator[];
   marketAdjustmentSnapshot: MarketAdjustmentSnapshot | null;
   collectionStatuses: Partial<Record<SourceGroupId, SourceGroupCollectionStatus>>;
@@ -32,6 +34,20 @@ export function readFeedSelection(params: URLSearchParams): FeedSelection {
 
 export function buildFeedPage(snapshot: FeedSnapshot, selection: FeedSelection, { limit = 80, offset = 0, hours = 6 } = {}): FeedPage {
   const options = { asOf: new Date(snapshot.generated_at), marketAdjustmentSnapshot: snapshot.marketAdjustmentSnapshot, collectionStatuses: snapshot.collectionStatuses, excludedSourceNames: new Set(snapshot.excludedSourceNames) };
+  if (snapshot.aggregateBuckets) {
+    const now = new Date(snapshot.generated_at);
+    const buckets = snapshot.aggregateBuckets.filter(b => selection.channels.includes(getSourceGroupId(b.source)!));
+    const scoped = buckets.filter(b => !selection.symbol || b.symbol === selection.symbol);
+    const frame = buildWorldFrame(snapshot.rows, { ...options, now, aggregateBuckets: scoped, collection: snapshot.collection });
+    const all = buildWorldFrame(snapshot.rows, { ...options, now, aggregateBuckets: buckets });
+    const { evidence: _, ...summary } = frame.overall;
+    const links = snapshot.rows.filter(row => selection.channels.includes(getSourceGroupId(row.source)!) && (!selection.symbol || row.symbol === selection.symbol) && (selection.sentiment === "all" || row.label === selection.sentiment));
+    const hasMore = offset + limit < links.length;
+    return { rows: links.slice(offset, offset + limit), nextOffset: hasMore ? offset + limit : null, hasMore, errorMessage: "", summary: { ...summary, data_at: frame.data_at }, generated_at: frame.generated_at, window_hours: 6,
+      stocks: all.stocks.map(s => ({ symbol: s.symbol, name: s.name, total: s.total })),
+      communities: frame.communities.map(c => ({ id: c.id, name: c.name, problem: c.collection_problem, disabled: c.collection_disabled, summary: { total: c.total, bullish: c.bullish, bearish: c.bearish, neutral: c.neutral, hope_ratio: c.hope_ratio, fear_ratio: c.fear_ratio, mood: c.mood, index: c.index, data_at: frame.data_at } })),
+      market_indicators: snapshot.market_indicators, collection: snapshot.collection };
+  }
   const permittedRows = snapshot.rows.filter(row => ![...options.excludedSourceNames].some(name => matchesSourceName(row.source, name)));
   const summarize = (rows: FeedRow[], channels = selection.channels): ScopeSummary => {
     const { evidence: _, ...summary } = worldSummary(rows);

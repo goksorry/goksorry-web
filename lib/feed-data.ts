@@ -1,3 +1,4 @@
+import { summarizeAggregates, type CommunityAggregate } from "./community-aggregates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { averageRowMarketAdjustment } from "@/lib/community-market-adjustment";
@@ -102,6 +103,7 @@ export type OverallFeedScoreSummary = {
 };
 
 type FeedScoreBuildOptions = {
+  aggregateBuckets?: CommunityAggregate[];
   marketAdjustmentSnapshot?: MarketAdjustmentSnapshot | null;
   asOf?: Date;
   excludedSourceNames?: ReadonlySet<string>;
@@ -197,7 +199,7 @@ export const fetchRecentFeedRows = async (
   const externalByPostKey = new Map(externalRows.map((row) => [row.post_key, row]));
   const baseRows = sentimentRows.flatMap((row) => {
     const external = externalByPostKey.get(row.post_key);
-    if (!external) {
+    if (!external || !getSourceGroupId(external.source)) {
       return [];
     }
 
@@ -303,10 +305,11 @@ export const buildSourceGroupSummaries = (
       (row) => matchesSourceGroup(row.source, group.id) && !isExcludedSource(row.source, options?.excludedSourceNames)
     );
     const actionableRows = getActionableRows(groupRows);
-    const bullish = actionableRows.filter((row) => row.label === "bullish").length;
-    const bearish = actionableRows.filter((row) => row.label === "bearish").length;
-    const neutral = groupRows.length - actionableRows.length;
-    const overview = buildAggregateVisibleScore(actionableRows, options);
+    const aggregate = options?.aggregateBuckets ? summarizeAggregates(options.aggregateBuckets.filter(b => matchesSourceGroup(b.source, group.id) && !isExcludedSource(b.source, options.excludedSourceNames)), options.marketAdjustmentSnapshot, options.asOf) : null;
+    const bullish = aggregate?.bullish ?? actionableRows.filter((row) => row.label === "bullish").length;
+    const bearish = aggregate?.bearish ?? actionableRows.filter((row) => row.label === "bearish").length;
+    const neutral = aggregate?.neutral ?? groupRows.length - actionableRows.length;
+    const overview = aggregate ? { ...aggregate, sentiment_band: aggregateSentimentBand(aggregate.score, { bullishCount: bullish, bearishCount: bearish }) } : buildAggregateVisibleScore(actionableRows, options);
     const tone = sentimentToneFromBand(overview.sentiment_band);
     const collectionStatus = options?.collectionStatuses?.[group.id];
 
@@ -314,7 +317,7 @@ export const buildSourceGroupSummaries = (
       id: group.id,
       label: group.label,
       shortLabel: group.shortLabel,
-      mentions: actionableRows.length,
+      mentions: aggregate?.mentions ?? actionableRows.length,
       bullish,
       bearish,
       neutral,
@@ -336,7 +339,7 @@ export const buildSourceGroupSummaries = (
 export const buildOverallFromSourceGroupSummaries = (
   communityIndicators: SourceGroupSummary[]
 ): OverallFeedScoreSummary => {
-  const activeIndicators = communityIndicators.filter((group) => !group.collection_disabled);
+  const activeIndicators = communityIndicators.filter((group) => !group.collection_disabled && group.mentions > 0);
 
   if (activeIndicators.length === 0) {
     return {

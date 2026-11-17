@@ -6,7 +6,6 @@ import Image from "next/image";
 import { HeaderAccount } from "@/components/auth-controls";
 import { HomeFeedShell } from "@/components/home-feed-shell";
 import { useMediaQuery } from "@/components/use-media-query";
-import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { FirstVisitHeaderHint } from "@/components/first-visit-header-hint";
 import { useCookieConsent } from "@/components/cookie-consent-provider";
 import { readClientLocalStorageValue, writeClientLocalStorageValue } from "@/lib/browser-persistence";
@@ -47,12 +46,12 @@ const EMPTY = buildWorldFrame([], { now: new Date(0) });
 // Three rooms: the plaza (wall of indices, feed and the community board of the former 재난방송), the battle (camps of the
 // stock picked from the mention ranking of the former 개미 생태계) and the theater.
 const SCENES: { id: WorldScene; name: string; short: string; title: string }[] = [
-  { id: "plaza", name: "광장", short: "광장", title: "곡소리 지수·커뮤니티 현황·피드" },
+  { id: "plaza", name: "광장", short: "광장", title: "곡소리 지수·커뮤니티 현황" },
   { id: "battle", name: "심리 전장", short: "전장", title: "희망·공포 비교" },
   { id: "theater", name: "오늘의 개미극장", short: "극장", title: "개미극장" }
 ];
 type DetailTab = "index" | "feed" | "room";
-const TAB_LABEL: Record<DetailTab, string> = { index: "지수", feed: "피드", room: "곡소리방" };
+const TAB_LABEL: Record<DetailTab, string> = { index: "지수", feed: "출처", room: "곡소리방" };
 const PANEL_TAB: Record<WallPanelId, DetailTab> = { market: "index", pierrot: "index", index: "index", feed: "feed", room: "room", communities: "index" };
 const SECTION_LABEL = ["시장 지수·곡소리방", "삐에로·곡소리 지수", "곡소리 피드·커뮤니티 현황"];
 // A dialog opens on the side of what opened it: by wall section, or by thirds of the stage width.
@@ -85,7 +84,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const layout = landscape === false ? "sectioned" : "wide";
   const [section, setSection] = useState<WallSection>(1), [overview, setOverview] = useState(false);
   const view = useMemo<WallView>(() => ({ layout, section, overview, hudBottom: HUD_BOTTOM }), [layout, section, overview]);
-  const { cleanFilterEnabled } = useCleanFilter();
+  const cleanFilterEnabled = false;
   // Boards repaint when the change colours do; the font and Pierrot art are fixed (the room has no theme).
   const { changeColorMode, selectChangeColorMode } = useTheme();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)") !== false;
@@ -230,7 +229,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
     <div className="world-content" aria-hidden={!!tab || menuOpen || sceneOpen ? true : undefined} ref={node => { if (node) node.inert = !!tab || menuOpen || sceneOpen; }}>
     <header className="world-topbar"><a href="/" className="world-brand"><span className="world-brand-mark" aria-hidden="true" /><Image className="world-brand-logo" src="/goksorry_logo.png" alt="곡소리닷컴" width={113} height={50} priority /></a>
       {liveBadge}
-      <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>피드</button><ModeSwitch /><button className="world-menu-button" aria-label="메뉴" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}><span className="world-menu-label">메뉴</span><span aria-hidden="true">☰</span></button></div>
+      <div className="world-hud-actions"><button className="world-index-toggle" onClick={(event) => open("index", fromButton(event))}>지수</button><button className="world-feed-toggle" onClick={(event) => open("feed", fromButton(event))}>출처</button><ModeSwitch /><button className="world-menu-button" aria-label="메뉴" aria-expanded={menuOpen} onClick={() => { setTab(null); setMenuOpen(true); }}><span className="world-menu-label">메뉴</span><span aria-hidden="true">☰</span></button></div>
       <div className="world-account"><HeaderAccount /></div>
     </header>
     <div className="world-scene-stage" aria-busy={!loaded && !error} onClickCapture={(event) => {
@@ -252,7 +251,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>
     </div>
-    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 근거` : "전체 커뮤니티 · 지수와 피드"} name="detail" modal origin={origin} side={side} onClose={close}
+    {tab && <WorldPanel title={currentSelection ? `${currentSelection.title} · 분위기와 출처` : "전체 커뮤니티 · 지수와 출처"} name="detail" modal origin={origin} side={side} onClose={close}
       bar={<div className="world-detail-bar"><div className="world-detail-tabs" role="tablist" aria-label="정보 전환">{tabs.map((value, i) => <button key={value} id={`world-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`world-tabpanel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1] : tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; setTab(next); document.getElementById(`world-tab-${next}`)?.focus(); } }}>{TAB_LABEL[value]}</button>)}</div>{currentSelection && <button className="world-reset-selection" onClick={() => setSelection(null)}>전체 보기</button>}</div>}>
       {currentSelection && <div className="world-selected-summary"><p className="world-selected-scope">{currentSelection.title} · 최근 6시간 분석 표본</p><SummaryNumbers summary={currentSelection.summary} /></div>}
       <div id="world-tabpanel-index" role="tabpanel" aria-labelledby="world-tab-index" hidden={tab !== "index"}>
@@ -263,7 +262,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       </div>
       <div id="world-tabpanel-feed" role="tabpanel" aria-labelledby="world-tab-feed" hidden={tab !== "feed"}>
         {currentSelection ? <WorldEvidence key={`${currentSelection.title}-${currentSelection.side ?? "all"}-${currentSelection.recordedAt ?? ""}`} selection={currentSelection} selectedGroupIds={selectedGroupIds} />
-          : <HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={FEED_DIALOG_LIMIT} embedded scope={stock ? { symbol: stock } : undefined} viewControlsEnd={<CleanFilterToggle />}
+          : <HomeFeedShell timezone={timezone} selectedGroupIds={selectedGroupIds} windowHours={6} initialLimit={FEED_DIALOG_LIMIT} embedded scope={stock ? { symbol: stock } : undefined}
             scopeControl={stock ? <button type="button" className="world-feed-scope" aria-label={`${stockName} 종목 범위 해제`} onClick={() => selectStock("")}><span>종목</span><b>{stockName}</b><span aria-hidden="true">✕</span></button> : undefined} />}
       </div>
       {!currentSelection && <div id="world-tabpanel-room" role="tabpanel" aria-labelledby="world-tab-room" hidden={tab !== "room"}>{tab === "room" && <GoksorryRoom />}</div>}
@@ -282,7 +281,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
         {sceneBoard?.scene === "battle" && <p className="world-footnote">{sceneBoard.note}</p>}
       </div>
     </WorldPanel>}
-    {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}>{menuHeader}<FirstVisitHeaderHint inWorldMenu />
+    {menuOpen && <WorldPanel title="사이트 메뉴·출처·정책" name="menu" modal onClose={() => setMenuOpen(false)}>{menuHeader}
       <section className="world-settings"><h3>내 개미와 소리</h3><fieldset><legend className="sr-only">내 개미 색상</legend>{WORLD_COLORS.map((value, i) => <button key={value} aria-label={`내 개미 색상 ${i + 1}`} aria-pressed={color === value} style={{ background: value }} onClick={() => { setColor(value); writeClientLocalStorageValue(STORAGE.worldAvatarColor, value); }} />)}</fieldset><div className="world-emotes">{["♡", "ㅠㅠ", "존버"].map((value) => <button key={value} aria-label={`${value} 감정 표현`} onClick={() => { setEmote(value); clearTimeout(emoteTimer.current); emoteTimer.current = setTimeout(() => setEmote(""), 2400); }}>{value}</button>)}</div><button aria-label={muted ? "효과음 켜기" : "효과음 끄기"} aria-pressed={!muted} onClick={() => { const next = !muted; setMuted(next); writeClientLocalStorageValue(STORAGE.worldMuted, next ? "on" : "off"); }}>{muted ? "효과음 켜기" : "효과음 끄기"}</button></section>
       <section className="world-settings world-change-color" aria-labelledby="world-change-color-heading"><h3 id="world-change-color-heading">등락률 색상</h3><div role="group" aria-labelledby="world-change-color-heading">{CHANGE_COLOR_MODES.map((mode) => <button key={mode} aria-label={`등락률 색상 ${CHANGE_COLOR_LABELS[mode]}`} aria-pressed={changeColorMode === mode} onClick={() => selectChangeColorMode(mode)}>{renderChangeColorLabel(mode)}</button>)}</div></section>{menu}
     </WorldPanel>}

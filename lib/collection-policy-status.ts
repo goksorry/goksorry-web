@@ -1,8 +1,9 @@
 import "server-only";
+import { normalizeAggregateBuckets, type CommunityAggregate } from "./community-aggregates";
 
 import { unstable_cache } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
-import { matchesSourceName } from "@/lib/feed-source-groups";
+import { getSourceGroupId, matchesSourceName } from "@/lib/feed-source-groups";
 
 export const COLLECTION_POLICY_CACHE_TAG = "collection-policy-status";
 
@@ -19,17 +20,20 @@ export type FooterCollectionPolicySource = {
   articleCount: number | null;
   collectionProblem: boolean;
   contentSince?: string | null;
+  allowTitles?: boolean;
 };
 
 export type FooterCollectionPolicy = {
   checkedAt: string | null;
   refreshHours: number;
   sources: FooterCollectionPolicySource[];
+  aggregateBuckets?: CommunityAggregate[];
+  processingMode?: string;
 };
 
 export function filterReviewedSourceRows<T extends { source: string; analyzed_at: string }>(rows: T[], policy: FooterCollectionPolicy | null): T[] {
   if (!policy?.sources.length) throw new Error("collection policy unavailable");
-  const allowed = policy.sources.filter(source => source.allowFetch && !source.postponed
+  const allowed = policy.sources.filter(source => source.allowTitles && source.allowFetch && !source.postponed
     && (source.reason !== "reviewed_limited_use" || Boolean(source.contentSince)));
   return rows.filter(row => allowed.some(source => matchesSourceName(row.source, source.sourceName)
     && (!source.contentSince || Date.parse(row.analyzed_at) >= Date.parse(source.contentSince))));
@@ -105,6 +109,7 @@ export const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy |
     return [
       {
         sourceName,
+        allowTitles: (source.display_mode === "titles" || source.reason === "reviewed_limited_use" || source.reason === "operator_limited_use") && Boolean(parseIso(source.content_since)) && Boolean(getSourceGroupId(sourceName)),
         siteKey: textOrNull(source.site_key),
         checkedAt: parseIso(source.checked_at),
         allowFetch,
@@ -126,6 +131,8 @@ export const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy |
     .filter((value): value is string => Boolean(value))
     .sort();
   return {
+    processingMode: payload.processing_mode === "scoped_titles" ? "scoped_titles" : payload.processing_mode === "aggregate_only" ? "aggregate_only" : "legacy",
+    aggregateBuckets: normalizeAggregateBuckets(payload.aggregate_buckets),
     checkedAt: parseIso(payload.checked_at) ?? sourceCheckedAtValues[sourceCheckedAtValues.length - 1] ?? null,
     refreshHours: Number.isFinite(refreshHours) && refreshHours > 0 ? Math.floor(refreshHours) : 24,
     sources

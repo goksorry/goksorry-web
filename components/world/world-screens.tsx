@@ -62,9 +62,9 @@ export function WorldWallDom({ model, onOpen, onCommunity, onFocusPanel }: {
       <p className="world-screen-meta">최근 6시간 · <time dateTime={model.index.dataAt ?? undefined}>{model.index.time}</time></p>
       <p className="world-screen-status" role="status" hidden={model.index.status === "관측 중"}>{model.index.status}</p>
     </>, { id: "world-index-wall", className: "world-index-screen" })}
-    {section("feed", "곡소리 피드", "곡소리 피드 전체 보기", model.feed.items.length
+    {section("feed", "커뮤니티 분위기", "분위기와 출처 보기", model.feed.items.length
       ? <ul className="world-wall-list">{model.feed.items.map((item) => <li key={item.key} data-label={item.label}><p>{item.title}</p><span>{[item.source, item.symbol, item.time].filter(Boolean).join(" · ")}</span></li>)}</ul>
-      : waiting(model.feed.state, "최근 6시간 글 없음"), { id: "world-feed-wall" })}
+      : waiting(model.feed.state, "최근 6시간 집계 대기"), { id: "world-feed-wall" })}
     <CommunityBoard model={model.communities} onCommunity={onCommunity} onFocus={() => onFocusPanel?.("communities")} onOpen={(origin) => onOpen("communities", origin)} />
   </div>;
 }

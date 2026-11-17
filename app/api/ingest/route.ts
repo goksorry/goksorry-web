@@ -5,6 +5,8 @@ import { resolveSentimentScore, sentimentLabelFromScore } from "@/lib/sentiment-
 import { extractSymbolFromSource, syncSymbolMetadata } from "@/lib/symbol-metadata";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
 
+import { getSourceGroupId } from "@/lib/feed-source-groups";
+
 const LABELS = new Set(["bullish", "bearish", "neutral"]);
 
 type IngestPayloadItem = {
@@ -57,17 +59,18 @@ export async function POST(request: Request) {
   for (const item of incomingItems) {
     try {
       const source = sanitizePlainText(item.source, "source", 120);
+      if (!getSourceGroupId(source)) { skipped += 1; continue; }
+      const receivedAt = Date.parse(String(item.fetched_at ?? ""));
+      if (!Number.isFinite(receivedAt) || receivedAt < Date.now() - 6 * 3600000 || receivedAt > Date.now() || receivedAt < Date.parse("2026-11-17T04:58:42Z") || item.preview) { skipped += 1; continue; }
       const postKey = sanitizePlainText(item.post_key, "post_key", 1024);
       const title = sanitizePlainText(item.title, "title", 500);
       const symbol = extractSymbolFromSource(source);
-      let cleanTitle: string | null = null;
-      try {
-        cleanTitle = sanitizeOptionalPlainText(item.clean_title, "clean_title", 500);
-      } catch {
-        cleanTitle = null;
-      }
+      const cleanTitle = null;
       const url = String(item.url ?? "").trim();
-      if (!/^https?:\/\//i.test(url)) {
+      const hostname = new URL(url).hostname;
+      const group = getSourceGroupId(source);
+      const hosts: Record<string, string[]> = { toss: ["www.tossinvest.com", "tossinvest.com"], dc: ["gall.dcinside.com"], blind: ["www.teamblind.com", "teamblind.com", "kr.teamblind.com"], ppomppu: ["www.ppomppu.co.kr", "ppomppu.co.kr"] };
+      if (!/^https:\/\//i.test(url) || !group || !hosts[group].includes(hostname)) {
         skipped += 1;
         continue;
       }
@@ -110,7 +113,7 @@ export async function POST(request: Request) {
         sentiment_score: sentimentScore,
         confidence,
         model: sanitizeOptionalPlainText(item.analysis?.model, "model", 120) ?? "gemini-2.5-flash-lite",
-        analyzed_at: new Date().toISOString()
+        analyzed_at: fetchedAt
       });
     } catch {
       skipped += 1;

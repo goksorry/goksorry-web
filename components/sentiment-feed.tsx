@@ -202,7 +202,7 @@ export function SentimentFeed({
   sentiment: "all" | "bearish" | "bullish" | "neutral";
   onSentimentChange: (value: "all" | "bearish" | "bullish" | "neutral") => void;
 }) {
-  const { cleanFilterEnabled } = useCleanFilter();
+  const cleanFilterEnabled = false;
   const [layout, setLayout] = useState<"split" | "unified">("split");
   const { activeGroupIds } = useFeedSelection();
   const filteredRows = filterRowsBySourceGroups(rows, activeGroupIds);

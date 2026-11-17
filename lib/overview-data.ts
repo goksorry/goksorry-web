@@ -356,7 +356,7 @@ export const buildCollectionStatusFilters = (
     groupStatuses.push(source);
     statusesByGroup.set(groupId, groupStatuses);
 
-    if (isCollectionProblemSource(source)) {
+    if (!source.allowFetch || source.postponed) {
       excludedSourceNames.add(source.sourceName);
     }
   }
@@ -374,7 +374,7 @@ export const buildCollectionStatusFilters = (
       .filter((count): count is number => typeof count === "number");
     collectionStatuses[groupId] = {
       problem: problemStatuses.length > 0,
-      disabled: problemStatuses.length === statuses.length,
+      disabled: statuses.every(source => !source.allowFetch || source.postponed),
       reason: problemStatuses.map(collectionProblemReason).find((reason): reason is string => Boolean(reason)) ?? null,
       articleCount: articleCounts.length > 0 ? articleCounts.reduce((sum, count) => sum + count, 0) : null
     };
@@ -417,6 +417,7 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   const { excludedSourceNames, collectionStatuses } = buildCollectionStatusFilters(collectionPolicy);
   const communityIndicators = buildSourceGroupSummaries(filterReviewedSourceRows(rows, collectionPolicy), {
     marketAdjustmentSnapshot,
+    aggregateBuckets: collectionPolicy?.aggregateBuckets ?? [],
     asOf,
     excludedSourceNames,
     collectionStatuses

@@ -7,6 +7,9 @@ import { loadWorldFrame } from "@/lib/world-data";
 import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { storeWorldSnapshot } from "@/lib/world-store";
 
+import { getSourceGroupId } from "@/lib/feed-source-groups";
+import { normalizeAggregateBuckets } from "@/lib/community-aggregates";
+
 const SYMBOL_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
 
 const asIso = (value: unknown): string => {
@@ -63,12 +66,15 @@ type CollectionPolicySourceRow = {
   article_count?: unknown;
   collection_problem?: unknown;
   content_since?: unknown;
+  display_mode?: unknown;
 };
 
 type CollectionPolicyPayload = {
   checked_at?: unknown;
   refresh_hours?: unknown;
   sources?: CollectionPolicySourceRow[];
+  processing_mode?: unknown;
+  aggregate_buckets?: unknown;
 };
 
 const sanitizeStatusText = (value: unknown, maxLength: number): string | null => {
@@ -124,6 +130,7 @@ const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | nu
     return [
       {
         source_name: sourceName,
+        display_mode: source.display_mode === "titles" && contentSince && Boolean(getSourceGroupId(sourceName)) ? "titles" : "aggregate_only",
         site_key: sanitizeStatusText(source.site_key, 80),
         checked_at: asOptionalIso(source.checked_at),
         allow_fetch: allowFetch,
@@ -145,6 +152,8 @@ const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | nu
     .filter((value): value is string => Boolean(value))
     .sort();
   return {
+    processing_mode: payload.processing_mode === "scoped_titles" ? "scoped_titles" : payload.processing_mode === "aggregate_only" ? "aggregate_only" : "legacy",
+    aggregate_buckets: normalizeAggregateBuckets(payload.aggregate_buckets),
     checked_at: checkedAt ?? sourceCheckedAtValues[sourceCheckedAtValues.length - 1] ?? null,
     refresh_hours: Math.floor(toNumber(payload.refresh_hours, 1, 24 * 14, 24)),
     sources: normalizedSources

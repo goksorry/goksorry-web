@@ -27,7 +27,7 @@ const server = createServer(async (req, res) => {
     return send(200, { snapshots: [...snapshots.values()], calls });
   }
   const table = url.pathname.split("/").pop(); calls.push({ table, method: req.method, query: url.search });
-  if (table === "detector_status" && req.method === "POST") calls[calls.length - 1].payload = JSON.parse(body);
+  if (req.method === "POST") calls[calls.length - 1].payload = JSON.parse(body);
   if (table === "detector_status" && failPolicy) return send(500, { message: "fixture policy unavailable" });
   if (table === "world_snapshots") {
     if (req.method === "POST") {
@@ -53,11 +53,13 @@ const server = createServer(async (req, res) => {
     const filter = url.searchParams.get("post_key") ?? "";
     return send(200, makeRows().filter((row) => filter.includes(`\"${row.post_key}\"`) || new RegExp(`(?:\\(|,)${row.post_key}(?:,|\\))`).test(filter)).map((row) => {
       const i = Number(row.post_key.split("-")[1]);
-      return { post_key: row.post_key, source: "toss_stock_community", title: "테스트 수집 제목", clean_title: "테스트 수집 제목", url: "https://example.com/post", symbol: symbol(i) };
+      const source = process.env.AGGREGATE_TEST_MODE === "1" ? ["toss_stock_community_AAPL", "ppomppu_stock", "blind_stock_invest", "dc_krstock"][i % 4] : "toss_stock_community_AAPL";
+      return { post_key: row.post_key, source, title: "테스트 수집 제목", clean_title: "테스트 수집 제목", url: "https://example.com/post", symbol: symbol(i) };
     }));
   }
   if (table === "symbol_metadata") return send(200, [...Array.from({ length: 12 }, (_, i) => `S${i}`), "LATE"].map((symbol) => ({ symbol, display_name: symbol === "LATE" ? "다음 페이지 종목" : symbol, market: "us", status: "ready", last_fetched_at: new Date().toISOString() })));
   if (table === "detector_status") {
+    if (process.env.AGGREGATE_TEST_MODE === "1") return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { processing_mode: "scoped_titles", sources: ["toss_stock_community", "ppomppu_stock", "blind_stock_invest", "dc_krstock"].map(source_name => ({ source_name, allow_fetch: true, allow_detail: false, postponed: false, reason: "operator_limited_use", display_mode: "titles", content_since: "2026-11-17T04:58:42Z", article_count: 6 })), aggregate_buckets: ["toss_stock_community", "ppomppu_stock", "blind_stock_invest", "dc_krstock"].map(source => ({ at: new Date(Date.now()-60000).toISOString(), source, market: "kr", symbol: null, bullish: 3, bearish: 1, neutral: 2, score_sum: 26 })) } }]);
     const blocked = policyBlocked && !contentSince;
     return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { checked_at: new Date().toISOString(), sources: [{ source_name: "toss_stock_community", allow_fetch: !blocked, allow_detail: !blocked && !contentSince, postponed: blocked, reason: blocked ? "terms_review_required" : contentSince ? "reviewed_limited_use" : "reviewed_use", content_since: contentSince, article_count: blocked ? 0 : 620 }] } }]);
   }

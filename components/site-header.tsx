@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { HeaderAccount } from "@/components/auth-controls";
-import { CleanFilterToggle } from "@/components/clean-filter-toggle";
 import { HeaderNavExtras } from "@/components/header-nav-extras";
 import { ModeSwitch } from "@/components/mode-switch";
 import { SiteShareButton } from "@/components/site-share-button";
@@ -29,7 +28,7 @@ export function SiteHeader({ theme = true, account = true }: { theme?: boolean; 
       </div>
       <div className="header-controls">
         {theme && <ThemeToggle />}
-        <CleanFilterToggle />
+
       </div>
       <div className="header-profile">
         <SiteShareButton />

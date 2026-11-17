@@ -1,5 +1,6 @@
 export function collectionPolicyReasonText(reason: string | null): string {
   const labels: Record<string, string> = {
+    operator_limited_use: "공개 제목·링크 제한 표시",
     terms_disallow: "출처 약관의 수집 제한",
     reviewed_limited_use: "공개 제목만 제한 수집",
     robots_disallow: "출처의 자동 접근 제한",

@@ -29,6 +29,7 @@ export const getFeedSnapshot = boundedCache(async (hours: number, asOf: string):
   const permittedRows = filterReviewedSourceRows(rows, policy);
   const { collectionStatuses, excludedSourceNames } = buildCollectionStatusFilters(policy);
   return {
+    aggregateBuckets: policy?.aggregateBuckets ?? [],
     rows: [...new Map(permittedRows.map(row => [row.post_key, row])).values()], generated_at: now.toISOString(),
     market_indicators: market.market_indicators.slice(0, 4),
     marketAdjustmentSnapshot: buildMarketAdjustmentSnapshot(market.generated_at, market.market_indicators), collectionStatuses, excludedSourceNames: [...excludedSourceNames],

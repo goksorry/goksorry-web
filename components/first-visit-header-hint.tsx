@@ -93,7 +93,7 @@ export function FirstVisitHeaderHint({ inWorldMenu = false }: { inWorldMenu?: bo
   return (
     <aside ref={hintRef} className="first-visit-header-hint" role="note" aria-label="초기 설정 안내" style={hintStyle}>
       <span className="first-visit-header-hint-pointer" aria-hidden="true" />
-      <p>{world ? "이쁜말필터는 여기서 바꿀 수 있어요." : "이쁜말필터와 테마는 여기서 바꿀 수 있어요."}</p>
+      <p>{world ? "메뉴에서 출처와 정책을 확인할 수 있어요." : "테마는 여기서 바꿀 수 있어요."}</p>
       <button type="button" className="first-visit-header-hint-close" onClick={dismiss} aria-label="초기 설정 안내 닫기">
         확인
       </button>

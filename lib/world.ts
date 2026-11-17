@@ -1,3 +1,4 @@
+import { summarizeAggregates, type CommunityAggregate } from "./community-aggregates";
 import {
   buildFeedScoreOverview,
   buildOverallFromSourceGroupSummaries,
@@ -83,6 +84,7 @@ export function worldSummary(rows: FeedRow[]): WorldSummary {
 }
 
 export function buildWorldFrame(rows: FeedRow[], options: {
+  aggregateBuckets?: CommunityAggregate[];
   now?: Date;
   marketAdjustmentSnapshot?: MarketAdjustmentSnapshot | null;
   excludedSourceNames?: ReadonlySet<string>;
@@ -91,6 +93,25 @@ export function buildWorldFrame(rows: FeedRow[], options: {
 } = {}): WorldFrame {
   const now = options.now ?? new Date();
   const cutoff = now.getTime() - 6 * 60 * 60_000;
+  if (options.aggregateBuckets) {
+    const buckets = options.aggregateBuckets.filter(b => Date.parse(b.at) > cutoff && Date.parse(b.at) <= now.getTime() && ![...(options.excludedSourceNames ?? [])].some(name => matchesSourceName(b.source, name)));
+    const summary = (entries: CommunityAggregate[]): WorldSummary => {
+      const a = summarizeAggregates(entries, options.marketAdjustmentSnapshot, now);
+      const hope = a.mentions ? a.bullish / a.mentions : null;
+      const fear = a.mentions ? a.bearish / a.mentions : null;
+      return { total: a.total, bullish: a.bullish, bearish: a.bearish, neutral: a.neutral, hope_ratio: hope, fear_ratio: fear, mood: moodOf(a.total, a.mentions, hope, fear), index: a.goksorry_index, evidence: { bullish: [], bearish: [], neutral: [] } };
+    };
+    const symbolNames = new Map(rows.filter(row => row.symbol && row.symbol_name).map(row => [row.symbol, row.symbol_name]));
+    const stocksFor = (entries: CommunityAggregate[]): WorldStock[] => [...new Set(entries.map(b => b.symbol).filter((symbol): symbol is string => Boolean(symbol)))].map(symbol => ({ ...summary(entries.filter(b => b.symbol === symbol)), symbol, name: symbolNames.get(symbol) || symbol })).sort((a, b) => b.total - a.total || a.symbol.localeCompare(b.symbol));
+    const groups = buildSourceGroupSummaries([], { ...options, aggregateBuckets: buckets, asOf: now });
+    return {
+      version: 1, generated_at: now.toISOString(), data_at: buckets.map(b => b.at).sort().at(-1) ?? null, window_hours: 6,
+      overall: { ...summary(buckets), index: buildOverallFromSourceGroupSummaries(groups).overall_goksorry_index },
+      communities: groups.map(g => { const entries = buckets.filter(b => getSourceGroupId(b.source) === g.id); return { ...summary(entries), id: g.id, name: g.shortLabel, index: g.goksorry_index, collection_problem: g.collection_problem, collection_disabled: g.collection_disabled, collection_reason: g.collection_reason, top_stock: stocksFor(entries)[0]?.name ?? null }; }),
+      stocks: stocksFor(buckets).slice(0, 12),
+      collection: options.collection ?? { last_run_at: null, errors: 0, degraded: false, unavailable: false }
+    };
+  }
   const unique = new Map<string, FeedRow>();
   for (const row of rows) {
     const at = Date.parse(row.analyzed_at);
