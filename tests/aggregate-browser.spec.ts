@@ -48,6 +48,11 @@ test("mobile world opens restored source titles without a pretty-title control",
   await page.getByRole("button", { name: "지수", exact: true }).click();
   await expect(page.getByRole("dialog").locator(".overview-overall-value")).toHaveText("—/10");
   await expect(page.getByRole("dialog").locator(".world-community-list")).toContainText("표본 부족");
+  const card = page.getByRole("dialog").locator(".overview-card-community").first();
+  const cardBox = await card.boundingBox();
+  const countBox = await card.locator(".overview-note").boundingBox();
+  expect(countBox!.y + countBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height);
+  await page.screenshot({ path: "/tmp/goksorry-title-sample-mobile.png", fullPage: true });
   await page.getByRole("tab", { name: "출처", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("테스트 수집 제목").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /예쁜말|이쁜말/ })).toHaveCount(0);

@@ -415,6 +415,7 @@ export function MarketOverview({
                 <button
                   key={group.id}
                   type="button"
+                  style={{ height: "auto" }}
                   className={`overview-card overview-card-community overview-tone-${sample.limited ? "mixed" : group.tone}${
                     selectedFeedGroupId === group.id ? " overview-card-active" : ""
                   }${group.collection_disabled ? " overview-card-disabled" : ""}`}
@@ -448,7 +449,7 @@ export function MarketOverview({
                       )}
                     </span>
                   </div>
-                  <p className="overview-note">분석 {sample.total.toLocaleString()}건 · 희망·공포 {sample.directional.toLocaleString()}건</p>
+                  <p className="overview-note" style={{ gridColumn: "1 / -1", gridRow: 2, margin: 0 }}>분석 {sample.total.toLocaleString()}건 · 희망·공포 {sample.directional.toLocaleString()}건</p>
                 </button>
               );
             })}
