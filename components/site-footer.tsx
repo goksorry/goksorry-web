@@ -96,6 +96,7 @@ const sourcePolicyState = (
   return {
     inactive: Boolean(inactiveStatus),
     detailDisabled,
+    limitedUse: statuses.some((status) => status.reason === "reviewed_limited_use"),
     reason: inactiveStatus?.reason ?? (inactiveStatus?.articleCount === 0 ? "no_articles" : null),
     checkedAt: latestCheckedAt(statuses)
   };
@@ -179,7 +180,7 @@ export async function SiteFooter() {
                 ? `현재 수집 보류: ${collectionPolicyReasonText(policyState.reason)}${
                     policyState.checkedAt ? ` · ${dateFormatter.format(new Date(policyState.checkedAt))}` : ""
                   }`
-                : undefined;
+                : policyState?.limitedUse ? "공개 제목만 제한 수집 · 무료·비광고 운영 기준" : undefined;
 
               return (
                 <a

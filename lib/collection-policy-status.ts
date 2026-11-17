@@ -18,6 +18,7 @@ export type FooterCollectionPolicySource = {
   termsUrl: string | null;
   articleCount: number | null;
   collectionProblem: boolean;
+  contentSince?: string | null;
 };
 
 export type FooterCollectionPolicy = {
@@ -26,10 +27,12 @@ export type FooterCollectionPolicy = {
   sources: FooterCollectionPolicySource[];
 };
 
-export function filterReviewedSourceRows<T extends { source: string }>(rows: T[], policy: FooterCollectionPolicy | null): T[] {
+export function filterReviewedSourceRows<T extends { source: string; analyzed_at: string }>(rows: T[], policy: FooterCollectionPolicy | null): T[] {
   if (!policy?.sources.length) throw new Error("collection policy unavailable");
-  const allowed = policy.sources.filter(source => source.allowFetch && !source.postponed);
-  return rows.filter(row => allowed.some(source => matchesSourceName(row.source, source.sourceName)));
+  const allowed = policy.sources.filter(source => source.allowFetch && !source.postponed
+    && (source.reason !== "reviewed_limited_use" || Boolean(source.contentSince)));
+  return rows.filter(row => allowed.some(source => matchesSourceName(row.source, source.sourceName)
+    && (!source.contentSince || Date.parse(row.analyzed_at) >= Date.parse(source.contentSince))));
 }
 
 type CollectionPolicyRow = {
@@ -111,7 +114,8 @@ export const normalizePolicyPayload = (value: unknown): FooterCollectionPolicy |
         robotsUrl: textOrNull(source.robots_url),
         termsUrl: textOrNull(source.terms_url),
         articleCount,
-        collectionProblem
+        collectionProblem,
+        contentSince: parseIso(source.content_since)
       }
     ];
   });

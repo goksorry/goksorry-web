@@ -62,6 +62,7 @@ type CollectionPolicySourceRow = {
   terms_url?: unknown;
   article_count?: unknown;
   collection_problem?: unknown;
+  content_since?: unknown;
 };
 
 type CollectionPolicyPayload = {
@@ -112,7 +113,9 @@ const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | nu
       return [];
     }
 
-    const allowFetch = Boolean(source.allow_fetch);
+    const contentSince = asOptionalIso(source.content_since);
+    const limitedUse = source.reason === "reviewed_limited_use";
+    const allowFetch = Boolean(source.allow_fetch) && (!limitedUse || Boolean(contentSince));
     const postponed = Boolean(source.postponed);
     const articleCount = toOptionalInteger(source.article_count, 0, 1_000_000);
     const collectionProblem =
@@ -130,7 +133,8 @@ const normalizeCollectionPolicy = (value: unknown): Record<string, unknown> | nu
         robots_url: sanitizeStatusText(source.robots_url, 500),
         terms_url: sanitizeStatusText(source.terms_url, 500),
         article_count: articleCount,
-        collection_problem: collectionProblem
+        collection_problem: collectionProblem,
+        content_since: contentSince
       }
     ];
   });

@@ -2,6 +2,7 @@
 import { createServer } from "node:http";
 let snapshots = new Map();
 let failWrite = false, failRead = false, failFeed = false, failPolicy = false;
+let contentSince = null;
 let calls = [];
 const makeRows = () => Array.from({ length: 620 }, (_, i) => ({
   post_key: `fixture-${i}`, label: i % 3 === 0 ? "neutral" : i % 3 === 1 ? "bullish" : "bearish",
@@ -20,11 +21,13 @@ const server = createServer(async (req, res) => {
       failWrite = Boolean(control.failWrite); failRead = Boolean(control.failRead);
       failFeed = Boolean(control.failFeed);
       failPolicy = Boolean(control.failPolicy);
+      contentSince = typeof control.contentSince === "string" ? control.contentSince : null;
       if (control.reset) { snapshots.clear(); calls = []; }
     }
     return send(200, { snapshots: [...snapshots.values()], calls });
   }
   const table = url.pathname.split("/").pop(); calls.push({ table, method: req.method, query: url.search });
+  if (table === "detector_status" && req.method === "POST") calls[calls.length - 1].payload = JSON.parse(body);
   if (table === "detector_status" && failPolicy) return send(500, { message: "fixture policy unavailable" });
   if (table === "world_snapshots") {
     if (req.method === "POST") {
@@ -54,7 +57,10 @@ const server = createServer(async (req, res) => {
     }));
   }
   if (table === "symbol_metadata") return send(200, [...Array.from({ length: 12 }, (_, i) => `S${i}`), "LATE"].map((symbol) => ({ symbol, display_name: symbol === "LATE" ? "다음 페이지 종목" : symbol, market: "us", status: "ready", last_fetched_at: new Date().toISOString() })));
-  if (table === "detector_status") return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { checked_at: new Date().toISOString(), sources: [{ source_name: "toss_stock_community", allow_fetch: !policyBlocked, allow_detail: !policyBlocked, postponed: policyBlocked, reason: policyBlocked ? "terms_review_required" : "reviewed_use", article_count: policyBlocked ? 0 : 620 }] } }]);
+  if (table === "detector_status") {
+    const blocked = policyBlocked && !contentSince;
+    return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { checked_at: new Date().toISOString(), sources: [{ source_name: "toss_stock_community", allow_fetch: !blocked, allow_detail: !blocked && !contentSince, postponed: blocked, reason: blocked ? "terms_review_required" : contentSince ? "reviewed_limited_use" : "reviewed_use", content_since: contentSince, article_count: blocked ? 0 : 620 }] } }]);
+  }
   return send(200, []);
 });
 const port = Number(process.env.TEST_BACKEND_PORT || 3101);

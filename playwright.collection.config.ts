@@ -10,6 +10,7 @@ export default defineConfig({
     { command: "npm run start -- --hostname 127.0.0.1 --port 3112", url: "http://127.0.0.1:3112/classic", env: {
       SUPABASE_URL: "http://127.0.0.1:3113", SUPABASE_SERVICE_ROLE_KEY: "local-policy-fixture-key",
       NEXTAUTH_SECRET: "local-policy-fixture-secret", NEXTAUTH_URL: "http://127.0.0.1:3112",
+      DETECTOR_WRITE_TOKEN: "local-policy-fixture-token",
       GOOGLE_CLIENT_ID: "local-policy-client", GOOGLE_CLIENT_SECRET: "local-policy-secret"
     } }
   ]
