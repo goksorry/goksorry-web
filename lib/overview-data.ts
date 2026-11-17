@@ -1,3 +1,4 @@
+import { fetchMarketDataText as fetchText, MARKET_SOURCE_HOLD_MESSAGE } from "@/lib/market-data-access";
 import { boundedCache } from "@/lib/bounded-cache";
 import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { parseNaverNasdaqQuote, parseNaverUsdKrwQuote } from "@/lib/naver-market-data";
@@ -19,6 +20,7 @@ import {
 import {
   COLLECTION_POLICY_CACHE_TAG,
   getFooterCollectionPolicy,
+  filterReviewedSourceRows,
   type FooterCollectionPolicy,
   type FooterCollectionPolicySource
 } from "@/lib/collection-policy-status";
@@ -86,31 +88,6 @@ type NaverIndexPriceRow = {
 const COMMUNITY_WINDOW_HOURS = 6;
 const KR_MARKET_TIME_ZONE = "Asia/Seoul";
 const US_MARKET_TIME_ZONE = "America/New_York";
-
-const fetchText = async (url: string): Promise<string> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "goksorry-web/1.0"
-      },
-      // The whole overview is cached by boundedCache; a per-URL fetch cache here would
-      // add its own unbounded stale-while-revalidate layer underneath it.
-      cache: "no-store",
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      throw new Error(`upstream ${response.status}`);
-    }
-
-    return await response.text();
-  } finally {
-    clearTimeout(timeout);
-  }
-};
 
 const parseNumber = (value: string): number | null => {
   const normalized = value.replace(/[^0-9+.,-]/g, "").replace(/,/g, "");
@@ -205,7 +182,7 @@ const fallbackIndicator = (id: string, label: string): MarketIndicator => ({
   change_value: null,
   change_percent: null,
   tone: "flat",
-  note: "기준값 없음",
+  note: MARKET_SOURCE_HOLD_MESSAGE,
   market_adjustment_basis_at: null,
   market_adjustment_weight: 0,
   market_adjustment_status: "unavailable"
@@ -437,7 +414,7 @@ export const buildCommunityIndicatorsData = async (): Promise<CommunityIndicator
   const marketAdjustmentEnabled = hasActiveMarketAdjustmentInput(marketOverview.market_indicators);
   const marketAdjustmentStatus = resolveMarketAdjustmentStatus(marketOverview.market_indicators);
   const { excludedSourceNames, collectionStatuses } = buildCollectionStatusFilters(collectionPolicy);
-  const communityIndicators = buildSourceGroupSummaries(rows, {
+  const communityIndicators = buildSourceGroupSummaries(filterReviewedSourceRows(rows, collectionPolicy), {
     marketAdjustmentSnapshot,
     asOf,
     excludedSourceNames,

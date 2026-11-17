@@ -4,7 +4,7 @@ import { COLLECTION_RUN_CACHE_TAG } from "./index-cache-policy";
 import { fetchRecentFeedRows, type FeedRow } from "./feed-data";
 import { buildFeedPage, type FeedSelection, type FeedSnapshot } from "./feed-scope";
 import { getServiceSupabaseClient } from "./supabase/service";
-import { normalizePolicyPayload } from "./collection-policy-status";
+import { filterReviewedSourceRows, normalizePolicyPayload } from "./collection-policy-status";
 import { buildCollectionStatusFilters, getCachedMarketOverview } from "./overview-data";
 import { buildMarketAdjustmentSnapshot } from "./community-market-adjustment";
 
@@ -24,9 +24,12 @@ export const getFeedSnapshot = boundedCache(async (hours: number, asOf: string):
     service.from("detector_status").select("collector_last_run_at,collector_errors,llm_degraded,collection_policy").eq("singleton", true).maybeSingle(),
     getCachedMarketOverview()
   ]);
-  const { collectionStatuses, excludedSourceNames } = buildCollectionStatusFilters(normalizePolicyPayload(status.data?.collection_policy));
+  if (status.error || !status.data?.collection_policy) throw new Error("collection policy unavailable");
+  const policy = normalizePolicyPayload(status.data.collection_policy);
+  const permittedRows = filterReviewedSourceRows(rows, policy);
+  const { collectionStatuses, excludedSourceNames } = buildCollectionStatusFilters(policy);
   return {
-    rows: [...new Map(rows.map(row => [row.post_key, row])).values()], generated_at: now.toISOString(),
+    rows: [...new Map(permittedRows.map(row => [row.post_key, row])).values()], generated_at: now.toISOString(),
     market_indicators: market.market_indicators.slice(0, 4),
     marketAdjustmentSnapshot: buildMarketAdjustmentSnapshot(market.generated_at, market.market_indicators), collectionStatuses, excludedSourceNames: [...excludedSourceNames],
     collection: { last_run_at: status.data?.collector_last_run_at ?? null, errors: Number(status.data?.collector_errors ?? 0), degraded: Boolean(status.data?.llm_degraded), unavailable: Boolean(status.error) || !status.data }

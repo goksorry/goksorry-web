@@ -2,7 +2,7 @@ import "server-only";
 import { boundedCache } from "@/lib/bounded-cache";
 import { COLLECTION_RUN_CACHE_TAG } from "@/lib/index-cache-policy";
 import { fetchRecentFeedRows, type FeedRow } from "@/lib/feed-data";
-import { normalizePolicyPayload } from "@/lib/collection-policy-status";
+import { filterReviewedSourceRows, normalizePolicyPayload } from "@/lib/collection-policy-status";
 import { buildCollectionStatusFilters, getCachedMarketOverview } from "@/lib/overview-data";
 import { buildMarketAdjustmentSnapshot } from "@/lib/community-market-adjustment";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
@@ -26,7 +26,8 @@ export async function loadWorldFrame(service = getServiceSupabaseClient({ cache:
     getCachedMarketOverview()
   ]);
   const policy = normalizePolicyPayload(status?.collection_policy);
-  return buildWorldFrame(rows, {
+  if (error) throw new Error("collection policy unavailable");
+  return buildWorldFrame(filterReviewedSourceRows(rows, policy), {
     now,
     ...buildCollectionStatusFilters(policy),
     marketAdjustmentSnapshot: buildMarketAdjustmentSnapshot(market.generated_at, market.market_indicators),

@@ -1,3 +1,4 @@
+import { collectionPolicyReasonText } from "@/lib/collection-policy-copy";
 import Link from "next/link";
 import { CookieConsentButton } from "@/components/cookie-consent-button";
 import {
@@ -148,8 +149,8 @@ export async function SiteFooter() {
               </summary>
               <div className="site-footer-info-copy">
                 <p>
-                  외부 커뮤니티 수집 여부는 각 사이트의 robots.txt를 읽고 확인한 뒤 반영합니다. 아래 목록도 그 기준에 맞춰
-                  관리합니다.
+                  외부 커뮤니티 수집 여부는 robots.txt와 이용약관을 각각 확인하고, 수집·분석·표시 범위 검토를 함께 반영합니다.
+                  취소선이 있는 출처는 수집을 보류한 상태이며 게시판 링크는 계속 제공합니다.
                 </p>
                 <p className="site-footer-info-timestamp">
                   {policyTimestampCopy(collectionPolicy)}
@@ -175,7 +176,7 @@ export async function SiteFooter() {
                     ? "active"
                     : "untracked";
               const policyTitle = policyState?.inactive
-                ? `현재 수집 보류: ${policyState.reason ?? "policy"}${
+                ? `현재 수집 보류: ${collectionPolicyReasonText(policyState.reason)}${
                     policyState.checkedAt ? ` · ${dateFormatter.format(new Date(policyState.checkedAt))}` : ""
                   }`
                 : undefined;

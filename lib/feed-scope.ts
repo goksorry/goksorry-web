@@ -1,5 +1,5 @@
 import { buildFeedScoreOverview, buildOverallFromSourceGroupSummaries, buildSourceGroupSummaries, type FeedRow, type SourceGroupCollectionStatus } from "./feed-data";
-import { SOURCE_GROUP_IDS, getSourceGroupId, parseSourceGroupSelection, type SourceGroupId } from "./feed-source-groups";
+import { SOURCE_GROUP_IDS, getSourceGroupId, matchesSourceName, parseSourceGroupSelection, type SourceGroupId } from "./feed-source-groups";
 import { worldSummary, type WorldFrame, type WorldSummary } from "./world";
 import type { MarketAdjustmentSnapshot } from "./community-market-adjustment";
 import type { MarketIndicator } from "./overview-data";
@@ -32,6 +32,7 @@ export function readFeedSelection(params: URLSearchParams): FeedSelection {
 
 export function buildFeedPage(snapshot: FeedSnapshot, selection: FeedSelection, { limit = 80, offset = 0, hours = 6 } = {}): FeedPage {
   const options = { asOf: new Date(snapshot.generated_at), marketAdjustmentSnapshot: snapshot.marketAdjustmentSnapshot, collectionStatuses: snapshot.collectionStatuses, excludedSourceNames: new Set(snapshot.excludedSourceNames) };
+  const permittedRows = snapshot.rows.filter(row => ![...options.excludedSourceNames].some(name => matchesSourceName(row.source, name)));
   const summarize = (rows: FeedRow[], channels = selection.channels): ScopeSummary => {
     const { evidence: _, ...summary } = worldSummary(rows);
     summary.index = selection.symbol
@@ -40,7 +41,7 @@ export function buildFeedPage(snapshot: FeedSnapshot, selection: FeedSelection, 
     return { ...summary, data_at: rows[0]?.analyzed_at ?? null };
   };
   // Scope first, pagination last. Sentiment never changes the scope's ratios.
-  const byChannel = snapshot.rows.filter(row => {
+  const byChannel = permittedRows.filter(row => {
     const group = getSourceGroupId(row.source);
     return group ? selection.channels.includes(group) : selection.channels.length === SOURCE_GROUP_IDS.length;
   });
@@ -56,9 +57,9 @@ export function buildFeedPage(snapshot: FeedSnapshot, selection: FeedSelection, 
     rows: filtered.slice(offset, offset + limit), nextOffset: hasMore ? offset + limit : null, hasMore, errorMessage: "",
     summary: summarize(scoped), generated_at: snapshot.generated_at, window_hours: hours,
     stocks: [...stocks.values()].sort((a, b) => b.total - a.total || a.symbol.localeCompare(b.symbol)),
-    communities: buildSourceGroupSummaries(snapshot.rows, options).map(group => ({
+    communities: buildSourceGroupSummaries(permittedRows, options).map(group => ({
       id: group.id, name: group.shortLabel, problem: group.collection_problem, disabled: group.collection_disabled,
-      summary: summarize(snapshot.rows.filter(row => getSourceGroupId(row.source) === group.id && (!selection.symbol || row.symbol === selection.symbol)), [group.id])
+      summary: summarize(permittedRows.filter(row => getSourceGroupId(row.source) === group.id && (!selection.symbol || row.symbol === selection.symbol)), [group.id])
     })),
     market_indicators: snapshot.market_indicators, collection: snapshot.collection
   };

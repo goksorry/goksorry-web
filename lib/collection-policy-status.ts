@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import { getServiceSupabaseClient } from "@/lib/supabase/service";
+import { matchesSourceName } from "@/lib/feed-source-groups";
 
 export const COLLECTION_POLICY_CACHE_TAG = "collection-policy-status";
 
@@ -24,6 +25,12 @@ export type FooterCollectionPolicy = {
   refreshHours: number;
   sources: FooterCollectionPolicySource[];
 };
+
+export function filterReviewedSourceRows<T extends { source: string }>(rows: T[], policy: FooterCollectionPolicy | null): T[] {
+  if (!policy?.sources.length) throw new Error("collection policy unavailable");
+  const allowed = policy.sources.filter(source => source.allowFetch && !source.postponed);
+  return rows.filter(row => allowed.some(source => matchesSourceName(row.source, source.sourceName)));
+}
 
 type CollectionPolicyRow = {
   collection_policy: unknown;
