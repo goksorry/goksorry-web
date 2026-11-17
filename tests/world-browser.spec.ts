@@ -451,16 +451,26 @@ test("WebGL wall sweeps a shimmer over panels until their first payload arrives"
   await expect.poll(shimmer).toEqual([]);
 });
 
+test("a renderer that fails once is retried quietly before any failure shows", async ({ page }) => {
+  await prepareWorld(page); let aborted = 0;
+  // Only the first atlas load drops (a reconnect); the automatic retry loads it.
+  await page.route("**/world/ant*.png", (route) => aborted++ ? route.fallback() : route.abort());
+  await page.goto("/"); await webgl(page);
+  expect(aborted).toBeGreaterThan(1); await expect(page.locator(".world-snackbar")).toHaveCount(0);
+});
+
 test("WebGL and asset failures use same static art with working screens", async ({ page }) => {
   await prepareWorld(page); await page.route("**/world/ant*.png", (route) => route.abort()); await page.goto("/");
   // A renderer failure needs a browser that has WebGL2 to begin with; without it the view is "unsupported".
   await requireWebGL2(page);
-  await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
+  // The failure shows only once the automatic retries failed too.
+  await expect(stage(page)).toHaveAttribute("data-renderer", "failed", { timeout: 15_000 });
   await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-plaza.png/);
   // A failure is an error, not a mode: a snackbar says so and offers a retry.
   await expect(page.locator(".world-snackbar[role=alert]")).toContainText("3D 화면을 불러오지 못했습니다");
   await page.getByRole("button", { name: "3D 화면 다시 시도" }).click();
-  await expect(stage(page)).toHaveAttribute("data-renderer", "failed");
+  await expect(stage(page)).toHaveAttribute("data-renderer", "loading");
+  await expect(stage(page)).toHaveAttribute("data-renderer", "failed", { timeout: 15_000 });
   // Closing the snackbar keeps it closed for the same error; the screens stay usable.
   await page.getByRole("button", { name: "알림 닫기" }).click(); await expect(page.locator(".world-snackbar")).toHaveCount(0);
   await page.getByRole("button", { name: "산식·시장 지표" }).click(); await expect(dialog(page)).toBeVisible();

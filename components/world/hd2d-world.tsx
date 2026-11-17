@@ -33,6 +33,8 @@ const NOTE: Record<RenderMode, string> = {
   loading: "화면 불러오는 중…", webgl: "바닥 클릭 / 방향키로 이동",
   unsupported: "이 브라우저는 3D 화면(WebGL2)을 지원하지 않아 간단한 화면으로 보여줍니다", failed: "3D 화면 오류 · 간단한 화면"
 };
+/** A failed renderer (a reconnect, a dropped asset load, a lost context) is retried this many times, quietly, before the failure is shown. */
+const AUTO_RETRIES = 2, RETRY_DELAY_MS = 600;
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null), bubble = useRef<HTMLDivElement>(null);
   const specs = useRef<BoardSpec[]>([]);
@@ -40,6 +42,8 @@ export default function HD2DWorld(props: Props) {
   latest.current = props;
   const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
+  // Automatic retries used since the last successful start or manual retry.
+  const retries = useRef(0);
   const [nearby, setNearby] = useState<WorldScene | null>(null);
   // Other viewers on the plaza and in the battle: shared through the chat hub while the 3D scene is shown.
   const { user } = useSessionSnapshot();
@@ -59,7 +63,15 @@ export default function HD2DWorld(props: Props) {
   };
   useEffect(() => {
     if (!supportsWebGL2()) { setMode("unsupported"); return; }
-    let cancelled = false; setMode("loading");
+    let cancelled = false, retry: ReturnType<typeof setTimeout> | undefined; setMode("loading");
+    const fail = () => {
+      if (cancelled) return;
+      cancelAnimationFrame(animation.current);
+      if (retries.current >= AUTO_RETRIES) { setMode("failed"); return; }
+      // Stay on the loading view; the next attempt disposes this renderer and starts a fresh one.
+      retries.current += 1; setMode("loading");
+      retry = setTimeout(() => setAttempt((n) => n + 1), RETRY_DELAY_MS * retries.current);
+    };
     void import("./hd2d-renderer").then(({ createWorldRenderer }) => cancelled ? null : createWorldRenderer(canvas.current!, latest.current, {
       panels(rects) {
         // Pin each DOM twin (hit target + screen-reader copy) onto its wall panel.
@@ -80,11 +92,11 @@ export default function HD2DWorld(props: Props) {
       peers(heads) { peerBubbles.current?.place(heads); },
       section(next) { latest.current.onSection?.(next); },
       enter(scene) { latest.current.onScene(scene); },
-      failure() { setMode("failed"); cancelAnimationFrame(animation.current); }
+      failure: fail
     })).then((instance) => {
       if (!instance) return;
       if (cancelled) { instance.dispose(); return; }
-      renderer.current = instance; instance.setView(latest.current.view); instance.update(latest.current); setMode("webgl");
+      renderer.current = instance; instance.setView(latest.current.view); instance.update(latest.current); setMode("webgl"); retries.current = 0;
       // Read-only measurement surface; measures actual renderer.render calls.
       Object.defineProperty(canvas.current!, "worldMetrics", { configurable: true, get: () => instance.metrics });
       // `bare` renders the room without wall data or the visitor's tag, for the static fallback art (door plates are scenery).
@@ -96,15 +108,15 @@ export default function HD2DWorld(props: Props) {
       } });
       Object.defineProperty(canvas.current!, "worldWallTexture", { configurable: true, value: (id: string) => instance.wallTexture(id)?.toDataURL("image/png") ?? null });
       // The canvas is still display:none here; the mode effect draws once it has a layout box.
-    }).catch((error) => { if (!cancelled) { console.warn("HD2D renderer unavailable", error); setMode("failed"); } });
-    return () => { cancelled = true; cancelAnimationFrame(animation.current); renderer.current?.dispose(); renderer.current = null; };
+    }).catch((error) => { if (!cancelled) { console.warn("HD2D renderer unavailable", error); fail(); } });
+    return () => { cancelled = true; clearTimeout(retry); cancelAnimationFrame(animation.current); renderer.current?.dispose(); renderer.current = null; };
   }, [attempt]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...props, paused: props.paused || !onScreen });
   }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
   useLayoutEffect(pinEntrance, [nearby]);
-  useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => setAttempt((n) => n + 1) } } : null);
+  useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => { retries.current = 0; setAttempt((n) => n + 1); } } } : null);
   useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
