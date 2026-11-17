@@ -1,6 +1,6 @@
 # Data retention
 
-DB: pg_cron runs `goksorry_private.run_data_retention()` twice daily at 03:00 and 15:00 Asia/Seoul (06:00/18:00 UTC), independent of traffic and ingest. External posts and linked sentiment, reports, snapshots, withdrawn identifiers, and expired/revoked token rows expire after seven days. Active member/guest posts remain until deletion. Deleted posts and replies are physically removed, including dependent comments. Source previews are cleared and a constraint prevents future body storage.
+DB: pg_cron runs `goksorry_private.run_data_retention()` twice daily at 03:00 and 15:00 Asia/Seoul (06:00/18:00 UTC), independent of traffic and ingest. External posts and linked sentiment expire after 24 hours; reports, snapshots, withdrawn identifiers, and expired/revoked token rows expire after seven days. Active member/guest posts remain until deletion. Deleted posts and replies are physically removed, including dependent comments. Source previews are cleared and a constraint prevents future body storage.
 
 The cleanup function uses invoker rights in a non-exposed schema; no public or service-role RPC access. Check `goksorry_private.retention_status`, `cron.job` and `cron.job_run_details` with a privileged connection. Investigate failed runs or a last-success age above 13 hours. Cron history expires after seven days. This change adds no alert delivery service.
 
@@ -20,3 +20,7 @@ Ingest, snapshot writes and login no longer scan/delete expired records in bulk.
 ## Public-title scope update (2026-11-17)
 
 External title/URL records and their per-post results now use a 24-hour threshold with the same twice-daily cleanup. Bodies, author profiles and rewritten titles are not stored. Local raw analysis queues are retired; only a six-hour title/link delivery queue is retained. Numeric six-hour aggregates drive community indices independently of title display. See [community content scope](community-content-scope.md).
+
+## Dedupe and sampling update — 2026-11-18
+
+Worker URL hashes expire after 24 hours from classification; observing a duplicate does not renew that timestamp. Numeric index buckets and title/link retries still expire after six hours. Only numeric sampling cursor positions and per-run counts accompany this state; no body, preview or author profile is added. Cleanup applies the same independent expiry windows. Existing six-hour hash records are retained during rollout; previously expired hashes are not reconstructed.
