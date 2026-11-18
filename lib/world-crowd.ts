@@ -13,8 +13,8 @@ export type EmoteLoop = "howl" | "kneel" | "dance" | "smug";
 export type EmotePose = `${EmoteLoop}-${number}`;
 export type AntPose = "idle" | "walk-a" | "walk-b" | "walk-p" | "phone" | "sigh" | "look" | "tilt" | EmotePose;
 export type AntVariant = "neutral" | "fear" | "hope";
-// While the index is in the hope state, neutral and hope ants wear a brighter face: the same poses under these atlas
-// variants, wherever that art exists. The fear ant has no bright form.
+// Bright faces use the same poses under these atlas variants wherever that art exists.
+// The fear ant has no bright form.
 export const ANT_BRIGHT: Partial<Record<AntVariant, string>> = { neutral: "neutral-bright", hope: "hope-bright" };
 export type CrowdState = "walk" | "gaze" | "phone" | "sigh" | "away"; // away: off the floor between two halves of a trip (see TURNOVER)
 /** A way off the plaza floor for the crowd: the floor point in front of it, then the legs walked through it. The last leg

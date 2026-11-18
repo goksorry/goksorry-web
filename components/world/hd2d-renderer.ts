@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { WorldFrame, WorldScene, WorldSide, WorldSummary } from "@/lib/world";
-import { CAMP_X, crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
+import { CAMP_X, crowdCapacity, crowdDistribution, plazaCrowdDistribution } from "@/lib/world-presentation";
 import { WALK_PHASE, antFrameCandidates, antGazePose, antWalkFrame, createCrowd, facing8, leanOf, viewHalf, walkLift, walkPose, type AntPose, type AntVariant, type CrowdDoor, type CrowdMember, type CrowdView } from "@/lib/world-crowd";
 import { fakeCapacity } from "@/lib/world-presence";
 import type { PlazaPeer } from "@/lib/chat-types";
 import { PLAZA_DOOR, PLAZA_ENTRANCES, WORLD_BOUNDS, entranceAt, findWorldPath, plazaDoorWay, walkable, worldObstacles, type Point } from "@/lib/world-navigation";
-import { WALL_COS, WALL_FACE_Z, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
+import { WALL_COS, WALL_FACE_Z, WALL_PANEL_Z, WALL_SECTION_X, WALL_SHORT_STAGE, sceneBoardLayout, wallBodyPx, wallFit, wallScreenY, type WallFit, type WallModel, type WallRect, type WallSection, type WallView } from "@/lib/world-wall";
 import { stockPierrotArt } from "@/lib/stock-pierrot";
 import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
@@ -17,6 +17,8 @@ import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean;
+  /** The plaza crowd reads the same scoped split and display limit as the wall. */
+  plazaIndex?: Pick<WallModel["index"], "summary" | "sampleLimited">;
   /** Theater: no record can be shown for this slot. The ants of the last shown record fade out (instead of vanishing) and the next record's fade in. */
   absent?: boolean };
 export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
@@ -33,7 +35,7 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   antSize: number;
   /** Opacity the battle and theater ants (not the visitor) were drawn at last frame, 0..1: the theater fades them out where no record can be shown. */
   cast: number;
-  /** Band of the 곡소리 지수 the plaza wall shows (as the index panel labels it), and whether the ants wear their bright faces for it (희망, 극단적 희망). */
+  /** Wall index band and whether it activates the bright faces of the visitor and peers on the plaza. */
   band: string; bright: boolean;
   /** 심리 전장 camp ants (empty elsewhere): their camp side and spot (see campSpots), "walk" / "stand" / "emote" (with the loop
    * playing), whether they are walking off, and how much of them is drawn. */
@@ -53,7 +55,7 @@ export type WorldRenderer = {
   setView: (view: WallView) => void;
   /** Boards on the current scene's back wall (see board-specs.ts); an empty list hides them. */
   setBoards: (specs: BoardSpec[]) => void;
-  /** Mood band the wall shows (for the plaza faces); null derives it from the frame. */
+  /** Mood band the wall shows; null derives it from the frame. */
   setBand: (band: string | null) => void;
   wallTexture: (id: string) => HTMLCanvasElement | undefined;
   /** Text over the visitor's head ("나" or an emote); null leaves it off (the static fallback art). */
@@ -455,7 +457,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     // No record to show: the theater keeps the ants it has (they fade out in draw) rather than taking the empty frame's none.
     if (!plaza && state.absent) { roster = []; ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count; return; }
     // On the plaza, every two other viewers take the place of one NPC.
-    const counts = crowdDistribution(summary(), plaza ? fakeCapacity(base, peers.length) : base);
+    const index = state.plazaIndex;
+    const counts = plaza
+      ? plazaCrowdDistribution(index?.summary ?? summary(), fakeCapacity(base, peers.length), index?.sampleLimited)
+      : crowdDistribution(summary(), base);
     sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
     // NPC ids are per slot: a change in the mood mix changes costumes in place, only a change in headcount walks ants in or out.
     roster = plaza ? [
@@ -595,8 +600,8 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
     const obstacles = worldObstacles(state.scene), plaza = state.scene === "plaza";
     cast = metrics.cast = plaza ? 1 : castFade(cast, !!state.absent, dt, ambient());
-    // When the 곡소리 지수 reads 희망 the plaza faces brighten. The band is the one the wall's index panel and portrait
-    // show (the same scope), read every draw: a data refresh that moves the index changes the faces in place.
+    // The wall's band drives the visitor and peer faces and the plaza's phone frequency.
+    // The NPC costumes come from the wall's fear/hope ratios.
     const shownBand = metrics.band = band ?? stockPierrotArt(sum).band;
     const hopeful = metrics.bright = plaza && (shownBand === "bullish" || shownBand === "extreme_bullish");
     if (plaza) {
@@ -704,9 +709,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       // The walk cycle advances with the floor covered, in steps that match the drawn size of the legs.
       // An ant that has just set off has not moved yet: it already shows the step its stride count is at, not a stray first frame.
       const walking = a ? a.state === "walk" && (a.moved || a.pose !== "idle") : moving, stride = a ? a.stride : visitorStride, phase = a ? WALK_PHASE * size : 1;
-      let dir8 = a ? a.dir8 : heading8, pose: AntPose = walking ? walkPose(stride, phase) : a ? antGazePose(hasFrame, variant, a, hopeful) : "idle";
-      let bright = hopeful;
-      if (walking || (a && a.state === "walk")) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, hopeful));
+      const brightFace = plaza && a && !a.peer ? variant === "hope" : hopeful;
+      let dir8 = a ? a.dir8 : heading8, pose: AntPose = walking ? walkPose(stride, phase) : a ? antGazePose(hasFrame, variant, a, brightFace) : "idle";
+      let bright = brightFace;
+      if (walking || (a && a.state === "walk")) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, dir4, brightFace));
       // Camera-facing art is a three-quarter view: `lean` turns it to the side the ant is heading (mirrored where needed).
       const lean = a ? a.lean : visitorLean;
       const frame = frameOf(variant, pose, dir8, dir4, lean, bright);
@@ -715,7 +721,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       // Standing ants breathe; a sigh sinks and recovers over its span (t counts down from span).
       // Walkers rise as the feet pass and sink into each stride.
       const bob = (a && a.state === "gaze" && ambient() ? Math.sin(time / 2400 + i * 1.7) * .025 : walking ? walkLift(stride, phase) * .04 : 0) * size;
-      // Under a hopeful index the sigh state is drawn as the relieved pose (the bright "sigh" art): no sinking, no breath.
+      // A bright sigh frame shows relief: no sinking or breath.
       const sighing = a && a.state === "sigh" && a.span > 0 && !frame.key.includes("-bright.sigh.") ? 1 - a.t / a.span : -1;
       const tall = placeSprite(i, frame, x, z, scale, bob, sighing >= 0 ? 1 - .06 * Math.sin(Math.PI * sighing) : 1);
       ants.setColorAt(i, visitor ? color.set(state.color) : color.set("#ffffff").lerp(DOOR_DARK, 1 - fade));

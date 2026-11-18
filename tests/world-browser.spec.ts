@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { prepareWorld, worldRows, requireWebGL2, withoutWebGL2 } from "./world-fixture";
 import { readFile, writeFile } from "node:fs/promises";
-import { buildWorldFrame, worldDate } from "../lib/world";
+import { buildWorldFrame, worldDate, type WorldFrame } from "../lib/world";
 import type { RenderMetrics } from "../components/world/hd2d-renderer";
 import antAtlas from "../components/world/ant-atlas.json";
 
@@ -9,6 +9,10 @@ const stage = (page: Page) => page.locator(".hd2d-stage");
 const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "월드 장면 선택" }).getByRole("button", { name, exact: true });
 async function webgl(page: Page) { await requireWebGL2(page); await expect(stage(page)).toHaveAttribute("data-renderer", "webgl", { timeout: 30_000 }); }
+function scopedFeed(frame: WorldFrame) {
+  const { evidence, ...summary } = frame.overall;
+  return { rows: Object.values(evidence).flat(), summary: { ...summary, data_at: frame.data_at } };
+}
 
 test("wall carries live data without a modal; panels open details with keyboard and focus restore", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
@@ -302,8 +306,63 @@ for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test
   if (kind === "fear") { await expect(stage(page)).toHaveAttribute("data-fear", "20"); await expect(page.locator(".world-ratios")).toContainText("공포 100%"); }
   if (kind === "hope") { await expect(stage(page)).toHaveAttribute("data-hope", "20"); await expect(page.locator(".world-ratios")).toContainText("희망 100%"); }
   if (kind === "neutral") { await expect(stage(page)).toHaveAttribute("data-neutral", "20"); await expect(page.locator(".world-ratios")).toContainText("—"); }
-  if (kind === "sparse") { await expect(stage(page)).toHaveAttribute("data-population", "2"); await expect(page.locator(".world-live-badge")).toContainText("소표본"); }
+  if (kind === "sparse") {
+    await expect(stage(page)).toHaveAttribute("data-population", "2");
+    await expect(stage(page)).toHaveAttribute("data-neutral", "1");
+    await expect(page.locator(".world-live-badge")).toContainText("표본 부족");
+  }
   if (kind === "empty") { await expect(stage(page)).toHaveAttribute("data-population", "1"); await expect(page.locator(".world-index-number strong")).toHaveText("—"); }
+});
+
+for (const mode of ["webgl", "unsupported"] as const) test(`the plaza follows scoped fear and hope ratios in ${mode}`, async ({ page }) => {
+  const frame = await prepareWorld(page);
+  if (mode === "unsupported") {
+    await withoutWebGL2(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  let overall = { ...frame.overall, index: 5, total: 200, bullish: 30, bearish: 90, neutral: 80, hope_ratio: .25, fear_ratio: .75 };
+  await page.route("**/api/feed?*", (route) => route.fulfill({ json: scopedFeed({ ...frame, overall }) }));
+  await page.goto("/?channels=toss");
+  if (mode === "webgl") await webgl(page);
+  else await expect(stage(page)).toHaveAttribute("data-renderer", mode);
+  const split = () => mode === "webgl" ? page.locator("canvas").evaluate((node) => {
+    const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics;
+    const crowd = metrics.crowd().filter((a) => !a.peer && !a.leaving);
+    return {
+      fear: crowd.filter((a) => a.frame.startsWith("fear.")).length,
+      hope: crowd.filter((a) => /^hope(-bright)?\./.test(a.frame)).length,
+      total: crowd.length
+    };
+  }) : stage(page).evaluate((node) => ({
+    fear: node.querySelectorAll(".world-static-ant[data-side=bearish]").length,
+    hope: node.querySelectorAll(".world-static-ant[data-side=bullish]").length,
+    total: node.querySelectorAll(".world-static-ant").length
+  }));
+  const total = mode === "webgl" ? 20 : 12;
+  await expect.poll(split).toEqual({ fear: total * .75, hope: total * .25, total });
+  await expect(page.locator("#world-index-wall .world-ratios")).toContainText("공포 75%");
+  const canvas = page.locator("canvas");
+  const read = () => canvas.evaluate((node) => {
+    const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics;
+    return { crowd: m.crowd(), visitor: m.visitor().frame, band: m.band };
+  });
+  const before = mode === "webgl" ? await read() : null;
+  if (before) expect(before.crowd.some((a) => a.frame.startsWith("hope-bright."))).toBe(true);
+  overall = { ...overall, bullish: 90, bearish: 30, hope_ratio: .75, fear_ratio: .25 };
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  // "data-paused" is also true under reduced motion, so wait for React to process the hidden state.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: false }); document.dispatchEvent(new Event("visibilitychange")); });
+  await expect.poll(split).toEqual({ fear: total * .25, hope: total * .75, total });
+  await expect(page.locator("#world-index-wall .world-ratios")).toContainText("희망 75%");
+  if (before) {
+    const after = await read();
+    expect(after.band).toBe(before.band);
+    expect(after.visitor).toBe(before.visitor);
+    const slots = (crowd: typeof before.crowd) => crowd.map(({ id, x, z }) => ({ id, x, z }));
+    expect(slots(after.crowd)).toEqual(slots(before.crowd));
+  }
 });
 
 test("initial loading, 503 and stale refresh preserve last good values and time", async ({ page }) => {
@@ -612,10 +671,13 @@ const drawn = (watch: { seen: Record<string, string[]> }, state: string) => Obje
 
 test("walkers pass their feet through real passing frames; gazers tip their heads through the in-between; a sigh breathes", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.setViewportSize({ width: 1440, height: 900 }); await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const frame = await prepareWorld(page);
+  await page.route("**/api/feed?*", (route) => route.fulfill({ json: scopedFeed(frame) }));
+  await page.goto("/?channels=toss"); await webgl(page);
   await expect.poll(() => page.locator("canvas").evaluate((node) => (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics.crowd().length)).toBe(20);
   const all = { seen: {} as Record<string, string[]>, cycles: [] as string[][], puffs: 0, relievedPuffs: 0, atlas: "" };
-  const wanted = [/^hope\.walk-p\.(f|l|r|b)~?$/, /^(neutral|hope)\.walk-p\.(fl|fr|bl|br)$/];
+  const wanted = [/^hope-bright\.walk-p\.(f|l|r|b)~?$/, /^hope\.walk-p\.(bl|br)$/];
   await expect(async () => {
     const part = await watchCrowd(page, 4);
     for (const [key, frames] of Object.entries(part.seen)) all.seen[key] = [...new Set([...(all.seen[key] ?? []), ...frames])];
@@ -638,12 +700,11 @@ test("walkers pass their feet through real passing frames; gazers tip their head
   for (const [key, frames] of Object.entries(all.seen)) if (key !== "gaze:4") expect(frames.filter((frame) => frame.includes(".tilt.")), key).toEqual([]);
   // Straight behind, looking up is its own picture next to the level gaze.
   expect(all.seen["gaze:4"].some((key) => /\.look\.b$/.test(key))).toBe(true); expect(all.seen["gaze:4"].some((key) => /\.idle\.b$/.test(key))).toBe(true);
-  // Under the default (중립) index nobody is bright: phones and sighs are the dull art, with breath.
-  expect(Object.values(all.seen).flat().filter((key) => key.includes("-bright"))).toEqual([]);
-  for (const key of drawn(all, "sigh")) expect(key).toMatch(/^(neutral|fear|hope)\.sigh\./);
+  // Fear keeps its sigh and hope uses the relieved pose.
+  for (const key of drawn(all, "sigh")) expect(key).toMatch(/^(fear|hope-bright)\.sigh\./);
   expect(all.relievedPuffs).toBe(0);
   // A phone-sized screen loads the two-thirds copy and draws the same frames from it.
-  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await webgl(page);
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/?channels=toss"); await webgl(page);
   const small = await page.locator("canvas").evaluate((node) => { const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics; return { atlas: m.atlas, ants: [...m.crowd(), m.visitor()] }; });
   expect(small.atlas).toBe("/world/ant-atlas-small.png");
   // Nothing is enlarged from it: at pixel ratio 2 every sprite is drawn at no more than two thirds of a screen pixel per atlas pixel.
@@ -651,15 +712,19 @@ test("walkers pass their feet through real passing frames; gazers tip their head
   for (const a of small.ants.filter((a) => a.frame)) { const frame = frames[a.frame.replace("~", "")]; expect(a.sh * 2 / (frame[3] * frame[4]), a.frame).toBeLessThanOrEqual(2 / 3); }
 });
 
-test("resting ants look up at the wall; when the index turns to hope the faces brighten in place", async ({ page }) => {
+test("resting ants look up at the wall; more hopeful data increases the bright crowd in place", async ({ page }) => {
   test.setTimeout(180_000);
   const read = () => page.locator("canvas").evaluate((node) => { const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics; return { band: m.band, bright: m.bright, crowd: m.crowd(), visitor: m.visitor() }; });
-  await page.setViewportSize({ width: 1440, height: 900 }); const frame = await prepareWorld(page); await page.goto("/"); await webgl(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const frame = await prepareWorld(page);
+  let scoped = { ...frame, overall: { ...frame.overall, index: 5 } };
+  await page.route("**/api/feed?*", (route) => route.fulfill({ json: scopedFeed(scoped) }));
+  await page.goto("/?channels=toss"); await webgl(page);
   await expect.poll(async () => (await read()).crowd.length).toBe(20);
-  // Default fixture: the index panel reads 중립, so nobody wears a bright face.
   const calm = await read();
   expect(calm.band).toBe("neutral"); expect(calm.bright).toBe(false);
-  expect([...calm.crowd, calm.visitor].filter((a) => a.frame.includes("-bright"))).toEqual([]);
+  expect(calm.visitor.frame).toMatch(/^neutral\./);
+  expect(calm.crowd.some((a) => a.frame.startsWith("hope-bright."))).toBe(true);
   // Looking up happens only while gazing at the wall, back to the camera, and some gazer is doing it at any time.
   const looking = (crowd: typeof calm.crowd) => crowd.filter((a) => /\.look\.(bl|b|br)~?$/.test(a.frame));
   await expect.poll(async () => looking((await read()).crowd).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
@@ -668,7 +733,7 @@ test("resting ants look up at the wall; when the index turns to hope the faces b
   const hopeful = buildWorldFrame(worldRows().map((row, i) => row.label === "bearish" && i % 4 ? { ...row, label: "bullish" as const, sentiment_score: 8 } : row));
   expect(hopeful.overall.fear_ratio).toBeGreaterThan(0); expect(frame.overall.mood).toBe("mixed");
   const standing = (await read()).crowd.filter((a) => a.state === "gaze" && !a.trip);
-  await page.route("**/api/internal/world", (route) => route.fulfill({ json: hopeful }));
+  scoped = hopeful;
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
   await expect(page.locator(".world-root")).toHaveAttribute("data-paused", "true");
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: false }); document.dispatchEvent(new Event("visibilitychange")); });
@@ -681,21 +746,21 @@ test("resting ants look up at the wall; when the index turns to hope the faces b
   const kept = standing.filter((a) => { const b = now.get(a.id); return b && b.state === "gaze" && !b.trip && b.lap === a.lap; });
   expect(kept.length).toBeGreaterThanOrEqual(5);
   for (const a of kept) expect(Math.hypot(now.get(a.id)!.x - a.x, now.get(a.id)!.z - a.z)).toBeLessThan(.01);
-  // Neutral and hope ants (and the visitor) show bright frames; fear ants never do; looking up carries on.
+  // The visitor follows the index band; the crowd's hope ants still use bright frames.
   expect(bright.visitor.frame).toMatch(/^neutral-bright\./);
   await expect.poll(async () => (await read()).crowd.filter((a) => /^(neutral|hope)-bright\./.test(a.frame)).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(8);
   await expect.poll(async () => looking((await read()).crowd).filter((a) => a.frame.includes("-bright.look.")).length, { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
   expect((await read()).crowd.filter((a) => a.frame.startsWith("fear-")).length).toBe(0);
-  // On the phone the neutral and hope ants keep the bright face, and what follows is the relieved pose: no sigh frame, no breath.
+  // Hope ants keep the bright face on the phone and then use their relieved pose.
   const mood = { seen: {} as Record<string, string[]>, relievedPuffs: 0 };
   await expect(async () => {
     const part = await watchCrowd(page, 4);
     for (const [key, frames] of Object.entries(part.seen)) mood.seen[key] = [...new Set([...(mood.seen[key] ?? []), ...frames])];
     mood.relievedPuffs += part.relievedPuffs;
-    expect(drawn(mood, "phone").some((key) => /^(neutral|hope)-bright\.phone\./.test(key))).toBe(true);
-    expect(drawn(mood, "sigh").some((key) => /^(neutral|hope)-bright\.sigh\./.test(key))).toBe(true);
+    expect(drawn(mood, "phone").some((key) => /^hope-bright\.phone\./.test(key))).toBe(true);
+    expect(drawn(mood, "sigh").some((key) => /^hope-bright\.sigh\./.test(key))).toBe(true);
   }).toPass({ timeout: 100_000 });
-  for (const state of ["phone", "sigh"]) for (const key of drawn(mood, state)) expect(key, state).toMatch(new RegExp(`^((neutral|hope)-bright|fear)\\.${state}\\.(f|l|r|b)~?$`));
+  for (const state of ["phone", "sigh"]) for (const key of drawn(mood, state)) expect(key, state).toMatch(new RegExp(`^(hope-bright|fear)\\.${state}\\.(f|l|r|b)~?$`));
   expect(mood.relievedPuffs).toBe(0);
   // Walkers keep one face through the cycle: every frame of a bright walk is bright, in one direction.
   const walk = await page.locator("canvas").evaluate(async (node) => {

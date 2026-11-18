@@ -8,7 +8,7 @@ import { WorldPeerBubbles, type PeerBubblesHandle } from "./world-peer-bubbles";
 import { WorldRoomBadge } from "./world-room-badge";
 import { usePlazaPresence } from "./use-plaza-presence";
 import { useSessionSnapshot } from "@/components/use-session-snapshot";
-import { crowdCapacity, crowdDistribution } from "@/lib/world-presentation";
+import { crowdCapacity, crowdDistribution, plazaCrowdDistribution } from "@/lib/world-presentation";
 import { presenceScene } from "@/lib/world-presence";
 import type { RenderState, WorldRenderer } from "./hd2d-renderer";
 import { supportsWebGL2 } from "./webgl-support";
@@ -17,7 +17,7 @@ import { boardSpecs, type BoardSource } from "./board-specs";
 import type { BoardSpec } from "./board-layer";
 import { type WallModel, type WallSection, type WallView } from "@/lib/world-wall";
 
-type Props = RenderState & {
+type Props = Omit<RenderState, "plazaIndex"> & {
   emote: string; children: ReactNode; board: BoardSource; view: WallView; styleKey: string;
   /** Theater: the day's records are still loading (the no-WebGL card says so rather than "기록 없음"). */
   pending?: boolean;
@@ -38,8 +38,9 @@ const AUTO_RETRIES = 2, RETRY_DELAY_MS = 600;
 export default function HD2DWorld(props: Props) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), avatar = useRef<HTMLDivElement>(null), bubble = useRef<HTMLDivElement>(null);
   const specs = useRef<BoardSpec[]>([]);
-  const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef(props);
-  latest.current = props;
+  const plazaIndex = props.board?.kind === "plaza" ? props.board.model.index : undefined;
+  const renderer = useRef<WorldRenderer | null>(null), animation = useRef(0), latest = useRef({ ...props, plazaIndex });
+  latest.current = { ...props, plazaIndex };
   const [onScreen, setOnScreen] = useState(true);
   const [mode, setMode] = useState<RenderMode>("loading"), [attempt, setAttempt] = useState(0);
   // Automatic retries used since the last successful start or manual retry.
@@ -113,8 +114,8 @@ export default function HD2DWorld(props: Props) {
   }, [attempt]);
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
-    instance.update({ ...props, paused: props.paused || !onScreen });
-  }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, mode, onScreen]);
+    instance.update({ ...latest.current, paused: props.paused || !onScreen });
+  }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, plazaIndex, mode, onScreen]);
   useLayoutEffect(pinEntrance, [nearby]);
   useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => { retries.current = 0; setAttempt((n) => n + 1); } } } : null);
   useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);
@@ -159,7 +160,10 @@ export default function HD2DWorld(props: Props) {
     if (host.current) observer.observe(host.current); return () => observer.disconnect();
   }, []);
   const summary = props.scene === "battle" ? props.frame.stocks.find((s) => s.symbol === props.stock) ?? props.frame.overall : props.frame.overall;
-  const counts = crowdDistribution(summary, crowdCapacity(props.scene, props.mobile));
+  const capacity = crowdCapacity(props.scene, props.mobile);
+  const counts = props.scene === "plaza"
+    ? plazaCrowdDistribution(plazaIndex?.summary ?? summary, capacity, plazaIndex?.sampleLimited)
+    : crowdDistribution(summary, capacity);
   const sides = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
   const fallback = mode !== "webgl", designedStatic = mode === "unsupported" || mode === "failed";
   return <div ref={host} className="hd2d-stage" data-renderer={mode} data-static={designedStatic || undefined} data-population={sides.length + 1} data-hope={counts.bullish} data-fear={counts.bearish} data-neutral={counts.neutral} onPointerDownCapture={(event) => {

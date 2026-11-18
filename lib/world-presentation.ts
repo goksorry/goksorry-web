@@ -23,6 +23,19 @@ export function ratioGauge(summary: Pick<WorldSummary, "hope_ratio" | "fear_rati
   return { fear: clamp(summary.fear_ratio), hope: clamp(summary.hope_ratio) };
 }
 
+/** The plaza's NPCs mirror the wall's directional split. A hidden or missing split leaves the crowd neutral. */
+export function plazaCrowdDistribution(
+  summary: Pick<WorldSummary, "total" | "hope_ratio" | "fear_ratio">,
+  capacity: number,
+  sampleLimited = false
+): Record<WorldSide, number> {
+  const count = Math.min(Math.max(0, capacity), summary.total);
+  const { fear, hope } = ratioGauge(summary);
+  if (sampleLimited || !(fear + hope > 0)) return { bullish: 0, bearish: 0, neutral: count };
+  const bullish = Math.round(count * hope / (fear + hope));
+  return { bullish, bearish: count - bullish, neutral: 0 };
+}
+
 // Largest remainder allocation: representation comes from ALL classified counts,
 // never the capped evidence lists. One place is reserved for the visitor.
 export function crowdDistribution(summary: WorldSummary, capacity: number): Record<WorldSide, number> {

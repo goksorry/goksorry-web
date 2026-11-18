@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { MOVE_MARKER, markerLook } from "../lib/world-move-marker";
-import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, timelineY, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
+import { CAMP_X, SIDE_ORDER, ratioGauge, crowdCapacity, crowdDistribution, plazaCrowdDistribution, timelineY, recentEvidence, worldHeadline, frameStatus } from "../lib/world-presentation";
 import { WORLD_SCENES, buildWorldFrame, buildWorldReplay, worldSceneOf, worldSummary, type WorldSide } from "../lib/world";
 import { findWorldPath, clearSegment, worldObstacles, walkable, entranceAt, plazaDoorWay, PLAZA_DOOR, PLAZA_ENTRANCES } from "../lib/world-navigation";
 import { WALL_PANELS } from "../lib/world-wall";
@@ -14,6 +14,15 @@ test("population follows full counts, including neutral, independent of represen
   expect(crowdDistribution(worldSummary([]), 47)).toEqual({ bullish: 0, bearish: 0, neutral: 0 });
   const sparse = { ...summary, total: 1, bullish: 0, bearish: 1, neutral: 0 };
   expect(crowdDistribution(sparse, 47).bearish).toBe(1);
+});
+test("the plaza splits its local slots by the visible fear and hope ratios", () => {
+  const summary = { total: 100, fear_ratio: .75, hope_ratio: .25 };
+  expect(plazaCrowdDistribution(summary, 20)).toEqual({ bullish: 5, bearish: 15, neutral: 0 });
+  expect(plazaCrowdDistribution(summary, 12)).toEqual({ bullish: 3, bearish: 9, neutral: 0 });
+  expect(plazaCrowdDistribution(summary, 19)).toEqual({ bullish: 5, bearish: 14, neutral: 0 });
+  expect(plazaCrowdDistribution(summary, 20, true)).toEqual({ bullish: 0, bearish: 0, neutral: 20 });
+  expect(plazaCrowdDistribution({ ...summary, fear_ratio: null, hope_ratio: null }, 20)).toEqual({ bullish: 0, bearish: 0, neutral: 20 });
+  expect(plazaCrowdDistribution({ ...summary, total: 0 }, 20)).toEqual({ bullish: 0, bearish: 0, neutral: 0 });
 });
 test("hope/fear splits read left to right with the index: fear left, neutral between, hope right", () => {
   expect([...SIDE_ORDER]).toEqual(["bearish", "neutral", "bullish"]);
