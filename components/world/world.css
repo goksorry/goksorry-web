@@ -64,6 +64,7 @@ html:has(.world-page),body:has(.world-page),:root[data-theme-shell]:has(.world-p
 .world-community-list button { display:grid; gap:10px; padding:18px; text-align:left; color:#bec9cc; background:#12242aed; border:1px solid #5b6f75; font-size:14px; }
 .world-community-list strong { color:#ddceac; font-size:18px; }.world-community-list button[data-tone=problem] span:last-child { color:#e3a68f; }
 .world-theater-top,.world-theater-actions { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; font-size:14px; }
+.world-theater-top label { white-space:nowrap; }
 .world-theater-controls input { background:#23343d; color:#e3dac4; border:1px solid #6c7d81; padding:6px; font-size:14px; min-height:44px; color-scheme:dark; }
 .world-theater-controls > input { width:100%; }.world-theater-controls input[type=range] { accent-color:#d7b77b; }
 .world-timeline { width:100%; height:66px; margin:14px 0 0; }.world-timeline text { font:9px sans-serif; fill:#c6d1d2; }

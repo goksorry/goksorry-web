@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildWorldReplay, worldDate, type WorldFrame, type WorldReplay } from "@/lib/world";
 import { timelineY } from "@/lib/world-presentation";
 import { correctReplay, theaterSlotIndex, theaterTimeline, type TheaterTimeline, type TracePoint } from "@/lib/world-theater";
@@ -14,8 +14,9 @@ import { useWorldSnack } from "./world-snackbar";
  */
 const svgPoint = (p: TracePoint) => `${p.x * 600},${timelineY(p.index)}`;
 
-export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, reduced, color }: {
+export function TheaterControls({ date, onDate, onFrame, onTimeline, onPlaying, onHudHeight, paused, reduced, color }: {
   date: string; onDate: (date: string) => void; onFrame: (frame: WorldFrame | null, corrected: boolean, pending: boolean) => void; onTimeline: (timeline: TheaterTimeline | null) => void;
+  onPlaying: (playing: boolean) => void; onHudHeight: (height: number) => void;
   paused: boolean; reduced: boolean; color: string;
 }) {
   const [replay, setReplay] = useState<WorldReplay>(() => buildWorldReplay(date, []));
@@ -26,6 +27,7 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
   const [message, setMessage] = useState("");
   const [shareLink, setShareLink] = useState("");
   const [retry, setRetry] = useState(0);
+  const controls = useRef<HTMLElement>(null);
   const today = worldDate();
   const earliest = worldDate(new Date(Date.now() - 6 * 24 * 60 * 60_000));
   useEffect(() => {
@@ -48,15 +50,26 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
     document.addEventListener("visibilitychange", visibility);
     return () => { controller.abort(); clearTimeout(timer); document.removeEventListener("visibilitychange", visibility); };
   }, [date, retry]);
+  const animating = playing && !paused && !reduced && position < 30;
+  useEffect(() => { onPlaying(animating); }, [onPlaying, animating]);
+  useEffect(() => () => onPlaying(false), [onPlaying]);
   useEffect(() => {
-    if (!playing || paused || reduced) return;
+    const panel = controls.current!;
+    const stage = panel.parentElement!;
+    const measure = () => onHudHeight(Math.ceil(stage.getBoundingClientRect().bottom - panel.getBoundingClientRect().top));
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel); observer.observe(stage); measure();
+    return () => observer.disconnect();
+  }, [onHudHeight]);
+  useEffect(() => {
+    if (!animating) return;
     let last = performance.now();
     const timer = window.setInterval(() => {
       const now = performance.now(), elapsed = (now - last) / 1000; last = now;
       setPosition((value) => Math.min(30, value + elapsed));
     }, 100);
     return () => clearInterval(timer);
-  }, [playing, paused, reduced]);
+  }, [animating]);
   useEffect(() => { if (position >= 30) setPlaying(false); }, [position]);
   const corrected = useMemo(() => correctReplay(replay), [replay]);
   const slot = corrected.slots[theaterSlotIndex(corrected, position)];
@@ -78,7 +91,7 @@ export function TheaterControls({ date, onDate, onFrame, onTimeline, paused, red
       else { await navigator.clipboard.writeText(url.toString()); setMessage("극장 링크를 복사했습니다. 최근 7일간 열 수 있습니다."); }
     } catch (e) { if (!(e instanceof Error && e.name === "AbortError")) setMessage("아래 링크를 복사해 공유하세요."); }
   };
-  return <section className="world-theater-controls" aria-label="개미극장 재생 제어">
+  return <section ref={controls} className="world-theater-controls" aria-label="개미극장 재생 제어">
     <div className="world-theater-top"><label>기록 날짜 <input type="date" min={earliest} max={today} value={date} onChange={(e) => { if (e.target.value >= earliest && e.target.value <= today) onDate(e.target.value); }} /></label><span className="world-theater-info">{timeline.recorded}</span></div>
     <svg viewBox="0 0 600 66" className="world-timeline world-theater-info" role="img" aria-label="커뮤니티 심리 추이. 점선은 앞뒤 기록을 이은 보정 구간, 빈 곳은 기록 없음. 높을수록 공포.">
       <path d="M0 8H600M0 34H600M0 60H600" stroke="currentColor" opacity=".16" /><text x="1" y="9">10</text><text x="1" y="35">5</text><text x="1" y="61">0</text>

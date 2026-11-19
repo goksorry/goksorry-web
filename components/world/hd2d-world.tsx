@@ -115,7 +115,7 @@ export default function HD2DWorld(props: Props) {
   useEffect(() => {
     const instance = renderer.current; if (!instance || mode !== "webgl") return;
     instance.update({ ...latest.current, paused: props.paused || !onScreen });
-  }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, plazaIndex, mode, onScreen]);
+  }, [props.frame, props.absent, props.scene, props.stock, props.mobile, props.color, props.paused, props.reduced, props.theaterPlaying, plazaIndex, mode, onScreen]);
   useLayoutEffect(pinEntrance, [nearby]);
   useWorldSnack("renderer", mode === "failed" ? { text: "3D 화면을 불러오지 못했습니다", tone: "error", action: { label: "3D 화면 다시 시도", run: () => { retries.current = 0; setAttempt((n) => n + 1); } } } : null);
   useEffect(() => { renderer.current?.setVisitorTag(props.emote); }, [props.emote, mode]);

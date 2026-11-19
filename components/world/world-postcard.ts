@@ -26,8 +26,8 @@ export async function saveWorldPostcard(frame: WorldFrame, date: string, color: 
   const portrait = new Image();
   portrait.src = art.src;
   await portrait.decode();
-  ctx.fillStyle = "#aa9169"; ctx.fillRect(446, 246, 308, 208);
-  ctx.drawImage(portrait, 450, 250, 300, 200);
+  ctx.fillStyle = "#aa9169"; ctx.fillRect(446, 71, 308, 208);
+  ctx.drawImage(portrait, 450, 75, 300, 200);
   ctx.fillStyle = "#e8dec9"; ctx.font = "bold 30px sans-serif"; ctx.fillText(`${date} · 오늘의 곡소리 한 컷`, 48, 54);
   ctx.font = "bold 25px sans-serif"; ctx.fillText(`${limited ? "표본 부족" : MOOD_COPY[frame.overall.mood]} · 곡소리 지수 ${!limited ? frame.overall.index.toFixed(1) : "—"}/10`, 48, 650);
   ctx.font = "22px sans-serif"; ctx.fillText(`분석 표본 ${frame.overall.total}건 · 공포 ${limited ? "—" : percent(frame.overall.fear_ratio)} · 희망 ${limited ? "—" : percent(frame.overall.hope_ratio)} · 중립 ${frame.overall.neutral}건`, 48, 690);

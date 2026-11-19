@@ -86,6 +86,8 @@ const SHEETS = [
   // than the standing row, so it is scaled down a little (head 5% wider, as tall as the standing scarf ant).
   { file: "art/world/source/ants-cheer.png", cols: ["f", "l", "r", "b"], loop: "f", rowScale: { 1: .95 },
     rows: [["hope", "dance"], ["hope", "smug"], null], norm: { row: 2, ref: 239, always: true }, tone: [2, 4] },
+  { file: "art/world/source/ants-seated.png", cols: ["b"], rows: [["neutral", "sit", "center"]],
+    norm: { row: 0, ref: 202 }, tone: [0, 0, 0, 3] },
 ];
 // Cells mirrored left-right while composing (the source sheet is untouched): the scarf tail was drawn on the other side
 // from the ant's standing back view, so it would jump across its back when the pose changes.

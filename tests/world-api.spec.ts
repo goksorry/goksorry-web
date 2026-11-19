@@ -1,11 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { worldDate } from "../lib/world";
 
+const bucket = { at: new Date(Date.now() - 60_000).toISOString(), source: "toss_stock_community", market: "us" };
+const aggregateBuckets = [
+  { ...bucket, symbol: null, bullish: 167, bearish: 166, neutral: 167, score_sum: 1668 },
+  { ...bucket, symbol: "LATE", bullish: 40, bearish: 40, neutral: 40, score_sum: 400 }
+];
 test.describe.configure({ mode: "serial" });
 test("world API reads every page without creating visitor snapshots", async ({ request }) => {
   // Clear the server read cache through the same collection path used in production.
   await request.post("/api/v1/detector/register", { data: { status: {} }, headers: { authorization: "Bearer local-dev-detector-token" } });
-  await request.post("http://127.0.0.1:3101/_control", { data: { reset: true } });
+  // The live frame and stored replay use the detector's aggregate buckets.
+  await request.post("http://127.0.0.1:3101/_control", { data: { reset: true, aggregateBuckets } });
   const response = await request.get("/api/internal/world");
   expect(response.status()).toBe(200);
   const frame = await response.json();
@@ -28,7 +34,7 @@ test("detector auth, same-bucket update and snapshot failure isolation", async (
   const stored = state.snapshots[0].frame;
   expect(stored.overall.total).toBe(620); expect(stored.overall.evidence).toBeUndefined();
   expect(JSON.stringify(stored)).not.toMatch(/테스트 수집 제목|example\.com|post_key/);
-  await request.post("http://127.0.0.1:3101/_control", { data: { failWrite: true } });
+  await request.post("http://127.0.0.1:3101/_control", { data: { failWrite: true, aggregateBuckets } });
   const response = await request.post("/api/v1/detector/register", { data, headers: { authorization: "Bearer local-dev-detector-token" } });
   expect(response.status()).toBe(200); expect((await response.json()).status).toBe("ok");
   state = await (await request.get("http://127.0.0.1:3101/_control")).json();

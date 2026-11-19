@@ -84,7 +84,9 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const landscape = useMediaQuery("(orientation: landscape)");
   const layout = landscape === false ? "sectioned" : "wide";
   const [section, setSection] = useState<WallSection>(1), [overview, setOverview] = useState(false);
-  const view = useMemo<WallView>(() => ({ layout, section, overview, hudBottom: HUD_BOTTOM }), [layout, section, overview]);
+  const [theaterHudHeight, setTheaterHudHeight] = useState(190);
+  const hudBottom = scene === "theater" ? theaterHudHeight : HUD_BOTTOM;
+  const view = useMemo<WallView>(() => ({ layout, section, overview, hudBottom }), [layout, section, overview, hudBottom]);
   const cleanFilterEnabled = false;
   // Boards repaint when the change colours do; the font and Pierrot art are fixed (the room has no theme).
   const { changeColorMode, selectChangeColorMode } = useTheme();
@@ -92,6 +94,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
   const { bannerVisible } = useCookieConsent();
   const [frame, setFrame] = useState<WorldFrame>(EMPTY), [replayFrame, setReplayFrame] = useState<WorldFrame | null>(null), [replayCorrected, setReplayCorrected] = useState(false), [replayPending, setReplayPending] = useState(true);
   const [timeline, setTimeline] = useState<TheaterTimeline | null>(null);
+  const [theaterPlaying, setTheaterPlaying] = useState(false);
   const [origin, setOrigin] = useState<PanelOrigin | null>(null), [roomRefresh, setRoomRefresh] = useState(0);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState("");
   const [visible, setVisible] = useState(true), [menuOpen, setMenuOpen] = useState(false);
@@ -239,7 +242,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
       clickAt.current = bounds.width ? ((event.detail === 0 ? target.left + target.width / 2 : event.clientX) - bounds.left) / bounds.width : null;
     }}>
       <div className="world-scene-heading"><h1 className="sr-only">{info.title}</h1></div>
-      <HD2DWorld frame={shown} absent={scene === "theater" && !replayFrame} pending={scene === "theater" && replayPending} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible} color={color} emote={emote} board={board} view={view} styleKey={changeColorMode} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
+      <HD2DWorld frame={shown} absent={scene === "theater" && !replayFrame} pending={scene === "theater" && replayPending} scene={scene} stock={stock} mobile={mobile} reduced={reduced} paused={!visible || (scene === "theater" && (!!tab || menuOpen))} theaterPlaying={theaterPlaying} color={color} emote={emote} board={board} view={view} styleKey={changeColorMode} shared={chatEnabled} onStep={onStep} onScene={onScene} onSection={setSection}>
         {plaza && <WorldWallDom model={wall} onOpen={(panel, rect) => open(PANEL_TAB[panel], rect, SECTION_SIDE[WALL_PANELS[panel].section])} onCommunity={openCommunity} onFocusPanel={(panel) => { if (layout === "sectioned") setSection(WALL_PANELS[panel].section); }} />}
         {plaza && landscape === false && <div className="world-wall-nav">
           <button className="world-wall-arrow" data-dir="left" hidden={overview} aria-disabled={section === 0} aria-label={`왼쪽 벽 보기 · ${SECTION_LABEL[Math.max(0, section - 1)]}`} onClick={() => setSection((value) => Math.max(0, value - 1) as WallSection)}>‹</button>
@@ -248,7 +251,7 @@ function WorldShellView({ timezone, selectedGroupIds, menuHeader, menu, chatEnab
         </div>}
         {sceneBoard && <SceneBoardDom model={sceneBoard} onOpen={openScene} />}
       </HD2DWorld>
-      {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} onTimeline={setTimeline} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
+      {scene === "theater" && <TheaterControls key={date} date={date} onDate={onDate} onFrame={onFrame} onTimeline={setTimeline} onPlaying={setTheaterPlaying} onHudHeight={setTheaterHudHeight} paused={!visible || !!tab || menuOpen} reduced={reduced} color={color} />}
       <footer className="world-bottom"><nav aria-label="월드 장면 선택">{SCENES.map((s, i) => <button key={s.id} aria-label={s.name} aria-current={scene === s.id ? "page" : undefined} onClick={() => onScene(s.id)}><span>0{i + 1}</span><b>{layout === "sectioned" ? s.short : s.name}</b></button>)}</nav></footer>
     </div>
     </div>

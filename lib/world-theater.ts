@@ -3,7 +3,7 @@ import { SOURCE_GROUP_IDS, serializeSourceGroupSelection, type SourceGroupId } f
 
 /** Length of a full day's replay, in seconds of playback. */
 export const THEATER_SECONDS = 30;
-/** Seconds the theater's ants take to fade out where no record can be shown, and back in when records resume. */
+/** Seconds the theater's actors take to fade out where no record can be shown, and back in when records resume. */
 export const CAST_FADE_SECONDS = .8;
 
 /** A replay slot after gap correction: `corrected` marks a frame interpolated between the records around a gap. */
@@ -117,7 +117,7 @@ export function theaterTimeline(replay: TheaterReplay, position: number, loading
   };
 }
 
-/** Opacity of the theater's ants one frame on: toward 0 where no record can be shown, toward 1 otherwise; at once without motion. */
+/** Opacity of the theater's actors one frame on: toward 0 where no record can be shown, toward 1 otherwise; at once without motion. */
 export function castFade(current: number, absent: boolean, dt: number, animate: boolean): number {
   const target = absent ? 0 : 1;
   if (!animate) return target;

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 let snapshots = new Map();
 let failWrite = false, failRead = false, failFeed = false, failPolicy = false;
 let contentSince = null;
+let aggregateBuckets = [];
 let calls = [];
 const makeRows = () => Array.from({ length: 620 }, (_, i) => ({
   post_key: `fixture-${i}`, label: i % 3 === 0 ? "neutral" : i % 3 === 1 ? "bullish" : "bearish",
@@ -22,6 +23,7 @@ const server = createServer(async (req, res) => {
       failFeed = Boolean(control.failFeed);
       failPolicy = Boolean(control.failPolicy);
       contentSince = typeof control.contentSince === "string" ? control.contentSince : null;
+      aggregateBuckets = Array.isArray(control.aggregateBuckets) ? control.aggregateBuckets : [];
       if (control.reset) { snapshots.clear(); calls = []; }
     }
     return send(200, { snapshots: [...snapshots.values()], calls });
@@ -61,7 +63,7 @@ const server = createServer(async (req, res) => {
   if (table === "detector_status") {
     if (process.env.AGGREGATE_TEST_MODE === "1") return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { processing_mode: "scoped_titles", sources: ["toss_stock_community", "ppomppu_stock", "blind_stock_invest", "dc_krstock"].map(source_name => ({ source_name, allow_fetch: true, allow_detail: false, postponed: false, reason: "operator_limited_use", display_mode: "titles", content_since: "2026-11-17T04:58:42Z", article_count: 6 })), aggregate_buckets: ["toss_stock_community", "ppomppu_stock", "blind_stock_invest", "dc_krstock"].map(source => ({ at: new Date(Date.now()-60000).toISOString(), source, market: "kr", symbol: null, bullish: 3, bearish: 1, neutral: 2, score_sum: 26 })) } }]);
     const blocked = policyBlocked && !contentSince;
-    return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { checked_at: new Date().toISOString(), sources: [{ source_name: "toss_stock_community", allow_fetch: !blocked, allow_detail: !blocked && !contentSince, postponed: blocked, reason: blocked ? "terms_review_required" : contentSince ? "reviewed_limited_use" : "reviewed_use", content_since: contentSince, article_count: blocked ? 0 : 620 }] } }]);
+    return send(200, [{ singleton: true, collector_last_run_at: new Date().toISOString(), collector_errors: 0, llm_degraded: false, collection_policy: { checked_at: new Date().toISOString(), aggregate_buckets: aggregateBuckets, sources: [{ source_name: "toss_stock_community", allow_fetch: !blocked, allow_detail: !blocked && !contentSince, postponed: blocked, reason: blocked ? "terms_review_required" : contentSince ? "reviewed_limited_use" : "reviewed_use", content_since: contentSince, article_count: blocked ? 0 : 620 }] } }]);
   }
   return send(200, []);
 });

@@ -1,4 +1,5 @@
 import type { WorldScene } from "./world";
+import { THEATER_CHAIR, THEATER_SEATS, THEATER_STAGE } from "./world-theater-cast";
 export type Point = { x: number; z: number };
 export type Obstacle = { x: number; z: number; width: number; depth: number };
 export const WORLD_BOUNDS = { left: -10, right: 10, back: -3.5, front: 7 };
@@ -30,7 +31,9 @@ export function worldObstacles(scene: WorldScene): Obstacle[] {
   const crates = Array.from({ length: 8 }, (_, i) => ({ x: (i % 2 ? -1 : 1) * (8 + i % 3 * .45), z: 2.6 + i % 3 * .4, width: .7, depth: .5 }));
   const common = [...sides, ...crates];
   if (scene === "battle") return [...common, { x: 0, z: .2, width: .9, depth: 3.4 }];
-  if (scene === "theater") return [...common, { x: 0, z: -2, width: 10, depth: 3 }, ...Array.from({ length: 10 }, (_, i) => ({ x: -6 + i % 5 * 3, z: 4.6 + Math.floor(i / 5) * 1.7, width: 1.2, depth: .85 }))];
+  if (scene === "theater") return [...common, THEATER_STAGE, ...THEATER_SEATS.map(({ x, z }) => ({
+    x, z: z + .05, width: THEATER_CHAIR.width, depth: THEATER_CHAIR.depth + .1
+  }))];
   return common;
 }
 export function walkable(point: Point, obstacles: Obstacle[], radius = .3): boolean {

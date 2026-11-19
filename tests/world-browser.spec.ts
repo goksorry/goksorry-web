@@ -4,6 +4,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { buildWorldFrame, worldDate, type WorldFrame } from "../lib/world";
 import type { RenderMetrics } from "../components/world/hd2d-renderer";
 import antAtlas from "../components/world/ant-atlas.json";
+import { THEATER_AUDIENCE, THEATER_CHAIR, THEATER_DOOR, THEATER_STAGE } from "../lib/world-theater-cast";
+import { WALL_COS, WALL_FACE_Z } from "../lib/world-wall";
 
 const stage = (page: Page) => page.locator(".hd2d-stage");
 const dialog = (page: Page) => page.locator('[data-world-panel="detail"]');
@@ -13,6 +15,12 @@ function scopedFeed(frame: WorldFrame) {
   const { evidence, ...summary } = frame.overall;
   return { rows: Object.values(evidence).flat(), summary: { ...summary, data_at: frame.data_at } };
 }
+
+const theaterCast = (page: Page) => page.locator("canvas").evaluate((node) => {
+  const metrics = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics;
+  const cast = metrics.theater();
+  return { actors: cast.filter((ant) => ant.role === "actor"), audience: cast.filter((ant) => ant.role === "spectator") };
+});
 
 test("wall carries live data without a modal; panels open details with keyboard and focus restore", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
@@ -237,21 +245,34 @@ test("replay gaps, date changes, 0-10 axis, share and rendered PNG", async ({ pa
   await expect(page.locator(".world-theater-controls")).not.toContainText("보간하지 않습니다");
   await page.getByRole("button", { name: "재생", exact: true }).click(); await expect(page.getByRole("button", { name: "일시정지", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "일시정지", exact: true }).click(); await page.getByLabel("극장 시간 탐색", { exact: true }).fill("30");
-  // Records keep no posts: the evidence is the feed as of the recorded time.
-  const evidence = page.waitForRequest((request) => /\/api\/feed\?/.test(request.url()) && !!new URL(request.url()).searchParams.get("asOf"));
   await page.getByRole("button", { name: "극장 기록 근거 보기" }).click();
-  const asked = new URL((await evidence).url()).searchParams;
-  expect([asked.get("limit"), asked.get("hours"), Date.parse(asked.get("asOf")!) > 0]).toEqual(["3", "6", true]);
-  await expect(dialog(page)).toContainText("저장 시점"); await expect(dialog(page).locator(".world-evidence-list li").first()).toBeVisible();
+  await expect(dialog(page)).toContainText("극장 기록 · 최근 6시간 분석 표본");
+  await expect(dialog(page).getByRole("tab", { name: "출처" })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog(page).locator(".sentiment-title").first()).toBeVisible();
   await page.keyboard.press("Escape");
   const downloadPromise = page.waitForEvent("download"); await page.getByRole("button", { name: "PNG 저장", exact: true }).click();
   const download = await downloadPromise; expect(download.suggestedFilename()).toBe(`goksorry-${yesterday}.png`);
   const png = await readFile((await download.path())!); expect(png.subarray(1, 4).toString()).toBe("PNG");
   expect(png.readUInt32BE(16)).toBe(1200); expect(png.readUInt32BE(20)).toBe(800); expect(png.length).toBeGreaterThan(100_000);
+  await test.info().attach("theater-postcard", { body: png, contentType: "image/png" });
   await page.getByRole("button", { name: "링크 공유", exact: true }).click(); await expect(page.getByLabel("극장 공유 링크")).toHaveValue(/scene=theater.*date=/);
 });
 
-test("theater shows 기록 없음 outside the records and fades its ants out and back in", async ({ page }) => {
+test("theater keeps replay controls and PNG export without WebGL2", async ({ page }) => {
+  await prepareWorld(page); await withoutWebGL2(page); await page.goto("/?scene=theater");
+  await expect(stage(page)).toHaveAttribute("data-renderer", "unsupported");
+  await expect(page.locator(".world-static-scene")).toHaveCSS("background-image", /static-theater.png/);
+  const play = page.getByRole("button", { name: "재생", exact: true });
+  await expect(play).toBeEnabled(); await play.click();
+  await expect(page.getByRole("button", { name: "일시정지", exact: true })).toBeVisible();
+  await page.getByLabel("극장 시간 탐색", { exact: true }).fill("30");
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PNG 저장", exact: true }).click();
+  const png = await readFile((await (await downloaded).path())!);
+  expect(png.subarray(1, 4).toString()).toBe("PNG");
+});
+
+test("theater shows 기록 없음 and only the two actors fade out and back in", async ({ page }) => {
   test.setTimeout(60_000); const frame = await prepareWorld(page);
   // Records from slot 10 to 129 only: nothing to join before or after. The first answer is held back so the loading
   // state can be checked: it must not read as "no record" yet.
@@ -274,11 +295,13 @@ test("theater shows 기록 없음 outside the records and fades its ants out and
   await expect.poll(async () => (await cast()).cast).toBe(0);
   await seek("10"); await expect(page.locator(".world-record-state")).toHaveText(/저장된 심리$/);
   await expect.poll(async () => (await cast()).cast).toBe(1);
-  const crowd = (await cast()).population; expect(crowd).toBeGreaterThan(1);
+  expect((await cast()).population).toBe(8);
   // Past the last record the same ants stay and fade: some frame shows them part way, then they are gone.
   await seek("29");
-  await expect.poll(async () => { const now = await cast(); return now.cast > 0 && now.cast < 1 && now.population === crowd; }, { intervals: [16] }).toBe(true);
+  await expect.poll(async () => { const now = await cast(); return now.cast > 0 && now.cast < 1 && now.population === 8; }, { intervals: [16] }).toBe(true);
   await expect.poll(async () => (await cast()).cast).toBe(0);
+  expect((await cast()).population).toBe(6);
+  expect((await theaterCast(page)).audience.map((ant) => [ant.state, ant.fade])).toEqual(Array(5).fill(["seated", 1]));
   await page.locator(".hd2d-stage").screenshot({ path: test.info().outputPath("theater-no-record.png") });
 });
 
@@ -295,7 +318,119 @@ test("theater without motion swaps its ants at once where records stop", async (
   await expect.poll(cast).toBe(1);
   await page.getByLabel("극장 시간 탐색", { exact: true }).fill("20"); await expect(page.locator(".world-record-state")).toHaveText("기록 없음");
   await expect.poll(cast).toBe(0);
+  expect((await theaterCast(page)).audience.map((ant) => ant.frame)).toEqual(Array(5).fill("neutral.sit.b"));
+  await expect(page.getByRole("button", { name: "재생", exact: true })).toBeDisabled();
 });
+
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  test(`theater stage and audience stay visible while replay reverses at ${viewport.width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+    const frame = await prepareWorld(page);
+    const summary = (bullish: number, bearish: number, neutral: number) => ({
+      ...frame.overall, total: bullish + bearish + neutral, bullish, bearish, neutral,
+      mood: bullish + bearish + neutral < 3 ? "watching" : !bullish && !bearish ? "neutral" : bullish === bearish ? "mixed" : bullish > bearish ? "hope" : "fear",
+      hope_ratio: bullish + bearish ? bullish / (bullish + bearish) : null,
+      fear_ratio: bullish + bearish ? bearish / (bullish + bearish) : null
+    });
+    await page.route("**/api/internal/world/replay?*", (route) => {
+      const date = worldDate(), start = Date.parse(`${date}T00:00:00+09:00`);
+      return route.fulfill({ json: { date, slots: Array.from({ length: 144 }, (_, i) => ({
+        bucket_at: new Date(start + i * 600_000).toISOString(),
+        frame: i >= 16 && i <= 23 ? null : { ...frame, overall: i < 16 ? summary(10, 0, 0) : i < 40 ? summary(0, 10, 0)
+          : i < 50 ? summary(5, 5, 0) : i < 60 ? summary(0, 0, 10) : i < 70 ? summary(2, 0, 0) : summary(7, 3, 0) }
+      })) } });
+    });
+    await page.setViewportSize(viewport); await page.goto("/?scene=theater"); await webgl(page);
+    await expect.poll(async () => (await theaterCast(page)).actors.every((actor) => actor.fade === 1)).toBe(true);
+    const initial = await theaterCast(page);
+    expect(initial.audience.map(({ x, z }) => ({ x, z }))).toEqual(THEATER_AUDIENCE);
+    const [, , , seatHeight] = antAtlas.frames["neutral.sit.b"];
+    for (const ant of initial.audience) {
+      expect(ant.frame).toBe("neutral.sit.b");
+      expect(ant.baseY + seatHeight * ant.unit / WALL_COS * .066).toBeCloseTo(THEATER_CHAIR.seatY);
+    }
+    const canvas = (await page.locator("canvas").boundingBox())!;
+    const controls = (await page.locator(".world-theater-controls").boundingBox())!;
+    for (const ant of [...initial.audience, ...initial.actors]) {
+      expect(ant.sx).toBeGreaterThan(12); expect(ant.sx).toBeLessThan(canvas.width - 12);
+      expect(ant.sy - ant.sh / 2).toBeGreaterThan(0);
+      expect(canvas.y + ant.sy + ant.sh / 2).toBeLessThan(controls.y);
+    }
+    const [fear, hope] = initial.actors;
+    expect(fear.baseY).toBe(THEATER_STAGE.height); expect(hope.baseY).toBe(fear.baseY);
+    expect(hope.z).toBeGreaterThan(fear.z); expect(hope.sh).toBeGreaterThan(fear.sh);
+    await page.screenshot({ path: testInfo.outputPath("theater-hope.png") });
+    await page.getByRole("button", { name: "재생", exact: true }).click();
+    await expect.poll(async () => (await theaterCast(page)).actors[1].frame, { intervals: [32] }).toMatch(/^hope\.smug-/);
+    await expect.poll(async () => {
+      const [fear, hope] = (await theaterCast(page)).actors;
+      return fear.z > hope.z + 1.8 && fear.sh > hope.sh && hope.state === "crouched";
+    }, { timeout: 12_000 }).toBe(true);
+    await expect(page.locator(".world-record-state")).toContainText("저장된 심리");
+    await page.getByRole("button", { name: "일시정지", exact: true }).click();
+    await expect.poll(async () => (await theaterCast(page)).actors.map((a) => [a.state, a.z])).toEqual([["stand", hope.z], ["crouched", fear.z]]);
+    const paused = (await theaterCast(page)).actors;
+    expect(paused[0].z).toBeCloseTo(hope.z, 2); expect(paused[1].z).toBeCloseTo(fear.z, 2);
+    await page.screenshot({ path: testInfo.outputPath("theater-fear.png") });
+    expect((await theaterCast(page)).actors).toEqual(paused);
+    const seek = page.getByLabel("극장 시간 탐색", { exact: true });
+    await seek.fill("4");
+    await expect(page.locator(".world-record-state")).toContainText("보정 구간");
+    await expect.poll(async () => {
+      const [fear, hope] = (await theaterCast(page)).actors;
+      return hope.z > fear.z && hope.z - fear.z < 1;
+    }).toBe(true);
+    for (const at of ["9", "11", "13"]) {
+      await seek.fill(at);
+      await expect.poll(async () => (await theaterCast(page)).actors.map((actor) => actor.z)).toEqual([THEATER_STAGE.z, THEATER_STAGE.z]);
+    }
+  });
+
+  test(`one theater spectator takes the right aisle and returns to its seat at ${viewport.width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
+    await page.clock.install();
+    await prepareWorld(page);
+    await page.route("**/api/internal/world/replay?*", (route) => route.fulfill({ json: {
+      slots: Array.from({ length: 144 }, (_, i) => ({ bucket_at: new Date(Date.now() + i * 600_000).toISOString(), frame: null }))
+    } }));
+    await page.setViewportSize(viewport); await page.goto("/?scene=theater"); await webgl(page);
+    await expect(page.locator(".world-record-state")).toHaveText("기록 없음");
+    const seatState = ({ x, z, state, frame, fade }: Awaited<ReturnType<typeof theaterCast>>["audience"][number]) => ({ x, z, state, frame, fade });
+    const fixed = (await theaterCast(page)).audience.map(seatState);
+    expect(fixed.map((ant) => ant.state)).toEqual(Array(5).fill("seated"));
+    await page.clock.fastForward(42000);
+    expect((await theaterCast(page)).audience.map(seatState)).toEqual(fixed);
+    const phases = new Set<string>();
+    const lastSeat = fixed[4];
+    let aisle = false, outThroughDoor = false, inThroughDoor = false;
+    for (let i = 0; i < 150; i++) {
+      await page.clock.fastForward(1000);
+      const { audience, actors } = await theaterCast(page);
+      expect(audience.slice(0, 4).map(seatState)).toEqual(fixed.slice(0, 4));
+      expect(actors.every((actor) => actor.fade === 0)).toBe(true);
+      const ant = audience[4];
+      if (ant.state === "out" && !aisle && ant.x >= THEATER_DOOR.x && ant.z > 0) {
+        aisle = true;
+        expect(ant.sx).toBeLessThan(viewport.width);
+        await page.screenshot({ path: testInfo.outputPath("theater-right-aisle.png") });
+      }
+      if (ant.x === THEATER_DOOR.x && ant.z < WALL_FACE_Z + 1.5) {
+        if (ant.state === "out") outThroughDoor = true;
+        if (ant.state === "in") inThroughDoor = true;
+      }
+      if (ant.state === "away") {
+        expect(ant.fade).toBe(0);
+        if (!phases.has("away")) await page.clock.fastForward(42_000);
+      }
+      if (ant.state === "seated" && phases.has("in")) {
+        expect(seatState(ant)).toEqual(lastSeat); phases.add("returned"); break;
+      }
+      phases.add(ant.state);
+    }
+    expect([aisle, outThroughDoor, inThroughDoor]).toEqual([true, true, true]);
+    expect([...phases].filter((phase) => phase !== "seated")).toEqual(["out", "away", "in", "returned"]);
+  });
+}
 
 for (const kind of ["fear", "hope", "neutral", "sparse", "empty"] as const) test(`${kind} sample matches crowd and screen`, async ({ page }) => {
   await prepareWorld(page); const rows = worldRows();
@@ -805,7 +940,7 @@ test("hidden tab stops actual render and polling; resumes once visible", async (
   await expect.poll(() => reads).toBe(hiddenReads + 1);
 });
 
-test("measure actual render throughput at 21 battle and 48/24 theater ants during movement, detail and replay", async ({ page }, testInfo) => {
+test("measure actual render throughput during movement, detail and replay", async ({ page }, testInfo) => {
   test.setTimeout(90_000); await prepareWorld(page); const results: unknown[] = [];
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); await page.goto("/?scene=battle"); await webgl(page);

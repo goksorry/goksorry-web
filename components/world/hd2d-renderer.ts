@@ -12,6 +12,7 @@ import { createBoardLayer, type BoardSpec } from "./board-layer";
 import { createLabelLayer, type LabelSpec } from "./label-layer";
 import { createMoveMarker, type MoveMarkerState } from "./move-marker";
 import { castFade } from "@/lib/world-theater";
+import { createTheaterAudience, theaterLead, THEATER_ACTORS, THEATER_AUDIENCE, THEATER_CHAIR, THEATER_DOOR, THEATER_SEATS, THEATER_STAGE } from "@/lib/world-theater-cast";
 import { SIDE_VARIANT, battlePose, createBattleCrowd, emoteFrames } from "@/lib/world-battle-crowd";
 import antAtlas from "./ant-atlas.json";
 
@@ -19,8 +20,9 @@ import antAtlas from "./ant-atlas.json";
 export type RenderState = { frame: WorldFrame; scene: WorldScene; stock: string; mobile: boolean; color: string; paused: boolean; reduced: boolean;
   /** The plaza crowd reads the same scoped split and display limit as the wall. */
   plazaIndex?: Pick<WallModel["index"], "summary" | "sampleLimited">;
-  /** Theater: no record can be shown for this slot. The ants of the last shown record fade out (instead of vanishing) and the next record's fade in. */
-  absent?: boolean };
+  /** Theater: only the actors fade between recorded and empty slots. */
+  absent?: boolean;
+  theaterPlaying?: boolean };
 export type WallMetrics = { rects: Record<string, WallRect>; drawn: Record<string, string>; /** Boards showing the loading sweep, read live. */ readonly shimmer: string[]; body: number; ppu: number; section: number; overview: boolean; settled: boolean; front: number; yaw: number;
   /** Zoomed section view only: whether the frame is following the visitor (false while it walks to a section chosen by hand), and how far it is panned off the section's centre for it (world units). */
   follow: boolean; pan: number;
@@ -33,7 +35,7 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   puffs: number;
   /** Sprite scale of this frame (see ANT_VIEW): 1 on wide views, down to ANT_SMALL on a zoomed phone view. */
   antSize: number;
-  /** Opacity the battle and theater ants (not the visitor) were drawn at last frame, 0..1: the theater fades them out where no record can be shown. */
+  /** Opacity of the theater's actors, 0..1. */
   cast: number;
   /** Wall index band and whether it activates the bright faces of the visitor and peers on the plaza. */
   band: string; bright: boolean;
@@ -43,6 +45,7 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body;
    * the turnover phase it is in (`trip`), how many trips its slot has made (`lap`) and how much of it is drawn (`fade`, 0 hidden). */
   crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean; trip: "out" | "away" | "in" | null; lap: number; fade: number })[];
+  theater: () => (AntMetric & { role: "actor" | "spectator"; side?: "bearish" | "bullish"; baseY: number; fade: number })[];
   /** The visitor's ant, in every scene. */
   visitor: () => AntMetric;
   /** The ring a floor click left at the visitor's walk target, drawn last frame (null when none): floor point, look, and screen point of its centre. */
@@ -76,7 +79,7 @@ export type WorldRenderer = {
 };
 
 /** Ant instances: the plaza holds at most about 20 NPCs, 19 peers, a few ants walking off and the visitor; the battle 20 camp
- * ants, at most 20 walking off, 19 peers and the visitor; the theater 47. */
+ * ants, at most 20 walking off, 19 peers and the visitor. */
 const MAX_ANTS = 64;
 
 export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: RenderState, events: {
@@ -194,8 +197,11 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
   /** The plaza's back wall between x ±11.2, with a low doorway cut under each panel column (see PLAZA_DOOR): framed by plaster
    * jambs and a metal lintel, a name plate across the top of the opening, and a dark recess behind it, wider than the opening so
    * a turned camera never looks past it into the void. The plinth and the steps stop at each door, so the floor runs in. */
-  function plazaWall() {
-    const { half, height, lintel, plate } = PLAZA_DOOR, doors = [...PLAZA_ENTRANCES].sort((a, b) => a.x - b.x), jamb = .22, back = WALL_FACE_Z - .65;
+  function entranceWall(theater: boolean) {
+    const { half, height } = theater ? THEATER_DOOR : PLAZA_DOOR;
+    const { lintel, plate } = PLAZA_DOOR;
+    const doors = theater ? [{ x: THEATER_DOOR.x, scene: null }] : PLAZA_ENTRANCES;
+    const jamb = .22, back = WALL_FACE_Z - .65;
     // One notched outline, no holes: earcut needs holes strictly inside the outline, and these touch the floor.
     const shape = new THREE.Shape(); shape.moveTo(-11.2, 0);
     for (const e of doors) { shape.lineTo(e.x - half, 0); shape.lineTo(e.x - half, height); shape.lineTo(e.x + half, height); shape.lineTo(e.x + half, 0); }
@@ -213,12 +219,12 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       }
       box(e.x, height + lintel / 2, WALL_FACE_Z + .08, 2 * (half + jamb) + .06, lintel, .26, metalMat);
       // Name plate hung over the lintel and the top of the opening; its painted label (style "sign") stands in front of it.
-      box(e.x, height + (lintel - plate) / 2 + .01, PLATE_Z, 2 * (half + jamb) + .02, plate + lintel + .02, .05, metalMat);
+      if (!theater) box(e.x, height + (lintel - plate) / 2 + .01, PLATE_Z, 2 * (half + jamb) + .02, plate + lintel + .02, .05, metalMat);
       box(e.x, .02, WALL_FACE_Z + .2, 2 * half + .1, .04, .5, plasterMat); // threshold
       box(e.x, 1.1, back - .85, 3.1, 2.2, .2, darkMat); // recess back
       // The recess floor stays dark: the plaza lights would otherwise light the floor tiles inside.
       box(e.x, .006, back - .1, 2.9, .01, 1.95, darkMat).castShadow = false;
-      glimpse(e.scene, e.x, back - .74);
+      if (e.scene) glimpse(e.scene, e.x, back - .74);
     }
   }
   const cable = (points: THREE.Vector3[]) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, .035, 4, false), darkMat, 0, 0, 0);
@@ -229,10 +235,10 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     // The follow camera pans sideways and swings the frame's lower corners forward, so the wall runs
     // as wide as the floor and a front strip continues the floor toward the camera.
     for (const x of [-23, 0, 23]) { box(x, -.38, 0, 23, .75, 17, floorMat); box(x, -.38, 10.5, 23, .75, 4, floorMat); }
-    const plaza = state.scene === "plaza";
-    for (const x of [-28, -16.8, ...(plaza ? [] : [-5.6, 5.6]), 16.8, 28]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
+    const plaza = state.scene === "plaza", theater = state.scene === "theater";
+    for (const x of [-28, -16.8, ...(plaza || theater ? [] : [-5.6, 5.6]), 16.8, 28]) box(x, 4.5, -5.3, 11.2, 9, .65, brickMat);
     box(0, 9.12, -5.2, 68, .24, 1.1, metalMat);
-    if (plaza) plazaWall();
+    if (plaza || theater) entranceWall(theater);
     else {
       box(0, .4, -4.2, 21.2, .8, 1.5, plasterMat);
       for (let j = 0; j < 3; j++) box(0, .1 + j * .12, -3.3 - j * .32, 19.8, .2, .45, brickMat);
@@ -275,9 +281,14 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
       // Camp flags: red over the fear camp, amber over the hope camp, each on its CAMP_X side.
       for (const side of ["bearish", "bullish"] as const) { const sign = CAMP_X[side]; box(sign * 5.5, 1.8, -.5, .08, 3.6, .08, metalMat); box(sign * 5.1, 3.2, -.5, .8, .6, .04, side === "bullish" ? glowMat : redMat); }
     } else if (state.scene === "theater") {
-      box(0, .35, -2, 10, .7, 3, woodMat);
+      const { x, z, width, depth, height } = THEATER_STAGE;
+      box(x, height / 2, z, width, height, depth, woodMat);
       for (const sign of [-1, 1]) for (let i = 0; i < 5; i++) box(sign * (4.5 - i * .24), 2.7, -2.8 + i * .09, .3, 4.5, .4, curtainMat);
-      for (let i = 0; i < 10; i++) { const x = -6 + i % 5 * 3, z = 4.5 + Math.floor(i / 5) * 1.7; box(x, .3, z, 1.2, .4, .65, woodMat); box(x, .75, z + .35, 1.2, .9, .15, curtainMat); }
+      const chair = THEATER_CHAIR;
+      for (const { x, z } of THEATER_SEATS) {
+        box(x, chair.seatY - .2, z, chair.width, .4, chair.depth, woodMat);
+        box(x, .3 + chair.backHeight / 2, z + chair.backZ, chair.width, chair.backHeight, chair.backDepth, curtainMat);
+      }
     }
     // Merge static architecture by material. Sprite crowd remains one instanced draw.
     room.updateMatrixWorld(true);
@@ -354,8 +365,11 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     }
     return frame;
   };
-  // The other scenes pose their ants from the base sheet's grid: five rows, four directions.
-  const BASE_ROWS = ["neutral.idle", "neutral.walk-a", "neutral.walk-b", "fear.idle", "hope.idle"], BASE_DIRS = ["f", "l", "r", "b"];
+  const seatedFrame: AntFrame = { rect: FRAMES["neutral.sit.b"]!, mirror: false, posed: true, key: "neutral.sit.b" };
+  const theaterSize = THEATER_ACTORS.length + THEATER_AUDIENCE.length;
+  let audience = createTheaterAudience(), lead = 0, actingFor: WorldSide | null = null, actingTime = 0;
+  const actorStance = THEATER_ACTORS.map(() => ({ stretch: 1, roll: 0, pose: "idle" as AntPose }));
+  const theaterAnts: { point: Point; baseY: number; state: string; dir: number }[] = [];
   const crowd = createCrowd();
   // 심리 전장: ants standing in their camps (lib/world-battle-crowd.ts), playing the atlas's emotion loops.
   const battleLoops = emoteFrames(hasFrame), battle = createBattleCrowd({ frames: battleLoops });
@@ -368,10 +382,11 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   const crowdDoors: CrowdDoor[] = PLAZA_ENTRANCES.map((e) => ({ x: e.x, z: e.z, legs: plazaDoorWay(e, e.x < 0 ? -1 : 1) }));
   const DOOR_DARK = new THREE.Color(0x121b20);
   const dummy = new THREE.Object3D(), color = new THREE.Color(), right = new THREE.Vector3();
-  const position: Point = initial.scene === "plaza" ? { x: 0, z: .4 } : { x: 0, z: 3.2 };
-  // `cast`: opacity of the non-plaza ants (see RenderState.absent).
+  const theaterVisitor: Point = { x: -1.7, z: 2.45 };
+  const position: Point = initial.scene === "theater" ? { ...theaterVisitor } : { x: 0, z: initial.scene === "plaza" ? .4 : 3.2 };
+  // `cast`: opacity of the theater actors (see RenderState.absent).
   let cast = initial.absent ? 0 : 1;
-  let path: Point[] = [], sideList: WorldSide[] = [], roster: CrowdMember[] = [], peers: PlazaPeer[] = [], lastTime = 0, lastRender = 0, disposed = false;
+  let path: Point[] = [], roster: CrowdMember[] = [], peers: PlazaPeer[] = [], lastTime = 0, lastRender = 0, disposed = false;
   let width = 0, height = 0, direction = 0, heading8 = 0, visitorLean = 1, visitorStride = 0;
   // The visitor is drawn a little larger than the crowd. Its walk is tied to that drawing: one step (a stride frame and the
   // passing frame after it) covers the distance between the two planted feet of the stride art, so the feet do not slide.
@@ -395,7 +410,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   let yaw = 0, orbit = 0, front = 7;
   const corner = new THREE.Vector3();
   let view: WallView = { layout: "wide", section: 1, overview: false, hudBottom: 0 };
-  let fit: WallFit = wallFit(1200, 680, { plaza: state.scene === "plaza", ...view });
+  let fit: WallFit = wallFit(1200, 680, { plaza: state.scene === "plaza", theater: state.scene === "theater", ...view });
   // Eased camera frame; `fit` is the target.
   const lens = { cx: fit.cx, top: fit.top, bottom: fit.bottom, halfW: fit.halfW };
   let viewDirty = true, snap = true, rectKey = "";
@@ -428,15 +443,19 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, cast: 1, band: "neutral", bright: false,
     battle: () => state.scene === "battle" ? battle.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.path.length ? "walk" : a.emote ? "emote" : "stand", a.dir8), id: a.id, side: a.side, spot: a.spot, leaving: a.leaving, emote: a.emote?.loop ?? null, fade: a.fade })) : [],
     crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
+    theater: () => state.scene === "theater" ? theaterAnts.map(({ point, baseY, state, dir }, i) => ({
+      ...antMetric(i, point.x, point.z, state, dir, baseY),
+      role: i < THEATER_ACTORS.length ? "actor" : "spectator", side: THEATER_ACTORS[i]?.side, baseY, fade: fades[i]
+    })) : [],
     visitor: () => antMetric(visitorIndex(), position.x, position.z, path.length ? "walk" : "idle", heading8),
     marker: () => { const m = marker.state; if (!m) return null; const p = project(corner.set(m.x, 0, m.z)); return { ...m, sx: p.x, sy: p.y }; } };
   // Plaza instances are the crowd (including ants walking off) then the visitor, the battle its camp ants (with those walking
-  // off), the other viewers' ants, then the visitor; the theater draws sideList then the visitor.
-  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : state.scene === "battle" ? Math.min(MAX_ANTS - 1, battle.ants.length + battlePeers.ants.length) : sideList.length;
+  // off), the other viewers' ants, then the visitor; the theater draws actors, spectators, then the visitor.
+  const visitorIndex = () => state.scene === "plaza" ? Math.min(MAX_ANTS - 1, crowd.ants.length) : state.scene === "battle" ? Math.min(MAX_ANTS - 1, battle.ants.length + battlePeers.ants.length) : theaterSize;
   // What was drawn last for each instance: atlas frame, sprite height in world units, and world units per atlas pixel.
   const shown: string[] = [], talls: number[] = [], units: number[] = [];
-  const antMetric = (i: number, x: number, z: number, state: string, dir: number): AntMetric => {
-    const tall = talls[i] ?? 0, p = project(corner.set(x, tall / 2, z)), top = project(corner.set(x, tall, z)).y, foot = project(corner.set(x, 0, z)).y;
+  const antMetric = (i: number, x: number, z: number, state: string, dir: number, baseY = 0): AntMetric => {
+    const tall = talls[i] ?? 0, p = project(corner.set(x, baseY + tall / 2, z)), top = project(corner.set(x, baseY + tall, z)).y, foot = project(corner.set(x, baseY, z)).y;
     return { x, z, state, dir, sx: p.x, sy: p.y, sh: foot - top, frame: shown[i] ?? "", unit: units[i] ?? 0 };
   };
   const gl = renderer.getContext() as WebGL2RenderingContext; const debug = gl.getExtension("WEBGL_debug_renderer_info");
@@ -446,28 +465,28 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   let queries: WebGLQuery[] = [];
   function summary(): WorldSummary { return state.scene === "battle" ? state.frame.stocks.find((s) => s.symbol === state.stock) ?? state.frame.overall : state.frame.overall; }
   function population() {
-    const plaza = state.scene === "plaza", base = crowdCapacity(state.scene, state.mobile);
+    if (state.scene === "theater") {
+      ants.count = shadows.count = theaterSize + 1;
+      return;
+    }
+    const base = crowdCapacity(state.scene, state.mobile);
     // The battle's camps: only the ants that change camp walk; reduced motion places them at once. As on the plaza, every two
     // other viewers take the place of one camp ant.
     if (state.scene === "battle") {
       battle.sync(crowdDistribution(summary(), fakeCapacity(base, peers.length)), { instant: state.reduced });
-      roster = peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } })); sideList = [];
+      roster = peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } }));
       ants.count = shadows.count = visitorIndex() + 1; metrics.population = battle.ants.filter((a) => !a.leaving).length + peers.length + 1; return;
     }
-    // No record to show: the theater keeps the ants it has (they fade out in draw) rather than taking the empty frame's none.
-    if (!plaza && state.absent) { roster = []; ants.count = shadows.count = sideList.length + 1; metrics.population = ants.count; return; }
     // On the plaza, every two other viewers take the place of one NPC.
     const index = state.plazaIndex;
-    const counts = plaza
-      ? plazaCrowdDistribution(index?.summary ?? summary(), fakeCapacity(base, peers.length), index?.sampleLimited)
-      : crowdDistribution(summary(), base);
-    sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
+    const counts = plazaCrowdDistribution(index?.summary ?? summary(), fakeCapacity(base, peers.length), index?.sampleLimited);
+    const sideList = (["bullish", "bearish", "neutral"] as const).flatMap((side) => Array.from({ length: counts[side] }, () => side));
     // NPC ids are per slot: a change in the mood mix changes costumes in place, only a change in headcount walks ants in or out.
-    roster = plaza ? [
+    roster = [
       ...sideList.map((side, i) => ({ id: `npc:${i}`, variant: SIDE_VARIANT[side] })),
       ...peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } }))
-    ] : [];
-    ants.count = shadows.count = sideList.length + (plaza ? peers.length : 0) + 1; metrics.population = ants.count;
+    ];
+    ants.count = shadows.count = sideList.length + peers.length + 1; metrics.population = ants.count;
   }
   const zoomed = () => state.scene === "plaza" && view.layout === "sectioned" && !view.overview;
   // Gaze follows the visitor. Whole-wall views pan (and slide a little) toward the ant so it sits nearer
@@ -475,7 +494,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   // has no spare margin, so there the camera orbits the section instead and the panel stays framed.
   const yawTarget = () => {
     // The phone overview exists to show the whole wall: it stays frontal wherever the visitor stands.
-    if (state.scene === "plaza" && view.overview) return 0;
+    if (state.scene === "theater" || (state.scene === "plaza" && view.overview)) return 0;
     const close = zoomed(), reach = close ? ZOOM_REACH : 10;
     let max = close ? ZOOM_YAW : 10 * Math.PI / 180;
     // Very wide frames turn less so the frame edge stays on the built wall (x within ±33).
@@ -484,7 +503,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   };
   /** Deepest floor z the frame shows above the bottom HUD (camera at rest). */
   function visibleFront() {
-    const hud = height < WALL_SHORT_STAGE ? 0 : Math.max(0, view.hudBottom);
+    const hud = height < WALL_SHORT_STAGE && state.scene !== "theater" ? 0 : Math.max(0, view.hudBottom);
     const y = (fit.bottom + hud / fit.ppu - WALL_Y0) / WALL_COS; // height on the wall plane at the frame's lower edge
     const depth = y >= 0 ? 0 : -y * CAMERA_DISTANCE / (CAMERA_HEIGHT - y);
     return Math.max(state.scene === "plaza" ? .8 : 4, Math.min(7, WALL_PANEL_Z + depth));
@@ -531,7 +550,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     }
     if (!viewDirty) return;
     viewDirty = false;
-    fit = wallFit(w, h, { plaza: state.scene === "plaza", ...view });
+    fit = wallFit(w, h, { plaza: state.scene === "plaza", theater: state.scene === "theater", ...view });
     front = visibleFront();
     // Keep the visitor on the floor the new frame still shows.
     if (position.z > front - .35) {
@@ -557,7 +576,8 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   function draw(time = performance.now()) {
     if (disposed) return;
     resize();
-    const dt = Math.min(.05, lastTime ? (time - lastTime) / 1000 : 0); lastTime = time;
+    const elapsed = lastTime ? Math.max(0, (time - lastTime) / 1000) : 0;
+    const dt = Math.min(.05, elapsed); lastTime = time;
     const moving = !state.paused && path.length > 0, walkSize = antSize();
     if (moving) {
       const target = path[0], dx = target.x - position.x, dz = target.z - position.z, distance = Math.hypot(dx, dz);
@@ -599,7 +619,8 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     amber.intensity = sum.total < 3 ? 32 : 30 + (sum.hope_ratio ?? 0) * 34;
     warning.intensity = sum.total < 3 ? 12 : 12 + (sum.fear_ratio ?? 0) * 35;
     const obstacles = worldObstacles(state.scene), plaza = state.scene === "plaza";
-    cast = metrics.cast = plaza ? 1 : castFade(cast, !!state.absent, dt, ambient());
+    const theater = state.scene === "theater";
+    cast = metrics.cast = theater ? castFade(cast, !!state.absent, elapsed, ambient()) : 1;
     // The wall's band drives the visitor and peer faces and the plaza's phone frequency.
     // The NPC costumes come from the wall's fear/hope ratios.
     const shownBand = metrics.band = band ?? stockPierrotArt(sum).band;
@@ -621,7 +642,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       battlePeers.sync(roster, env);
       if (ambient()) battlePeers.step(dt, env);
       ants.count = shadows.count = visitorIndex() + 1;
-    }
+    } else if (theater && ambient()) audience.step(elapsed);
     let cueCount = 0, puffs = 0;
     const size = metrics.antSize = antSize();
     right.set(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -632,7 +653,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     };
     const hide = (i: number) => { shown[i] = ""; talls[i] = 0; dummy.scale.set(0, 0, 0); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix); shadows.setMatrixAt(i, dummy.matrix); };
     /** Draws an atlas frame (k-scaled, mirrored as resolved) standing on (x, z), `stretch` times its height; returns that height. */
-    const placeSprite = (i: number, frame: AntFrame, x: number, z: number, scale: number, bob: number, stretch = 1) => {
+    const placeSprite = (i: number, frame: AntFrame, x: number, z: number, scale: number, bob: number, stretch = 1, roll = 0) => {
       const rect = frame.rect;
       offsets[i * 4] = (frame.mirror ? rect[0] + rect[2] : rect[0]) / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
       offsets[i * 4 + 2] = (frame.mirror ? -rect[2] : rect[2]) / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
@@ -641,15 +662,72 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       shown[i] = frame.mirror ? `${frame.key}~` : frame.key; talls[i] = tall; units[i] = scale;
       // Each frame's body anchor (ax) stands on the ant's floor point, so poses of different widths do not shake sideways.
       const slide = (rect[2] / 2 - (rect[5] ?? rect[2] / 2)) * scale * (frame.mirror ? -1 : 1);
-      dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(x + right.x * slide, bob + tall / 2, z + right.z * slide); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1);
+      if (roll) {
+        // Pivot around the support point so a lean doesn't pull the actor's feet across the stage.
+        dummy.position.x -= Math.sin(roll) * tall / 2;
+        dummy.position.y += (Math.cos(roll) - 1) * tall / 2;
+        dummy.rotateZ(roll);
+      }
+      dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
       return tall;
     };
-    const placeShadow = (i: number, x: number, z: number, k: number) => { dummy.position.set(x, .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * k, .55 * size * k, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix); };
+    const placeShadow = (i: number, x: number, z: number, k: number, y = 0) => { dummy.position.set(x, y + .025, z); dummy.rotation.set(-Math.PI / 2, 0, 0); dummy.scale.set(size * k, .55 * size * k, 1); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix); };
     const you = visitorIndex(), heads: Record<string, { x: number; y: number }> = {}, peerTags: LabelSpec[] = [];
     // In the battle the peers' instances follow the camp ants'.
     const walkers = peerCrowd(), firstPeer = state.scene === "battle" ? battle.ants.length : 0;
-    for (let i = 0; i < ants.count; i++) {
-      const visitor = i === you, side = sideList[i];
+    if (theater) {
+      const animate = ambient() && !!state.theaterPlaying;
+      if (!state.absent) {
+        const target = theaterLead(sum), ease = animate ? 1 - Math.exp(-12 * dt) : 1;
+        const winner = target > 0 && (sum.hope_ratio ?? 0) >= .65 ? "bullish" : target < 0 && (sum.fear_ratio ?? 0) >= .65 ? "bearish" : null;
+        const gesture = animate ? winner : null;
+        actingTime = gesture === actingFor ? actingTime + dt : 0;
+        actingFor = gesture;
+        lead = Math.abs(lead - target) < .001 ? target : lead + (target - lead) * ease;
+        for (const [i, actor] of THEATER_ACTORS.entries()) {
+          const stance = actorStance[i], lower = winner && winner !== actor.side;
+          const response = animate && !winner && sum.mood === "mixed" ? (1 + Math.sin(time / 410 + i * Math.PI)) / 2 : 0;
+          stance.stretch += ((lower ? .78 : 1 - .055 * response) - stance.stretch) * ease;
+          stance.roll += ((i === 0 ? -1 : 1) * (lower ? -.13 : .085 * response) - stance.roll) * ease;
+          const loop = actor.side === "bullish" ? "smug" : "howl", step = Math.floor(actingTime % 2.8 / .12) + 1;
+          stance.pose = actingFor === actor.side && step <= (battleLoops[loop] ?? 0) ? `${loop}-${step}` as AntPose : "idle";
+        }
+      }
+      for (const [i, actor] of THEATER_ACTORS.entries()) {
+        const { side, x } = actor, z = THEATER_STAGE.z + (side === "bullish" ? lead : -lead) * 1.24;
+        const { stretch, roll, pose } = actorStance[i], baseY = THEATER_STAGE.height;
+        theaterAnts[i] = { point: { x, z }, baseY, state: pose !== "idle" ? "gesture" : stretch < .9 ? "crouched" : "stand", dir: 0 };
+        fades[i] = cast;
+        if (cast <= 0) { hide(i); continue; }
+        const variant = SIDE_VARIANT[side], frame = frameOf(variant, pose, 0, 0, 1, false);
+        // Equal standing height lets differences in depth read as perspective; gestures keep their authored proportions.
+        const scale = 1.55 * (frame.rect[4] ?? 1) / FRAMES[`${variant}.idle.f`]![3];
+        placeSprite(i, frame, x, z, scale, baseY, stretch, roll);
+        ants.setColorAt(i, color.set("#ffffff"));
+        placeShadow(i, x, z, cast, baseY);
+      }
+      const trip = audience.spectator();
+      for (const [seat, point] of THEATER_AUDIENCE.entries()) {
+        const i = THEATER_ACTORS.length + seat, traveler = i === theaterSize - 1 && !state.reduced ? trip : null;
+        const sitting = !traveler || traveler.phase === "seated", at = sitting ? point : traveler.point;
+        const dir = sitting ? 4 : facing8(traveler.dx, traveler.dz);
+        const baseY = sitting ? THEATER_CHAIR.seatY - seatedFrame.rect[3] * (1.45 / 235) / WALL_COS * .066 : 0;
+        const fade = traveler?.phase === "away" ? 0 : 1;
+        theaterAnts[i] = { point: at, baseY, state: sitting ? "seated" : traveler.phase, dir };
+        fades[i] = fade;
+        if (fade <= 0) { hide(i); continue; }
+        const frame = sitting ? seatedFrame : frameOf("neutral", walkPose(traveler.stride), dir, dir, 1, false);
+        placeSprite(i, frame, at.x, at.z, 1.45 / 235 * (frame.rect[4] ?? 1), baseY);
+        ants.setColorAt(i, color.set("#ffffff").lerp(DOOR_DARK, Math.min(1, Math.max(0, (WALL_FACE_Z - at.z) * 1.5))));
+        if (sitting) {
+          dummy.scale.set(0, 0, 0); dummy.updateMatrix(); shadows.setMatrixAt(i, dummy.matrix);
+        } else placeShadow(i, at.x, at.z, 1);
+      }
+      metrics.population = 1 + THEATER_AUDIENCE.length + (cast > 0 ? THEATER_ACTORS.length : 0) - (trip.phase === "away" && !state.reduced ? 1 : 0);
+    }
+    for (let i = theater ? you : 0; i < ants.count; i++) {
+      const visitor = i === you;
       if (state.scene === "battle" && !visitor && i < firstPeer) {
         // A camp ant: standing at its spot (hope smiling), walking to a new camp, or playing an emotion loop. Without ambient
         // motion it stands still in its plain pose.
@@ -663,38 +741,6 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         placeSprite(i, frame, b.x, b.z, b.build * 1.45 / 235 * k * size, bob);
         ants.setColorAt(i, color.set("#ffffff"));
         placeShadow(i, b.x, b.z, b.fade);
-        continue;
-      }
-      if (!walkers && !visitor) {
-        let x = -6.6 + (i * 73 % 130) / 10, z = -1.7 + (i * 37 % 75) / 10;
-        if (!walkable({ x, z }, obstacles)) z = 3.2 + i % 3 * .15;
-        fades[i] = cast;
-        if (cast <= 0) { hide(i); continue; }
-        const shift = !ambient() ? 0 : Math.sin(time / 2400 + i * 1.7) * .025;
-        let row = side === "bearish" ? 3 : side === "bullish" ? 4 : 0, column = i % 4;
-        // Mixed sentiment: short steps, pauses, and turns in opposite directions.
-        // Phase offsets keep the crowd from moving in unison. Counts and evidence stay unchanged.
-        if (ambient() && sum.mood === "mixed" && side !== "neutral") {
-          const phase = (time / 900 + i * .73) % 4;
-          const goingRight = phase < 2;
-          const stepping = phase < 1 || (phase >= 2 && phase < 3);
-          const progress = stepping ? phase % 1 : 1;
-          const offset = goingRight ? -.28 + .56 * progress : .28 - .56 * progress;
-          if (walkable({ x: x + offset, z }, obstacles)) x += offset;
-          column = goingRight ? 2 : 1;
-          // Stride, feet together, other stride, feet together: the two side-view strides alone look like frozen legs.
-          row = stepping ? [1, 0, 2, 0][Math.floor(time / 200 + i) % 4] : 0;
-        }
-        const rect = FRAMES[`${BASE_ROWS[row]}.${BASE_DIRS[column]}`]!;
-        offsets[i * 4] = rect[0] / antAtlas.width; offsets[i * 4 + 1] = 1 - (rect[1] + rect[3]) / antAtlas.height;
-        offsets[i * 4 + 2] = rect[2] / antAtlas.width; offsets[i * 4 + 3] = rect[3] / antAtlas.height;
-        const scale = (.9 + i % 3 * .06) * 1.45 / 235 * size;
-        // The frame squeezes heights by WALL_COS; sprites are stretched back so they keep their proportions.
-        const tall = rect[3] * scale / WALL_COS;
-        shown[i] = ""; talls[i] = tall; units[i] = scale;
-        dummy.position.set(x, shift * size + tall / 2, z); dummy.quaternion.copy(camera.quaternion); dummy.scale.set(rect[2] * scale, tall, 1); dummy.updateMatrix(); ants.setMatrixAt(i, dummy.matrix);
-        ants.setColorAt(i, color.set("#ffffff"));
-        placeShadow(i, x, z, cast);
         continue;
       }
       fades[i] = 1;
@@ -810,17 +856,21 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     if (!path.length) visiting = null;
   }
   function update(next: RenderState) {
-    const changed = state.scene !== next.scene, density = state.mobile !== next.mobile; state = next;
+    const changed = state.scene !== next.scene, density = state.mobile !== next.mobile;
+    const motion = state.reduced !== next.reduced, pause = state.paused !== next.paused;
+    state = next;
     if (changed) {
       path = []; snap = true; visiting = null; marker.hide();
-      // A new room starts with its own ants: none yet where the theater has no record to show (they fade in with one).
-      cast = state.absent ? 0 : 1; if (state.absent) sideList = [];
+      cast = state.absent ? 0 : 1; lead = 0; actingFor = null; actingTime = 0;
+      actorStance.forEach((stance) => Object.assign(stance, { stretch: 1, roll: 0, pose: "idle" }));
       battle.reset(); // the camps are placed as they stand, not walked in
       if (state.scene === "plaza") { position.x = 0; position.z = .4; }
+      else if (state.scene === "theater") Object.assign(position, theaterVisitor);
       else if (!walkable(position, worldObstacles(state.scene))) { position.x = 0; position.z = 3.2; }
       buildRoom();
     }
-    if (state.paused) { lastTime = lastRender = 0; }
+    if (state.scene === "theater" && (changed || motion)) audience = createTheaterAudience();
+    if (pause || changed || motion) { lastTime = lastRender = 0; }
     population();
     // Re-fit without treating a props change as a new frame (that would cancel the camera eases);
     // only the pixel budget needs the full resize path.
@@ -849,7 +899,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
     async capture(frame) {
       const target = document.createElement("canvas"); target.width = 1200; target.height = 620; target.style.width = "1200px"; target.style.height = "620px";
       // Export uses the exact scene builder, atlas, lighting and population mapping.
-      const exported = await createWorldRenderer(target, { ...state, frame, scene: "theater", mobile: false, paused: true, absent: false });
+      const exported = await createWorldRenderer(target, { ...state, frame, scene: "theater", mobile: false, paused: true, reduced: true, absent: false });
       try { exported.draw(0); const copy = document.createElement("canvas"); copy.width = target.width; copy.height = target.height; copy.getContext("2d")!.drawImage(target, 0, 0); return copy; }
       finally { exported.dispose(); }
     },

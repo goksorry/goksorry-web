@@ -24,7 +24,7 @@ test("ant atlas keeps the 20 legacy cells as base frames", () => {
 test("every sprite has a known name and a rect inside the image", () => {
   expect(Math.max(antAtlas.width, antAtlas.height)).toBeLessThanOrEqual(4096);
   for (const [key, frame] of Object.entries(frames)) {
-    expect(key).toMatch(/^(neutral|fear|hope|neutral-bright|hope-bright)\.(idle|walk-a|walk-b|walk-p|phone|sigh|look|tilt|(howl|kneel|dance|smug)-[1-6])\.(f|fl|l|bl|b|br|r|fr)$/);
+    expect(key).toMatch(/^(neutral|fear|hope|neutral-bright|hope-bright)\.(idle|walk-a|walk-b|walk-p|phone|sigh|look|tilt|sit|(howl|kneel|dance|smug)-[1-6])\.(f|fl|l|bl|b|br|r|fr)$/);
     const [x, y, w, h, k, ax] = frame!;
     expect(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= antAtlas.width && y + h <= antAtlas.height, `${key} inside`).toBe(true);
     expect(k > .5 && k < 2 && ax >= 0 && ax <= w, `${key} k ${k} ax ${ax}`).toBe(true);
@@ -51,6 +51,7 @@ test("every pose the crowd draws has its sprites", () => {
   if (!composed) return;
   // Walking and standing in all eight directions for the neutral and hope ants, four for the fear ant.
   expect(missing(each(["neutral", "hope"], (v) => each(ANT_DIRS, (d) => ["idle", "walk-a", "walk-b", "walk-p"].map((p) => `${v}.${p}.${d}`))))).toEqual([]);
+  expect(frames["neutral.sit.b"]).toBeDefined();
   expect(missing(each(DIRS, (d) => ["walk-a", "walk-b", "walk-p", "phone", "sigh"].map((p) => `fear.${p}.${d}`)))).toEqual([]);
   // Phone and sigh, also with the bright (hopeful) face.
   expect(missing(each(["neutral", "hope", "neutral-bright", "hope-bright"], (v) => each(DIRS, (d) => [`${v}.phone.${d}`, `${v}.sigh.${d}`])))).toEqual([]);

@@ -57,14 +57,15 @@ export type WallRect = { x: number; y: number; width: number; height: number };
 /** Stage heights below this (phone landscape) drop the bottom HUD and frame the wall first. */
 export const WALL_SHORT_STAGE = 380;
 
-export function wallFit(w: number, h: number, options: { plaza: boolean } & WallView): WallFit {
+export function wallFit(w: number, h: number, options: { plaza: boolean; theater?: boolean } & WallView): WallFit {
   const short = h < WALL_SHORT_STAGE;
-  const hud = short ? 0 : Math.max(0, options.hudBottom);
+  const hud = short && !options.theater ? 0 : Math.max(0, options.hudBottom);
   const sectioned = options.layout === "sectioned";
   const zoomed = options.plaza && sectioned && !options.overview;
-  const viewW = zoomed ? 6.7 : !options.plaza && sectioned ? 12 : 23.2;
+  const viewW = zoomed ? 6.7 : options.theater && sectioned ? 17.6 : !options.plaza && sectioned ? 12 : 23.2;
   // Depth of floor that must stay visible above the bottom HUD.
-  const floorZ = !options.plaza ? 8.5 : sectioned ? 7 : short ? .5 : 2;
+  // The near theater row and its chair backs project farther down than the flat-wall estimate.
+  const floorZ = options.theater ? 12 : !options.plaza ? 8.5 : sectioned ? 7 : short ? .5 : 2;
   const viewV = TOP + floorZ * WALL_SIN;
   const availH = Math.max(1, h - hud);
   const ppu = Math.min(w / viewW, availH / viewV);
