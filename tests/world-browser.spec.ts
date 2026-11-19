@@ -221,8 +221,8 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   // Camps read like the 곡소리 지수 gauge: fear left, neutral between, hope right.
   expect(await page.locator(".world-camps button").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.side))).toEqual(["bearish", "neutral", "bullish"]);
   await page.locator('.world-camps button[data-side="bearish"]').click();
-  await expect(page.getByRole("button", { name: /^공포 \d+건$/ })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".world-ratios > span").first()).toHaveClass("world-fear");
+  await expect(dialog(page)).toHaveAccessibleName("전체 절망군 · 분위기와 출처");
+  await expect(dialog(page).getByRole("heading", { name: /^공포 공포도/ })).toBeVisible();
   await page.keyboard.press("Escape"); await expect(avatar).toHaveAttribute("data-position", moved!);
   await page.getByRole("button", { name: "메뉴", exact: false }).first().click();
   await page.getByRole("button", { name: "내 개미 색상 3" }).click();
@@ -232,6 +232,33 @@ test("battle uses total counts, avatar moves and survives details, preferences i
   await expect(page.getByRole("button", { name: "등락률 색상 미국식" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "♡ 감정 표현" }).click(); await page.keyboard.press("Escape"); await expect(avatar).toContainText("♡");
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`battle front moves on a ${viewport.width}px viewport and follows the selected stock`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+    const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
+    await page.setViewportSize(viewport);
+    await prepareWorld(page); await page.goto("/?scene=battle"); await webgl(page);
+    const front = () => page.locator("canvas").evaluate((node) => {
+      const m = (node as HTMLCanvasElement & { worldMetrics: RenderMetrics }).worldMetrics;
+      const walking = m.battle().filter((a) => a.state === "walk" && a.sx > 0 && a.sx < node.clientWidth);
+      return { line: m.battleFront(), fear: walking.some((a) => a.side === "bearish"), hope: walking.some((a) => a.side === "bullish") };
+    });
+    await expect.poll(front, { timeout: 20_000, intervals: [50] }).toMatchObject({ line: { phase: "advance" }, fear: true, hope: true });
+    await expect.poll(async () => (await front()).line?.x, { timeout: 15_000, intervals: [50] }).toBeGreaterThan(.5);
+    const line = (await front()).line!;
+    expect(line.sx).toBeGreaterThan(0); expect(line.sx).toBeLessThan(viewport.width);
+    expect(line.sy).toBeGreaterThan(0); expect(line.sy).toBeLessThan(viewport.height - 100);
+    await testInfo.attach("battle-front", { body: await page.screenshot(), contentType: "image/png" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.getByRole("button", { name: "진영·종목 선택 열기" }).click();
+    await page.getByRole("group", { name: "전장 종목" }).getByRole("button", { name: /^삼성전자 ·/ }).click();
+    await expect(page).toHaveURL(/stock=S0/);
+    await page.keyboard.press("Escape");
+    await expect.poll(front).toMatchObject({ line: { phase: "rest", x: -1.5 }, fear: false, hope: false });
+    expect(errors).toEqual([]);
+  });
+}
 
 test("replay gaps, date changes, 0-10 axis, share and rendered PNG", async ({ page }) => {
   test.setTimeout(60_000); await prepareWorld(page); await page.goto("/?scene=theater");

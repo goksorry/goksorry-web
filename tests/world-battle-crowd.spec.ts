@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import antAtlas from "../components/world/ant-atlas.json";
-import { BATTLE_CROWD, EMOTES, SIDE_VARIANT, battleLayoutKey, battlePose, campSpots, createBattleCrowd, emoteFrame, emoteFrames, emoteSpan, planCamps, type BattleAnt, type BattleCounts } from "../lib/world-battle-crowd";
+import { BATTLE_CROWD, EMOTES, SIDE_VARIANT, battleFrontSignal, battleLayoutKey, battlePose, campSpots, createBattleCrowd, emoteFrame, emoteFrames, emoteSpan, planCamps, type BattleAnt, type BattleCounts } from "../lib/world-battle-crowd";
 import { antFrameCandidates, inView, type CrowdView, type EmoteLoop } from "../lib/world-crowd";
 import { CAMP_X, SIDE_ORDER, crowdCapacity, crowdDistribution } from "../lib/world-presentation";
 import { WORLD_BOUNDS, walkable, worldObstacles } from "../lib/world-navigation";
@@ -133,6 +133,48 @@ test("newcomers walk in from the front edge and the ants no longer needed walk o
   expect(crowd.ants).toHaveLength(13);
   run(crowd, 20);
   expect(crowd.ants).toHaveLength(6); expect(tally(crowd.ants)).toEqual([1, 2, 3]);
+});
+
+test("the front ranks trade ground and regroup without changing camps", () => {
+  const crowd = createBattleCrowd({ frames: FRAMES });
+  crowd.frame(PHONE);
+  crowd.sync(counts(4, 3, 13), { front: { scope: "overall", bias: .7 } });
+  const start = crowd.ants.map((a) => ({ side: a.side, ...at(a) }));
+  const phases = new Set<string>();
+  let feint = 0, press = 0;
+  run(crowd, 8, () => {
+    const line = crowd.front()!;
+    phases.add(line.phase);
+    if (line.phase === "feint") feint = Math.max(feint, line.x);
+    if (line.phase === "press") press = Math.min(press, line.x);
+    crowd.ants.forEach((a, i) => {
+      expect(a.side).toBe(start[i].side);
+      expect(walkable(a, obstacles, .3)).toBe(true);
+      if (a.side === "neutral") expect(at(a)).toEqual({ x: start[i].x, z: start[i].z });
+    });
+  });
+  expect([...phases]).toEqual(["rest", "advance", "feint", "press", "regroup"]);
+  expect(feint).toBeGreaterThan(.8);
+  expect(press).toBeLessThan(-.9);
+  expect(crowd.ants.map((a) => ({ side: a.side, ...at(a) }))).toEqual(start);
+});
+
+test("changing scope or reducing motion settles the front ranks in the current camps", () => {
+  const crowd = createBattleCrowd({ frames: FRAMES });
+  crowd.sync(counts(6, 3, 11), { front: { scope: "overall", bias: .3 } });
+  run(crowd, 3);
+  expect(crowd.ants.some((a) => a.x !== spotOf(a).x)).toBe(true);
+  const places = crowd.ants.map(at);
+  crowd.sync(counts(11, 3, 6), { front: { scope: "stock", bias: -.3 } });
+  expect(crowd.ants.map(at)).toEqual(places);
+  run(crowd, 1);
+  crowd.step(DT, { still: true });
+  expect(crowd.front()).toEqual({ x: expect.closeTo(.45), phase: "rest" });
+  for (const a of crowd.ants) expect(at(a)).toEqual(spotOf(a));
+  const empty = worldSummary([]);
+  expect(battleFrontSignal({ ...empty, total: 2, bullish: 2 }, "stock")).toBeNull();
+  expect(battleFrontSignal({ ...empty, total: 20, neutral: 20 }, "stock")).toBeNull();
+  expect(battleFrontSignal({ ...empty, total: 20, bullish: 8, bearish: 2, neutral: 10 }, "stock")).toEqual({ scope: "stock", bias: .6 });
 });
 
 test("reduced motion places a change at once and plays no loops", () => {

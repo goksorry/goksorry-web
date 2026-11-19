@@ -13,7 +13,7 @@ import { createLabelLayer, type LabelSpec } from "./label-layer";
 import { createMoveMarker, type MoveMarkerState } from "./move-marker";
 import { castFade } from "@/lib/world-theater";
 import { createTheaterAudience, theaterLead, THEATER_ACTORS, THEATER_AUDIENCE, THEATER_CHAIR, THEATER_DOOR, THEATER_SEATS, THEATER_STAGE } from "@/lib/world-theater-cast";
-import { SIDE_VARIANT, battlePose, createBattleCrowd, emoteFrames } from "@/lib/world-battle-crowd";
+import { BATTLE_FLAG_Z, SIDE_VARIANT, battleFrontSignal, battlePose, createBattleCrowd, emoteFrames } from "@/lib/world-battle-crowd";
 import antAtlas from "./ant-atlas.json";
 
 /** `paused` stops everything (hidden tab); `reduced` (prefers-reduced-motion) keeps the visitor's own walk but stops ambient motion. */
@@ -42,6 +42,7 @@ export type RenderMetrics = { renders: number; frames: number[]; cpu: number[]; 
   /** 심리 전장 camp ants (empty elsewhere): their camp side and spot (see campSpots), "walk" / "stand" / "emote" (with the loop
    * playing), whether they are walking off, and how much of them is drawn. */
   battle: () => (AntMetric & { id: string; side: WorldSide; spot: number; leaving: boolean; emote: string | null; fade: number })[];
+  battleFront: () => { x: number; sx: number; sy: number; phase: string } | null;
   /** Plaza crowd ants, NPCs and other viewers' (empty elsewhere): floor position, state, 8-way facing (ANT_DIRS index) and screen point of the body;
    * the turnover phase it is in (`trip`), how many trips its slot has made (`lap`) and how much of it is drawn (`fade`, 0 hidden). */
   crowd: () => (AntMetric & { id: string; peer: boolean; leaving: boolean; trip: "out" | "away" | "in" | null; lap: number; fade: number })[];
@@ -158,6 +159,16 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; target.add(o); return o;
   };
   const box = (x: number, y: number, z: number, w: number, h: number, d: number, m: THREE.Material, target = room) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z, target);
+  const battleFlag = new THREE.Group(); battleFlag.visible = false; scene.add(battleFlag);
+  const flagY = 1.73;
+  const flagCloth = new THREE.MeshBasicMaterial({ color: 0xd2c7a4 }); materials.push(flagCloth);
+  const pennant = new THREE.Shape();
+  pennant.moveTo(-.36, 0); pennant.lineTo(0, .14); pennant.lineTo(.36, 0); pennant.lineTo(.36, .49); pennant.lineTo(-.36, .49); pennant.closePath();
+  mesh(new THREE.ShapeGeometry(pennant), flagCloth, 0, flagY, .045, battleFlag);
+  box(0, 1.13, 0, .065, 2.26, .06, metalMat, battleFlag);
+  box(0, flagY + .49, .035, .81, .055, .07, metalMat, battleFlag);
+  box(0, .045, 0, .26, .09, .22, darkMat, battleFlag);
+  battleFlag.children.forEach((part) => { part.castShadow = false; });
   const arch = (x: number, z: number, width: number, height: number) => {
     const shape = new THREE.Shape(); const r = width / 2;
     shape.moveTo(-r, 0); shape.lineTo(-r, height - r); shape.absarc(0, height - r, r, Math.PI, 0, true); shape.lineTo(r, 0); shape.lineTo(-r, 0);
@@ -278,6 +289,7 @@ export async function createWorldRenderer(canvas: HTMLCanvasElement, initial: Re
     for (let i = 0; i < 8; i++) box(-4 + i * 1.1, .006, 5.8, .65, .008, .06, metalMat);
     if (state.scene === "battle") {
       for (let i = 0; i < 4; i++) { const p = box(0, .7, -.9 + i * .7, .65, 1.25, .5, woodMat); p.rotation.z = (i % 2 ? 1 : -1) * .15; }
+      for (let i = -3; i <= 3; i++) box(i * .56, .008, BATTLE_FLAG_Z, .32, .012, i === 0 ? .19 : .08, i < 0 ? redMat : i > 0 ? glowMat : paperMat).castShadow = false;
       // Camp flags: red over the fear camp, amber over the hope camp, each on its CAMP_X side.
       for (const side of ["bearish", "bullish"] as const) { const sign = CAMP_X[side]; box(sign * 5.5, 1.8, -.5, .08, 3.6, .08, metalMat); box(sign * 5.1, 3.2, -.5, .8, .6, .04, side === "bullish" ? glowMat : redMat); }
     } else if (state.scene === "theater") {
@@ -371,7 +383,7 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   const actorStance = THEATER_ACTORS.map(() => ({ stretch: 1, roll: 0, pose: "idle" as AntPose }));
   const theaterAnts: { point: Point; baseY: number; state: string; dir: number }[] = [];
   const crowd = createCrowd();
-  // 심리 전장: ants standing in their camps (lib/world-battle-crowd.ts), playing the atlas's emotion loops.
+  // 심리 전장: camp formations, front-line action and the atlas's emotion loops.
   const battleLoops = emoteFrames(hasFrame), battle = createBattleCrowd({ frames: battleLoops });
   // The other viewers in the battle room walk to the points they chose, like plaza peers (a crowd of peers only: no NPC roams).
   const battlePeers = createCrowd(7);
@@ -442,6 +454,12 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
   }
   const metrics: RenderMetrics = { renders: 0, frames: [], cpu: [], gpu: [], calls: 0, triangles: 0, renderer: "", population: 0, wall: null, atlas: "", puffs: 0, antSize: 1, cast: 1, band: "neutral", bright: false,
     battle: () => state.scene === "battle" ? battle.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.path.length ? "walk" : a.emote ? "emote" : "stand", a.dir8), id: a.id, side: a.side, spot: a.spot, leaving: a.leaving, emote: a.emote?.loop ?? null, fade: a.fade })) : [],
+    battleFront: () => {
+      const line = state.scene === "battle" ? battle.front() : null;
+      if (!line) return null;
+      const p = project(corner.set(line.x, flagY + .25, BATTLE_FLAG_Z));
+      return { ...line, sx: p.x, sy: p.y };
+    },
     crowd: () => state.scene === "plaza" ? crowd.ants.map((a, i) => ({ ...antMetric(i, a.x, a.z, a.state, a.dir8), id: a.id, peer: a.peer, leaving: a.exit !== 0 || !!a.trip?.drop, trip: a.trip?.phase ?? null, lap: a.lap, fade: a.fade })) : [],
     theater: () => state.scene === "theater" ? theaterAnts.map(({ point, baseY, state, dir }, i) => ({
       ...antMetric(i, point.x, point.z, state, dir, baseY),
@@ -470,10 +488,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       return;
     }
     const base = crowdCapacity(state.scene, state.mobile);
-    // The battle's camps: only the ants that change camp walk; reduced motion places them at once. As on the plaza, every two
-    // other viewers take the place of one camp ant.
+    // As on the plaza, every two other viewers take the place of one camp ant.
     if (state.scene === "battle") {
-      battle.sync(crowdDistribution(summary(), fakeCapacity(base, peers.length)), { instant: state.reduced });
+      const sample = summary();
+      battle.sync(crowdDistribution(sample, fakeCapacity(base, peers.length)), { instant: state.reduced, front: battleFrontSignal(sample, state.stock) });
       roster = peers.map((peer) => ({ id: `peer:${peer.id}`, variant: "neutral" as const, peer: { x: peer.x, z: peer.z } }));
       ants.count = shadows.count = visitorIndex() + 1; metrics.population = battle.ants.filter((a) => !a.leaving).length + peers.length + 1; return;
     }
@@ -643,6 +661,12 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
       if (ambient()) battlePeers.step(dt, env);
       ants.count = shadows.count = visitorIndex() + 1;
     } else if (theater && ambient()) audience.step(elapsed);
+    const battleLine = state.scene === "battle" ? battle.front() : null;
+    battleFlag.visible = battleLine !== null;
+    if (battleLine) {
+      battleFlag.position.set(battleLine.x, 0, BATTLE_FLAG_Z);
+      flagCloth.color.setHex(battleLine.x < -.15 ? 0xe9ba72 : battleLine.x > .15 ? 0xd87766 : 0xd2c7a4);
+    }
     let cueCount = 0, puffs = 0;
     const size = metrics.antSize = antSize();
     right.set(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -736,9 +760,10 @@ if (vAntFade < .999) { ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.)); if ((ANT_BA
         if (b.fade <= 0) { hide(i); continue; }
         let pose = battlePose(still ? { ...b, emote: null } : b, battleLoops, WALK_PHASE * size), dir8 = b.dir8, bright = b.side === "bullish";
         if (walking) ({ pose, dir8, bright } = antWalkFrame(hasFrame, variant, pose, dir8, b.dir4, bright));
-        const bob = (walking ? walkLift(b.stride, WALK_PHASE * size) * .04 : !b.emote && !still ? Math.sin(time / 2400 + b.build * 53) * .025 : 0) * size;
+        const braced = !still && battle.atFront(b) && (battleLine?.phase === "feint" || battleLine?.phase === "press");
+        const bob = (walking ? walkLift(b.stride, WALK_PHASE * size) * .04 : !braced && !b.emote && !still ? Math.sin(time / 2400 + b.build * 53) * .025 : 0) * size;
         const frame = frameOf(variant, pose, dir8, b.dir4, b.lean, bright), k = frame.rect[4] ?? 1;
-        placeSprite(i, frame, b.x, b.z, b.build * 1.45 / 235 * k * size, bob);
+        placeSprite(i, frame, b.x, b.z, b.build * 1.45 / 235 * k * size, bob, braced ? .94 : 1, braced ? CAMP_X[b.side] * .18 : 0);
         ants.setColorAt(i, color.set("#ffffff"));
         placeShadow(i, b.x, b.z, b.fade);
         continue;

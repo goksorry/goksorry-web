@@ -1,14 +1,12 @@
-import type { WorldSide } from "./world";
+import type { WorldSide, WorldSummary } from "./world";
 import { CAMP_X, SIDE_ORDER } from "./world-presentation";
 import { findWorldPath, walkable, worldObstacles, type Point } from "./world-navigation";
 import { facing4, facing8, inView, leanOf, walkPose, type AntPose, type AntVariant, type CrowdView, type EmoteLoop } from "./world-crowd";
 import { advance, hash, unit } from "./world-random";
 
 // 심리 전장 crowd: a pure, seeded model stepped by the renderer (no three.js, no Math.random). Up to BATTLE_CROWD.max ants
-// stand for the shown scope's hope / neutral / fear counts, each at a fixed spot of its camp. When the counts change only the
-// ants that must change camp walk over (newcomers walk in from the front edge, the ones no longer needed walk off it), and
-// everyone else keeps standing where they are. Standing fear ants now and then howl at the sky or kneel in despair, hope
-// ants (who smile) dance or laugh smugly.
+// represent the shown scope's hope / neutral / fear counts. Data changes move ants between camps. Between updates, each
+// camp sends some of its front ranks forward to vie for the center, then they return to the same spots.
 
 export const BATTLE_CROWD = {
   max: 20,
@@ -24,6 +22,21 @@ export const BATTLE_CROWD = {
   /** Seconds between two loops of one ant, and before the first one. */
   rest: [3, 9] as const, firstRest: [.8, 7] as const
 } as const;
+
+export const BATTLE_FLAG_Z = 2.72;
+const FRONT_STAGES = [
+  { phase: "advance", seconds: 1.6 }, { phase: "feint", seconds: .8 },
+  { phase: "press", seconds: 1.25 }, { phase: "regroup", seconds: 1.6 }
+] as const;
+const FRONT_START = 1.6, FRONT_REST = 6.5, FRONT_EDGE = 2.12, FLAG_REACH = 1.5;
+type FrontSignal = { scope: string; bias: number };
+type FrontPhase = typeof FRONT_STAGES[number]["phase"];
+
+export function battleFrontSignal(summary: WorldSummary, scope: string): FrontSignal | null {
+  const directional = summary.bullish + summary.bearish;
+  if (summary.total < 3 || directional === 0) return null;
+  return { scope, bias: (summary.bullish - summary.bearish) / directional };
+}
 
 // Each camp's half of the field: |x| from `inner` to `outer`, `step` apart, odd rows offset by half a step. The side camps
 // keep a clear metre from the neutral ants, who stand along the barricade in the middle; their flags fly over them.
@@ -160,12 +173,14 @@ export type BattleCrowd = {
   ants: BattleAnt[];
   /** Holds these counts (capped at BATTLE_CROWD.max in all). The first counts with any ant, and every sync with `instant`
    * (reduced motion), place the ants on their spots at once; later ones walk them. */
-  sync(counts: BattleCounts, options?: { instant?: boolean }): void;
+  sync(counts: BattleCounts, options?: { instant?: boolean; front?: FrontSignal | null }): void;
   /** The floor the frame shows (see campSpots). When that changes which spots are in sight, every camp re-forms in its new
    * order: at once with `instant` or before the crowd has taken a step, else by walking. */
   frame(view: CrowdView, options?: { instant?: boolean }): void;
   /** `still` (reduced motion): walks finish at once and no loop plays. */
   step(dt: number, options?: { still?: boolean }): void;
+  front(): { x: number; phase: FrontPhase | "rest" } | null;
+  atFront(ant: BattleAnt): boolean;
   /** A new room: no ants, and the next counts are placed again. */
   reset(): void;
 };
@@ -189,6 +204,8 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
   const ants: BattleAnt[] = [];
   // `fresh`: no step taken since the last placement, so a re-forming is still a placement.
   let made = 0, placed = false, fresh = true, view: CrowdView | null = null, layout = battleLayoutKey(null);
+  let signal: FrontSignal | null = null, wait = FRONT_START, flagX = 0;
+  let round: { ants: BattleAnt[]; stage: number; time: number; opening: number } | null = null;
   const rand = (a: BattleAnt) => unit(a.rng = advance(a.rng));
   const within = (a: BattleAnt, [low, high]: readonly [number, number]) => low + rand(a) * (high - low);
   const spotOf = (a: Pick<BattleAnt, "side" | "spot">) => campSpots(a.side, view)[a.spot];
@@ -219,15 +236,68 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
   };
   const walkTo = (a: BattleAnt, path: Point[]) => { a.emote = null; a.path = path; a.moved = false; };
   const place = (a: BattleAnt, p: Point) => { a.x = p.x; a.z = p.z; a.fade = 1; a.emote = null; stand(a); };
+  const atFront = (a: BattleAnt) => round?.ants.includes(a) ?? false;
+  function cancelRound(instant: boolean) {
+    for (const a of round?.ants ?? []) {
+      const home = spotOf(a);
+      if (instant) place(a, home); else walkTo(a, route(a, home));
+    }
+    round = null;
+    wait = FRONT_START;
+  }
+  function frontSquad(side: WorldSide) {
+    // One ant per row can step inward without walking through another ant in its camp.
+    const camp = ants.filter((a) => a.side === side && (!view || inView(a, view)));
+    camp.sort((a, b) => Math.abs(a.x) - Math.abs(b.x));
+    const rows = new Map<number, BattleAnt>();
+    for (const a of camp) if (!rows.has(a.z)) rows.set(a.z, a);
+    return [...rows.values()].sort((a, b) => Math.abs(a.z - 1.2) - Math.abs(b.z - 1.2))
+      .slice(0, Math.min(3, Math.ceil(camp.length / 2)));
+  }
+  function stepFront(delta: number) {
+    if (!signal || !delta) return;
+    const { bias } = signal;
+    if (!round && (wait -= delta) <= 0 && ants.every((a) => !a.leaving && !a.path.length)) {
+      const fear = frontSquad("bearish"), hope = frontSquad("bullish");
+      wait = FRONT_REST;
+      if (fear.length || hope.length) {
+        // Two camps trade a feint before the stronger side pushes. A lone camp can still rally.
+        const opening = fear.length && hope.length ? (bias > 0 ? -.68 : .68) : bias * .5;
+        round = { ants: [...fear, ...hope], stage: 0, time: 0, opening };
+      }
+    }
+    let flagTarget = -bias * FLAG_REACH;
+    if (round) {
+      const { phase, seconds } = FRONT_STAGES[round.stage];
+      const pressure = phase === "feint" ? round.opening : bias;
+      if (phase === "advance") flagTarget = 0;
+      if (phase === "feint") flagTarget = -round.opening * FLAG_REACH;
+      if (round.time === 0) for (const a of round.ants) {
+        const home = spotOf(a), side = CAMP_X[a.side];
+        const reach = phase === "regroup" ? 0 : phase === "advance" ? .72 : .63 + side * pressure * .37;
+        walkTo(a, [{ x: home.x - side * Math.min(1.95, Math.abs(home.x) - FRONT_EDGE) * reach, z: home.z }]);
+      }
+      round.time += delta;
+      if (round.time >= seconds && round.ants.every((a) => !a.path.length)) {
+        round.time = 0;
+        if (++round.stage === FRONT_STAGES.length) round = null;
+      }
+    }
+    flagX += (flagTarget - flagX) * (1 - Math.exp(-delta * 5));
+  }
   return {
     ants,
-    sync(counts, { instant = false } = {}) {
+    sync(counts, { instant = false, front = null } = {}) {
       // crowdDistribution already sums to the capacity; this only guards a caller that asks for more than `max` in all.
       const max = BATTLE_CROWD.max, capped = { ...counts };
       let over = SIDE_ORDER.reduce((sum, side) => sum + Math.max(0, capped[side]), 0) - max;
       for (const side of SIDE_ORDER) { const cut = Math.min(Math.max(0, over), Math.max(0, capped[side])); capped[side] -= cut; over -= cut; }
       const live = ants.filter((a) => !a.leaving), plan = planCamps(live, capped, view);
       const now = instant || (!placed && live.length + plan.adds.length > 0);
+      const signalChanged = front?.scope !== signal?.scope || front?.bias !== signal?.bias;
+      if (signalChanged || instant || plan.moves.length || plan.adds.length || plan.drops.length) cancelRound(now);
+      signal = front;
+      if (signalChanged || instant) flagX = -(signal?.bias ?? 0) * FLAG_REACH;
       if (live.length + plan.adds.length > 0) { if (!placed) fresh = true; placed = true; }
       for (const m of plan.moves) {
         const a = live.find((o) => o.id === m.id)!;
@@ -248,6 +318,7 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
       const key = battleLayoutKey(next); view = next;
       if (key === layout) return;
       layout = key;
+      cancelRound(instant || fresh);
       // Each camp keeps its order: its n ants take the new first n spots.
       for (const side of SIDE_ORDER) ants.filter((a) => !a.leaving && a.side === side).sort((a, b) => a.spot - b.spot).forEach((a, spot) => {
         a.spot = spot;
@@ -259,14 +330,24 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
     step(dt, { still = false } = {}) {
       const delta = Math.max(0, Math.min(dt, .1));
       if (delta > 0 && ants.length) fresh = false;
+      if (still) {
+        if (round) cancelRound(true);
+        flagX = -(signal?.bias ?? 0) * FLAG_REACH;
+      } else stepFront(delta);
       for (let i = 0; i < ants.length; i++) {
         const a = ants[i];
         if (a.path.length) {
           if (still) { const end = a.path[a.path.length - 1]; a.x = end.x; a.z = end.z; a.path = []; }
-          let reach = BATTLE_CROWD.speed * delta;
+          const inFormation = atFront(a);
+          let reach = (inFormation ? 1.65 : BATTLE_CROWD.speed) * delta;
           while (a.path.length && reach > 0) {
             const target = a.path[0], dx = target.x - a.x, dz = target.z - a.z, distance = Math.hypot(dx, dz);
-            if (distance > 1e-9) { a.dir8 = facing8(dx, dz); a.dir4 = facing4(dx, dz); a.lean = leanOf(dx / distance, a.lean); }
+            if (distance > 1e-9) {
+              const direction = inFormation ? -CAMP_X[a.side] : dx / distance;
+              a.dir8 = facing8(direction, inFormation ? 0 : dz / distance);
+              a.dir4 = facing4(direction, inFormation ? 0 : dz / distance);
+              a.lean = leanOf(direction, a.lean);
+            }
             const go = Math.min(distance, reach);
             a.x += distance > 1e-9 ? dx / distance * go : 0; a.z += distance > 1e-9 ? dz / distance * go : 0;
             a.stride += go; reach -= go; a.moved = true;
@@ -280,7 +361,7 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
           continue;
         }
         a.fade = fadeAt(a.z);
-        if (still) { a.emote = null; continue; }
+        if (still || atFront(a)) { a.emote = null; continue; }
         if (a.emote) {
           if ((a.emote.t += delta) >= a.emote.span) { a.emote = null; a.rest = within(a, BATTLE_CROWD.rest); }
           continue;
@@ -295,6 +376,11 @@ export function createBattleCrowd(options: { seed?: number; frames?: Partial<Rec
         a.emote = { loop, t: 0, span: emoteSpan(loop, frames[loop]!) };
       }
     },
-    reset() { ants.length = 0; placed = false; fresh = true; }
+    front: () => signal && { x: flagX, phase: round ? FRONT_STAGES[round.stage].phase : "rest" },
+    atFront,
+    reset() {
+      ants.length = 0; placed = false; fresh = true;
+      signal = null; round = null; wait = FRONT_START; flagX = 0;
+    }
   };
 }
