@@ -6,7 +6,7 @@ The cleanup function uses invoker rights in a non-exposed schema; no public or s
 
 Chat: at most 30 messages younger than seven days after the revised privacy policy takes effect. Durable alarms expire idle history. `/admin/chat` lists/deletes messages via administrator-only routes and 60-second action-bound server tokens. Reconnect replaces history. No member IDs are stored in messages; account withdrawal still does not auto-delete chat.
 
-Publish the revised policy with the `extend_chat_message_retention` migration. Deploy the chat Worker with the seven-day limit once the effective time shown on `/privacy` has passed.
+Publish the revised policy with the `extend_chat_message_retention` migration. Set the chat Worker's `CHAT_RETENTION_EFFECTIVE_AT` to the published effective timestamp. The Worker can deploy during the notice period. Messages sent before that timestamp expire after 24 hours.
 
 Worker: independent cleanup cron at 03:00 and 15:00 KST under the shared lock, waiting up to ten minutes for an active collection run. Collection no longer triggers full maintenance. Pending defaults to six hours; retries, dedupe, backups, scan reports and inactive logs expire after seven days. Daily logs replace the old append-only log. A stopped machine cleans up after restart.
 
