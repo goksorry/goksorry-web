@@ -1498,7 +1498,8 @@ $release$;
 -- aggregates/title-delivery retries still expire after six hours.
 do $release$
 declare
-  publication timestamptz := now();
+  -- Keep successive seed revisions ordered when bootstrapping in one transaction.
+  publication timestamptz := clock_timestamp();
   previous public.policy_document_versions%rowtype;
   old_text text := '중복 분석 방지용으로 원문 주소 등을 일방향 해시로 변환한 값은 로컬에서 기본 6시간 사용합니다.';
   new_text text := '중복 분석 방지용으로 원문 주소 등을 일방향 해시로 변환한 값은 로컬에서 24시간 사용합니다.';
@@ -1524,7 +1525,7 @@ $release$;
 -- Publish advance notice of the longer chat retention period.
 do $release$
 declare
-  publication timestamptz := now();
+  publication timestamptz := clock_timestamp();
   revision_id constant uuid := 'a29a5138-ad37-4011-8719-56bdf7585c49';
   previous_body text;
   old_text constant text := '채팅 메시지는 전송 후 24시간 이내의 최근 30건까지 보관합니다.';
@@ -1564,6 +1565,48 @@ begin
     revision_id, 'privacy', '채팅 메시지 보관기간을 24시간에서 7일로 연장',
     replace(previous_body, old_text, new_text), true,
     publication, publication + interval '168 hours', publication, publication
+  );
+end;
+$release$;
+
+-- 036_activate_chat_message_retention.sql
+-- The operator requested immediate publication of the scheduled chat revision.
+do $release$
+declare
+  publication timestamptz := clock_timestamp();
+  scheduled_id constant uuid := 'a29a5138-ad37-4011-8719-56bdf7585c49';
+  immediate_id constant uuid := '86b56d03-b3f2-45e9-9f08-25bae3d7975e';
+  scheduled public.policy_document_versions%rowtype;
+begin
+  if exists (select 1 from public.policy_document_versions where id = immediate_id) then
+    return;
+  end if;
+
+  select * into scheduled
+  from public.policy_document_versions
+  where id = scheduled_id and type = 'privacy' and superseded_at is null
+  for update;
+
+  if scheduled.id is null then
+    raise exception 'Missing scheduled chat retention revision';
+  end if;
+
+  if exists (
+    select 1 from public.policy_document_versions
+    where type = 'privacy' and superseded_at is null and published_at > scheduled.published_at
+  ) then
+    raise exception 'Unexpected newer privacy revision';
+  end if;
+
+  update public.policy_document_versions
+  set superseded_at = publication
+  where id = scheduled_id;
+
+  insert into public.policy_document_versions
+    (id, type, summary, body, is_adverse, published_at, effective_at, updated_at, created_at)
+  values (
+    immediate_id, 'privacy', '채팅 메시지 보관기간 7일 적용',
+    scheduled.body, false, publication, publication, publication, publication
   );
 end;
 $release$;

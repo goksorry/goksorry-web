@@ -4,9 +4,7 @@ DB: pg_cron runs `goksorry_private.run_data_retention()` twice daily at 03:00 an
 
 The cleanup function uses invoker rights in a non-exposed schema; no public or service-role RPC access. Check `goksorry_private.retention_status`, `cron.job` and `cron.job_run_details` with a privileged connection. Investigate failed runs or a last-success age above 13 hours. Cron history expires after seven days. This change adds no alert delivery service.
 
-Chat: at most 30 messages younger than seven days after the revised privacy policy takes effect. Durable alarms expire idle history. `/admin/chat` lists/deletes messages via administrator-only routes and 60-second action-bound server tokens. Reconnect replaces history. No member IDs are stored in messages; account withdrawal still does not auto-delete chat.
-
-Publish the revised policy with the `extend_chat_message_retention` migration. Set the chat Worker's `CHAT_RETENTION_EFFECTIVE_AT` to the published effective timestamp. The Worker can deploy during the notice period. Messages sent before that timestamp expire after 24 hours.
+Chat: at most 30 messages younger than seven days. Durable alarms expire idle history. `/admin/chat` lists/deletes messages via administrator-only routes and 60-second action-bound server tokens. Reconnect replaces history. No member IDs are stored in messages; account withdrawal still does not auto-delete chat.
 
 Worker: independent cleanup cron at 03:00 and 15:00 KST under the shared lock, waiting up to ten minutes for an active collection run. Collection no longer triggers full maintenance. Pending defaults to six hours; retries, dedupe, backups, scan reports and inactive logs expire after seven days. Daily logs replace the old append-only log. A stopped machine cleans up after restart.
 
